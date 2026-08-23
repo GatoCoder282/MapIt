@@ -1,0 +1,61 @@
+# ── Node / TypeScript
+node_modules/
+dist/
+.angular/
+*.tsbuildinfo
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+
+# ── Java / Gradle
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+out/
+*.class
+bin/
+
+# ── Código generado (se regenera con `pnpm api:gen`)
+packages/api-contract/generated/
+libs/api-client/src/lib/generated/
+apps/backend/**/generated/
+
+# ── Entorno y secretos
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ── Testing
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+*.lcov
+jacoco.exec
+
+# ── Calidad
+.scannerwork/
+.sonarlint/
+
+# ── Editores
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/mapit.code-workspace
+
+# ── SO
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Temporales
+*.log
+tmp/
+.tmp/

@@ -1,0 +1,17 @@
+{
+  "name": "@mapit/ui-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Design system: tokens, componentes base y estilos compartidos.",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "echo \"(sin tests todavía en @mapit/ui-kit)\"",
+    "typecheck": "tsc -p tsconfig.lib.json --noEmit"
+  }
+}

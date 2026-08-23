@@ -1,0 +1,30 @@
+# Normaliza finales de línea: LF en el repo, nativo al hacer checkout.
+* text=auto eol=lf
+
+# Scripts de Windows: SIEMPRE CRLF (si no, cmd.exe falla)
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+*.ps1    text eol=crlf
+
+# Scripts POSIX: SIEMPRE LF
+*.sh     text eol=lf
+gradlew  text eol=lf
+
+# Binarios: nunca tocar
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+*.pdf binary
+*.jar binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+
+# Lockfiles: no mostrar diff en PRs, no marcar conflictos como texto
+pnpm-lock.yaml -diff linguist-generated=true
+
+# Wrapper de Gradle: no contar como código propio
+gradle/wrapper/** linguist-vendored

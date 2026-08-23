@@ -1,0 +1,15 @@
+{
+  "name": "@mapit/api-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Contrato API de MapIt. Fuente de verdad ÚNICA para front y back.",
+  "main": "src/index.ts",
+  "scripts": {
+    "lint": "redocly lint openapi.yaml",
+    "preview": "redocly preview-docs openapi.yaml"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.5.0"
+  }
+}

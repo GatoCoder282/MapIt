@@ -1,0 +1,78 @@
+# =============================================================
+#  Version Catalog — ÚNICA fuente de versiones del backend.
+#  Nadie escribe una versión en un build.gradle.kts.
+#  Best practice oficial de Gradle: "Use Version Catalogs".
+# =============================================================
+
+[versions]
+java             = "25"
+springBoot       = "4.1.1"
+springDepMgmt    = "1.1.7"
+# springdoc: verificar compatibilidad con Spring Framework 7 / Jackson 3
+# antes de subir (ver plan §3, nota de compatibilidad).
+springdoc        = "2.8.13"
+jjwt             = "0.12.6"
+mapstruct        = "1.6.3"
+unleash          = "11.0.2"
+flyway           = "11.16.0"
+postgresql       = "42.7.9"
+archunit         = "1.4.1"
+testcontainers   = "1.21.3"
+jspecify         = "1.0.0"
+spotless         = "7.2.1"
+jacoco           = "0.8.13"
+
+[libraries]
+# ── Spring Boot ──────────────────────────────────────────────
+spring-boot-starter-web        = { module = "org.springframework.boot:spring-boot-starter-web" }
+spring-boot-starter-webflux    = { module = "org.springframework.boot:spring-boot-starter-webflux" }
+spring-boot-starter-security   = { module = "org.springframework.boot:spring-boot-starter-security" }
+spring-boot-starter-data-jpa   = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
+spring-boot-starter-websocket  = { module = "org.springframework.boot:spring-boot-starter-websocket" }
+spring-boot-starter-actuator   = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-mail       = { module = "org.springframework.boot:spring-boot-starter-mail" }
+# Nuevo en Boot 4: RestClient reemplaza a RestTemplate (lo usa el módulo payments).
+spring-boot-starter-restclient = { module = "org.springframework.boot:spring-boot-starter-restclient" }
+spring-boot-starter-test       = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-testcontainers     = { module = "org.springframework.boot:spring-boot-testcontainers" }
+spring-security-test           = { module = "org.springframework.security:spring-security-test" }
+
+# ── Persistencia ─────────────────────────────────────────────
+postgresql        = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+flyway-core       = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+
+# ── Seguridad ────────────────────────────────────────────────
+jjwt-api    = { module = "io.jsonwebtoken:jjwt-api",    version.ref = "jjwt" }
+jjwt-impl   = { module = "io.jsonwebtoken:jjwt-impl",   version.ref = "jjwt" }
+jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
+
+# ── Documentación de API ─────────────────────────────────────
+springdoc-openapi = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+
+# ── Feature flags ────────────────────────────────────────────
+unleash-client = { module = "io.getunleash:unleash-client-java", version.ref = "unleash" }
+
+# ── Mapeo ────────────────────────────────────────────────────
+mapstruct           = { module = "org.mapstruct:mapstruct",         version.ref = "mapstruct" }
+mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
+
+# ── Null-safety (nuevo en Spring Framework 7) ────────────────
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+
+# ── Testing ──────────────────────────────────────────────────
+archunit-junit5           = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+testcontainers-junit      = { module = "org.testcontainers:junit-jupiter",     version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql",        version.ref = "testcontainers" }
+
+[bundles]
+jwt         = ["jjwt-api", "jjwt-impl", "jjwt-jackson"]
+flyway      = ["flyway-core", "flyway-postgresql"]
+testcontainers = ["testcontainers-junit", "testcontainers-postgresql"]
+
+[plugins]
+spring-boot    = { id = "org.springframework.boot",                  version.ref = "springBoot" }
+spring-depmgmt = { id = "io.spring.dependency-management",           version.ref = "springDepMgmt" }
+flyway         = { id = "org.flywaydb.flyway",                       version.ref = "flyway" }
+spotless       = { id = "com.diffplug.spotless",                     version.ref = "spotless" }

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.gradle/
+.angular/
+coverage/
+playwright-report/
+test-results/
+pnpm-lock.yaml
+# Código generado desde el contrato OpenAPI
+packages/api-contract/generated/
+libs/api-client/src/lib/generated/
+# El formato de Java lo maneja Spotless, no Prettier
+*.java

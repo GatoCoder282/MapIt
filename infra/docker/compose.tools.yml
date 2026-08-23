@@ -1,0 +1,72 @@
+# =============================================================
+#  Herramientas opcionales (perfil `tools`).
+#  NO se levantan con `pnpm dev` — son pesadas y de uso ocasional.
+#  Levantar con:  pnpm infra:tools
+# =============================================================
+
+name: ${COMPOSE_PROJECT_NAME:-mapit}
+
+services:
+  # ── Análisis estático ──────────────────────────────────────
+  #  Ver plan §8.1: SonarQube corre en UNA sola máquina (la de calidad)
+  #  y con cadencia baja. El resto del equipo usa SonarLint en el editor,
+  #  en modo conectado a esta instancia.
+  sonarqube:
+    image: sonarqube:community
+    container_name: mapit-sonarqube
+    profiles: ["tools"]
+    restart: unless-stopped
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    ports:
+      - "${SONAR_PORT:-9000}:9000"
+    volumes:
+      # Volúmenes nombrados: el historial de análisis sobrevive a reinicios.
+      # Sin esto, cada `docker compose down` borraba la tendencia del proyecto.
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -qO- http://localhost:9000/api/system/status | grep -q UP || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  # ── Inspección de la base de datos ─────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: mapit-pgadmin
+    profiles: ["tools"]
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@mapit.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  # ── Mock del contrato OpenAPI ──────────────────────────────
+  #  Permite al frontend desarrollar sin el backend levantado.
+  prism:
+    image: stoplight/prism:latest
+    container_name: mapit-prism
+    profiles: ["tools"]
+    restart: unless-stopped
+    command: >
+      mock -h 0.0.0.0 -p 4010 --dynamic
+      /contract/openapi.yaml
+    volumes:
+      - ../../packages/api-contract:/contract:ro
+    ports:
+      - "${PRISM_PORT:-4010}:4010"
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+  pgadmin_data:

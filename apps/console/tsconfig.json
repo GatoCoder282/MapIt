@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.app.json",
+  "_comment": "Este es el tsconfig que descubre el projectService de ESLint. Debe cubrir TODO el código fuente, tests incluidos, y declarar los globales de Vitest (describe/it/expect); si no, el lint no puede tipar los .spec.ts.",
+  "compilerOptions": {
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(pnpm doctor)",
+      "Bash(pnpm check)",
+      "Bash(pnpm fmt)",
+      "Bash(pnpm fmt:check)",
+      "Bash(pnpm fe:*)",
+      "Bash(pnpm be:test)",
+      "Bash(pnpm be:build)",
+      "Bash(pnpm be:lint)",
+      "Bash(pnpm be:fmt)",
+      "Bash(pnpm api:*)",
+      "Bash(pnpm db:info)",
+      "Bash(pnpm db:migrate)",
+      "Bash(pnpm db:new:*)",
+      "Bash(pnpm new:*)",
+      "Bash(pnpm infra:ps)",
+      "Bash(pnpm infra:logs)",
+      "Bash(pnpm infra:up)",
+      "Bash(pnpm e2e)",
+      "Bash(pnpm exec ng:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git switch:*)",
+      "Bash(git add:*)",
+      "Bash(docker compose ps)",
+      "Bash(docker ps)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(pnpm infra:reset)",
+      "Bash(docker compose down:*)"
+    ],
+    "deny": ["Read(./.env)", "Read(./**/.env)", "Bash(git push --force:*)", "Bash(rm -rf:*)"]
+  }
+}

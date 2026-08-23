@@ -1,0 +1,17 @@
+{
+  "name": "@mapit/realtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wrapper de WebSocket/STOMP para actualizaciones en vivo.",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "echo \"(sin tests todavía en @mapit/realtime)\"",
+    "typecheck": "tsc -p tsconfig.lib.json --noEmit"
+  }
+}

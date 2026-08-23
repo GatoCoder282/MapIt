@@ -1,0 +1,71 @@
+# =============================================================
+#  Sistema COMPLETO contenerizado — ensayo de despliegue.
+#  Levantar con:  pnpm infra:full
+#
+#  El despliegue aún no está previsto (todo en localhost), pero
+#  validamos desde ahora que todo corre en contenedores. Así no
+#  hay sorpresas al final del semestre.
+# =============================================================
+
+name: ${COMPOSE_PROJECT_NAME:-mapit}
+
+services:
+  backend:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.Dockerfile
+    container_name: mapit-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      unleash:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # Dentro de la red de Docker se usan los nombres de servicio y el puerto interno.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mapit}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-mapit}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-changeme_local}
+      MAPIT_JWT_SECRET: ${JWT_SECRET}
+      MAPIT_CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:4300}
+      MAPIT_UNLEASH_URL: http://unleash:4242/api
+      MAPIT_UNLEASH_API_TOKEN: ${UNLEASH_API_TOKEN:-default:development.unleash-insecure-api-token}
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: 1025
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  console:
+    build:
+      context: ../..
+      dockerfile: infra/docker/frontend.Dockerfile
+      args:
+        APP_NAME: console
+    container_name: mapit-console
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${CONSOLE_PORT:-4200}:8080"
+
+  public-web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/frontend.Dockerfile
+      args:
+        APP_NAME: public-web
+    container_name: mapit-public-web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${PUBLIC_WEB_PORT:-4300}:8080"

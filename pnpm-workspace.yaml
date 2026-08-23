@@ -1,0 +1,23 @@
+packages:
+  - "apps/console"
+  - "apps/public-web"
+  - "apps/e2e"
+  - "libs/*"
+  - "packages/*"
+
+# Dependencias autorizadas a ejecutar sus scripts de instalación.
+# Sin esto, esbuild (el bundler de Angular) no descarga su binario nativo
+# y `ng build` falla. Se versiona para que los 5 integrantes no tengan
+# que aprobarlas a mano en cada clone.
+allowBuilds:
+  esbuild: true
+  "@parcel/watcher": true
+  lmdb: true
+  msgpackr-extract: true
+
+# Angular y sus herramientas necesitan hoisting para resolver plugins.
+publicHoistPattern:
+  - "*@angular*"
+  - "*eslint*"
+  - "*prettier*"
+  - "*vitest*"

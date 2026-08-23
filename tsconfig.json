@@ -1,0 +1,10 @@
+{
+  "extends": "./packages/config-typescript/base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["tools/**/*.mjs", "*.config.js", "*.config.mjs"]
+}

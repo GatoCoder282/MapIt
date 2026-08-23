@@ -1,0 +1,17 @@
+{
+  "extends": "../../packages/config-typescript/angular-app.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc/console",
+    "types": [],
+    "paths": {
+      "@mapit/ui-kit": ["../../libs/ui-kit/src/index.ts"],
+      "@mapit/api-client": ["../../libs/api-client/src/index.ts"],
+      "@mapit/auth": ["../../libs/auth/src/index.ts"],
+      "@mapit/feature-flags": ["../../libs/feature-flags/src/index.ts"],
+      "@mapit/realtime": ["../../libs/realtime/src/index.ts"],
+      "@mapit/map-engine": ["../../libs/map-engine/src/index.ts"]
+    }
+  },
+  "files": ["src/main.ts"],
+  "include": ["src/**/*.d.ts"]
+}

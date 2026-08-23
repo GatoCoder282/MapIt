@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc/console-spec",
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "src/test-setup.ts"]
+}

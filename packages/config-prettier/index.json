@@ -1,0 +1,23 @@
+{
+  "printWidth": 100,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "semi": true,
+  "arrowParens": "always",
+  "endOfLine": "lf",
+  "bracketSpacing": true,
+  "overrides": [
+    {
+      "files": "*.html",
+      "options": { "parser": "angular", "printWidth": 120 }
+    },
+    {
+      "files": ["*.yml", "*.yaml"],
+      "options": { "singleQuote": false }
+    },
+    {
+      "files": "*.md",
+      "options": { "proseWrap": "preserve" }
+    }
+  ]
+}

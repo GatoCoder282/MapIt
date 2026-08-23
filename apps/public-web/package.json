@@ -1,0 +1,18 @@
+{
+  "name": "@mapit/public-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vista pública: consulta de disponibilidad, reserva y pago QR para el cliente final.",
+  "scripts": {
+    "start": "ng serve public-web",
+    "build": "ng build public-web",
+    "test": "ng test public-web",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+  },
+  "dependencies": {
+    "@mapit/api-client": "workspace:*",
+    "@mapit/feature-flags": "workspace:*",
+    "@mapit/map-engine": "workspace:*",
+    "@mapit/ui-kit": "workspace:*"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "../../packages/config-typescript/base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["tests/**/*.ts", "playwright.config.ts"]
+}

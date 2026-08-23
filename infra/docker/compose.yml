@@ -1,0 +1,121 @@
+# =============================================================
+#  MapIt — infraestructura de desarrollo
+#  Levantar con:  pnpm infra:up   (o `pnpm dev`, que lo hace solo)
+# =============================================================
+
+name: ${COMPOSE_PROJECT_NAME:-mapit}
+
+services:
+  # ── Base de datos principal ────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: mapit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mapit}
+      POSTGRES_USER: ${POSTGRES_USER:-mapit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_local}
+      # Locale consistente entre SO: evita diferencias de ordenamiento
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      # El puerto del host es configurable (por defecto 5433, para no chocar
+      # con un PostgreSQL instalado nativamente). Dentro de la red sigue en 5432.
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mapit} -d ${POSTGRES_DB:-mapit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # ── Feature flags: base de datos propia ────────────────────
+  unleash-db:
+    image: postgres:17-alpine
+    container_name: mapit-unleash-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: unleash
+      POSTGRES_USER: unleash
+      POSTGRES_PASSWORD: unleash
+    volumes:
+      - unleash_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unleash -d unleash"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ── Feature flags: servidor + UI ───────────────────────────
+  unleash:
+    image: unleashorg/unleash-server:6
+    container_name: mapit-unleash
+    restart: unless-stopped
+    depends_on:
+      unleash-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://unleash:unleash@unleash-db:5432/unleash
+      DATABASE_SSL: "false"
+      LOG_LEVEL: warn
+      # Dos tokens DISTINTOS, con formato `<proyecto>:<entorno>.<secreto>`:
+      #  - admin: debe tener alcance global (`*:*`), Unleash rechaza uno por proyecto.
+      #  - client: el que usan el backend y el proxy para leer las flags.
+      INIT_ADMIN_API_TOKENS: ${UNLEASH_ADMIN_TOKEN:-*:*.unleash-insecure-admin-token}
+      INIT_CLIENT_API_TOKENS: ${UNLEASH_API_TOKEN:-default:development.unleash-insecure-api-token}
+      UNLEASH_DEFAULT_ADMIN_USERNAME: ${UNLEASH_ADMIN_USER:-admin}
+      UNLEASH_DEFAULT_ADMIN_PASSWORD: ${UNLEASH_ADMIN_PASSWORD:-unleash4all}
+    ports:
+      - "${UNLEASH_PORT:-4242}:4242"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4242/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # ── Feature flags: proxy para el frontend ──────────────────
+  #  El navegador NUNCA habla directo con Unleash: eso expondría
+  #  todas las flags y el token de admin. El proxy solo devuelve
+  #  las flags evaluadas para el contexto del usuario.
+  unleash-proxy:
+    image: unleashorg/unleash-proxy:latest
+    container_name: mapit-unleash-proxy
+    restart: unless-stopped
+    depends_on:
+      unleash:
+        condition: service_healthy
+    environment:
+      UNLEASH_URL: http://unleash:4242/api
+      UNLEASH_API_TOKEN: ${UNLEASH_API_TOKEN:-default:development.unleash-insecure-api-token}
+      UNLEASH_PROXY_CLIENT_KEYS: ${UNLEASH_PROXY_CLIENT_KEY:-dev-proxy-key-change-me}
+      UNLEASH_APP_NAME: mapit-frontend
+      UNLEASH_ENVIRONMENT: ${UNLEASH_ENVIRONMENT:-development}
+      # OJO: NO definir PROXY_BASE_PATH. El proxy ya sirve en /proxy por sí solo;
+      # PROXY_BASE_PATH se antepone, así que ponerlo a /proxy da /proxy/proxy.
+      CORS_ORIGIN: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:4300}
+    ports:
+      - "${UNLEASH_PROXY_PORT:-3063}:3000"
+
+  # ── Correo de prueba: captura todo, no envía nada ──────────
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mapit-mailpit
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - "${MAIL_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+volumes:
+  postgres_data:
+  unleash_data:
+
+networks:
+  default:
+    name: mapit-net

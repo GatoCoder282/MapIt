@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "_comment": "Base común del monorepo. Las apps y libs Angular extienden angular-app.json / angular-lib.json. Nota: TypeScript 6 rechaza claves desconocidas DENTRO de compilerOptions, así que los comentarios van fuera.",
+  "_strict": "Modo estricto completo: es más barato pelear con el compilador ahora que depurar 'undefined' en producción.",
+  "_deadCode": "noUnusedLocals/Parameters detectan código muerto, que en un equipo de 5 se acumula rápido.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    "strict": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "exactOptionalPropertyTypes": true,
+    "useUnknownInCatchVariables": true,
+
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "sourceMap": true,
+    "importHelpers": true
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "//": "Al abrir el repo, el editor ofrece instalar estas. VS Code y Orca las leen igual.",
+  "recommendations": [
+    "vscjava.vscode-java-pack",
+    "vmware.vscode-boot-dev-pack",
+    "richardwillis.vscode-gradle",
+    "angular.ng-template",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "vitest.explorer",
+    "ms-playwright.playwright",
+    "sonarsource.sonarlint-vscode",
+    "ms-azuretools.vscode-docker",
+    "redhat.vscode-yaml",
+    "matt-meyers.vscode-dbml",
+    "42crunch.vscode-openapi",
+    "editorconfig.editorconfig",
+    "eamodio.gitlens"
+  ],
+  "unwantedRecommendations": ["hookyqr.beautify", "ms-vscode.vscode-typescript-tslint-plugin"]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@mapit/config-prettier",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Formato único para TS, HTML, JSON, YAML y Markdown.",
+  "main": "index.json",
+  "files": [
+    "index.json"
+  ]
+}

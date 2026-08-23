@@ -1,0 +1,21 @@
+{
+  "name": "@mapit/console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Consola de staff: editor de mapas, operación en tiempo real, dashboard y administración.",
+  "scripts": {
+    "start": "ng serve console",
+    "build": "ng build console",
+    "test": "ng test console",
+    "test:watch": "ng test console --watch",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+  },
+  "dependencies": {
+    "@mapit/api-client": "workspace:*",
+    "@mapit/auth": "workspace:*",
+    "@mapit/feature-flags": "workspace:*",
+    "@mapit/map-engine": "workspace:*",
+    "@mapit/realtime": "workspace:*",
+    "@mapit/ui-kit": "workspace:*"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "//": "Flags iniciales de MapIt. Cargar con: pnpm new:flag --bootstrap",
+  "//convención": "<dominio>.<feature> — ver plan §9",
+  "features": [
+    {
+      "name": "demo.hello",
+      "description": "Banner de demostración. Sirve para comprobar que el toggle funciona de punta a punta: apágala en la UI y desaparece en ambas apps sin recompilar.",
+      "type": "experiment",
+      "enabled": true,
+      "impressionData": false
+    },
+    {
+      "name": "payments.qr",
+      "description": "Pago de anticipo con pasarela QR (CU-17). Release toggle: se retira cuando la integración esté estable.",
+      "type": "release",
+      "enabled": false,
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "name": "realtime.websocket",
+      "description": "Actualización en vivo por WebSocket/STOMP (CU-09). Kill switch: si STOMP satura, se apaga y el front cae a polling.",
+      "type": "kill-switch",
+      "enabled": true
+    },
+    {
+      "name": "spaces.editor-grouping",
+      "description": "Agrupar elementos en el editor de mapas (CU-06).",
+      "type": "release",
+      "enabled": false,
+      "expiresAt": "2026-12-31"
+    },
+    {
+      "name": "vertical.hotel",
+      "description": "Vertical Hotel: reservas por rango de fechas (CU-22). Permission toggle por tenant.",
+      "type": "permission",
+      "enabled": false
+    },
+    {
+      "name": "vertical.event-hall",
+      "description": "Vertical Salón de eventos: butacas numeradas (CU-21). Permission toggle por tenant.",
+      "type": "permission",
+      "enabled": false
+    }
+  ]
+}

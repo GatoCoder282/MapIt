@@ -1,0 +1,8 @@
+{
+  "//": "Config de RUNTIME. En despliegue se monta un archivo distinto sin recompilar.",
+  "apiBaseUrl": "http://localhost:8080/api/v1",
+  "wsUrl": "ws://localhost:8080/ws",
+  "unleashProxyUrl": "http://localhost:3063/proxy",
+  "unleashClientKey": "dev-proxy-key-change-me",
+  "environment": "development"
+}

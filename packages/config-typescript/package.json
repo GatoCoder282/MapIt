@@ -1,0 +1,9 @@
+{
+  "name": "@mapit/config-typescript",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Configuración base de TypeScript compartida por todo el monorepo.",
+  "files": [
+    "*.json"
+  ]
+}

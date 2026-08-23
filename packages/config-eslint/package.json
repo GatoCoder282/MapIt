@@ -1,0 +1,21 @@
+{
+  "name": "@mapit/config-eslint",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reglas de lint compartidas: style guide oficial de Angular + fronteras de arquitectura.",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./angular": "./angular.js",
+    "./boundaries": "./boundaries.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "peerDependencies": {
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0",
+    "angular-eslint": "^20.0.0"
+  }
+}

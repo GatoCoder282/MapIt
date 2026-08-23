@@ -1,0 +1,23 @@
+# Configuración de validación del contrato de MapIt.
+extends:
+  - recommended
+
+rules:
+  # Las respuestas Forbidden/NotFound y el esquema Problem están definidos de
+  # antemano a propósito: son el vocabulario de errores común (RFC 9457) que
+  # usarán los endpoints de cada caso de uso. Que hoy no los use nadie no es
+  # un defecto, es que el contrato aún está casi vacío.
+  no-unused-components: off
+
+  # Los ejemplos son obligatorios: son lo que consume el mock de Prism para que
+  # el frontend pueda desarrollar sin backend.
+  no-invalid-media-type-examples: error
+
+  operation-operationId: error
+  operation-summary: error
+  operation-4xx-response: warn
+
+  # `no-server-example.com` avisa por las URLs de servidor. Las nuestras son
+  # localhost porque el despliegue aún no está previsto (todo corre en local).
+  no-server-example.com: off
+  security-defined: error

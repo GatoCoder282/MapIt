@@ -1,0 +1,21 @@
+/* Estilos globales de la vista pública. */
+@use 'ui-kit/styles/tokens' as *;
+
+:root {
+  color-scheme: light dark;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: var(--mapit-font-sans);
+  background: var(--mapit-color-surface);
+  color: var(--mapit-color-text);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}

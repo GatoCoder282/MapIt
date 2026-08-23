@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.lib.json",
+  "_comment": "tsconfig.lib.json excluye los .spec.ts porque no forman parte del paquete publicado. Aquí se vuelven a incluir para que ESLint pueda tiparlos.",
+  "compilerOptions": {
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": []
+}

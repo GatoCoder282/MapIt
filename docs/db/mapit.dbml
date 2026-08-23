@@ -1,0 +1,222 @@
+// =============================================================
+//  MapIt — modelo de datos
+//
+//  FUENTE DE VERDAD CONCEPTUAL del esquema. Se mantiene en sincronía
+//  con las migraciones de Flyway: toda migración actualiza este archivo
+//  en el MISMO commit.
+//
+//  Visualizar:  https://dbdiagram.io  (pegar este archivo)
+//  Exportar:    pnpm db:erd
+//
+//  ESTADO: solo `tenant` está implementada (V1__baseline.sql).
+//  El resto es el diseño previsto; cada tabla llega con su caso de uso.
+//
+//  CONVENCIÓN (ADR-0004): toda tabla de negocio lleva
+//    tenant_id  +  índice (tenant_id, id)  +  RLS
+//  Las tablas globales de plataforma son la excepción y van marcadas.
+// =============================================================
+
+Project MapIt {
+  database_type: 'PostgreSQL'
+  Note: 'Motor de gestión espacial multi-tenant'
+}
+
+// ── PLATAFORMA (global, sin tenant_id) ───────────────────────
+
+Table tenant {
+  id         text        [pk, note: 'Identificador estable de la empresa']
+  name       text        [not null]
+  slug       text        [not null, unique, note: 'Usado en URLs públicas de reserva (CU-15)']
+  status     text        [not null, default: 'ACTIVE', note: 'ACTIVE | SUSPENDED']
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: 'CU-01, CU-03. Tabla GLOBAL: no lleva tenant_id ni RLS. IMPLEMENTADA en V1.'
+}
+
+// ── IDENTIDAD (CU-23, CU-24) ─────────────────────────────────
+
+Table app_user {
+  id            uuid        [pk]
+  tenant_id     text        [not null, ref: > tenant.id]
+  email         text        [not null]
+  password_hash text        [not null, note: 'BCrypt (RNF09)']
+  full_name     text        [not null]
+  role          text        [not null, note: 'SUPER_ADMIN | ADMIN | MANAGER | STAFF']
+  active        boolean     [not null, default: true]
+  created_at    timestamptz [not null]
+
+  Indexes {
+    (tenant_id, id)
+    (tenant_id, email) [unique]
+  }
+  Note: 'El claim `tenant` del JWT sale de aquí. SUPER_ADMIN es transversal a tenants.'
+}
+
+// ── ESPACIO (CU-04 … CU-08) ──────────────────────────────────
+
+Table establishment {
+  id         uuid        [pk]
+  tenant_id  text        [not null, ref: > tenant.id]
+  name       text        [not null]
+  type       text        [not null, note: 'RESTAURANT | NIGHTCLUB | EVENT_HALL | HOTEL']
+  slug       text        [not null, note: 'URL pública de reserva']
+  timezone   text        [not null, default: 'America/La_Paz']
+  created_at timestamptz [not null]
+
+  Indexes {
+    (tenant_id, id)
+    (tenant_id, slug) [unique]
+  }
+  Note: 'CU-04. El type selecciona qué plantillas de elemento aplican (CU-07).'
+}
+
+Table floor {
+  id               uuid [pk]
+  tenant_id        text [not null, ref: > tenant.id]
+  establishment_id uuid [not null, ref: > establishment.id]
+  name             text [not null]
+  level            int  [not null, note: 'Orden vertical: 0 = planta baja']
+
+  Indexes { (tenant_id, id) }
+  Note: 'CU-05'
+}
+
+Table sector {
+  id        uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  floor_id  uuid [not null, ref: > floor.id]
+  name      text [not null]
+  color     text
+
+  Indexes { (tenant_id, id) }
+  Note: 'CU-05'
+}
+
+Table space_element {
+  id         uuid        [pk]
+  tenant_id  text        [not null, ref: > tenant.id]
+  sector_id  uuid        [not null, ref: > sector.id]
+  type       text        [not null, note: 'TABLE | BAR | SECTOR_ZONE | STAGE | SEAT | ROOM | DECOR']
+  label      text        [not null]
+  pos_x      numeric     [not null]
+  pos_y      numeric     [not null]
+  width      numeric     [not null]
+  height     numeric     [not null]
+  rotation   numeric     [not null, default: 0]
+  state      text        [not null, default: 'AVAILABLE', note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
+  capacity   int         [note: 'null en elementos no reservables (decoración)']
+  reservable boolean     [not null, default: true]
+  attributes jsonb       [not null, note: 'Atributos libres por plantilla de vertical']
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Indexes {
+    (tenant_id, id)
+    (tenant_id, sector_id)
+    (tenant_id, state) [note: 'Consulta del dashboard: ocupación en vivo']
+  }
+  Note: 'CU-06, CU-08. ENTIDAD CLAVE de la genericidad de MapIt: un mismo tipo base representa una mesa de restaurante, una zona VIP de discoteca, una butaca numerada de teatro o una habitación de hotel. Se persiste como DATOS, nunca como imagen (RF05).'
+}
+
+Table element_template {
+  id                 uuid    [pk]
+  establishment_type text    [not null, note: 'A qué vertical aplica']
+  element_type       text    [not null]
+  name               text    [not null]
+  default_width      numeric
+  default_height     numeric
+  default_capacity   int
+  icon               text
+
+  Note: 'CU-07. Tabla GLOBAL: catálogo compartido entre tenants, sin tenant_id.'
+}
+
+// ── PERSONAS Y RESERVAS (CU-11 … CU-18) ──────────────────────
+
+Table person {
+  id         uuid        [pk]
+  tenant_id  text        [not null, ref: > tenant.id]
+  full_name  text        [not null]
+  email      text
+  phone      text
+  created_at timestamptz [not null]
+
+  Indexes { (tenant_id, id) }
+  Note: 'CU-11. Clientes del establecimiento. Distintos de app_user, que es el staff.'
+}
+
+Table reservation {
+  id               uuid          [pk]
+  tenant_id        text          [not null, ref: > tenant.id]
+  establishment_id uuid          [not null, ref: > establishment.id]
+  person_id        uuid          [not null, ref: > person.id]
+  status           text          [not null, note: 'CREATED | CONFIRMED | ACTIVE | RELEASED | CANCELLED']
+  starts_at        timestamptz   [not null]
+  ends_at          timestamptz   [note: 'Hotel: fin de estadía. Restaurante: fin de turno.']
+  guests           int           [not null, default: 1]
+  deposit_amount   "numeric(12,2)"
+  created_at       timestamptz   [not null]
+  updated_at       timestamptz   [not null]
+
+  Indexes {
+    (tenant_id, id)
+    (tenant_id, establishment_id, starts_at)
+    (tenant_id, status)
+  }
+  Note: 'CU-12, CU-13, CU-16. Flujo: CREATED → CONFIRMED → ACTIVE → RELEASED o CANCELLED. El rango de fechas soporta las 4 verticales: por turno (restaurante), por noche (discoteca), por evento (salón) y por estadía (hotel).'
+}
+
+Table reservation_element {
+  reservation_id   uuid [ref: > reservation.id]
+  space_element_id uuid [ref: > space_element.id]
+  tenant_id        text [not null, ref: > tenant.id]
+
+  Indexes {
+    (reservation_id, space_element_id) [pk]
+    (tenant_id, space_element_id)
+  }
+  Note: 'CU-12: una reserva puede ocupar VARIOS elementos (varias mesas de un evento).'
+}
+
+// ── PAGOS (CU-17) ────────────────────────────────────────────
+
+Table payment {
+  id             uuid            [pk]
+  tenant_id      text            [not null, ref: > tenant.id]
+  reservation_id uuid            [not null, ref: > reservation.id]
+  provider       text            [not null, note: 'mock hasta elegir la pasarela QR']
+  external_id    text            [note: 'Identificador en la pasarela']
+  amount         "numeric(12,2)" [not null]
+  currency       text            [not null, default: 'BOB']
+  status         text            [not null, note: 'PENDING | PAID | FAILED | REFUNDED']
+  qr_payload     text
+  created_at     timestamptz     [not null]
+  confirmed_at   timestamptz     [note: 'Lo fija el webhook de la pasarela']
+
+  Indexes {
+    (tenant_id, id)
+    (tenant_id, reservation_id)
+  }
+  Note: 'CU-17. La reserva pasa a CONFIRMED cuando llega el webhook de pago confirmado.'
+}
+
+// ── BITÁCORA (CU-14) ─────────────────────────────────────────
+
+Table element_event {
+  id               uuid        [pk]
+  tenant_id        text        [not null, ref: > tenant.id]
+  space_element_id uuid        [not null, ref: > space_element.id]
+  app_user_id      uuid        [ref: > app_user.id, note: 'null si lo causó el sistema']
+  event_type       text        [not null, note: 'STATE_CHANGED | RESERVED | RELEASED | ...']
+  from_state       text
+  to_state         text
+  occurred_at      timestamptz [not null]
+  metadata         jsonb       [not null]
+
+  Indexes {
+    (tenant_id, id)
+    (tenant_id, space_element_id, occurred_at)
+  }
+  Note: 'CU-14, RF11. Bitácora append-only: quién, qué, cuándo. Nunca se actualiza ni se borra: es la base de los reportes.'
+}

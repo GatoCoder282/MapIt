@@ -1,0 +1,9 @@
+{
+  "extends": "../../packages/config-typescript/angular-lib.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc/realtime",
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts"]
+}

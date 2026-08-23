@@ -1,0 +1,157 @@
+openapi: 3.1.0
+
+info:
+  title: MapIt API
+  version: 0.1.0
+  description: |
+    API de MapIt — motor de gestión espacial multi-tenant.
+
+    **Este archivo es la fuente de verdad del contrato.** Se edita ANTES de escribir
+    código, y de él se generan:
+      - el cliente TypeScript que consume Angular (`libs/api-client`)
+      - las interfaces Java que los `@RestController` deben implementar
+
+    Consecuencia: si alguien cambia el contrato sin actualizar este archivo,
+    el build de Java falla porque el controlador ya no implementa la interfaz.
+    El contrato lo hace cumplir el compilador, no la convención.
+
+    Regenerar con `pnpm api:gen`; verificar que no hay drift con `pnpm api:check`.
+
+  contact:
+    name: Equipo MapIt
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Desarrollo local
+  - url: /api/v1
+    description: Relativo (contenedor)
+
+tags:
+  - name: health
+    description: Estado del servicio
+  - name: feature-flags
+    description: Feature toggles evaluados para el contexto actual
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Estado del servicio
+      description: Endpoint de humo. Sirve para verificar que el contrato de punta a punta funciona.
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: El servicio está operativo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /feature-flags:
+    get:
+      tags: [feature-flags]
+      summary: Flags evaluadas para el usuario y tenant actuales
+      description: |
+        Devuelve el estado de las feature flags ya evaluadas en el contexto del
+        llamante (tenant, usuario, rol, país). El frontend no evalúa reglas:
+        solo consume booleanos.
+
+        Nota: para el navegador, la vía preferente es el **unleash-proxy**
+        (`UNLEASH_PROXY_URL`). Este endpoint existe para diagnóstico y para
+        clientes que ya están autenticados contra el backend.
+      operationId: getFeatureFlags
+      responses:
+        "200":
+          description: Mapa de flag → habilitada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeatureFlags"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token JWT emitido por `/auth/login`. Incluye el claim `tenant`, que es de
+        donde el backend resuelve el tenant (NO del header `X-Tenant-Id`, que el
+        cliente podría falsificar).
+
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, version]
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+          examples: [UP]
+        version:
+          type: string
+          examples: ["0.1.0"]
+        timestamp:
+          type: string
+          format: date-time
+
+    FeatureFlags:
+      type: object
+      description: Clave de flag (`<dominio>.<feature>`) → si está habilitada.
+      additionalProperties:
+        type: boolean
+      examples:
+        - demo.hello: true
+          payments.qr: false
+          realtime.websocket: true
+
+    # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
+    # así que todos los errores de la API usan este formato.
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          default: about:blank
+        title:
+          type: string
+          examples: ["Unauthorized"]
+        status:
+          type: integer
+          examples: [401]
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+  responses:
+    Unauthorized:
+      description: Falta el token o no es válido
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Forbidden:
+      description: Autenticado, pero sin permiso para este recurso o tenant
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: El recurso no existe (o pertenece a otro tenant)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+security:
+  - bearerAuth: []

@@ -1,0 +1,16 @@
+# Perfil `docker`: usado por compose.full.yml.
+# Dentro de la red de Docker se usan los nombres de servicio y el puerto interno 5432.
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/${POSTGRES_DB:mapit}
+  mail:
+    host: mailpit
+    port: 1025
+
+mapit:
+  unleash:
+    url: http://unleash:4242/api
+
+logging:
+  level:
+    com.mapit: INFO

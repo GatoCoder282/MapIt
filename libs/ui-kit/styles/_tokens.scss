@@ -1,0 +1,49 @@
+/**
+ * Tokens de diseño de MapIt.
+ * Fuente única de colores, tipografía y espaciado para AMBAS apps.
+ */
+
+:root {
+  /* ── Tipografía ─────────────────────────────────────────── */
+  --mapit-font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mapit-font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+
+  /* ── Color ──────────────────────────────────────────────── */
+  --mapit-color-surface: #ffffff;
+  --mapit-color-surface-raised: #f6f7f9;
+  --mapit-color-text: #16181d;
+  --mapit-color-text-muted: #5b616e;
+  --mapit-color-border: #dfe3e8;
+  --mapit-color-accent: #3b82f6;
+
+  /* Estados de los elementos del mapa (RF06).
+     Definidos como tokens para que el mapa, la leyenda y el dashboard
+     usen exactamente el mismo color sin repetirlo en tres sitios. */
+  --mapit-state-available: #22c55e;
+  --mapit-state-occupied: #ef4444;
+  --mapit-state-reserved: #f59e0b;
+  --mapit-state-cleaning: #3b82f6;
+  --mapit-state-out-of-service: #9ca3af;
+
+  /* ── Espaciado ──────────────────────────────────────────── */
+  --mapit-space-1: 0.25rem;
+  --mapit-space-2: 0.5rem;
+  --mapit-space-3: 0.75rem;
+  --mapit-space-4: 1rem;
+  --mapit-space-6: 1.5rem;
+  --mapit-space-8: 2rem;
+
+  --mapit-radius: 0.5rem;
+  --mapit-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mapit-color-surface: #101216;
+    --mapit-color-surface-raised: #191c22;
+    --mapit-color-text: #e8eaed;
+    --mapit-color-text-muted: #9aa1ad;
+    --mapit-color-border: #2a2e37;
+  }
+}
