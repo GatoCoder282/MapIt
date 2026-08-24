@@ -13,7 +13,10 @@ import { ROOT, c, log, loadEnv, sleep } from './_lib.mjs';
 
 loadEnv();
 
-const UNLEASH = (process.env['UNLEASH_URL'] ?? 'http://localhost:4242/api').replace(/\/api\/?$/, '');
+const UNLEASH = (process.env['UNLEASH_URL'] ?? 'http://localhost:4242/api').replace(
+  /\/api\/?$/,
+  '',
+);
 const TOKEN = process.env['UNLEASH_ADMIN_TOKEN'] ?? '*:*.unleash-insecure-admin-token';
 const ENTORNO = process.env['UNLEASH_ENVIRONMENT'] ?? 'development';
 const PROYECTO = 'default';

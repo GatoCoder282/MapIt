@@ -5,7 +5,7 @@
  */
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { ROOT, IS_WINDOWS, run, capture, c, loadEnv } from './_lib.mjs';
+import { ROOT, run, capture, c, loadEnv } from './_lib.mjs';
 
 loadEnv();
 

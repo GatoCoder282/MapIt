@@ -82,8 +82,9 @@ test(identity): aislamiento entre tenants
 ```
 
 Tipos: `feat` · `fix` · `docs` · `test` · `refactor` · `chore` · `build` · `ci`
-Alcances: `platform` `identity` `spaces` `operations` `reservations` `payments`
-`console` `public-web` `infra` `contract`
+Alcances: `backend` `platform` `identity` `spaces` `operations` `reservations` `payments` ·
+`frontend` `console` `public-web` `ui-kit` `api-client` `auth` `feature-flags` `realtime`
+`map-engine` · `contract` `infra` `e2e` `db` `ci` `docs` `specs` `deps` `tooling`
 
 Hay un hook que valida el formato: un commit mal escrito se rechaza al hacerlo,
 no en el PR.

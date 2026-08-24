@@ -66,10 +66,29 @@ export default tseslint.config(
     },
   },
 
-  // ── Tooling: Node puro ──────────────────────────────────────
+  // ── Tooling: scripts de Node ────────────────────────────────
   {
     files: ['tools/**/*.mjs', '*.config.js', '*.config.mjs'],
-    rules: { 'no-console': 'off' },
+    languageOptions: {
+      // Sin declarar los globales de Node, `process`, `console` y `fetch`
+      // se reportan como `no-undef`.
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+      },
+    },
+    rules: {
+      // Los scripts de tooling SÍ hablan por consola: es su interfaz de usuario.
+      'no-console': 'off',
+    },
   },
 
   // ── Tests E2E ───────────────────────────────────────────────

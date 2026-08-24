@@ -66,8 +66,10 @@ if (java.includes(`"${clave}"`)) {
     `\n\n  /** TODO: describir para qué es esta flag y a qué CU pertenece. */\n` +
     `  ${constante}("${clave}", Tipo.${tipoArg}, ${porDefecto});` +
     java.slice(ultima + 3);
-  // el último elemento del enum termina en `;`, los anteriores en `,`
-  java = java.replace(/\);\n\n  \/\*\* TODO/, '),\n\n  /** TODO');
+  // El último elemento de un enum de Java termina en `;` y los anteriores en `,`.
+  // Al insertar una entrada nueva al final, la que antes cerraba el enum debe
+  // pasar de `;` a `,`.
+  java = java.replace(/\);\n\n {2}\/\*\* TODO/, '),\n\n  /** TODO');
   writeFileSync(rutaJava, java, 'utf8');
   log.ok('añadida al enum de Java');
 }

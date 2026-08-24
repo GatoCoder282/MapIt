@@ -6,7 +6,9 @@
     "experimentalDecorators": true,
     "moduleResolution": "bundler",
     "importHelpers": true,
-    "target": "ES2022"
+    "target": "ES2022",
+    "declaration": false,
+    "declarationMap": false
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
@@ -14,5 +16,6 @@
     "strictInputAccessModifiers": true,
     "typeCheckHostBindings": true,
     "strictTemplates": true
-  }
+  },
+  "_declaration": "Las APLICACIONES no emiten .d.ts. Con `declaration: true`, TypeScript infiere un rootDir en la carpeta de la app y falla al importar código de libs/ (TS6059). Las librerías sí lo activan, en angular-lib.json."
 }

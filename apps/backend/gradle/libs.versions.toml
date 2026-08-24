@@ -42,6 +42,11 @@ spring-security-test           = { module = "org.springframework.security:spring
 postgresql        = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 flyway-core       = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+# Spring Boot 4 partió las autoconfiguraciones en módulos separados: tener
+# `flyway-core` en el classpath ya NO activa Flyway por sí solo. Sin este
+# artefacto, la aplicación arranca pero las migraciones nunca se ejecutan
+# (silenciosamente, que es lo peor). La versión la fija el BOM de Boot.
+spring-boot-flyway = { module = "org.springframework.boot:spring-boot-flyway" }
 
 # ── Seguridad ────────────────────────────────────────────────
 jjwt-api    = { module = "io.jsonwebtoken:jjwt-api",    version.ref = "jjwt" }
@@ -68,7 +73,7 @@ testcontainers-postgresql = { module = "org.testcontainers:postgresql",        v
 
 [bundles]
 jwt         = ["jjwt-api", "jjwt-impl", "jjwt-jackson"]
-flyway      = ["flyway-core", "flyway-postgresql"]
+flyway      = ["flyway-core", "flyway-postgresql", "spring-boot-flyway"]
 testcontainers = ["testcontainers-junit", "testcontainers-postgresql"]
 
 [plugins]

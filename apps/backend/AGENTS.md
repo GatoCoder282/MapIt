@@ -67,7 +67,15 @@ pnpm db:migrate / db:info / db:new "…"
 ## Trampas conocidas
 
 - **Jackson 3:** los imports son `tools.jackson.*`. `com.fasterxml.jackson.*` es Jackson 2,
-  deprecado en Boot 4. Error nº1 al copiar snippets.
+  deprecado en Boot 4. Error nº1 al copiar snippets. Además, algunas propiedades de
+  `spring.jackson.*` de Boot 3 ya no existen (p. ej. `serialization.write-dates-as-timestamps`)
+  e impiden el arranque.
+- **Autoconfiguraciones partidas en módulos:** en Boot 4, tener la librería en el classpath
+  ya no basta. Flyway necesita `org.springframework.boot:spring-boot-flyway` además de
+  `flyway-core`; sin él, la app arranca y las migraciones **no se ejecutan, en silencio**.
+  Si integras algo nuevo, comprueba si tiene su módulo de autoconfiguración.
+- **CORS:** inyecta `CorsConfigurationSource` con `@Qualifier("corsConfigurationSource")`;
+  Spring MVC registra otro bean del mismo tipo y la inyección por tipo queda ambigua.
 - **`RestClient`, no `RestTemplate`** (starter `spring-boot-starter-restclient`).
 - **`RestTestClient`** reemplaza a `MockMvc`/`TestRestTemplate` en los tests.
 - **Null-safety JSpecify:** cada paquete lleva `package-info.java` con `@NullMarked`.

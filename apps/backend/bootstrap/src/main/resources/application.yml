@@ -37,8 +37,12 @@ spring:
 
   jackson:
     default-property-inclusion: non_null
-    serialization:
-      write-dates-as-timestamps: false
+    # OJO (Spring Boot 4 = Jackson 3): NO existe
+    #   spring.jackson.serialization.write-dates-as-timestamps
+    # `WRITE_DATES_AS_TIMESTAMPS` salió de SerializationFeature y ahora vive en
+    # DateTimeFeature. Ponerla aquí impide que la aplicación arranque.
+    # No hace falta declararla: Jackson 3 ya serializa las fechas como ISO-8601
+    # por defecto, que es justo lo que queremos.
 
   mail:
     host: ${MAIL_HOST:localhost}

@@ -9,14 +9,16 @@ export default {
       2,
       'always',
       [
-        // Módulos del backend
+        // Backend: transversal, y luego por bounded context
+        'backend',
         'platform',
         'identity',
         'spaces',
         'operations',
         'reservations',
         'payments',
-        // Frontend
+        // Frontend: transversal, apps y librerías
+        'frontend',
         'console',
         'public-web',
         'ui-kit',
@@ -28,6 +30,7 @@ export default {
         // Transversal
         'contract',
         'infra',
+        'e2e',
         'db',
         'ci',
         'docs',

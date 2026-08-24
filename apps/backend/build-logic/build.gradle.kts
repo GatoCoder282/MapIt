@@ -16,3 +16,18 @@ dependencies {
     implementation("io.spring.gradle:dependency-management-plugin:${libs.versions.springDepMgmt.get()}")
     implementation("com.diffplug.spotless:spotless-plugin-gradle:${libs.versions.spotless.get()}")
 }
+
+// El compilador de Kotlin todavía no soporta JVM target 25 y cae a 24, lo que
+// deja `compileJava` (25) y `compileKotlin` (24) desalineados. Gradle avisa de
+// ello y en versiones futuras será un error. Como build-logic solo contiene
+// scripts de build —nunca código de la aplicación—, se fija todo a 24: no
+// afecta a los módulos de negocio, que siguen compilando a Java 25.
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24
+    }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release = 24
+}

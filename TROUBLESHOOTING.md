@@ -142,6 +142,43 @@ import tools.jackson.databind.ObjectMapper;          // ✅ Jackson 3
 
 Es el error nº 1 al pegar snippets escritos para Spring Boot 3.
 
+### La app arranca pero las migraciones NO se ejecutan
+
+Síntoma: no existe la tabla `flyway_schema_history` y en los logs no aparece Flyway.
+
+**Spring Boot 4 partió las autoconfiguraciones en módulos separados.** Tener
+`org.flywaydb:flyway-core` en el classpath ya **no** activa Flyway por sí solo: hace falta
+también `org.springframework.boot:spring-boot-flyway`. Ya está en el Version Catalog
+(bundle `flyway`), pero si añades otra integración de Boot 3 por tu cuenta, comprueba si
+necesita su módulo de autoconfiguración.
+
+Es un fallo especialmente traicionero porque **no da error**: la aplicación arranca
+perfectamente y la base de datos simplemente se queda vacía.
+
+### La app no arranca por una propiedad de `spring.jackson.*`
+
+Ejemplo real:
+
+```
+failed to convert java.lang.String to tools.jackson.databind.SerializationFeature
+(No enum constant ...SerializationFeature.write-dates-as-timestamps)
+```
+
+**Jackson 3** reorganizó sus features: `WRITE_DATES_AS_TIMESTAMPS` salió de
+`SerializationFeature` y vive ahora en `DateTimeFeature`. Cualquier propiedad copiada de
+una guía de Spring Boot 3 puede impedir el arranque.
+
+No hace falta declararla: Jackson 3 ya serializa las fechas como ISO-8601 por defecto.
+
+### `expected single matching bean but found 2: corsConfigurationSource, mvcHandlerMappingIntrospector`
+
+Spring MVC registra su propio `mvcHandlerMappingIntrospector`, que también implementa
+`CorsConfigurationSource`. Hay que cualificar por nombre:
+
+```java
+@Qualifier("corsConfigurationSource") CorsConfigurationSource cors
+```
+
 ### `package org.springframework does not exist` en un módulo `-domain`
 
 **No es un error: es la arquitectura funcionando.** La capa `domain` no declara Spring
