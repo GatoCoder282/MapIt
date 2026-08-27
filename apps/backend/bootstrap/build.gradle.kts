@@ -5,6 +5,16 @@ plugins {
     alias(libs.plugins.flyway)
 }
 
+// El plugin de Gradle de Flyway corre en el classloader del buildscript, aparte
+// del classpath de la app. Desde Flyway 10, el soporte de cada motor de BD es
+// una dependencia separada (`flyway-database-postgresql`) que además hay que
+// declarar acá, o el plugin no encuentra qué driver usar al correr flywayMigrate/Info.
+buildscript {
+    dependencies {
+        classpath("org.flywaydb:flyway-database-postgresql:11.16.0")
+    }
+}
+
 dependencies {
     implementation(project(":shared-kernel"))
 
