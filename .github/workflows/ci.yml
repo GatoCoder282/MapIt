@@ -106,6 +106,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generar cliente OpenAPI
+        run: pnpm api:gen
       - run: pnpm e2e:install
       - name: Levantar el sistema completo
         run: |
