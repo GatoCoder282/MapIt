@@ -57,6 +57,9 @@ tasks.withType<Test>().configureEach {
 
 // `pnpm be:it` — tests que necesitan Docker, fuera del `test` normal.
 val integrationTest by tasks.registering(Test::class) {
+    dependsOn(tasks.testClasses)
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     group = "verification"
     description = "Tests de integración con Testcontainers (requieren Docker)."
     useJUnitPlatform { includeTags("integration") }

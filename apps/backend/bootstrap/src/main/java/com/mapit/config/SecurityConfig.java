@@ -41,6 +41,8 @@ public class SecurityConfig {
         // Superficie pública de reservas (CU-15, CU-16): el cliente final es anónimo.
         "/api/v1/health",
         "/api/v1/public/**",
+        // CRUD temporal para validar el stack sin implementar todavía CU-23/CU-24.
+        "/api/v1/demo-items/**",
     };
 
     @Bean

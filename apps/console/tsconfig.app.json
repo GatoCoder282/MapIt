@@ -1,9 +1,11 @@
 {
   "extends": "../../packages/config-typescript/angular-app.json",
+  "_generatedClient": "El cliente OpenAPI genera imports comunes que no todas las operaciones usan; la calidad del codigo propio sigue cubierta por ESLint.",
   "compilerOptions": {
     "outDir": "../../dist/out-tsc/console",
     "rootDir": "../..",
     "types": [],
+    "noUnusedLocals": false,
     "paths": {
       "@mapit/ui-kit": ["../../libs/ui-kit/src/index.ts"],
       "@mapit/api-client": ["../../libs/api-client/src/index.ts"],

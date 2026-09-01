@@ -34,6 +34,8 @@ tags:
     description: Estado del servicio
   - name: feature-flags
     description: Feature toggles evaluados para el contexto actual
+  - name: demo-items
+    description: CRUD de demostración para validar la integración Angular + Spring Boot
 
 paths:
   /health:
@@ -74,6 +76,117 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /demo-items:
+    get:
+      tags: [demo-items]
+      summary: Listar elementos de demostración
+      description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
+      operationId: listDemoItems
+      security: []
+      responses:
+        "200":
+          description: Elementos del tenant de demostración
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DemoItem"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    post:
+      tags: [demo-items]
+      summary: Crear un elemento de demostración
+      description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
+      operationId: createDemoItem
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DemoItemRequest"
+      responses:
+        "201":
+          description: Elemento creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemoItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /demo-items/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador del elemento
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [demo-items]
+      summary: Obtener un elemento de demostración
+      description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
+      operationId: getDemoItem
+      security: []
+      responses:
+        "200":
+          description: Elemento solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemoItem"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    put:
+      tags: [demo-items]
+      summary: Actualizar un elemento de demostración
+      description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
+      operationId: updateDemoItem
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DemoItemRequest"
+      responses:
+        "200":
+          description: Elemento actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemoItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    delete:
+      tags: [demo-items]
+      summary: Eliminar un elemento de demostración
+      description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
+      operationId: deleteDemoItem
+      security: []
+      responses:
+        "204":
+          description: Elemento eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -111,6 +224,46 @@ components:
           payments.qr: false
           realtime.websocket: true
 
+    DemoItem:
+      type: object
+      required: [id, name, description, active, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 500
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    DemoItemRequest:
+      type: object
+      required: [name, description, active]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 500
+        active:
+          type: boolean
+
     # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
     # así que todos los errores de la API usan este formato.
     Problem:
@@ -136,6 +289,18 @@ components:
   responses:
     Unauthorized:
       description: Falta el token o no es válido
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    BadRequest:
+      description: La solicitud no cumple las validaciones
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ServerError:
+      description: Error inesperado del servidor
       content:
         application/problem+json:
           schema:
