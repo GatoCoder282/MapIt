@@ -28,6 +28,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generar cliente OpenAPI
+        run: pnpm api:gen
       - run: pnpm fmt:check
       - run: pnpm fe:lint
       - run: pnpm fe:typecheck
@@ -87,6 +89,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm api:lint
+      - name: Generar cliente OpenAPI
+        run: pnpm api:gen
       - name: ¿El contrato y el cliente generado divergieron?
         run: pnpm api:check
 
