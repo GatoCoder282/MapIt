@@ -1,0 +1,29 @@
+# Dependencias y artefactos locales: las dependencias se instalan dentro de la imagen.
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# Metadatos y herramientas locales.
+.git/
+.angular/
+.agents/
+.codex/
+.claude/
+.vscode/
+
+# Artefactos de compilación y pruebas.
+dist/
+**/dist/
+build/
+**/build/
+.gradle/
+**/.gradle/
+coverage/
+playwright-report/
+test-results/
+
+# Archivos temporales y secretos locales.
+.env
+.env.local
+.env.*.local
+*.log

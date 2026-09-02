@@ -4,6 +4,7 @@ ARG APP_NAME
 WORKDIR /workspace
 
 RUN corepack enable
+ENV CI=true
 
 # Manifiestos primero: mejor cacheo de la capa de dependencias.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
