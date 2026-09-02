@@ -1,13 +1,15 @@
 import {
   type ApplicationConfig,
+  inject,
   provideBrowserGlobalErrorListeners,
   provideCheckNoChangesConfig,
 } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
+import { BASE_PATH } from '@mapit/api-client';
 import { provideFeatureFlags } from '@mapit/feature-flags';
-import { provideRuntimeConfig } from './core/runtime-config';
+import { provideRuntimeConfig, RuntimeConfigStore } from './core/runtime-config';
 import { routes } from './app.routes';
 
 /**
@@ -24,6 +26,11 @@ export const appConfig: ApplicationConfig = {
 
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withFetch(), withInterceptors([])),
+
+    {
+      provide: BASE_PATH,
+      useFactory: () => inject(RuntimeConfigStore).config().apiBaseUrl,
+    },
 
     // Config leída en RUNTIME desde /assets/config.json, no incrustada en el
     // bundle. Así la MISMA imagen Docker sirve para dev y para despliegue:

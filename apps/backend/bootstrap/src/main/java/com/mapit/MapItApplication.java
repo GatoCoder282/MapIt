@@ -1,7 +1,10 @@
 package com.mapit;
 
+import java.time.Clock;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 
 /**
  * Punto de entrada de MapIt.
@@ -15,5 +18,11 @@ public class MapItApplication {
 
   public static void main(String[] args) {
     SpringApplication.run(MapItApplication.class, args);
+  }
+
+  /** Reloj UTC compartido para que los casos de uso sean deterministas en las pruebas. */
+  @Bean
+  Clock clock() {
+    return Clock.systemUTC();
   }
 }

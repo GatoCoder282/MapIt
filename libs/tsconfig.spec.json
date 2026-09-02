@@ -1,8 +1,10 @@
 {
   "extends": "../packages/config-typescript/angular-lib.json",
+  "_generatedClient": "El cliente OpenAPI se genera y valida en CI; su plantilla puede emitir imports comunes no usados durante este test global.",
   "compilerOptions": {
     "outDir": "../dist/out-tsc/libs-spec",
-    "types": ["vitest/globals"]
+    "types": ["vitest/globals"],
+    "noUnusedLocals": false
   },
   "include": ["**/*.spec.ts", "**/*.ts"]
 }

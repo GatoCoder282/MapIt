@@ -6,7 +6,7 @@ WORKDIR /workspace
 # Docker reutiliza la capa de dependencias descargadas.
 COPY apps/backend/gradlew apps/backend/gradlew.bat ./
 COPY apps/backend/gradle ./gradle
-COPY apps/backend/settings.gradle.kts apps/backend/build.gradle.kts apps/backend/gradle.properties ./
+COPY apps/backend/settings.gradle.kts apps/backend/gradle.properties ./
 COPY apps/backend/build-logic ./build-logic
 RUN chmod +x ./gradlew && ./gradlew --no-daemon dependencies || true
 

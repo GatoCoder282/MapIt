@@ -55,6 +55,19 @@ Table app_user {
 
 // ── ESPACIO (CU-04 … CU-08) ──────────────────────────────────
 
+Table demo_item {
+  id          uuid         [pk]
+  tenant_id   text         [not null, ref: > tenant.id]
+  name        varchar(120) [not null]
+  description varchar(500) [not null, default: ""]
+  active      boolean      [not null, default: true]
+  created_at  timestamptz  [not null]
+  updated_at  timestamptz  [not null]
+
+  Indexes { (tenant_id, id) }
+  Note: 'CRUD de demostración Angular + Spring Boot. IMPLEMENTADA en V2; se eliminará o sustituirá al implementar las entidades definitivas.'
+}
+
 Table establishment {
   id         uuid        [pk]
   tenant_id  text        [not null, ref: > tenant.id]

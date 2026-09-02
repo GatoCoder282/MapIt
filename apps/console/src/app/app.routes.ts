@@ -17,6 +17,14 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
+    redirectTo: 'home',
+  },
+  {
+    path: 'demo-items',
+    loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
+  },
+  {
+    path: 'home',
     loadComponent: () => import('./features/home/home').then((m) => m.Home),
   },
   {
