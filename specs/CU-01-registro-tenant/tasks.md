@@ -2,14 +2,14 @@
 
 ## Orden de ejecución
 
-- [ ] **T1 — Contrato.** Actualizar `openapi.yaml`, validar y regenerar el cliente.
-- [ ] **T2 — Dominio.** Crear entidad, value objects y puertos sin frameworks.
-- [ ] **T3 — Persistencia.** Añadir solo la migración necesaria, mapeo JPA y unicidad.
-- [ ] **T4 — Caso de uso.** Implementar `TenantService` y sus tests unitarios.
-- [ ] **T5 — API.** Implementar POST, validaciones y tests con Testcontainers.
-- [ ] **T6 — Correo.** Implementar puerto SMTP y comprobar Mailpit.
-- [ ] **T7 — Frontend.** Crear store, formulario, ruta y adaptador API.
-- [ ] **T8 — Cierre.** Ejecutar `pnpm check`, actualizar criterios y entregar a QA.
+- [x] **T1 — Contrato.** Actualizar `openapi.yaml`, validar y regenerar el cliente.
+- [x] **T2 — Dominio.** Crear entidad, value objects y puertos sin frameworks.
+- [x] **T3 — Persistencia.** Añadir solo la migración necesaria, mapeo JPA y unicidad.
+- [x] **T4 — Caso de uso.** Implementar `TenantService` y sus tests unitarios.
+- [x] **T5 — API.** Implementar POST, validaciones y tests con Testcontainers.
+- [x] **T6 — Correo.** Implementar puerto SMTP y comprobar Mailpit.
+- [x] **T7 — Frontend.** Crear store, formulario, ruta y adaptador API.
+- [x] **T8 — Cierre.** Ejecutar `pnpm check`, actualizar criterios y entregar a QA.
 
 ## Notas de ejecución
 

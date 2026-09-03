@@ -1,6 +1,6 @@
 # CU-01 — Registro de Tenant
 
-> **Estado:** En desarrollo · **Creada:** 2026-09-03 · **Responsable:** Diego Valdez
+> **Estado:** Listo para QA · **Creada:** 2026-09-03 · **Responsable:** Diego Valdez
 
 ## Enunciado
 
