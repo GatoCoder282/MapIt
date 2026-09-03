@@ -98,23 +98,21 @@ class TenantApiIntegrationTest {
         "HOTEL",
         "ACTIVE");
 
-    TenantApiResponse response =
-        RestTestClient.bindToServer()
-            .baseUrl("http://localhost:" + port)
-            .build()
-            .post()
-            .uri("/api/v1/tenants")
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(
-                new TenantApiRequest(
-                    "Otra empresa", slug, BusinessVertical.HOTEL, "admin@otra.bo"))
-            .exchange()
-            .expectStatus()
-            .isEqualTo(HttpStatus.CONFLICT)
-            .returnResult(TenantApiResponse.class)
-            .getResponseBody();
+    RestTestClient.bindToServer()
+        .baseUrl("http://localhost:" + port)
+        .build()
+        .post()
+        .uri("/api/v1/tenants")
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(
+            new TenantApiRequest("Otra empresa", slug, BusinessVertical.HOTEL, "admin@otra.bo"))
+        .exchange()
+        .expectStatus()
+        .isEqualTo(HttpStatus.CONFLICT)
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo(409);
 
-    assertThat(response).isNull();
     assertThat(jdbcTemplate.queryForObject("select count(*) from tenant where slug = ?", Long.class, slug))
         .isEqualTo(1L);
   }
