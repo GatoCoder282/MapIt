@@ -1,6 +1,7 @@
 package com.mapit.shared.tenant;
 
 import java.util.Objects;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
@@ -24,6 +25,11 @@ public record TenantId(String value) {
 
   public static TenantId of(String value) {
     return new TenantId(value);
+  }
+
+  /** Genera un identificador opaco que no depende de los datos proporcionados por el cliente. */
+  public static TenantId generate() {
+    return new TenantId(UUID.randomUUID().toString());
   }
 
   @Override
