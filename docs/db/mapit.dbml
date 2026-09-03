@@ -27,11 +27,12 @@ Table tenant {
   id         text        [pk, note: 'Identificador estable de la empresa']
   name       text        [not null]
   slug       text        [not null, unique, note: 'Usado en URLs públicas de reserva (CU-15)']
+  vertical   text        [not null, note: 'RESTAURANT | NIGHTCLUB | EVENT_HALL | HOTEL']
   status     text        [not null, default: 'ACTIVE', note: 'ACTIVE | SUSPENDED']
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 
-  Note: 'CU-01, CU-03. Tabla GLOBAL: no lleva tenant_id ni RLS. IMPLEMENTADA en V1.'
+  Note: 'CU-01, CU-03. Tabla GLOBAL: no lleva tenant_id ni RLS. Base en V1; vertical añadida en V3.'
 }
 
 // ── IDENTIDAD (CU-23, CU-24) ─────────────────────────────────
