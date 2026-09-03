@@ -7,7 +7,7 @@
 - [x] **T3 — Persistencia.** Añadir solo la migración necesaria, mapeo JPA y unicidad.
 - [x] **T4 — Caso de uso.** Implementar `TenantService` y sus tests unitarios.
 - [x] **T5 — API.** Implementar POST, validaciones y tests con Testcontainers.
-- [x] **T6 — Correo.** Implementar puerto SMTP y comprobar Mailpit.
+- [x] **T6 — Correo.** Implementar el puerto SMTP y dejar Mailpit configurado para la validación de QA.
 - [x] **T7 — Frontend.** Crear store, formulario, ruta y adaptador API.
 - [x] **T8 — Cierre.** Ejecutar `pnpm check`, actualizar criterios y entregar a QA.
 
