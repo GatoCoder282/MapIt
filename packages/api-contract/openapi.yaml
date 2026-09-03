@@ -32,6 +32,8 @@ servers:
 tags:
   - name: health
     description: Estado del servicio
+  - name: tenants
+    description: Registro de empresas de la plataforma
   - name: feature-flags
     description: Feature toggles evaluados para el contexto actual
   - name: demo-items
@@ -52,6 +54,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /tenants:
+    post:
+      tags: [tenants]
+      summary: Registrar un tenant
+      description: |
+        Registra una nueva empresa en la plataforma. La operación pertenece al
+        Administrador de Plataforma y genera el identificador del tenant en el backend.
+        El correo del administrador se usa para enviar la confirmación y no se devuelve
+        como parte del recurso tenant.
+      operationId: createTenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantRequest"
+      responses:
+        "201":
+          description: Tenant creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /feature-flags:
     get:
@@ -224,6 +260,65 @@ components:
           payments.qr: false
           realtime.websocket: true
 
+    BusinessVertical:
+      type: string
+      description: Vertical de negocio inicial del tenant.
+      enum: [RESTAURANT, NIGHTCLUB, EVENT_HALL, HOTEL]
+
+    Tenant:
+      type: object
+      required: [id, name, slug, vertical, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          description: Identificador único generado por el backend.
+          minLength: 2
+          maxLength: 63
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        vertical:
+          $ref: "#/components/schemas/BusinessVertical"
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED]
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    TenantRequest:
+      type: object
+      required: [name, slug, vertical, administratorEmail]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        vertical:
+          $ref: "#/components/schemas/BusinessVertical"
+        administratorEmail:
+          type: string
+          format: email
+          maxLength: 254
+
     DemoItem:
       type: object
       required: [id, name, description, active, createdAt, updatedAt]
@@ -295,6 +390,18 @@ components:
             $ref: "#/components/schemas/Problem"
     BadRequest:
       description: La solicitud no cumple las validaciones
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: El recurso entra en conflicto con otro existente
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ServiceUnavailable:
+      description: No se pudo completar una dependencia externa
       content:
         application/problem+json:
           schema:
