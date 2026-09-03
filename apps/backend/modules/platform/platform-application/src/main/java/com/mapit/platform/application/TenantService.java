@@ -1,0 +1,36 @@
+package com.mapit.platform.application;
+
+import java.time.Clock;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.mapit.platform.domain.Tenant;
+import com.mapit.platform.domain.TenantRepository;
+import com.mapit.shared.tenant.TenantId;
+
+/** Caso de uso de registro de empresas de la plataforma. */
+@Service
+public class TenantService {
+
+  private final TenantRepository repository;
+  private final Clock clock;
+
+  public TenantService(TenantRepository repository, Clock clock) {
+    this.repository = repository;
+    this.clock = clock;
+  }
+
+  /** Genera el identificador y registra un tenant activo. */
+  @Transactional
+  public Tenant register(RegisterTenantCommand command) {
+    String slug = command.slug().trim();
+    if (repository.existsBySlug(slug)) {
+      throw new TenantSlugAlreadyExistsException(slug);
+    }
+
+    return repository.save(
+        Tenant.register(
+            TenantId.generate(), command.name(), slug, command.vertical(), clock.instant()));
+  }
+}
