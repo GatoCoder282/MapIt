@@ -12,8 +12,8 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import com.mapit.platform.domain.BusinessVertical;
-import com.mapit.platform.domain.TenantConfirmationEmailPort;
 import com.mapit.platform.domain.Tenant;
+import com.mapit.platform.domain.TenantConfirmationEmailPort;
 import com.mapit.platform.domain.TenantRepository;
 
 class TenantServiceTest {
