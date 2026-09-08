@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mapit.platform.application.RegisterTenantCommand;
+import com.mapit.platform.application.TenantConfirmationEmailException;
 import com.mapit.platform.application.TenantService;
 import com.mapit.platform.application.TenantSlugAlreadyExistsException;
 import com.mapit.platform.domain.BusinessVertical;
@@ -44,7 +45,9 @@ public class TenantController {
   @ResponseStatus(HttpStatus.CREATED)
   public TenantResponse create(@Valid @RequestBody TenantRequest request) {
     return TenantResponse.fromDomain(
-        service.register(new RegisterTenantCommand(request.name(), request.slug(), request.vertical())));
+        service.register(
+            new RegisterTenantCommand(
+                request.name(), request.slug(), request.vertical(), request.administratorEmail())));
   }
 
   @ExceptionHandler(TenantSlugAlreadyExistsException.class)
@@ -54,6 +57,15 @@ public class TenantController {
     problem.setTitle("El slug ya está registrado");
     problem.setType(URI.create("https://mapit.local/problems/tenant-slug-conflict"));
     return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+  }
+
+  @ExceptionHandler(TenantConfirmationEmailException.class)
+  ResponseEntity<ProblemDetail> handleEmailFailure(TenantConfirmationEmailException exception) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+    problem.setTitle("No se pudo enviar la confirmación");
+    problem.setType(URI.create("https://mapit.local/problems/tenant-confirmation-unavailable"));
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problem);
   }
 
   /** Payload de entrada del registro; el correo se usa después para la notificación. */

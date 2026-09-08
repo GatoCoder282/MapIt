@@ -71,6 +71,8 @@ mapit:
     resolution-strategy: ${TENANT_RESOLUTION_STRATEGY:jwt-claim}
     header-name: ${TENANT_HEADER_NAME:X-Tenant-Id}
     default: ${TENANT_DEFAULT:demo}
+  mail:
+    from: ${MAIL_FROM:no-reply@mapit.local}
   unleash:
     url: ${UNLEASH_URL:http://localhost:4242/api}
     api-token: ${UNLEASH_API_TOKEN:default:development.unleash-insecure-api-token}
