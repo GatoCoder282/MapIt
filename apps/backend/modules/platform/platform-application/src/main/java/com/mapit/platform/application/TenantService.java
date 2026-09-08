@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.platform.domain.Tenant;
+import com.mapit.platform.domain.TenantConfirmationEmailPort;
 import com.mapit.platform.domain.TenantRepository;
 import com.mapit.shared.tenant.TenantId;
 
@@ -14,10 +15,13 @@ import com.mapit.shared.tenant.TenantId;
 public class TenantService {
 
   private final TenantRepository repository;
+  private final TenantConfirmationEmailPort confirmationEmail;
   private final Clock clock;
 
-  public TenantService(TenantRepository repository, Clock clock) {
+  public TenantService(
+      TenantRepository repository, TenantConfirmationEmailPort confirmationEmail, Clock clock) {
     this.repository = repository;
+    this.confirmationEmail = confirmationEmail;
     this.clock = clock;
   }
 
@@ -29,8 +33,14 @@ public class TenantService {
       throw new TenantSlugAlreadyExistsException(slug);
     }
 
-    return repository.save(
+    Tenant tenant = repository.save(
         Tenant.register(
             TenantId.generate(), command.name(), slug, command.vertical(), clock.instant()));
+    try {
+      confirmationEmail.send(tenant, command.administratorEmail());
+    } catch (RuntimeException exception) {
+      throw new TenantConfirmationEmailException(exception);
+    }
+    return tenant;
   }
 }
