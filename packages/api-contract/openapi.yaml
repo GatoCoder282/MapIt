@@ -38,6 +38,8 @@ tags:
     description: Feature toggles evaluados para el contexto actual
   - name: demo-items
     description: CRUD de demostración para validar la integración Angular + Spring Boot
+  - name: establishments
+    description: Establecimientos de un tenant (CU-04)
 
 paths:
   /health:
@@ -223,6 +225,140 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  # ── Establecimientos (CU-04) ────────────────────────────────────────────────
+  # `security: []` es TEMPORAL, igual que en demo-items: la autenticación JWT
+  # llega en CU-23/CU-24 y hasta entonces el tenant se resuelve en el servidor
+  # con el adaptador `DemoTenantContext`. El tenant NUNCA viaja en el cuerpo.
+  /establishments:
+    get:
+      tags: [establishments]
+      summary: Listar los establecimientos del tenant
+      description: Devuelve solo los establecimientos vivos del tenant del contexto.
+      operationId: listEstablishments
+      security: []
+      responses:
+        "200":
+          description: Establecimientos del tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Establishment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    post:
+      tags: [establishments]
+      summary: Registrar un establecimiento
+      description: El identificador lo genera el backend; el tenant sale del contexto.
+      operationId: createEstablishment
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EstablishmentCreateRequest"
+      responses:
+        "201":
+          description: Establecimiento creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Establishment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /establishments/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador del establecimiento
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [establishments]
+      summary: Obtener un establecimiento
+      description: Responde 404 si no existe o pertenece a otro tenant.
+      operationId: getEstablishment
+      security: []
+      responses:
+        "200":
+          description: Establecimiento solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Establishment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    put:
+      tags: [establishments]
+      summary: Actualizar un establecimiento
+      description: |
+        El tipo NO viaja en el cuerpo: es inmutable tras la creación (RN-3), porque
+        cambiarlo invalidaría las plantillas de elemento de CU-07 y los mapas ya
+        dibujados. El contrato lo hace cumplir antes que cualquier validación en Java.
+      operationId: updateEstablishment
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EstablishmentUpdateRequest"
+      responses:
+        "200":
+          description: Establecimiento actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Establishment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    delete:
+      tags: [establishments]
+      summary: Dar de baja un establecimiento
+      description: |
+        Baja LÓGICA: la fila se conserva con `deleted_at` informado. No aparece en las
+        consultas y su slug queda libre para reutilizarse.
+      operationId: deleteEstablishment
+      security: []
+      responses:
+        "204":
+          description: Establecimiento dado de baja
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -358,6 +494,104 @@ components:
           maxLength: 500
         active:
           type: boolean
+
+    EstablishmentType:
+      type: string
+      description: |
+        Tipo de establecimiento. Coincide en valores con `BusinessVertical`, pero se
+        declara aparte a propósito: es un concepto del contexto `spaces` (decide qué
+        plantillas de elemento aplican en CU-07), y compartir el esquema acoplaría
+        `spaces` a `platform`.
+      enum: [RESTAURANT, NIGHTCLUB, EVENT_HALL, HOTEL]
+
+    Establishment:
+      type: object
+      description: |
+        `deletedAt` y `deletedBy` no se exponen: las consultas solo devuelven filas
+        vivas, así que siempre serían nulos. Son detalle interno de persistencia.
+      required: [id, name, type, slug, timezone, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        type:
+          $ref: "#/components/schemas/EstablishmentType"
+        slug:
+          type: string
+          description: Identificador en la URL pública de reserva (CU-15).
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        timezone:
+          type: string
+          description: Identificador IANA de zona horaria.
+          maxLength: 64
+          examples: ["America/La_Paz"]
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        createdBy:
+          type: [string, "null"]
+          format: uuid
+          description: Nulo hasta CU-23/CU-24, cuando exista `app_user`.
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedBy:
+          type: [string, "null"]
+          format: uuid
+          description: Nulo hasta CU-23/CU-24, cuando exista `app_user`.
+          readOnly: true
+
+    EstablishmentCreateRequest:
+      type: object
+      required: [name, type, slug]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        type:
+          $ref: "#/components/schemas/EstablishmentType"
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        timezone:
+          type: string
+          description: Si se omite, el backend aplica America/La_Paz.
+          maxLength: 64
+          examples: ["America/La_Paz"]
+
+    EstablishmentUpdateRequest:
+      type: object
+      description: |
+        Sin `type` a propósito: el tipo es inmutable tras la creación (RN-3). Si el
+        cliente lo envía, queda fuera del esquema y se rechaza.
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        timezone:
+          type: string
+          maxLength: 64
+          examples: ["America/La_Paz"]
 
     # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
     # así que todos los errores de la API usan este formato.
