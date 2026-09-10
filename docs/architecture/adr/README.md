@@ -35,12 +35,13 @@ descartaron las alternativas_. Sirve para dos cosas muy concretas:
 
 ## Índice
 
-| ADR                                         | Decisión                                     | Estado        |
-| ------------------------------------------- | -------------------------------------------- | ------------- |
-| [0001](ADR-0001-monorepo-tooling.md)        | pnpm workspaces + Angular CLI multi-proyecto | Aceptado      |
-| [0002](ADR-0002-arquitectura-backend.md)    | Hexagonal Modular con módulos Gradle         | Aceptado      |
-| [0003](ADR-0003-arquitectura-frontend.md)   | MVVM con Signals + feature-first             | Aceptado      |
-| [0004](ADR-0004-multi-tenant.md)            | Columna discriminadora + RLS                 | Aceptado      |
-| [0005](ADR-0005-feature-toggles.md)         | Unleash self-hosted                          | Aceptado      |
-| [0006](ADR-0006-motor-de-mapa.md)           | Motor de mapa tras un puerto                 | **Propuesto** |
-| [0007](ADR-0007-spec-driven-development.md) | Spec-Driven Development                      | Aceptado      |
+| ADR                                                | Decisión                                     | Estado        |
+| -------------------------------------------------- | -------------------------------------------- | ------------- |
+| [0001](ADR-0001-monorepo-tooling.md)               | pnpm workspaces + Angular CLI multi-proyecto | Aceptado      |
+| [0002](ADR-0002-arquitectura-backend.md)           | Hexagonal Modular con módulos Gradle         | Aceptado      |
+| [0003](ADR-0003-arquitectura-frontend.md)          | MVVM con Signals + feature-first             | Aceptado      |
+| [0004](ADR-0004-multi-tenant.md)                   | Columna discriminadora + RLS                 | Aceptado      |
+| [0005](ADR-0005-feature-toggles.md)                | Unleash self-hosted                          | Aceptado      |
+| [0006](ADR-0006-motor-de-mapa.md)                  | Motor de mapa tras un puerto                 | **Propuesto** |
+| [0007](ADR-0007-spec-driven-development.md)        | Spec-Driven Development                      | Aceptado      |
+| [0008](ADR-0008-consulta-credenciales-prelogin.md) | Consulta de credenciales antes del JWT       | **Propuesto** |

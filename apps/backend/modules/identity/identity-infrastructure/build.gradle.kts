@@ -5,6 +5,7 @@ plugins {
 }
 
 dependencies {
+    implementation(libs.spring.security.crypto)
     implementation(project(":modules:identity:identity-domain"))
     implementation(project(":modules:identity:identity-application"))
     implementation(project(":shared-kernel"))
