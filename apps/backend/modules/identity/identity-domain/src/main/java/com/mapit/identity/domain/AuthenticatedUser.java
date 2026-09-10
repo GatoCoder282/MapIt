@@ -14,4 +14,8 @@ public record AuthenticatedUser(UUID id, TenantId tenantId, String email, String
         Objects.requireNonNull(fullName);
         Objects.requireNonNull(role);
     }
+
+    public AuthenticatedPrincipal toPrincipal() {
+        return new AuthenticatedPrincipal(id, tenantId, email, role);
+    }
 }
