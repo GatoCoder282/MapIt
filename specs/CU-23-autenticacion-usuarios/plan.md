@@ -120,3 +120,32 @@ pantalla y la raíz redirige a /login. MAP-50 conectará el
 ViewModel con el cliente generado de MAP-48. No hay cambios de contrato o BD.
 Verificar validación, visibilidad de contraseña, teclado, diseño en escritorio y
 móvil; ejecutar pnpm check y actualizar la consola en Docker para revisión.
+
+## 10. Implementación técnica MAP-50
+
+| Patrón        | Dónde          | Por qué aquí                                          | Alternativa descartada           |
+| ------------- | -------------- | ----------------------------------------------------- | -------------------------------- |
+| MVVM          | LoginStore     | Coordina carga, errores y comandos con Signals        | HTTP en la plantilla             |
+| Adapter       | data/LoginApi  | Encapsula AuthService generado                        | Peticiones duplicadas a mano     |
+| Session Store | libs/auth      | Centraliza identidad, vigencia y almacenamiento       | Estado separado por pantalla     |
+| Interceptor   | libs/auth      | Restringe Bearer a la API y maneja 401 coherentemente | Headers manuales en cada feature |
+| Guard         | rutas privadas | Evita navegación sin sesión vigente                   | Revisar sesión en cada pantalla  |
+
+- Mantener contrato y backend de MAP-48. LoginApi consume AuthService.login con
+  transferCache desactivado; cancelar suscripciones al destruir el ViewModel.
+- libs/auth exporta tipos y servicio de sesión, guard e interceptor; recibe la
+  dirección API desde configuración por inyección, sin importar apps ni depender
+  de los detalles de una feature. Si utiliza tipos del cliente, documentar la
+  dependencia explícita en libs/AGENTS.md.
+- Persistir solo los datos mínimos de sesión y slug de acceso; validar forma y
+  fechas antes de restaurar. Programar expiración y comprobarla también al navegar
+  y hacer peticiones. Limpiar el almacenamiento alternativo al cambiar Recordarme.
+- LoginStore orquesta API y sesión, limpia contraseña y cancela resultados obsoletos
+  si cambia la empresa o se abandona la pantalla. Los errores se mapean a mensajes
+  seguros. La navegación tras éxito tiene destino fijo /home.
+- Registrar interceptor en app.config y guard en rutas privadas. Mantener runtime
+  config y Unleash fuera del envío de credenciales. Cierre local desde Inicio.
+- Pruebas: HttpTestingController para login/interceptor, reloj controlado para
+  expiración, almacenamiento/restauración y casos de respuestas tardías. Revisar
+  en Docker navegador → API → PostgreSQL con usuario desechable y eliminación final.
+- Ejecutar pnpm check y documentar resultados. No publicar ni cambiar estados Jira.

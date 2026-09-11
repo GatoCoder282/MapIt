@@ -272,3 +272,8 @@ button:focus-visible {
     margin-top: 36px;
   }
 }
+
+.submit-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}

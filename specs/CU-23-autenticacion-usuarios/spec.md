@@ -178,3 +178,58 @@ Estado: aprobada por el usuario e implementada.
       dispone de etiquetas, orden de foco y foco visible en todos los controles.
 - [x] CA-21: Dado un formulario válido, cuando se pulsa iniciar sesión en MAP-49,
       entonces no se presenta un éxito ficticio ni se guardan contraseñas o JWT.
+
+## 14. MAP-50 — Integrar login con API
+
+Estado: aprobada por el usuario e implementada. Fuente: MAP-50 «Integrar login con API»,
+consultado en Jira; no tiene descripción adicional. MAP-51 y MAP-52 conservan
+sus pruebas de aceptación específicas.
+
+### Comportamiento
+
+- Enviar tenantSlug de la URL, correo normalizado y contraseña sin modificar a
+  POST /api/v1/auth/login usando el cliente generado del contrato de MAP-48.
+- Durante la solicitud, indicar «Iniciando sesión…» y evitar envíos duplicados.
+- Al recibir 200, conservar token, expiración e identidad pública, borrar la
+  contraseña del formulario y navegar a /home. Inicio mostrará nombre, empresa,
+  rol y la acción «Cerrar sesión».
+- Sin Recordarme, la sesión usa sessionStorage; con Recordarme, localStorage.
+  Ninguna opción almacena la contraseña ni extiende la expiración del JWT.
+  Al restaurar sesión, rechazar datos inválidos o expirados. Si el navegador no
+  permite almacenamiento, mantener sesión en memoria e informar que no persistirá.
+- Añadir Bearer únicamente a peticiones dirigidas al origen y prefijo de la API
+  configurada; excluir login. Nunca enviar el token a otros servicios ni en URLs.
+- Proteger /home y /demo-items en la consola. Sin sesión vigente, regresar al login
+  de la última empresa conocida o a /login. Los guards no sustituyen la autorización
+  del backend; identidad y rol del navegador solo sirven a la presentación.
+- Al expirar el token o recibir 401 de una petición autenticada, limpiar la sesión
+  y pedir nuevo inicio. Un 401 tardío de una sesión antigua no elimina una nueva.
+  Un 403 indica falta de permiso y no cierra una sesión válida.
+- Cerrar sesión elimina el almacenamiento local de sesión y vuelve al login de
+  la empresa. No revoca el token en el servidor: continúa válido hasta expirar.
+- Credenciales rechazadas: mensaje genérico. Error de red o servidor: mensaje
+  diferenciado en español, sin mostrar detalles internos. Permitir reintentar.
+- La pantalla /login sin slug sigue solicitando el enlace de la empresa; no
+  inventar una empresa por defecto. El diseño de MAP-49 se conserva.
+- Renovación, revocación en servidor, recuperación de contraseña y solicitudes de
+  acceso siguen fuera de alcance. El token persistido es accesible a JavaScript;
+  la alternativa con cookie HttpOnly requeriría otro contrato de autenticación.
+
+### Criterios de aceptación
+
+- [x] CA-22: Dadas credenciales válidas y enlace de empresa, cuando se envía el
+      formulario, entonces entra a Inicio mostrando la identidad devuelta por API.
+- [x] CA-23: Dada una petición pendiente, cuando se intenta reenviar, entonces no
+      se duplica la petición y el formulario indica su estado de carga.
+- [x] CA-24: Dado un rechazo 401 o un fallo de conexión, cuando termina el intento,
+      entonces muestra el error correspondiente y permite reintentar.
+- [x] CA-25: Dada una sesión vigente, cuando se consulta la API configurada,
+      entonces adjunta Bearer; para login y otros orígenes no adjunta el token.
+- [x] CA-26: Dada una recarga o reapertura, cuando se restaura la sesión, entonces
+      respeta Recordarme y descarta sesiones corruptas o vencidas.
+- [x] CA-27: Dada una ruta privada, cuando falta sesión, expira o se rechaza el
+      token utilizado, entonces vuelve al login y limpia la sesión pertinente.
+- [x] CA-28: Dada una sesión iniciada, cuando se cierra, entonces elimina sus datos
+      persistidos y las rutas privadas requieren autenticarse de nuevo.
+- [x] CA-29: Dado cualquier resultado del login, entonces la contraseña nunca se
+      persiste ni se incluye en URLs o mensajes de diagnóstico.

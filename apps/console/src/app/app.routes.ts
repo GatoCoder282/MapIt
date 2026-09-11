@@ -1,3 +1,4 @@
+import { authGuard } from '@mapit/auth';
 import { type Routes } from '@angular/router';
 
 /**
@@ -29,10 +30,12 @@ export const routes: Routes = [
   },
   {
     path: 'demo-items',
+    canActivate: [authGuard],
     loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
   },
   {
     path: 'home',
+    canActivate: [authGuard],
     loadComponent: () => import('./features/home/home').then((m) => m.Home),
   },
   {

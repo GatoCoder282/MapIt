@@ -19,7 +19,7 @@
         <p>Ingresa tus credenciales para acceder a la plataforma.</p>
       </div>
 
-      <form (ngSubmit)="store.submit()" novalidate>
+      <form (ngSubmit)="store.submit()" [attr.aria-busy]="store.pending()" novalidate>
         <div class="field">
           <label for="email">Correo electrónico</label>
           <input
@@ -32,6 +32,7 @@
             (ngModelChange)="store.setEmail($event)"
             [attr.aria-invalid]="store.emailError() ? 'true' : null"
             [attr.aria-describedby]="store.emailError() ? 'email-error' : null"
+            [disabled]="store.pending()"
             required
           />
           @if (store.emailError()) {
@@ -52,6 +53,7 @@
               (ngModelChange)="store.setPassword($event)"
               [attr.aria-invalid]="store.passwordError() ? 'true' : null"
               [attr.aria-describedby]="store.passwordError() ? 'password-error' : null"
+              [disabled]="store.pending()"
               required
             />
             <button
@@ -77,7 +79,13 @@
 
         <div class="form-options">
           <label class="remember"
-            ><input type="checkbox" name="remember" [checked]="store.remember()" (change)="store.toggleRemember()" />
+            ><input
+              type="checkbox"
+              [disabled]="store.pending()"
+              name="remember"
+              [checked]="store.remember()"
+              (change)="store.toggleRemember()"
+            />
             Recordarme</label
           >
           <button type="button" class="text-button" (click)="store.showHelp('password')">
@@ -85,7 +93,9 @@
           </button>
         </div>
 
-        <button type="submit" class="submit-button">Iniciar sesión</button>
+        <button type="submit" class="submit-button" [disabled]="store.pending()">
+          {{ store.pending() ? 'Iniciando sesión…' : 'Iniciar sesión' }}
+        </button>
         @if (store.message()) {
           <p class="form-message" role="status">{{ store.message() }}</p>
         }

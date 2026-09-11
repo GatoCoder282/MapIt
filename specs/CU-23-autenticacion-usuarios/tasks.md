@@ -145,3 +145,49 @@ implementación de la pantalla permanece pendiente de aprobar la especificación
 
 - Verificación final: pnpm check completamente en verde (formato, lint, tipos,
   tests y builds frontend, contrato sincronizado, backend y ArchUnit).
+
+## MAP-50 — Integración con API
+
+- [x] Leer Jira, contrato, formulario y estructura de libs/auth.
+- [x] Preparar especificación y plan con sesión y Recordarme definidos.
+- [x] Aprobar especificación MAP-50.
+- [x] Implementar adaptador API y estados del formulario.
+- [x] Implementar sesión, almacenamiento y expiración.
+- [x] Incorporar interceptor, guard y cierre local de sesión.
+- [x] Probar éxito, errores, restauración y alcance de Bearer.
+- [x] Verificar flujo completo con Docker y datos temporales.
+- [x] Ejecutar pnpm check y documentar entrega.
+
+### Preparación de MAP-50
+
+Jira confirma que MAP-50 depende de MAP-48 y MAP-49 y bloquea las pruebas MAP-51
+y MAP-52. La propuesta integra el contrato existente sin refresh token ni cambios
+de esquema. El usuario aprobó la especificación; implementación completada.
+
+### Ejecución de MAP-50
+
+- LoginApi usa AuthService generado, con configuración runtime y transferCache
+  desactivado. LoginStore normaliza el correo, conserva la contraseña exacta,
+  evita envíos duplicados, cancela al abandonar/cambiar empresa y aplica timeout.
+- AuthSession conserva identidad pública, JWT y expiración. sessionStorage es el
+  valor predeterminado; Recordarme utiliza localStorage sin extender el JWT.
+  Valida restauración, elimina sesiones corruptas/vencidas y avisa si solo puede
+  mantener la sesión en memoria. Nunca persiste contraseñas.
+- Interceptor limitado al origen y prefijo de API; excluye login y terceros.
+  Un 401 invalida solo el token usado por esa petición; 403 conserva la sesión.
+  Guards protegen Inicio y demo-items. Inicio muestra identidad y cierre local.
+- Pruebas de consola: 11 aprobadas; librerías: 27 aprobadas (23 de autenticación).
+  Cubren éxito, validación, duplicados, errores de credenciales/conexión, contrato,
+  restauración, expiración, almacenamiento, guard y límites del interceptor.
+- pnpm check pasó formato, lint, tipos, tests y builds frontend, sincronización del
+  contrato, backend y ArchUnit. Tras agregar el caso de error de conexión se volvió
+  a ejecutar la suite de consola, también en verde.
+- Consola actualizada en Docker con el bundle compilado. En navegador se verificó
+  rechazo de credenciales, carga deshabilitada, ingreso con identidad real,
+  persistencia al recargar, Recordarme al cerrar/reabrir pestaña y bloqueo de rutas
+  tras cerrar sesión. Las verificaciones utilizan datos locales desechables.
+- No cambia el contrato ni el esquema. No se creó commit ni se modificó Jira.
+
+- Verificado Bearer de extremo a extremo: demo-items mostró un registro exclusivo
+  del tenant autenticado. Se cerró la sesión de prueba y se eliminaron usuario,
+  elemento y tenant temporales de PostgreSQL (0 tenants de prueba restantes).
