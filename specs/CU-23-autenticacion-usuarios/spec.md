@@ -1,6 +1,6 @@
 # CU-23 — Autenticación de usuarios (HU-1.02)
 
-> Alcance acumulado: MAP-46, MAP-47 y MAP-48 completados. La HU se entrega por
+> Alcance acumulado: MAP-46, MAP-47, MAP-48 y MAP-49 completados. La HU se entrega por
 > partes y permanece incompleta.
 
 ## 1. Por qué
@@ -113,7 +113,7 @@ registra en logs ni aparece en mensajes de error.
 
 ## 10. Fuera de alcance de esta entrega
 
-MAP-49 (pantalla), MAP-50 (integración Angular), refresh token, cierre/revocación
+MAP-50 (integración Angular), refresh token, cierre/revocación
 de sesiones, recuperación de contraseña, limitación distribuida de intentos,
 autorización detallada de recursos y privilegios transversales de Super Admin.
 MAP-51 y MAP-52 conservan las pruebas de aceptación asignadas del flujo completo.
@@ -140,3 +140,41 @@ cliente no puede elegir ni sobrescribir el claim `tenant`.
 ## 12. Requerimientos relacionados
 
 CU-23, HU-1.02; CU-24 en lo relativo a la identidad que consumirá la autorización.
+
+## 13. MAP-49 — Pantalla de login
+
+Referencia visual: captura proporcionada por el usuario el 2026-09-11.
+Estado: aprobada por el usuario e implementada.
+
+- Escritorio: composición de dos paneles, aproximadamente 40 % / 60 %.
+  Izquierda con fondo lavanda, título «Opera tu espacio en tiempo real» con
+  énfasis azul y una ilustración de distribución de mesas sobre fondo oscuro.
+  Derecha blanca, marca Mapit centrada y formulario de ancho limitado.
+- Reproducir jerarquía, espaciado, bordes suaves y azul intenso de la referencia.
+- Formulario: «Bienvenido de nuevo», texto introductorio, correo electrónico,
+  contraseña con control de visibilidad y botón «Iniciar sesión».
+- Mantener «Recordarme», «¿Olvidaste tu contraseña?» y «Solicita acceso» de la
+  referencia. En esta entrega no deben simular una sesión ni una recuperación:
+  mostrarán información accesible sobre su disponibilidad cuando corresponda.
+- En móviles, priorizar el formulario y reducir u ocultar el panel ilustrativo,
+  sin desplazamiento horizontal.
+- MAP-49 implementa presentación y validación local. El envío real, gestión del
+  token, sesión y navegación autenticada corresponden a MAP-50.
+- Se obtiene tenantSlug desde /empresa/:tenantSlug/login para conservar los dos
+  campos del diseño aprobado. /login permite revisar la pantalla y solicita el
+  enlace de empresa al continuar. No se deduce el tenant del correo ni se fija a demo.
+
+### Criterios de aceptación
+
+- [x] CA-16: Dada una pantalla de escritorio, cuando se abre el login, entonces
+      muestra la composición y textos de la referencia con formulario legible.
+- [x] CA-17: Dado un móvil de 360 px de ancho, cuando se abre el login, entonces
+      todos los controles son utilizables sin desplazamiento horizontal.
+- [x] CA-18: Dados campos vacíos o un correo inválido, cuando se intenta continuar,
+      entonces muestra mensajes en español asociados a los campos afectados.
+- [x] CA-19: Dada una contraseña escrita, cuando se alterna su visibilidad,
+      entonces conserva el valor y anuncia el estado del control accesiblemente.
+- [x] CA-20: Dado un usuario de teclado, cuando recorre el formulario, entonces
+      dispone de etiquetas, orden de foco y foco visible en todos los controles.
+- [x] CA-21: Dado un formulario válido, cuando se pulsa iniciar sesión en MAP-49,
+      entonces no se presenta un éxito ficticio ni se guardan contraseñas o JWT.

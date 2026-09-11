@@ -15,9 +15,17 @@ import { type Routes } from '@angular/router';
  */
 export const routes: Routes = [
   {
+    path: 'login',
+    loadComponent: () => import('./features/login/ui/login').then((m) => m.Login),
+  },
+  {
+    path: 'empresa/:tenantSlug/login',
+    loadComponent: () => import('./features/login/ui/login').then((m) => m.Login),
+  },
+  {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'home',
+    redirectTo: 'login',
   },
   {
     path: 'demo-items',

@@ -104,3 +104,44 @@
   cadena de seguridad. Los datos temporales se eliminaron al terminar.
 - MAP-49 y MAP-50 permanecen pendientes. No se cambió el estado ni se publicó
   comentario en Jira.
+
+## MAP-49 — Pantalla de login
+
+- [x] Leer reglas Angular y revisar rutas, configuración y tokens existentes.
+- [x] Incorporar la referencia visual proporcionada por el usuario.
+- [x] Confirmar alcance de la tarjeta MAP-49 en Jira.
+- [x] Resolver cómo se selecciona la empresa: slug en la URL para conservar el diseño.
+- [x] Aprobar especificación de MAP-49.
+- [x] Implementar ViewModel y formulario accesible.
+- [x] Implementar composición visual y adaptación a móviles.
+- [x] Comprobar comportamiento y apariencia; ejecutar pnpm check.
+- [x] Actualizar consola en Docker y dejarla para revisión.
+
+### Preparación de MAP-49
+
+El usuario proporcionó una referencia con dos campos: correo y contraseña.
+Se consultó cómo resolver tenantSlug, obligatorio en el contrato actual. La
+implementación de la pantalla permanece pendiente de aprobar la especificación.
+
+- Aprobación recibida. Rovo falló al consultar los recursos de Jira; se continúa
+  con el alcance de pantalla aprobado en esta conversación.
+
+### Ejecución de MAP-49
+
+- Jira consultado en navegador: MAP-49 «Crear pantalla de login», área Frontend,
+  sin descripción adicional; bloquea MAP-50 «Integrar login con API».
+- Implementada feature login con Signals y componente OnPush, rutas lazy /login
+  y /empresa/:tenantSlug/login. La raíz de console redirige al formulario.
+- Composición basada en la referencia del usuario: dos paneles, logo con pin,
+  formulario blanco y azul e ilustración local original de mesas en SVG.
+- Cuatro pruebas de ViewModel cubren validación, visibilidad, conservación exacta
+  de la contraseña y selección de empresa por URL sin fallback a demo.
+- Revisión en navegador sobre Docker: escritorio 1440 px y móvil 360 px; en móvil
+  scrollWidth=360. Verificados campos vacíos, formulario válido, mostrar contraseña
+  y navegación con Tab con foco visible. La pantalla no hace peticiones de login.
+- Construida imagen local mapit-console con el bundle Angular y nginx; recreado
+  únicamente console. Disponible en http://localhost:4200/empresa/demo/login.
+- MAP-50 queda pendiente: conectar API, sesión y JWT. No se publicaron cambios en Jira.
+
+- Verificación final: pnpm check completamente en verde (formato, lint, tipos,
+  tests y builds frontend, contrato sincronizado, backend y ArchUnit).

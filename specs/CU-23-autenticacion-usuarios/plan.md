@@ -102,3 +102,21 @@ tokens permanecen pendientes.
 El endpoint queda expuesto a intentos repetidos. MAP-48 no introduce un contador en
 memoria que fallaría al usar varias instancias; la limitación distribuida se mantiene
 explícitamente fuera de alcance hasta definir su almacenamiento y política.
+
+## 9. Propuesta técnica MAP-49
+
+Feature login con UI y ViewModel separados según las reglas de console.
+El patrón MVVM concentra valores, validación y visibilidad de contraseña en
+model; UI se limita a binding y eventos. Permite comprobar el comportamiento
+sin renderizar, frente a mezclar reglas en la plantilla.
+
+Usar Signals, inject(), componentes OnPush y una ruta con carga diferida.
+Aplicar estilos locales para conservar el fondo blanco y el azul de la referencia
+independientemente del tema del sistema. Crear una ilustración decorativa de mesas
+con recursos locales; no introducir un motor de mapas para el panel del login.
+
+La ruta por empresa será /empresa/:tenantSlug/login; /login permite revisar la
+pantalla y la raíz redirige a /login. MAP-50 conectará el
+ViewModel con el cliente generado de MAP-48. No hay cambios de contrato o BD.
+Verificar validación, visibilidad de contraseña, teclado, diseño en escritorio y
+móvil; ejecutar pnpm check y actualizar la consola en Docker para revisión.
