@@ -1,4 +1,4 @@
-# CU-23 — Plan técnico de MAP-46 y MAP-47
+# CU-23 — Plan técnico de MAP-46 a MAP-48
 
 ## 1. Enfoque
 
@@ -13,20 +13,33 @@ identity-infrastructure. Un filtro `OncePerRequestFilter` validará el Bearer to
 creará la autenticación de Spring Security y expondrá el tenant de la petición sin
 usar headers aportados por el cliente.
 
+Para MAP-48, definir primero en OpenAPI el endpoint público de login y sus modelos.
+El controlador REST de identity-infrastructure orquestará `AuthenticateUser` y
+`IssueAccessToken`, mapeará únicamente datos públicos y traducirá credenciales
+inválidas a RFC 9457 sin revelar la causa.
+
 ## 2. Patrones de diseño aplicados
 
-| Patrón                  | Dónde                            | Por qué aquí                                            | Alternativa descartada                          |
-| ----------------------- | -------------------------------- | ------------------------------------------------------- | ----------------------------------------------- |
-| Ports & Adapters        | Consulta y contraseña            | Permite probar reglas sin BD ni Spring Security         | Acoplar el servicio a JDBC/BCrypt               |
-| Repository              | `UserCredentialsRepository`      | Expresa una búsqueda de identidad dentro de una empresa | Consultar usuarios globalmente por correo       |
-| Value Object            | `TenantId` y resultado inmutable | Mantiene la identidad tipada sin exponer secretos       | Devolver la fila de credenciales como respuesta |
-| Adapter                 | `JjwtTokenService`               | Aísla JJWT y su configuración del dominio               | Importar JJWT en application/domain             |
-| Chain of Responsibility | Cadena de Spring Security        | Valida cada petición antes de ejecutar controladores    | Validar tokens dentro de cada endpoint          |
+| Patrón                  | Dónde                            | Por qué aquí                                             | Alternativa descartada                          |
+| ----------------------- | -------------------------------- | -------------------------------------------------------- | ----------------------------------------------- |
+| Ports & Adapters        | Consulta y contraseña            | Permite probar reglas sin BD ni Spring Security          | Acoplar el servicio a JDBC/BCrypt               |
+| Repository              | `UserCredentialsRepository`      | Expresa una búsqueda de identidad dentro de una empresa  | Consultar usuarios globalmente por correo       |
+| Value Object            | `TenantId` y resultado inmutable | Mantiene la identidad tipada sin exponer secretos        | Devolver la fila de credenciales como respuesta |
+| Adapter                 | `JjwtTokenService`               | Aísla JJWT y su configuración del dominio                | Importar JJWT en application/domain             |
+| Chain of Responsibility | Cadena de Spring Security        | Valida cada petición antes de ejecutar controladores     | Validar tokens dentro de cada endpoint          |
+| Facade                  | `LoginController`                | Expone un único flujo HTTP sobre autenticación y emisión | Hacer que el cliente coordine dos operaciones   |
 
 ## 3. Contrato API
 
-Sin cambios de endpoints en MAP-46/MAP-47. El contrato de login se definirá primero
-en OpenAPI al abordar MAP-48; no hay código generado que modificar ahora.
+Agregar `POST /auth/login` sin seguridad previa:
+
+- Entrada `LoginRequest`: `tenantSlug`, `email`, `password`.
+- Salida `LoginResponse`: `accessToken`, `tokenType`, `expiresAt`, `user`.
+- `AuthenticatedUser`: `id`, `tenantId`, `email`, `fullName`, `role`.
+- Respuestas: 200, 400 y 401 con `Problem`.
+
+Después de validar el YAML se regenera el cliente Angular. El código generado no se
+edita ni se commitea.
 
 ## 4. Backend
 
@@ -41,6 +54,9 @@ en OpenAPI al abordar MAP-48; no hay código generado que modificar ahora.
   principal autenticado y contexto de tenant derivado de Spring Security.
 - Bootstrap: insertar el filtro antes del filtro anónimo y responder 401 ante una
   autenticación ausente o inválida.
+- Infrastructure: controlador de login, DTOs de transporte, mapeo de identidad y
+  manejador de `InvalidCredentialsException` a Problem Details.
+- Bootstrap: declarar únicamente `/api/v1/auth/login` como ruta pública de identidad.
 
 Se usa JDBC para la consulta anterior al login porque aún no existe un tenant
 autenticado para una sesión Hibernate. La consulta fija RLS y filtra explícitamente
@@ -54,8 +70,8 @@ rol y correo normalizado. Actualizar el estado de implementación en el DBML.
 
 ## 6. Frontend y feature toggle
 
-Sin cambios: todavía no se expone una funcionalidad HTTP ni una pantalla. MAP-48
-consumirá el emisor desde el endpoint de login.
+No se modifica una pantalla. La regeneración crea el método tipado del cliente que
+MAP-50 consumirá; MAP-49 implementará primero la vista.
 
 ## 7. Verificación
 
@@ -69,11 +85,20 @@ consumirá el emisor desde el endpoint de login.
   incorrecto y claims ausentes.
 - Integración de Spring Security: Bearer válido autentica, Bearer inválido devuelve
   401 y el tenant se obtiene del token sin filtrarse a otra petición.
+- Lint y generación OpenAPI sin drift.
+- Pruebas del controlador para respuesta válida, validación 400, error uniforme 401,
+  ausencia de secretos y acceso público sin token.
+- Prueba Docker con un usuario local desechable y verificación posterior del JWT en
+  una ruta protegida, sin dejar credenciales de demostración en migraciones.
 
 ## 8. Riesgos
 
-El endpoint futuro debe traducir el error genérico a Problem Details y limitar los
-intentos de login. El selector de empresa no es autorización: ningún recurso staff
-podrá confiar en él. HS256 exige custodiar y rotar una clave compartida; para el MVP
-se valida un mínimo de 256 bits y se mantiene fuera del repositorio mediante `.env`.
-La revocación y renovación de tokens permanecen pendientes.
+El endpoint traduce el error genérico a Problem Details. El selector de empresa no
+es autorización: ningún recurso staff podrá confiar en él. HS256 exige custodiar y
+rotar una clave compartida; para el MVP se valida un mínimo de 256 bits y se
+mantiene fuera del repositorio mediante `.env`. La revocación y renovación de
+tokens permanecen pendientes.
+
+El endpoint queda expuesto a intentos repetidos. MAP-48 no introduce un contador en
+memoria que fallaría al usar varias instancias; la limitación distribuida se mantiene
+explícitamente fuera de alcance hasta definir su almacenamiento y política.

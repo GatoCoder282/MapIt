@@ -33,6 +33,7 @@ class JjwtTokenServiceTest {
         var issued = service.issue(USER);
         var claims = Jwts.parser()
                 .verifyWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)))
+                .clock(() -> Date.from(NOW))
                 .build()
                 .parseSignedClaims(issued.value());
 

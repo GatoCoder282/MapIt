@@ -1,7 +1,7 @@
 # CU-23 — Autenticación de usuarios (HU-1.02)
 
-> Alcance acumulado: MAP-46 completado. MAP-47 aprobado e implementado el
-> 2026-09-10. La HU se entrega por partes y permanece incompleta.
+> Alcance acumulado: MAP-46, MAP-47 y MAP-48 completados. La HU se entrega por
+> partes y permanece incompleta.
 
 ## 1. Por qué
 
@@ -30,6 +30,9 @@ El slug selecciona la empresa al iniciar sesión: no concede acceso por sí mism
 7. Validar firma, emisor, expiración y claims obligatorios antes de aceptar el token.
 8. Crear la autenticación de Spring Security y resolver el tenant desde el claim
    `tenant` durante la petición.
+9. Recibir slug de empresa, correo y contraseña mediante `POST /api/v1/auth/login`.
+10. Autenticar las credenciales, emitir el access token y devolverlo junto con la
+    identidad segura del usuario.
 
 ## 5. Flujos alternativos y errores
 
@@ -58,6 +61,12 @@ registra en logs ni aparece en mensajes de error.
 - El rol y el tenant usados por Spring Security salen únicamente del JWT validado.
 - Esta entrega emite un token de acceso. La renovación mediante refresh token no
   forma parte de MAP-47 ni de las subtareas actuales de HU-1.02.
+- La respuesta de login incluye `accessToken`, `tokenType=Bearer`, `expiresAt` y
+  los datos públicos del usuario: ID, tenant, correo, nombre completo y rol.
+- El endpoint de login es público porque todavía no existe una sesión; cualquier
+  otro endpoint conserva la política de denegar por defecto.
+- Contraseña incorrecta, usuario inexistente, cuenta inactiva y tenant suspendido
+  producen el mismo Problem Details HTTP 401, sin indicar qué dato falló.
 
 ## 7. Criterios de aceptación de MAP-46
 
@@ -87,16 +96,29 @@ registra en logs ni aparece en mensajes de error.
 - [x] CA-10: Dada una clave menor de 256 bits o una vigencia no positiva, cuando
       arranca la aplicación, entonces falla la configuración de JWT.
 
-## 9. Fuera de alcance de esta entrega
+## 9. Criterios de aceptación de MAP-48
 
-MAP-48 (contrato y endpoint de login), MAP-49 (pantalla), MAP-50 (integración),
-refresh token, cierre/revocación de sesiones, registro/recuperación de usuarios,
+- [x] CA-11: Dadas credenciales válidas, cuando se invoca
+      `POST /api/v1/auth/login`, entonces responde HTTP 200 con Bearer token,
+      expiración e identidad pública, y el token corresponde a esa identidad.
+- [x] CA-12: Dadas credenciales incorrectas o una cuenta no habilitada, cuando se
+      invoca el login, entonces responde HTTP 401 con Problem Details y el mismo
+      mensaje genérico para todos los casos.
+- [x] CA-13: Dado un cuerpo ausente o campos con formato inválido, cuando se invoca
+      el login, entonces responde HTTP 400 y no intenta autenticar.
+- [x] CA-14: Dado un cliente sin sesión previa, cuando invoca el login, entonces la
+      cadena de seguridad permite acceder al endpoint sin Bearer token.
+- [x] CA-15: Dada cualquier respuesta o error del login, entonces nunca contiene la
+      contraseña ni el hash BCrypt.
+
+## 10. Fuera de alcance de esta entrega
+
+MAP-49 (pantalla), MAP-50 (integración Angular), refresh token, cierre/revocación
+de sesiones, recuperación de contraseña, limitación distribuida de intentos,
 autorización detallada de recursos y privilegios transversales de Super Admin.
-MAP-51 y MAP-52 mantienen sus pruebas de aceptación del flujo HTTP completo. Al
-terminar MAP-47 todavía no existirá un endpoint de login: el token se probará desde
-los servicios y la cadena de seguridad.
+MAP-51 y MAP-52 conservan las pruebas de aceptación asignadas del flujo completo.
 
-## 10. Impacto multi-tenant
+## 11. Impacto multi-tenant
 
 `app_user` lleva `tenant_id`, índice `(tenant_id, id)`, unicidad
 `(tenant_id, email)` y RLS forzada. La búsqueda previa al JWT utiliza JDBC en una
@@ -111,6 +133,10 @@ firma y los demás claims. El contexto se limpia al terminar la petición. El CR
 temporal público conserva el tenant `demo` mientras exista; no habilita un fallback
 de header para rutas de staff.
 
-## 11. Requerimientos relacionados
+MAP-48 recibe `tenantSlug` únicamente para localizar las credenciales antes de la
+autenticación. La respuesta y el JWT toman `tenantId` del usuario persistido; el
+cliente no puede elegir ni sobrescribir el claim `tenant`.
+
+## 12. Requerimientos relacionados
 
 CU-23, HU-1.02; CU-24 en lo relativo a la identidad que consumirá la autorización.

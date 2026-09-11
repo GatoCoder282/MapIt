@@ -1,4 +1,4 @@
-# CU-23 — Tareas de MAP-46 y MAP-47
+# CU-23 — Tareas de MAP-46 a MAP-48
 
 - [x] Leer MAP-45/MAP-46 y delimitar las subtareas posteriores.
 - [x] Escribir especificación y plan antes de implementar.
@@ -18,6 +18,17 @@
 - [x] Integrar Bearer JWT con Spring Security y el contexto del tenant.
 - [x] Verificar claims, expiración, alteración, HTTP 401 y aislamiento por petición.
 - [x] Ejecutar comprobaciones del backend y documentar la entrega.
+
+## MAP-48 — Endpoint de login
+
+- [x] Leer MAP-48 y delimitar su alcance frente a MAP-49–MAP-52.
+- [x] Aprobar criterios de aceptación y plan de MAP-48.
+- [x] Definir `POST /auth/login` y sus modelos en OpenAPI.
+- [x] Validar el contrato y regenerar el cliente Angular.
+- [x] Implementar el controlador y el mapeo RFC 9457.
+- [x] Declarar el login como ruta pública sin abrir otras rutas.
+- [x] Verificar éxito, validación, error uniforme y ausencia de secretos.
+- [x] Reconstruir Docker, probar el flujo HTTP y documentar la entrega.
 
 ## Notas de ejecución
 
@@ -74,3 +85,22 @@
   protegida sin token `401`, Bearer inválido `401` y CRUD demo público `200`.
 - MAP-47 no modifica el contrato OpenAPI ni el esquema de base de datos. MAP-48–50
   permanecen pendientes y no se cambió el estado ni se publicó comentario en Jira.
+
+### Ejecución de MAP-48
+
+- Agregado `POST /api/v1/auth/login` al contrato OpenAPI con entrada tipada,
+  respuesta Bearer e identidad pública. El contrato valida y el cliente Angular
+  generado queda sincronizado.
+- Implementado `LoginController`, que coordina la verificación de credenciales y
+  la emisión del JWT. Credenciales incorrectas responden 401 y entradas inválidas
+  responden 400 mediante Problem Details sin reflejar datos recibidos.
+- La ruta de login es pública. Los despachos internos de error conservan el estado
+  HTTP real y las demás rutas continúan requiriendo autenticación.
+- Las pruebas del controlador verifican 200, 400, 401, el DTO de salida y la
+  ausencia de contraseña y hash.
+- El backend local en Docker se actualizó y quedó saludable. Con un tenant y
+  usuario desechables se comprobó: login válido 200, contraseña incorrecta 401,
+  cuerpo inválido 400, ruta protegida sin JWT 401 y JWT emitido aceptado por la
+  cadena de seguridad. Los datos temporales se eliminaron al terminar.
+- MAP-49 y MAP-50 permanecen pendientes. No se cambió el estado ni se publicó
+  comentario en Jira.
