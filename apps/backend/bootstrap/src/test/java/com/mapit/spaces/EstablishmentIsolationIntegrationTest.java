@@ -57,11 +57,12 @@ class EstablishmentIsolationIntegrationTest {
     jdbcTemplate.execute("grant select on establishment to mapit_rls_test");
 
     jdbcTemplate.update(
-        "insert into tenant (id, name, slug, status) values (?, ?, ?, ?) on conflict (id) do nothing",
+        "insert into tenant (id, name, slug, status, vertical) values (?, ?, ?, ?, ?) on conflict (id) do nothing",
         "other",
         "Otra empresa",
         "other",
-        "ACTIVE");
+        "ACTIVE",
+        "RESTAURANT");
 
     jdbcTemplate.update("delete from establishment");
     jdbcTemplate.update(
