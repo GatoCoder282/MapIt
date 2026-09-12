@@ -14,16 +14,16 @@ Alcance real: `docs/roadmap/use_cases.md` (**manda sobre `project_definition.md`
 
 ## Tabla de ruteo
 
-| Si la tarea es…                  | Lee                                             | Agente              | Skill              |
-| -------------------------------- | ----------------------------------------------- | ------------------- | ------------------ |
-| Un caso de uso completo          | `specs/AGENTS.md`                               | —                   | `new-usecase`      |
-| Endpoint o cambio de contrato    | `packages/api-contract/AGENTS.md`               | `api-contract`      | —                  |
-| Lógica de dominio / backend      | `apps/backend/AGENTS.md`                        | `backend-hexagonal` | —                  |
-| Pantalla o feature Angular       | `apps/console/AGENTS.md`                        | `angular-feature`   | —                  |
-| Cambio de esquema de BD          | `apps/backend/AGENTS.md` + `docs/db/mapit.dbml` | `db-migration`      | `new-migration`    |
-| Activar/desactivar funcionalidad | `infra/AGENTS.md`                               | —                   | `new-feature-flag` |
-| Test E2E                         | `apps/e2e/AGENTS.md`                            | —                   | —                  |
-| Decisión de arquitectura         | `docs/AGENTS.md`                                | —                   | —                  |
+| Si la tarea es…                  | Lee                                                      | Agente              | Skill              |
+| -------------------------------- | -------------------------------------------------------- | ------------------- | ------------------ |
+| Un caso de uso completo          | `specs/AGENTS.md`                                        | —                   | `new-usecase`      |
+| Endpoint o cambio de contrato    | `packages/api-contract/AGENTS.md`                        | `api-contract`      | —                  |
+| Lógica de dominio / backend      | `apps/backend/AGENTS.md`                                 | `backend-hexagonal` | —                  |
+| Pantalla o feature Angular       | `apps/console/AGENTS.md` (o `apps/public-web/AGENTS.md`) | `angular-feature`   | —                  |
+| Cambio de esquema de BD          | `apps/backend/AGENTS.md` + `docs/db/mapit.dbml`          | `db-migration`      | `new-migration`    |
+| Activar/desactivar funcionalidad | `infra/AGENTS.md`                                        | —                   | `new-feature-flag` |
+| Test E2E                         | `apps/e2e/AGENTS.md`                                     | —                   | —                  |
+| Decisión de arquitectura         | `docs/AGENTS.md`                                         | —                   | —                  |
 
 ## Reglas duras (romperlas rompe el build)
 
@@ -42,8 +42,9 @@ Alcance real: `docs/roadmap/use_cases.md` (**manda sobre `project_definition.md`
 ## Comandos
 
 ```bash
-pnpm dev        # todo el stack        pnpm check      # antes de push
-pnpm doctor     # diagnóstico          pnpm api:gen    # regenerar el contrato
+pnpm setup      # primer clone        pnpm dev        # todo el stack
+pnpm check      # antes de push        pnpm doctor     # diagnóstico
+pnpm api:gen    # regenerar el contrato
 pnpm be:test    # tests backend        pnpm fe:test    # tests frontend
 pnpm db:new "…" # nueva migración      pnpm new:flag … # nueva feature flag
 ```
