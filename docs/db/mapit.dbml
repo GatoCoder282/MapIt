@@ -77,12 +77,22 @@ Table establishment {
   slug       text        [not null, note: 'URL pública de reserva']
   timezone   text        [not null, default: 'America/La_Paz']
   created_at timestamptz [not null]
+  created_by uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
+  updated_at timestamptz [not null]
+  updated_by uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
+  deleted_at timestamptz [note: 'Baja lógica: si no es NULL, la fila no aparece en consultas']
+  deleted_by uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
 
   Indexes {
     (tenant_id, id)
-    (tenant_id, slug) [unique]
+    (tenant_id, slug) [unique, note: 'PARCIAL: WHERE deleted_at IS NULL, para poder reutilizar el slug de una baja']
   }
-  Note: 'CU-04. El type selecciona qué plantillas de elemento aplican (CU-07).'
+  Note: '''
+    CU-04. El type selecciona qué plantillas de elemento aplican (CU-07).
+    Baja LÓGICA: floor y sector apuntarán aquí (CU-05), así que un borrado
+    físico dejaría huérfanos. Las columnas *_by van sin FK hasta que exista
+    app_user en CU-23/CU-24.
+  '''
 }
 
 Table floor {
