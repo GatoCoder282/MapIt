@@ -29,6 +29,13 @@ export const routes: Routes = [
     redirectTo: 'login',
   },
   {
+    path: 'administration/tenants/new',
+    loadComponent: () =>
+      import('./features/administration/tenant-registration/ui/tenant-registration').then(
+        (m) => m.TenantRegistration,
+      ),
+  },
+  {
     path: 'demo-items',
     canActivate: [authGuard],
     loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
