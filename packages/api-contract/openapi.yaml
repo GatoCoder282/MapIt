@@ -30,6 +30,8 @@ servers:
     description: Relativo (contenedor)
 
 tags:
+  - name: auth
+    description: Autenticación del staff de cada tenant
   - name: health
     description: Estado del servicio
   - name: tenants
@@ -40,6 +42,34 @@ tags:
     description: CRUD de demostración para validar la integración Angular + Spring Boot
 
 paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Iniciar sesión
+      description: |
+        Verifica las credenciales del usuario dentro del tenant indicado y emite
+        un token de acceso JWT. Todos los rechazos de credenciales usan el mismo
+        mensaje para no revelar si existen el tenant o la cuenta.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Credenciales válidas y token emitido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /health:
     get:
       tags: [health]
@@ -235,6 +265,69 @@ components:
         cliente podría falsificar).
 
   schemas:
+    LoginRequest:
+      type: object
+      required: [tenantSlug, email, password]
+      properties:
+        tenantSlug:
+          type: string
+          pattern: "^[a-zA-Z0-9][a-zA-Z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+
+    LoginResponse:
+      type: object
+      required: [accessToken, tokenType, expiresAt, user]
+      properties:
+        accessToken:
+          type: string
+          readOnly: true
+        tokenType:
+          type: string
+          const: Bearer
+          readOnly: true
+        expiresAt:
+          type: string
+          format: date-time
+          readOnly: true
+        user:
+          $ref: "#/components/schemas/AuthenticatedUser"
+
+    AuthenticatedUser:
+      type: object
+      required: [id, tenantId, email, fullName, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenantId:
+          type: string
+          minLength: 2
+          maxLength: 63
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        fullName:
+          type: string
+          readOnly: true
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    UserRole:
+      type: string
+      enum: [SUPER_ADMIN, ADMIN, MANAGER, STAFF]
+
     HealthStatus:
       type: object
       required: [status, version]

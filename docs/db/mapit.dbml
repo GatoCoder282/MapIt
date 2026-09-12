@@ -8,7 +8,7 @@
 //  Visualizar:  https://dbdiagram.io  (pegar este archivo)
 //  Exportar:    pnpm db:erd
 //
-//  ESTADO: solo `tenant` está implementada (V1__baseline.sql).
+//  ESTADO: implementadas `tenant` (V1), `demo_item` (V2) y `app_user` (V3).
 //  El resto es el diseño previsto; cada tabla llega con su caso de uso.
 //
 //  CONVENCIÓN (ADR-0004): toda tabla de negocio lleva
@@ -39,7 +39,7 @@ Table tenant {
 Table app_user {
   id            uuid        [pk]
   tenant_id     text        [not null, ref: > tenant.id]
-  email         text        [not null]
+  email         text        [not null, note: 'Minúsculas, sin espacios externos, 1-254 caracteres']
   password_hash text        [not null, note: 'BCrypt (RNF09)']
   full_name     text        [not null]
   role          text        [not null, note: 'SUPER_ADMIN | ADMIN | MANAGER | STAFF']
@@ -50,7 +50,7 @@ Table app_user {
     (tenant_id, id)
     (tenant_id, email) [unique]
   }
-  Note: 'El claim `tenant` del JWT sale de aquí. SUPER_ADMIN es transversal a tenants.'
+  Note: 'IMPLEMENTADA en V3 con RLS forzada. El claim `tenant` del JWT saldrá de aquí. Los privilegios transversales de SUPER_ADMIN se implementarán en CU-24.'
 }
 
 // ── ESPACIO (CU-04 … CU-08) ──────────────────────────────────

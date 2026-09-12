@@ -49,6 +49,7 @@ flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql", versio
 spring-boot-flyway = { module = "org.springframework.boot:spring-boot-flyway" }
 
 # ── Seguridad ────────────────────────────────────────────────
+spring-security-crypto = { module = "org.springframework.security:spring-security-crypto" }
 jjwt-api    = { module = "io.jsonwebtoken:jjwt-api",    version.ref = "jjwt" }
 jjwt-impl   = { module = "io.jsonwebtoken:jjwt-impl",   version.ref = "jjwt" }
 jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }

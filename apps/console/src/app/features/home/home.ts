@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
+import { AuthSession } from '@mapit/auth';
 import { FeatureFlagService, FeatureFlagDirective } from '@mapit/feature-flags';
 
 /**
@@ -18,6 +19,15 @@ import { FeatureFlagService, FeatureFlagDirective } from '@mapit/feature-flags';
     <section class="home">
       <h1>MapIt · Consola</h1>
       <p class="sub">Mapea tu negocio, opéralo en tiempo real.</p>
+
+      @if (session.user(); as user) {
+        <p>Bienvenido, {{ user.fullName }}.</p>
+        <p>{{ user.email }} · Empresa: {{ user.tenantId }} · Rol: {{ user.role }}</p>
+        <button type="button" (click)="session.logout()">Cerrar sesión</button>
+      }
+      @if (session.warning()) {
+        <p role="status">{{ session.warning() }}</p>
+      }
 
       @if (flags.isEnabled('demo.hello')()) {
         <aside class="banner" role="status">
@@ -53,5 +63,6 @@ import { FeatureFlagService, FeatureFlagDirective } from '@mapit/feature-flags';
   `,
 })
 export class Home {
+  protected readonly session = inject(AuthSession);
   protected readonly flags = inject(FeatureFlagService);
 }

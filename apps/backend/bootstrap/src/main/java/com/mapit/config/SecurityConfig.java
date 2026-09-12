@@ -2,27 +2,34 @@ package com.mapit.config;
 
 import java.util.List;
 
+import jakarta.servlet.DispatcherType;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.mapit.identity.infrastructure.JwtAuthenticationFilter;
 
 /**
  * Configuración base de seguridad.
  *
  * <p>Esto es <strong>andamiaje</strong>: define qué está abierto y qué no, y deja el resto
- * denegado por defecto. La autenticación real con JWT y la autorización por rol llegan en
- * CU-23 y CU-24, y se añadirán como un filtro dentro de {@code identity-infrastructure}.
+ * denegado por defecto. CU-23 añade la autenticación JWT mediante un filtro de
+ * {@code identity-infrastructure}; la autorización detallada por rol corresponde a CU-24.
  *
  * <p>Vive en {@code bootstrap} porque es configuración transversal de la aplicación, no
  * lógica de ningún módulo de negocio.
@@ -41,13 +48,16 @@ public class SecurityConfig {
         // Superficie pública de reservas (CU-15, CU-16): el cliente final es anónimo.
         "/api/v1/health",
         "/api/v1/public/**",
-        // CRUD temporal para validar el stack sin implementar todavía CU-23/CU-24.
+        // El login autentica las credenciales y por definición todavía no recibe JWT.
+        "/api/v1/auth/login",
+        // CRUD temporal que conserva acceso público para validar el stack.
         "/api/v1/demo-items/**",
     };
 
     @Bean
     SecurityFilterChain filterChain(
             HttpSecurity http,
+            JwtAuthenticationFilter jwtAuthenticationFilter,
             // Se cualifica por NOMBRE a propósito: Spring MVC registra su propio
             // `mvcHandlerMappingIntrospector`, que también implementa
             // CorsConfigurationSource, y la inyección por tipo queda ambigua.
@@ -59,12 +69,17 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(c -> c.configurationSource(cors))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(errors -> errors
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authorizeHttpRequests(auth -> auth
+                        // Conserva el status real de validación/404 durante el despacho de error.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         // Todo lo demás requiere autenticación: se deniega por defecto,
                         // que es la postura correcta. Abrir es una decisión explícita.
                         .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthenticationFilter, AnonymousAuthenticationFilter.class)
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
                 .build();
