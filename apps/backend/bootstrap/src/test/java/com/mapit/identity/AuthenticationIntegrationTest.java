@@ -91,9 +91,9 @@ class AuthenticationIntegrationTest {
         admin.execute("grant select, insert on all tables in schema public to mapit_auth_test");
         admin.update("delete from app_user where tenant_id in ('auth-a', 'auth-b')");
         admin.update("""
-                insert into tenant (id, name, slug, status) values
-                    ('auth-a', 'Empresa A', 'empresa-a', 'ACTIVE'),
-                    ('auth-b', 'Empresa B', 'empresa-b', 'ACTIVE')
+                insert into tenant (id, name, slug, status, vertical) values
+                    ('auth-a', 'Empresa A', 'empresa-a', 'ACTIVE', 'RESTAURANT'),
+                    ('auth-b', 'Empresa B', 'empresa-b', 'ACTIVE', 'RESTAURANT')
                 on conflict (id) do update set status = 'ACTIVE'
                 """);
         insertUser(USER_A, "auth-a", "clave-a", "ADMIN");

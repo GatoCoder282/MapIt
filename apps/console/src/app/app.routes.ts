@@ -41,6 +41,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
   },
   {
+    path: 'establishments',
+    loadComponent: () =>
+      import('./features/administration/establishments/ui/establishments').then(
+        (m) => m.Establishments,
+      ),
+  },
+  {
     path: 'home',
     canActivate: [authGuard],
     loadComponent: () => import('./features/home/home').then((m) => m.Home),
