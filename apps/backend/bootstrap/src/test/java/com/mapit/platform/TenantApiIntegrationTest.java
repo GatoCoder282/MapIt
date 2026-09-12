@@ -114,7 +114,9 @@ class TenantApiIntegrationTest {
             .returnResult(TenantApiResponse.class)
             .getResponseBody();
 
-    assertThat(response).isNull();
+    // El controller devuelve ProblemDetail: solo el campo status de la respuesta va poblado.
+    assertThat(response).isNotNull();
+    assertThat(response.status()).isEqualTo("409");
     assertThat(jdbcTemplate.queryForObject("select count(*) from tenant where slug = ?", Long.class, slug))
         .isEqualTo(1L);
   }
