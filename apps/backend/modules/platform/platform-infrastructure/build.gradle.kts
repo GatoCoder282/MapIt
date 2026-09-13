@@ -8,4 +8,5 @@ dependencies {
     implementation(project(":modules:platform:platform-domain"))
     implementation(project(":modules:platform:platform-application"))
     implementation(project(":shared-kernel"))
+    implementation(libs.spring.boot.starter.mail)
 }

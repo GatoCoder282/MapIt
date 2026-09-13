@@ -7,6 +7,7 @@ import {
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
+import { authInterceptor, AUTH_API_URL } from '@mapit/auth';
 import { BASE_PATH } from '@mapit/api-client';
 import { provideFeatureFlags } from '@mapit/feature-flags';
 import { provideRuntimeConfig, RuntimeConfigStore } from './core/runtime-config';
@@ -25,11 +26,19 @@ export const appConfig: ApplicationConfig = {
     provideCheckNoChangesConfig({ exhaustive: true, interval: 1000 }),
 
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([])),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
 
     {
       provide: BASE_PATH,
       useFactory: () => inject(RuntimeConfigStore).config().apiBaseUrl,
+    },
+
+    {
+      provide: AUTH_API_URL,
+      useFactory: () => {
+        const config = inject(RuntimeConfigStore);
+        return () => config.config().apiBaseUrl;
+      },
     },
 
     // Config leída en RUNTIME desde /assets/config.json, no incrustada en el

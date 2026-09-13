@@ -10,7 +10,9 @@ test.describe('Consola — humo', () => {
   test('carga y muestra el título', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/MapIt/);
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('MapIt');
+    // La raíz redirige al login: la consola exige JWT de staff.
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByRole('button', { name: /entrar|acceder|iniciar/i })).toBeVisible();
   });
 
   test('no hay errores de consola al arrancar', async ({ page }) => {

@@ -1,3 +1,4 @@
+import { authGuard } from '@mapit/auth';
 import { type Routes } from '@angular/router';
 
 /**
@@ -15,12 +16,28 @@ import { type Routes } from '@angular/router';
  */
 export const routes: Routes = [
   {
+    path: 'login',
+    loadComponent: () => import('./features/login/ui/login').then((m) => m.Login),
+  },
+  {
+    path: 'empresa/:tenantSlug/login',
+    loadComponent: () => import('./features/login/ui/login').then((m) => m.Login),
+  },
+  {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'home',
+    redirectTo: 'login',
+  },
+  {
+    path: 'administration/tenants/new',
+    loadComponent: () =>
+      import('./features/administration/tenant-registration/ui/tenant-registration').then(
+        (m) => m.TenantRegistration,
+      ),
   },
   {
     path: 'demo-items',
+    canActivate: [authGuard],
     loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
   },
   {
@@ -32,6 +49,7 @@ export const routes: Routes = [
   },
   {
     path: 'home',
+    canActivate: [authGuard],
     loadComponent: () => import('./features/home/home').then((m) => m.Home),
   },
   {

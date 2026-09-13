@@ -65,12 +65,15 @@ mapit:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:4300}
   jwt:
     secret: ${JWT_SECRET:dev_only_change_me_min_32_chars_long_0123456789}
+    issuer: ${JWT_ISSUER:mapit}
     access-ttl-minutes: ${JWT_ACCESS_TTL_MIN:15}
     refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}
   tenant:
     resolution-strategy: ${TENANT_RESOLUTION_STRATEGY:jwt-claim}
     header-name: ${TENANT_HEADER_NAME:X-Tenant-Id}
     default: ${TENANT_DEFAULT:demo}
+  mail:
+    from: ${MAIL_FROM:no-reply@mapit.local}
   unleash:
     url: ${UNLEASH_URL:http://localhost:4242/api}
     api-token: ${UNLEASH_API_TOKEN:default:development.unleash-insecure-api-token}
