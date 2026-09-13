@@ -4,13 +4,12 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors; // Import for Collectors.toList()
+import java.util.stream.Collectors;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -28,15 +27,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.mapit.spaces.application.EstablishmentNotFoundException; // Assuming this exception exists from CU-04
+import com.mapit.spaces.application.EstablishmentNotFoundException;
 import com.mapit.spaces.application.FloorHasActiveSectorsException;
 import com.mapit.spaces.application.FloorLevelAlreadyExistsException;
 import com.mapit.spaces.application.FloorNotFoundException;
 import com.mapit.spaces.application.FloorService;
 import com.mapit.spaces.application.FloorSlugAlreadyExistsException;
 import com.mapit.spaces.domain.Floor;
-import com.mapit.spaces.domain.Slug; // Import Slug
-
 /**
  * Adaptador REST de la gestión de pisos (CU-05).
  */

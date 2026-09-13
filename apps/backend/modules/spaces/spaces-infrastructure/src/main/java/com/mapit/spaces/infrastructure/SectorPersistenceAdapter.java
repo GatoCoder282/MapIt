@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.stereotype.Repository;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-import com.mapit.spaces.domain.SectorId;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.spaces.domain.Sector;
+import com.mapit.spaces.domain.SectorId;
 import com.mapit.spaces.domain.SectorRepository;
 import com.mapit.spaces.domain.Slug;
 

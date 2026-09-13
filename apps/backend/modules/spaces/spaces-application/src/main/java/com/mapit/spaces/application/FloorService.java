@@ -1,9 +1,9 @@
 package com.mapit.spaces.application;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.time.Instant;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +14,6 @@ import com.mapit.spaces.domain.EstablishmentRepository;
 import com.mapit.spaces.domain.Floor;
 import com.mapit.spaces.domain.FloorRepository;
 import com.mapit.spaces.domain.Slug;
-import com.mapit.spaces.application.EstablishmentNotFoundException;// Assuming this exists from CU-04
 
 /**
  * Casos de uso de gestión de pisos (CU-05).

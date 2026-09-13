@@ -3,8 +3,6 @@ package com.mapit.spaces.domain;
 import java.util.Objects;
 import java.util.UUID;
 
-import com.mapit.shared.tenant.TenantId;
-
 /** Value object que identifica de forma única un Sector dentro de un Tenant. */
 public record SectorId(UUID value) {
 

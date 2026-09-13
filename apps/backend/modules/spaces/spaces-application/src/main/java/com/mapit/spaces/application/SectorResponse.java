@@ -1,7 +1,7 @@
 package com.mapit.spaces.application;
 
-import java.util.UUID;
 import java.time.Instant;
+import java.util.UUID;
 
 /** Respuesta de salida para un sector (CU-05). */
 public record SectorResponse(

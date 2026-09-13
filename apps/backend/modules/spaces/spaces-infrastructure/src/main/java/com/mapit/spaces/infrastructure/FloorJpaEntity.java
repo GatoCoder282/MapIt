@@ -1,7 +1,6 @@
 package com.mapit.spaces.infrastructure;
 
 import java.time.Instant;
-import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;

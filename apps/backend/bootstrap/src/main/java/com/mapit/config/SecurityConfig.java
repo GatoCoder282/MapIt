@@ -33,25 +33,23 @@ public class SecurityConfig {
 
     /** Rutas públicas del andamiaje. Se irán acotando conforme lleguen los casos de uso. */
     private static final String[] RUTAS_PUBLICAS = {
-        // Despacho interno de errores de Spring MVC. Sin esta ruta, un 400 de
-        // validación hace forward a /error, vuelve a pasar por este filtro y
-        // sale como 403 con el cuerpo vacío.
+        // Despacho interno de errores de Spring MVC.
         "/error",
         "/actuator/health/**",
         "/actuator/info",
         "/v3/api-docs/**",
         "/swagger-ui/**",
         "/swagger-ui.html",
-        // Superficie pública de reservas (CU-15, CU-16): el cliente final es anónimo.
+        // Superficie pública de reservas
         "/api/v1/health",
         "/api/v1/public/**",
-        // CRUD temporal para validar el stack sin implementar todavía CU-23/CU-24.
         "/api/v1/demo-items/**",
-        // CU-04. TEMPORAL: la autorización por rol llega en CU-23/CU-24. Hasta
-        // entonces el tenant lo resuelve el servidor con DemoTenantContext.
         "/api/v1/establishments/**",
-        // CU-05. Configuración de Pisos
+        // CU-05 / MAP-67 / MAP-68. Configuración de Pisos y Sectores
         "/api/v1/floors/**",
+        "/api/v1/sectors/**",
+        "/v1/floors/**",
+        "/v1/sectors/**",
     };
 
     @Bean

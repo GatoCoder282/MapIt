@@ -7,12 +7,11 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import com.mapit.shared.tenant.TenantContext; // Import TenantContext
+import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.spaces.domain.Floor;
 import com.mapit.spaces.domain.FloorRepository;
 import com.mapit.spaces.domain.Slug;
-import com.mapit.spaces.application.EstablishmentNotFoundException; // Assuming this exists
 
 /**
  * Adaptador JPA del puerto de pisos y activación de RLS.
