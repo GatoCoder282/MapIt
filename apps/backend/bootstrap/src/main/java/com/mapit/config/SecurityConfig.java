@@ -50,6 +50,8 @@ public class SecurityConfig {
         // CU-04. TEMPORAL: la autorización por rol llega en CU-23/CU-24. Hasta
         // entonces el tenant lo resuelve el servidor con DemoTenantContext.
         "/api/v1/establishments/**",
+        // CU-05. Configuración de Pisos
+        "/api/v1/floors/**",
     };
 
     @Bean
