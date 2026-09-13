@@ -1,40 +1,106 @@
-<div class="login-page">
-  <aside class="showcase" aria-label="Opera tu espacio en tiempo real">
-    <h1>Opera tu espacio en <span>tiempo real</span></h1>
-    <img ngSrc="/assets/login-map.svg" width="620" height="1000" priority alt="" class="space-map" />
+<main class="login-layout">
+  <!-- ── Panel Izquierdo: Showcase visual con fondo blanco, curvas y eslogan ── -->
+  <aside class="showcase" aria-label="Plataforma MapIt">
+    <div class="showcase-gradient" aria-hidden="true"></div>
+
+    <!-- Mensaje de bienvenida y eslogan corporativo en español -->
+    <div class="showcase-message">
+      <h2>Mapea tu negocio, opéralo en <span>Tiempo Real</span></h2>
+      <p>La plataforma inteligente para gestionar mesas, barras y zonas con máxima agilidad y control operativo.</p>
+    </div>
+
+    <!-- Testimonio en español -->
+    <div class="showcase-quote-wrapper">
+      <blockquote class="quote">
+        <p class="quote-text">
+          &ldquo;Esta plataforma nos ha permitido coordinar los espacios y atender a los clientes con una velocidad y
+          precisión nunca antes vista.&rdquo;
+        </p>
+      </blockquote>
+    </div>
+
+    <!-- Curvas dinámicas fluidas (FloatingPaths) -->
+    <div class="floating-paths-container" aria-hidden="true">
+      <svg class="floating-paths-svg" viewBox="0 0 696 316" fill="none">
+        <title>Curvas dinámicas decorativas</title>
+        @for (path of pathsTop; track path.id) {
+          <path
+            [attr.d]="path.d"
+            stroke="currentColor"
+            [attr.stroke-width]="path.width"
+            [style.animation-duration.s]="path.duration"
+            [style.animation-delay.s]="path.delay"
+            [style.opacity]="path.opacity"
+            class="floating-path"
+          />
+        }
+        @for (path of pathsBottom; track path.id) {
+          <path
+            [attr.d]="path.d"
+            stroke="currentColor"
+            [attr.stroke-width]="path.width"
+            [style.animation-duration.s]="path.duration"
+            [style.animation-delay.s]="path.delay"
+            [style.opacity]="path.opacity"
+            class="floating-path"
+          />
+        }
+      </svg>
+    </div>
   </aside>
 
-  <section class="login-panel" aria-labelledby="welcome-title">
+  <!-- ── Panel Derecho: Inicio de sesión con correo y contraseña ── -->
+  <section class="login-panel" aria-labelledby="login-title">
+    <!-- Resplandor ambiental de fondo -->
+    <div class="ambient-glow" aria-hidden="true">
+      <div class="glow-orb"></div>
+    </div>
+
     <div class="login-content">
-      <div class="brand" role="img" aria-label="Mapit">
-        Map<span class="brand-i"
-          >ı<svg viewBox="0 0 24 32" aria-hidden="true">
-            <path d="M12 0C5.4 0 0 5.3 0 12c0 8.2 12 20 12 20s12-11.8 12-20C24 5.3 18.6 0 12 0Z" />
-            <circle cx="12" cy="11" r="4" /></svg></span
-        >t
+      <!-- Logo de MapIt justo arriba del inicio de sesión -->
+      <div class="login-brand">
+        <img ngSrc="assets/img/logo_mapit_white.png" priority alt="MapIt" class="brand-logo" width="132" height="60" />
       </div>
 
+      <!-- Título de sección en español -->
       <div class="welcome">
-        <h2 id="welcome-title">Bienvenido de nuevo</h2>
+        <br />
+        <h1 id="login-title">Iniciar sesión</h1>
         <p>Ingresa tus credenciales para acceder a la plataforma.</p>
       </div>
 
-      <form (ngSubmit)="store.submit()" [attr.aria-busy]="store.pending()" novalidate>
+      <!-- Formulario de acceso -->
+      <form (ngSubmit)="store.submit()" [attr.aria-busy]="store.pending()" novalidate class="login-form">
         <div class="field">
           <label for="email">Correo electrónico</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autocomplete="username"
-            placeholder="ejemplo@empresa.com"
-            [ngModel]="store.email()"
-            (ngModelChange)="store.setEmail($event)"
-            [attr.aria-invalid]="store.emailError() ? 'true' : null"
-            [attr.aria-describedby]="store.emailError() ? 'email-error' : null"
-            [disabled]="store.pending()"
-            required
-          />
+          <div class="input-container">
+            <svg
+              class="input-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="4" />
+              <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />
+            </svg>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              placeholder="tu.correo@ejemplo.com"
+              [ngModel]="store.email()"
+              (ngModelChange)="store.setEmail($event)"
+              [attr.aria-invalid]="store.emailError() ? 'true' : null"
+              [attr.aria-describedby]="store.emailError() ? 'email-error' : null"
+              [disabled]="store.pending()"
+              required
+            />
+          </div>
           @if (store.emailError()) {
             <p class="field-error" id="email-error">{{ store.emailError() }}</p>
           }
@@ -42,7 +108,20 @@
 
         <div class="field">
           <label for="password">Contraseña</label>
-          <div class="password-field">
+          <div class="input-container password-container">
+            <svg
+              class="input-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
             <input
               id="password"
               name="password"
@@ -63,11 +142,22 @@
               [attr.aria-label]="store.passwordVisible() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
               [attr.aria-pressed]="store.passwordVisible()"
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-                <circle cx="12" cy="12" r="3" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 @if (store.passwordVisible()) {
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
                   <path d="m3 3 18 18" />
+                } @else {
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
                 }
               </svg>
             </button>
@@ -78,16 +168,16 @@
         </div>
 
         <div class="form-options">
-          <label class="remember"
-            ><input
+          <label class="remember">
+            <input
               type="checkbox"
-              [disabled]="store.pending()"
               name="remember"
+              [disabled]="store.pending()"
               [checked]="store.remember()"
               (change)="store.toggleRemember()"
             />
-            Recordarme</label
-          >
+            <span>Recordarme</span>
+          </label>
           <button type="button" class="text-button" (click)="store.showHelp('password')">
             ¿Olvidaste tu contraseña?
           </button>
@@ -96,6 +186,7 @@
         <button type="submit" class="submit-button" [disabled]="store.pending()">
           {{ store.pending() ? 'Iniciando sesión…' : 'Iniciar sesión' }}
         </button>
+
         @if (store.message()) {
           <p class="form-message" role="status">{{ store.message() }}</p>
         }
@@ -105,6 +196,12 @@
         ¿Nuevo negocio?
         <button type="button" class="text-button" (click)="store.showHelp('access')">Solicita acceso</button>
       </p>
+
+      <p class="terms-disclaimer">
+        Al continuar, aceptas nuestros
+        <a href="#" class="legal-link">Términos de Servicio</a> y
+        <a href="#" class="legal-link">Política de Privacidad</a>.
+      </p>
     </div>
   </section>
-</div>
+</main>
