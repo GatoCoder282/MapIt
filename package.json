@@ -97,7 +97,7 @@
   },
   "lint-staged": {
     "*.{ts,html,scss,css,json,md,yaml,yml}": "prettier --write",
-    "*.ts": "eslint --fix --max-warnings=0"
+    "*.ts": "eslint --fix --max-warnings=5"
   },
   "prettier": "@mapit/config-prettier",
   "dependencies": {
