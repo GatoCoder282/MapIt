@@ -1,5 +1,7 @@
 /* Estilos globales de la consola. Los tokens de diseño viven en @mapit/ui-kit. */
 @use 'ui-kit/styles/tokens' as *;
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/manrope'; /* stylelint-disable-line */
 
 :root {
   color-scheme: light dark;
@@ -9,9 +11,15 @@ html,
 body {
   height: 100%;
   margin: 0;
-  font-family: var(--mapit-font-sans);
-  background: var(--mapit-color-surface);
+  font: var(--mapit-text-body);
+  background: var(--mapit-color-canvas);
   color: var(--mapit-color-text);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--mapit-font-display);
 }
 
 *,
