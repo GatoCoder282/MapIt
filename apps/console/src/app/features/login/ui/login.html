@@ -1,19 +1,101 @@
-<div class="login-page">
-  <aside class="showcase" aria-label="Opera tu espacio en tiempo real">
-    <h1>Opera tu espacio en <span>tiempo real</span></h1>
-    <img ngSrc="/assets/login-map.svg" width="620" height="1000" priority alt="" class="space-map" />
-  </aside>
+<div class="auth-page">
+  <!-- ── Fondo decorativo con círculos y circunferencias concéntricas tenues ── -->
+  <div class="bg-decorations" aria-hidden="true">
+    <!-- Conjunto superior derecho: arcos y bandas concéntricas como en la referencia -->
+    <svg class="bg-shape bg-shape-tr" viewBox="0 0 800 800" fill="none">
+      <!-- Bandas circulares concéntricas en tonos tenues -->
+      <circle cx="800" cy="0" r="740" fill="#eef4ff" fill-opacity="0.8" />
+      <circle cx="800" cy="0" r="580" fill="#dce8fd" fill-opacity="0.85" />
+      <circle cx="800" cy="0" r="420" fill="#e9f1fe" fill-opacity="0.9" />
+      <circle cx="800" cy="0" r="280" fill="#f4f8ff" fill-opacity="0.95" />
 
-  <section class="login-panel" aria-labelledby="welcome-title">
-    <div class="login-content">
-      <div class="brand" role="img" aria-label="Mapit">
-        Map<span class="brand-i"
-          >ı<svg viewBox="0 0 24 32" aria-hidden="true">
-            <path d="M12 0C5.4 0 0 5.3 0 12c0 8.2 12 20 12 20s12-11.8 12-20C24 5.3 18.6 0 12 0Z" />
-            <circle cx="12" cy="11" r="4" /></svg></span
-        >t
-      </div>
+      <!-- Circunferencias concéntricas nítidas y elegantes -->
+      <circle cx="800" cy="0" r="780" stroke="#3d4ef2" stroke-opacity="0.08" stroke-width="1.5" />
+      <circle
+        cx="800"
+        cy="0"
+        r="660"
+        stroke="#3d4ef2"
+        stroke-opacity="0.12"
+        stroke-width="1.5"
+        stroke-dasharray="6 6"
+      />
+      <circle cx="800" cy="0" r="580" stroke="#3d4ef2" stroke-opacity="0.15" stroke-width="1.5" />
+      <circle cx="800" cy="0" r="490" stroke="#3d4ef2" stroke-opacity="0.10" stroke-width="1.5" />
+      <circle cx="800" cy="0" r="420" stroke="#3d4ef2" stroke-opacity="0.18" stroke-width="1.5" />
+      <circle cx="800" cy="0" r="350" stroke="#3d4ef2" stroke-opacity="0.10" stroke-width="1.5" />
+      <circle cx="800" cy="0" r="280" stroke="#3d4ef2" stroke-opacity="0.14" stroke-width="1.5" />
+      <circle
+        cx="800"
+        cy="0"
+        r="200"
+        stroke="#3d4ef2"
+        stroke-opacity="0.12"
+        stroke-width="1.5"
+        stroke-dasharray="4 4"
+      />
+    </svg>
 
+    <!-- Conjunto inferior izquierdo: equilibrando el lienzo con arcos concéntricos -->
+    <svg class="bg-shape bg-shape-bl" viewBox="0 0 700 700" fill="none">
+      <circle cx="0" cy="700" r="620" fill="#f0f5ff" fill-opacity="0.75" />
+      <circle cx="0" cy="700" r="470" fill="#dde9fd" fill-opacity="0.8" />
+      <circle cx="0" cy="700" r="330" fill="#edf4fe" fill-opacity="0.85" />
+      <circle cx="0" cy="700" r="200" fill="#f7faff" />
+
+      <!-- Circunferencias concéntricas -->
+      <circle cx="0" cy="700" r="660" stroke="#3d4ef2" stroke-opacity="0.07" stroke-width="1.5" />
+      <circle
+        cx="0"
+        cy="700"
+        r="540"
+        stroke="#3d4ef2"
+        stroke-opacity="0.11"
+        stroke-width="1.5"
+        stroke-dasharray="5 5"
+      />
+      <circle cx="0" cy="700" r="470" stroke="#3d4ef2" stroke-opacity="0.15" stroke-width="1.5" />
+      <circle cx="0" cy="700" r="390" stroke="#3d4ef2" stroke-opacity="0.09" stroke-width="1.5" />
+      <circle cx="0" cy="700" r="330" stroke="#3d4ef2" stroke-opacity="0.16" stroke-width="1.5" />
+      <circle
+        cx="0"
+        cy="700"
+        r="250"
+        stroke="#3d4ef2"
+        stroke-opacity="0.12"
+        stroke-width="1.5"
+        stroke-dasharray="4 4"
+      />
+    </svg>
+
+    <!-- Circunferencias y anillos tenues flotantes a media altura -->
+    <svg class="bg-shape bg-shape-side" viewBox="0 0 320 320" fill="none">
+      <circle cx="160" cy="160" r="140" stroke="#3d4ef2" stroke-opacity="0.08" stroke-width="1.5" />
+      <circle
+        cx="160"
+        cy="160"
+        r="100"
+        stroke="#3d4ef2"
+        stroke-opacity="0.12"
+        stroke-width="1.5"
+        stroke-dasharray="4 6"
+      />
+      <circle cx="160" cy="160" r="60" stroke="#3d4ef2" stroke-opacity="0.14" stroke-width="1.5" />
+      <circle cx="160" cy="160" r="24" fill="#3d4ef2" fill-opacity="0.06" />
+    </svg>
+  </div>
+
+  <div class="brand" role="img" aria-label="MapIt">
+    Map<span class="brand-i"
+      >ı<svg viewBox="0 0 24 32" aria-hidden="true">
+        <path d="M12 0C5.4 0 0 5.3 0 12c0 8.2 12 20 12 20s12-11.8 12-20C24 5.3 18.6 0 12 0Z" />
+        <circle cx="12" cy="11" r="4" /></svg></span
+    >t
+  </div>
+
+  <div class="auth-card" [class.register-mode]="mode() === 'register'">
+    <!-- ── Formulario de acceso (mitad derecha) ─────────── -->
+    <section class="form-half login-half" [attr.aria-hidden]="mode() !== 'login'" aria-labelledby="welcome-title">
       <div class="welcome">
         <h2 id="welcome-title">Bienvenido de nuevo</h2>
         <p>Ingresa tus credenciales para acceder a la plataforma.</p>
@@ -101,10 +183,172 @@
         }
       </form>
 
-      <p class="request-access">
+      <p class="toggle-link">
         ¿Nuevo negocio?
-        <button type="button" class="text-button" (click)="store.showHelp('access')">Solicita acceso</button>
+        <button type="button" class="text-button" (click)="setMode('register')">Crea tu cuenta</button>
       </p>
+    </section>
+
+    <!-- ── Formulario de registro (mitad izquierda, visual) ── -->
+    <section
+      class="form-half register-half"
+      [attr.aria-hidden]="mode() !== 'register'"
+      aria-labelledby="register-title"
+    >
+      <div class="welcome">
+        <h2 id="register-title">Da de alta tu negocio</h2>
+        <p>Crea tu cuenta para operar tu espacio en tiempo real.</p>
+      </div>
+
+      <form (ngSubmit)="register.submit()" novalidate>
+        <div class="field">
+          <label for="reg-name">Nombre del negocio</label>
+          <input
+            id="reg-name"
+            name="name"
+            type="text"
+            autocomplete="organization"
+            placeholder="Ej. Restaurante La Bahía"
+            [ngModel]="register.name()"
+            (ngModelChange)="register.set('name', $event)"
+            [attr.aria-invalid]="register.nameError() ? 'true' : null"
+            [attr.aria-describedby]="register.nameError() ? 'reg-name-error' : null"
+            required
+          />
+          @if (register.nameError()) {
+            <p class="field-error" id="reg-name-error">{{ register.nameError() }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="reg-email">Correo electrónico</label>
+          <input
+            id="reg-email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            placeholder="ejemplo@empresa.com"
+            [ngModel]="register.email()"
+            (ngModelChange)="register.set('email', $event)"
+            [attr.aria-invalid]="register.emailError() ? 'true' : null"
+            [attr.aria-describedby]="register.emailError() ? 'reg-email-error' : null"
+            required
+          />
+          @if (register.emailError()) {
+            <p class="field-error" id="reg-email-error">{{ register.emailError() }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="reg-password">Contraseña</label>
+          <div class="password-field">
+            <input
+              id="reg-password"
+              name="password"
+              [type]="register.passwordVisible() ? 'text' : 'password'"
+              autocomplete="new-password"
+              placeholder="Crea una contraseña segura"
+              [ngModel]="register.password()"
+              (ngModelChange)="register.set('password', $event)"
+              [attr.aria-invalid]="register.passwordError() ? 'true' : null"
+              [attr.aria-describedby]="register.passwordError() ? 'reg-password-error' : null"
+              required
+            />
+            <button
+              class="password-toggle"
+              type="button"
+              (click)="register.togglePassword()"
+              [attr.aria-label]="register.passwordVisible() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              [attr.aria-pressed]="register.passwordVisible()"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                <circle cx="12" cy="12" r="3" />
+                @if (register.passwordVisible()) {
+                  <path d="m3 3 18 18" />
+                }
+              </svg>
+            </button>
+          </div>
+          @if (register.passwordError()) {
+            <p class="field-error" id="reg-password-error">{{ register.passwordError() }}</p>
+          }
+          <mapit-password-strength [value]="register.password()" />
+        </div>
+
+        <div class="field">
+          <label for="reg-confirm-password" class="field-label-match">
+            <span>Confirmar contraseña</span>
+            @if (register.passwordsMatch()) {
+              <span class="match-badge match-success" title="Las contraseñas coinciden">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              </span>
+            } @else if (register.showMismatch()) {
+              <span class="match-badge match-mismatch" title="Las contraseñas no coinciden">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </span>
+            }
+          </label>
+          <input
+            id="reg-confirm-password"
+            name="confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            placeholder="Repite tu contraseña"
+            [class.input-valid]="register.passwordsMatch()"
+            [class.input-invalid]="register.showMismatch() || !!register.confirmPasswordError()"
+            [ngModel]="register.confirmPassword()"
+            (ngModelChange)="register.set('confirmPassword', $event)"
+            [attr.aria-invalid]="register.showMismatch() || register.confirmPasswordError() ? 'true' : null"
+            [attr.aria-describedby]="
+              register.showMismatch() || register.confirmPasswordError()
+                ? 'reg-confirm-error'
+                : register.passwordsMatch()
+                  ? 'reg-confirm-success'
+                  : null
+            "
+            required
+          />
+          @if (register.showMismatch()) {
+            <p class="field-error" id="reg-confirm-error">Las contraseñas no coinciden.</p>
+          } @else if (register.passwordsMatch()) {
+            <p class="field-success" id="reg-confirm-success">Las contraseñas coinciden.</p>
+          } @else if (register.confirmPasswordError()) {
+            <p class="field-error" id="reg-confirm-error">{{ register.confirmPasswordError() }}</p>
+          }
+        </div>
+
+        <button type="submit" class="submit-button">Solicitar acceso</button>
+        @if (register.message()) {
+          <p class="form-message" role="status">{{ register.message() }}</p>
+        }
+      </form>
+
+      <p class="toggle-link">
+        ¿Ya tienes cuenta?
+        <button type="button" class="text-button" (click)="setMode('login')">Inicia sesión</button>
+      </p>
+    </section>
+
+    <!-- ── Panel deslizante con borde curvo ─────────────── -->
+    <div class="overlay">
+      @if (mode() === 'login') {
+        <div class="overlay-content">
+          <h2>¿Nuevo aquí?</h2>
+          <p>Únete hoy y descubre todo lo que MapIt puede hacer por tu negocio. Crea tu cuenta en segundos.</p>
+          <button type="button" class="ghost-button" (click)="setMode('register')">Crear cuenta</button>
+        </div>
+      } @else {
+        <div class="overlay-content">
+          <h2>¿Ya eres de los nuestros?</h2>
+          <p>Bienvenido de nuevo. Inicia sesión para continuar donde lo dejaste.</p>
+          <button type="button" class="ghost-button" (click)="setMode('login')">Iniciar sesión</button>
+        </div>
+      }
     </div>
-  </section>
+  </div>
 </div>

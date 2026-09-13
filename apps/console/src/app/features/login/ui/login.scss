@@ -1,66 +1,82 @@
 :host {
   display: block;
   color-scheme: light;
-  color: #202633;
-  background: #fff;
+  color: #151c27;
 }
 
-.login-page {
+/* ── Página ─────────────────────────────────────────────── */
+.auth-page {
+  position: relative;
   min-height: 100dvh;
-  display: grid;
-  grid-template-columns: 40% 60%;
-}
-
-.showcase {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 40px 20px;
+  background: #ffffff;
   overflow: hidden;
-  background: #f0f1ff;
 
-  h1 {
-    margin: 0;
-    padding: 32px 28px 48px;
-    color: #080909;
-    font-size: clamp(30px, 3.1vw, 48px);
-    font-weight: 650;
-    line-height: 1.13;
-    letter-spacing: -1.3px;
-  }
-
-  span {
-    display: block;
-    color: #272ee8;
+  /* Todo el contenido interactivo y tarjeta por encima de los decorativos */
+  > *:not(.bg-decorations) {
+    position: relative;
+    z-index: 1;
   }
 }
 
-.space-map {
-  width: 100%;
-  height: 0;
-  min-height: 520px;
-  flex: 1;
-  object-fit: cover;
-  object-position: center;
-  margin-bottom: 24px;
+/* ── Elementos de fondo: arcos y circunferencias concéntricas tenues ─ */
+.bg-decorations {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.login-panel {
-  display: grid;
-  place-items: center;
-  padding: 64px 40px;
+.bg-shape {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
 }
 
-.login-content {
-  width: min(100%, 480px);
+.bg-shape-tr {
+  top: -120px;
+  right: -120px;
+  width: min(840px, 64vw);
+  height: min(840px, 64vw);
+  min-width: 480px;
+  min-height: 480px;
+}
+
+.bg-shape-bl {
+  bottom: -140px;
+  left: -140px;
+  width: min(720px, 54vw);
+  height: min(720px, 54vw);
+  min-width: 420px;
+  min-height: 420px;
+}
+
+.bg-shape-side {
+  top: 18%;
+  left: 4%;
+  width: 220px;
+  height: 220px;
+  opacity: 0.85;
+
+  @media (max-width: 1100px) {
+    display: none;
+  }
 }
 
 .brand {
   width: fit-content;
-  margin: 0 auto 90px;
-  color: #383c3e;
-  font-size: 90px;
+  font-family: var(--mapit-font-display);
+  color: #151c27;
+  font-size: 44px;
   font-weight: 700;
   line-height: 1.15;
-  letter-spacing: -4px;
+  letter-spacing: -2px;
 }
 
 .brand-i {
@@ -68,63 +84,294 @@
 
   svg {
     position: absolute;
-    width: 24px;
-    height: 32px;
-    left: 1px;
-    top: 4px;
-    fill: #484ce8;
+    width: 12px;
+    height: 16px;
+    left: 0.5px;
+    top: 2px;
+    /* Cuerpo del pin: azul índigo de marca */
+    fill: #3d4ef2;
   }
 
   circle {
-    fill: #fff;
+    /* Punto interior del pin: blanco */
+    fill: #ffffff;
   }
 }
 
-.welcome {
-  margin-bottom: 44px;
+/* ── Tarjeta ────────────────────────────────────────────── */
+.auth-card {
+  position: relative;
+  width: min(960px, 90vw);
+  min-height: 560px;
+  zoom: 0.92; /* escala compacta constante (aspecto idéntico al zoom 90%) */
+  border-radius: var(--mapit-radius-xl);
+  background: #151c27;
+  border: 1px solid #2a313d;
+  box-shadow: 0 20px 48px rgb(0 0 0 / 0.35);
+  overflow: hidden;
+  color: #e8eaed;
+}
+
+/* Las dos mitades conviven: una se muestra, la otra se oculta
+   con crossfade. El overlay (panel índigo) las cubre mientras
+   se desliza. */
+/* Cada formulario vive en la franja que el panel NO cubre en
+   reposo (100% - 58% = 42%), anclada al borde externo. Así el
+   borde curvo nunca pisa el contenido. */
+.form-half {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 42%;
+  padding: 38px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  overflow-y: auto;
+
+  /* Línea gris sutil de scroll para fondo oscuro de la tarjeta */
+  scrollbar-width: thin;
+  scrollbar-color: #3a3f4d transparent;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #3a3f4d;
+    border-radius: var(--mapit-radius-full);
+
+    &:hover {
+      background-color: #6b7280;
+    }
+  }
+
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition:
+    opacity 300ms var(--mapit-ease-out),
+    transform 300ms var(--mapit-ease-out),
+    visibility 0s linear 300ms;
+}
+
+.login-half {
+  right: 0;
+}
+
+.register-half {
+  left: 0;
+}
+
+/* El formulario entrante espera a que el panel lo haya cubierto
+   a medias (150ms), igual que en la referencia. */
+.auth-card:not(.register-mode) .login-half,
+.auth-card.register-mode .register-half {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 300ms var(--mapit-ease-out) 150ms,
+    transform 300ms var(--mapit-ease-out) 150ms,
+    visibility 0s;
+}
+
+/* ── Panel deslizante (la "arista de círculo") ──────────── */
+/* Ancho 58%: ligeramente mayor que la mitad del formulario para
+   que nunca se vean ambos formularios a la vez durante el cruce.
+   border-radius elíptico ~50% crea la curva convexa. */
+.overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 58%;
+  padding: 48px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+  background: linear-gradient(160deg, var(--mapit-color-accent), var(--mapit-color-primary));
+  color: #fff;
+  border-radius: 0 50% 50% 0 / 0 34% 34% 0;
+  transition:
+    transform 500ms cubic-bezier(0.77, 0, 0.175, 1),
+    border-radius 500ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* Deslizamiento: en modo registro el panel viaja a la derecha
+   (42% restante de la tarjeta = 72.41% de su propio ancho) y la
+   curva rota al lado contrario. */
+.register-mode .overlay {
+  transform: translateX(72.414%);
+  border-radius: 50% 0 0 50% / 34% 0 0 34%;
+}
+
+.overlay-content {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  animation: cta-in 300ms var(--mapit-ease-out) 220ms backwards;
 
   h2 {
-    font-size: 22px;
+    margin: 0;
+    font-family: var(--mapit-font-display);
+    font-size: 26px;
     font-weight: 600;
-    margin: 0 0 10px;
   }
 
   p {
     margin: 0;
-    color: #515366;
-    font-size: 20px;
-    line-height: 1.45;
+    max-width: 30ch;
+    font: var(--mapit-text-body);
+    line-height: 1.5;
+    opacity: 0.85;
+  }
+}
+
+@keyframes cta-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.ghost-button {
+  margin-top: 12px;
+  padding: 12px 32px;
+  border: 1.5px solid #fff;
+  border-radius: 9999px;
+  background: transparent;
+  color: #fff;
+  font: var(--mapit-text-body-bold);
+  cursor: pointer;
+  transition:
+    background-color var(--mapit-duration-fast) var(--mapit-ease-out),
+    transform var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  &:hover {
+    background: rgb(255 255 255 / 0.12);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* ── Formularios ────────────────────────────────────────── */
+.welcome {
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0 0 8px;
+    font: var(--mapit-text-display);
+    font-family: var(--mapit-font-display);
+    color: #e8eaed;
+  }
+
+  p {
+    margin: 0;
+    font: var(--mapit-text-body);
+    color: #9aa1ad;
   }
 }
 
 .field {
-  margin-bottom: 26px;
+  margin-bottom: 14px;
 
   > label {
     display: block;
-    margin-bottom: 10px;
-    font-size: 20px;
+    margin-bottom: 6px;
+    font: var(--mapit-text-body-bold);
+    font-weight: 500;
+    color: #b9bdcf;
   }
 
   input {
     width: 100%;
-    height: 54px;
-    padding: 0 18px;
-    border: 1px solid #c5c5df;
-    border-radius: 5px;
-    background: #fff;
-    color: #202633;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid #3a3f4d;
+    border-radius: var(--mapit-radius-input);
+    background: #1e2230;
+    color: #e8eaed;
     font: inherit;
-    font-size: 19px;
 
     &::placeholder {
-      color: #757b8b;
+      color: #6b7280;
       opacity: 1;
     }
 
-    &[aria-invalid='true'] {
-      border-color: #b42318;
+    &:focus {
+      outline: none;
+      border-color: var(--mapit-color-accent);
+      box-shadow: 0 0 0 2px var(--mapit-color-focus-ring);
     }
+
+    &[aria-invalid='true'],
+    &.input-invalid {
+      border-color: var(--mapit-color-error);
+
+      &:focus {
+        border-color: var(--mapit-color-error);
+        box-shadow: 0 0 0 2px rgb(186 26 26 / 0.2);
+      }
+    }
+
+    &.input-valid {
+      border-color: var(--mapit-state-available);
+
+      &:focus {
+        border-color: var(--mapit-state-available);
+        box-shadow: 0 0 0 2px rgb(34 197 94 / 0.2);
+      }
+    }
+  }
+}
+
+.field-label-match {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.match-badge {
+  display: inline-flex;
+  align-items: center;
+  animation: badge-in 180ms var(--mapit-ease-out);
+
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &.match-success {
+    color: var(--mapit-state-available);
+  }
+
+  &.match-mismatch {
+    color: var(--mapit-color-error);
+  }
+}
+
+@keyframes badge-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -132,28 +379,39 @@
   position: relative;
 
   input {
-    padding-right: 54px;
+    padding-right: 44px;
   }
 }
 
 .password-toggle {
   position: absolute;
   right: 4px;
-  top: 5px;
-  width: 44px;
-  height: 44px;
+  top: 4px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border: 0;
+  border-radius: var(--mapit-radius-input);
   background: transparent;
-  color: #515366;
+  color: var(--mapit-color-text-muted);
   cursor: pointer;
+  transition: color var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  &:hover:not(:disabled) {
+    color: var(--mapit-color-text);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: default;
+  }
 
   svg {
-    width: 24px;
+    width: 20px;
     fill: none;
     stroke: currentColor;
-    stroke-width: 1.8;
+    stroke-width: 1.5;
   }
 }
 
@@ -162,22 +420,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 30px 0 44px;
-  font-size: 18px;
+  margin: 18px 0 20px;
+  font: var(--mapit-text-body);
 }
 
 .remember {
   display: flex;
   align-items: center;
-  gap: 9px;
-  color: #515366;
+  gap: 8px;
+  color: #9aa1ad;
   cursor: pointer;
 
   input {
-    width: 19px;
-    height: 19px;
+    width: 16px;
+    height: 16px;
     margin: 0;
-    accent-color: #272ee8;
+    accent-color: var(--mapit-color-primary);
   }
 }
 
@@ -185,7 +443,7 @@
   border: 0;
   padding: 0;
   background: transparent;
-  color: #272ee8;
+  color: var(--mapit-color-primary);
   font: inherit;
   cursor: pointer;
 
@@ -196,84 +454,125 @@
 
 .submit-button {
   width: 100%;
-  min-height: 58px;
+  min-height: 48px;
   border: 0;
-  border-radius: 10px;
-  background: #272ee8;
-  color: #fff;
+  border-radius: var(--mapit-radius-lg);
+  background: var(--mapit-color-accent);
+  color: var(--mapit-color-on-primary);
   font: inherit;
-  font-size: 20px;
+  font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color var(--mapit-duration-fast) var(--mapit-ease-out),
+    transform var(--mapit-duration-fast) var(--mapit-ease-out);
 
   &:hover {
-    background: #1d24c9;
+    background: var(--mapit-color-primary);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: wait;
   }
 }
 
-.request-access {
-  text-align: center;
-  margin: 54px 0 0;
-  color: #515366;
-  font-size: 19px;
-}
-
 .field-error,
+.field-success,
 .form-message {
   margin: 8px 0 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #b42318;
+  font: var(--mapit-text-metadata);
+}
+
+.field-error {
+  color: var(--mapit-color-error);
+}
+
+.field-success {
+  color: var(--mapit-state-available);
 }
 
 .form-message {
   padding: 12px;
-  background: #f0f1ff;
-  border-radius: 5px;
-  color: #3c426a;
+  border-radius: var(--mapit-radius-input);
+  background: #232838;
+  color: #9aa1ad;
 }
 
-input:focus-visible,
+mapit-password-strength {
+  display: block;
+  margin-top: 10px;
+}
+
+/* Enlace de cambio de modo, solo visible en móvil (allí el
+   panel deslizante se oculta). */
+.toggle-link {
+  display: none;
+  margin: 20px 0 0;
+  text-align: center;
+  font: var(--mapit-text-body);
+  color: #6b7280;
+}
+
 button:focus-visible {
-  outline: 3px solid #878bff;
-  outline-offset: 3px;
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 
-@media (max-width: 760px) {
-  .login-page {
-    grid-template-columns: 1fr;
+/* ── Motion reducido: crossfade solamente ───────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .form-half,
+  .ghost-button,
+  .submit-button {
+    transition:
+      opacity 200ms ease-out,
+      visibility 0s !important;
+    transition-duration: 0ms !important;
   }
 
-  .showcase {
+  .match-badge {
+    animation: none !important;
+  }
+
+  .register-mode .overlay {
+    transform: none;
+    left: 42%;
+  }
+
+  .overlay-content {
+    animation: none;
+  }
+}
+
+/* ── Móvil: sin panel deslizante ────────────────────────── */
+@media (max-width: 860px) {
+  .auth-card {
+    width: min(430px, 100%);
+    min-height: 0;
+  }
+
+  .overlay {
     display: none;
   }
 
-  .login-panel {
-    padding: 48px 24px;
+  .form-half {
+    position: static;
+    width: 100%;
+    padding: 36px 24px;
+    display: none;
+    overflow: visible;
   }
 
-  .brand {
-    font-size: 76px;
-    margin-bottom: 52px;
+  .auth-card:not(.register-mode) .login-half,
+  .auth-card.register-mode .register-half {
+    display: flex;
   }
 
-  .welcome {
-    margin-bottom: 32px;
+  .toggle-link {
+    display: block;
   }
-
-  .form-options {
-    font-size: 15px;
-    flex-wrap: wrap;
-    row-gap: 20px;
-    margin-bottom: 32px;
-  }
-
-  .request-access {
-    font-size: 17px;
-    margin-top: 36px;
-  }
-}
-
-.submit-button:disabled {
-  opacity: 0.65;
-  cursor: wait;
 }
