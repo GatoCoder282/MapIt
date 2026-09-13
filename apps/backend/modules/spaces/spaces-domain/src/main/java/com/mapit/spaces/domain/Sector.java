@@ -20,11 +20,12 @@ public record Sector(
     TenantId tenantId,
     UUID floorId,
     String name,
+    Integer maxCapacity,
     Slug slug,
-    int maxCapacity,
     AuditTrail audit) {
 
   private static final int NAME_MAX_LENGTH = 100;
+  private static final int MAX_CAPACITY_MAX = 9999;
 
   public Sector {
     Objects.requireNonNull(id, "id no puede ser null");
@@ -63,8 +64,8 @@ public record Sector(
       TenantId tenantId,
       UUID floorId,
       String name,
+      Integer maxCapacity,
       Slug slug,
-      int maxCapacity,
       Instant now,
       UUID by) {
     return new Sector(
@@ -72,13 +73,13 @@ public record Sector(
         tenantId,
         floorId,
         name,
-        slug,
         maxCapacity,
+        slug,
         AuditTrail.created(now, by));
   }
 
   /** Devuelve una copia con los datos editables actualizados. */
-  public Sector update(String name, Slug slug, int maxCapacity, Instant now, UUID by) {
+  public Sector update(String name, Integer maxCapacity, Slug slug, Instant now, UUID by) {
     if (audit.isDeleted()) {
       throw new IllegalStateException("No se puede actualizar un sector dado de baja");
     }
@@ -87,8 +88,8 @@ public record Sector(
         tenantId,
         floorId,
         name,
-        slug,
         maxCapacity,
+        slug,
         audit.touched(now, by));
   }
 
@@ -106,8 +107,8 @@ public record Sector(
         tenantId,
         floorId,
         name,
-        slug,
         maxCapacity,
+        slug,
         audit.deleted(now, by));
   }
 
