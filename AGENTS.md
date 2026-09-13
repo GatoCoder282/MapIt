@@ -1,6 +1,6 @@
 # MapIt — contexto para agentes
 
-> Este archivo es un **enrutador de contexto**, no documentación. Encuentra tu tarea en la tabla, carga lo que indica, y trabaja con eso. Cada carpeta tiene su propio `AGENTS.md` con las reglas de su sección.
+Este archivo es un **enrutador de contexto**, no documentación. Encuentra tu tarea en la tabla, carga lo que indica, y trabaja con eso. Cada carpeta tiene su propio `AGENTS.md` con las reglas de su sección.
 
 ## Qué es MapIt
 
