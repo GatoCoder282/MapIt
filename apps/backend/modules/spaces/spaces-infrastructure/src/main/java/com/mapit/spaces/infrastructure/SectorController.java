@@ -1,9 +1,8 @@
 package com.mapit.spaces.infrastructure;
 
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
-
-import java.net.URI;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -19,9 +18,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mapit.spaces.application.CreateSectorCommand;
-import com.mapit.spaces.application.FloorNotFoundException;
 import com.mapit.spaces.application.CreateSectorUseCase;
 import com.mapit.spaces.application.DeleteSectorUseCase;
+import com.mapit.spaces.application.FloorNotFoundException;
 import com.mapit.spaces.application.GetSectorByIdUseCase;
 import com.mapit.spaces.application.GetSectorsByFloorUseCase;
 import com.mapit.spaces.application.SectorNotFoundException;
