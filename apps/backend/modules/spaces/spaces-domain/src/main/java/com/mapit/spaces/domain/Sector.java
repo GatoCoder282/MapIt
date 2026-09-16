@@ -43,7 +43,9 @@ public record Sector(
       throw new IllegalArgumentException(
           "name debe tener como máximo %d caracteres".formatted(NAME_MAX_LENGTH));
     }
-    if (maxCapacity <= 0) {
+    // null primero: `maxCapacity <= 0` desempaqueta un Integer y con null lanza
+    // NullPointerException (500 no controlado) en vez de un 400 diagnosable.
+    if (maxCapacity == null || maxCapacity <= 0) {
       throw new IllegalArgumentException("maxCapacity debe ser mayor a 0");
     }
   }

@@ -1,5 +1,7 @@
 package com.mapit.spaces.domain;
 
+import java.text.Normalizer;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -31,6 +33,31 @@ public record Slug(String value) {
 
   public static Slug of(String value) {
     return new Slug(value);
+  }
+
+  /**
+   * Deriva un slug válido desde un nombre legible ("Salón Principal" → "salon-principal").
+   *
+   * <p>El contrato (CU-05) dice que el slug se autogenera en el servidor y el cliente no
+   * lo envía. La centralidad está aquí, no en el controlador: cualquier caso de uso que
+   * reciba un slug vacío puede derivarlo sin duplicar la lógica.
+   */
+  public static Slug fromName(String name) {
+    Objects.requireNonNull(name, "El nombre no puede ser null");
+    String normalizado =
+        Normalizer.normalize(name, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+    String candidato =
+        normalizado
+            .toLowerCase(Locale.ROOT)
+            .replaceAll("[^a-z0-9]+", "-")
+            .replaceAll("^-+|-+$", "");
+    if (candidato.isEmpty()) {
+      throw new IllegalArgumentException(
+          "No se puede derivar un slug del nombre: '%s'".formatted(name));
+    }
+    // El formato exige [a-z0-9] primero y 2..63 caracteres.
+    candidato = candidato.length() < 2 ? candidato + "-" + candidato : candidato;
+    return new Slug(candidato.length() > 63 ? candidato.substring(0, 63) : candidato);
   }
 
   @Override

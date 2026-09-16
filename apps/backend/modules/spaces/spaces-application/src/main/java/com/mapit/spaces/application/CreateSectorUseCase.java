@@ -18,6 +18,15 @@ import com.mapit.spaces.domain.Slug;
 @Service
 public class CreateSectorUseCase {
 
+  /**
+   * Capacidad por defecto cuando el cliente no la envía.
+   *
+   * <p>El contrato {@code SectorCreateRequest} solo pide {@code name} y {@code slug};
+   * la BD exige {@code max_capacity NOT NULL CHECK (> 0)}. El default vive aquí (capa
+   * de aplicación), no en el dominio: es una decisión del contrato, no del negocio.
+   */
+  private static final int DEFAULT_MAX_CAPACITY = 1;
+
   private final SectorRepository repository;
   private final TenantContext tenantContext;
 
@@ -30,7 +39,16 @@ public class CreateSectorUseCase {
   public SectorResponse create(CreateSectorCommand command) {
     TenantId tenantId = tenantContext.require();
 
-    requireSlugLibre(tenantId, command.floorId(), command.slug());
+    // El contrato dice que el slug se autogenera en el servidor: el cliente manda "".
+    Slug slug =
+        command.slug() == null || command.slug().isBlank()
+            ? Slug.fromName(command.name())
+            : Slug.of(command.slug());
+
+    int maxCapacity =
+        command.maxCapacity() == null ? DEFAULT_MAX_CAPACITY : command.maxCapacity();
+
+    requireSlugLibre(tenantId, command.floorId(), slug);
 
     Instant now = Instant.now();
     Sector sector =
@@ -39,8 +57,8 @@ public class CreateSectorUseCase {
             tenantId,
             command.floorId(),
             command.name(),
-            command.maxCapacity(),
-            Slug.of(command.slug()),
+            maxCapacity,
+            slug,
             now,
             null);
     Sector saved = repository.save(sector);
@@ -48,11 +66,10 @@ public class CreateSectorUseCase {
   }
 
   /** Verifica que el slug no esté usado por otro sector vivo del mismo tenant y piso. */
-  private void requireSlugLibre(TenantId tenantId, UUID floorId, String slugValue) {
-    Optional<Sector> duenio =
-        repository.findAliveBySlug(tenantId, floorId, Slug.of(slugValue));
+  private void requireSlugLibre(TenantId tenantId, UUID floorId, Slug slug) {
+    Optional<Sector> duenio = repository.findAliveBySlug(tenantId, floorId, slug);
     if (duenio.isPresent()) {
-      throw new SectorSlugAlreadyExistsException(slugValue);
+      throw new SectorSlugAlreadyExistsException(slug.value());
     }
   }
 

@@ -21,6 +21,12 @@ export const FLAGS_POR_DEFECTO = {
   /** Agrupar elementos en el editor de mapas (CU-06). */
   'spaces.editor-grouping': false,
 
+  /** Gestión de pisos y sectores (CU-05 · MAP-69). */
+  'spaces.floors': true,
+
+  /** Gestión de sectores dentro de pisos (CU-05 · MAP-70). */
+  'spaces.sectors': true,
+
   /** Vertical Hotel: reservas por rango de fechas (CU-22). */
   'vertical.hotel': false,
 

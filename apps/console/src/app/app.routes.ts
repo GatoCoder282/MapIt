@@ -48,6 +48,17 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'spaces/floors',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
+  },
+  {
+    path: 'spaces/floors/:floorId/sectors',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
+  },
+  {
     path: 'home',
     canActivate: [authGuard],
     loadComponent: () => import('./features/home/home').then((m) => m.Home),

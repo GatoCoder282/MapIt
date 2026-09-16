@@ -205,6 +205,28 @@ El lenguaje de formas equilibra lo "técnico" con la accesibilidad moderna.
   elevación. Los tonos azulados `#f9f9ff`/`#f0f3ff` quedan como superficies de apoyo
   (`surface-low`), no como fondo de página.
 
+## Setup Wizard — Light Theme explícito (CU-05)
+
+El Setup Wizard (`apps/console/.../features/spaces`) **siempre se renderiza en tema
+claro**, aunque el SO tenga `prefers-color-scheme: dark`. Los tokens se sobreescriben
+en el `:host` del componente raíz del wizard (las CSS custom properties heredan hacia
+todos los hijos), sin tocar los tokens globales de otras pantallas.
+
+| Token (uso en el wizard)          | Hex       | Aplica a                                          |
+| --------------------------------- | --------- | ------------------------------------------------- |
+| Lienzo de página (`canvas`)       | `#F8FAFC` | fondo del viewport, filas de sector               |
+| Tarjeta del wizard (`surface`)    | `#FFFFFF` | tarjeta central, topbar, filas de piso            |
+| Superficie muted (`surface-low`)  | `#F1F5F9` | badge "Drag to reorder", fondos de apoyo          |
+| Texto primario (`text`)           | `#0F172A` | títulos, nombres de piso                          |
+| Texto secundario (`text-variant`) | `#64748B` | descripciones, labels, nombres de sector          |
+| Bordes (`border`)                 | `#E2E8F0` | tarjetas, conectores del árbol (2px), separadores |
+| Primario / accent (`primary`)     | `#2563EB` | botón "Siguiente", icono de piso, paso activo     |
+| Primario UI                       | `#3B82F6` | borde dashed "+ Agregar Sector", hover primario   |
+| Contenedor primario               | `#EFF6FF` | caja de icono 40×40 del piso                      |
+
+La tarjeta del wizard usa `border-radius: 16px`; el botón "Agregar piso" es una caja
+alta con borde dashed `#CBD5E1` sobre fondo muted.
+
 ## Pendiente de resolver con el equipo de diseño
 
 Estos puntos no están definidos en la fuente original y **no deben improvisarse**

@@ -1,0 +1,325 @@
+import { Injectable, computed, inject, signal } from '@angular/core';
+import type { Floor, Sector } from '@mapit/api-client';
+import { type Observable, throwError } from 'rxjs';
+import { finalize, tap } from 'rxjs/operators';
+import { SpacesApiService, type FloorDraft, type SectorDraft } from '../data/spaces-api';
+import { SPACES_STRINGS } from './spaces.strings';
+
+const EMPTY_FLOOR_DRAFT: FloorDraft = {
+  name: '',
+  level: 0,
+};
+
+const EMPTY_SECTOR_DRAFT: SectorDraft = {
+  name: '',
+};
+
+/** ViewModel con estado y comandos para la gestión de Pisos y Sectores (CU-05 · MAP-69/70). */
+@Injectable()
+export class SpacesStore {
+  private readonly api = inject(SpacesApiService);
+  private readonly floorStrings = SPACES_STRINGS.floors;
+  private readonly sectorStrings = SPACES_STRINGS.sectors;
+
+  // Floor state
+  private readonly floorsState = signal<Floor[]>([]);
+  private readonly floorDraftState = signal<FloorDraft>({ ...EMPTY_FLOOR_DRAFT });
+  private readonly editingFloorIdState = signal<string | null>(null);
+
+  // Sector state (keyed by floorId)
+  private readonly sectorsByFloorState = signal<Record<string, Sector[]>>({});
+  private readonly sectorsLoadingState = signal<Record<string, boolean>>({});
+  private readonly sectorDraftState = signal<SectorDraft>({ ...EMPTY_SECTOR_DRAFT });
+  private readonly editingSectorIdState = signal<string | null>(null);
+
+  // Shared state
+  private readonly loadingState = signal(false);
+  private readonly savingState = signal(false);
+  private readonly errorState = signal<string | null>(null);
+
+  // Floor selectors
+  readonly floors = this.floorsState.asReadonly();
+  readonly floorDraft = this.floorDraftState.asReadonly();
+  readonly isEditingFloor = computed(() => this.editingFloorIdState() !== null);
+
+  // Sector selectors
+  readonly sectorsByFloor = computed(() => this.sectorsByFloorState());
+  readonly sectorDraft = this.sectorDraftState.asReadonly();
+  readonly isEditingSector = computed(() => this.editingSectorIdState() !== null);
+
+  // Shared selectors
+  readonly loading = this.loadingState.asReadonly();
+  readonly saving = this.savingState.asReadonly();
+  readonly error = this.errorState.asReadonly();
+
+  // Expose strings for template
+  readonly strings_ = SPACES_STRINGS;
+
+  constructor() {
+    this.loadFloors();
+  }
+
+  // ===== FLOOR OPERATIONS =====
+
+  loadFloors(): void {
+    this.loadingState.set(true);
+    this.errorState.set(null);
+    this.api
+      .listFloors()
+      .pipe(finalize(() => this.loadingState.set(false)))
+      .subscribe({
+        next: (floors) => this.floorsState.set(floors),
+        error: () => this.errorState.set(this.floorStrings.errors.loadFailed),
+      });
+  }
+
+  startNewFloor(): void {
+    this.editingFloorIdState.set(null);
+    this.floorDraftState.set({ ...EMPTY_FLOOR_DRAFT });
+    this.errorState.set(null);
+  }
+
+  editFloor(floor: Floor): void {
+    this.editingFloorIdState.set(floor.id);
+    this.floorDraftState.set({
+      name: floor.name,
+      level: floor.level,
+    });
+    this.errorState.set(null);
+  }
+
+  setFloorName(name: string): void {
+    this.floorDraftState.update((draft) => ({ ...draft, name }));
+  }
+
+  setFloorLevel(level: string | number): void {
+    const parsed = typeof level === 'string' ? parseInt(level, 10) : level;
+    this.floorDraftState.update((draft) => ({ ...draft, level: isNaN(parsed) ? 0 : parsed }));
+  }
+
+  saveFloor(): void {
+    const draft = this.floorDraft();
+    const name = draft.name.trim();
+
+    if (!name) {
+      this.errorState.set(this.floorStrings.form.nameRequired);
+      return;
+    }
+    if (name.length > this.floorStrings.form.nameMaxLength) {
+      this.errorState.set(this.floorStrings.form.nameTooLong);
+      return;
+    }
+
+    const level = draft.level;
+    const editingId = this.editingFloorIdState();
+
+    const request$ =
+      editingId === null
+        ? this.api.createFloor({ name, level })
+        : this.api.updateFloor(editingId, { name, level });
+
+    this.savingState.set(true);
+    this.errorState.set(null);
+    request$.pipe(finalize(() => this.savingState.set(false))).subscribe({
+      next: (saved) => {
+        this.floorsState.update((floors) =>
+          editingId === null
+            ? [saved, ...floors]
+            : floors.map((floor) => (floor.id === saved.id ? saved : floor)),
+        );
+        this.startNewFloor();
+      },
+      error: (response: { status?: number }) =>
+        this.errorState.set(
+          response?.status === 409
+            ? this.floorStrings.errors.slugConflict
+            : this.floorStrings.errors.saveFailed,
+        ),
+    });
+  }
+
+  /**
+   * Reordena pisos tras un drag & drop (optimista, solo local).
+   * No existe endpoint de reorden en el contrato todavía: el orden persiste
+   * solo en memoria hasta que CU-05 defina `PATCH /floors/reorder`.
+   */
+  reorderFloors(previousIndex: number, currentIndex: number): void {
+    if (previousIndex === currentIndex) return;
+    this.floorsState.update((floors) => {
+      const next = [...floors];
+      const [moved] = next.splice(previousIndex, 1);
+      if (!moved) return floors;
+      next.splice(currentIndex, 0, moved);
+      return next;
+    });
+  }
+
+  removeFloor(id: string): void {
+    const floor = this.floorsState().find((f) => f.id === id);
+    if (!floor) return;
+
+    if (!confirm(this.floorStrings.list.deleteConfirm.replace('{name}', floor.name))) {
+      return;
+    }
+
+    this.savingState.set(true);
+    this.errorState.set(null);
+    this.api
+      .deleteFloor(id)
+      .pipe(finalize(() => this.savingState.set(false)))
+      .subscribe({
+        next: () => {
+          this.floorsState.update((floors) => floors.filter((floor) => floor.id !== id));
+          // Also remove sectors for this floor
+          this.sectorsByFloorState.update((sectors) => {
+            const next = { ...sectors };
+            delete next[id];
+            return next;
+          });
+          if (this.editingFloorIdState() === id) {
+            this.startNewFloor();
+          }
+        },
+        error: () => this.errorState.set(this.floorStrings.errors.deleteFailed),
+      });
+  }
+
+  // ===== SECTOR OPERATIONS =====
+
+  sectorsByFloorId(floorId: string): Sector[] {
+    return this.sectorsByFloorState()[floorId] ?? [];
+  }
+
+  sectorsLoading(floorId: string): boolean {
+    return this.sectorsLoadingState()[floorId] ?? false;
+  }
+
+  loadSectorsByFloor(floorId: string): void {
+    this.sectorsLoadingState.update((state) => ({ ...state, [floorId]: true }));
+    this.errorState.set(null);
+    this.api
+      .listSectorsByFloor(floorId)
+      .pipe(
+        finalize(() =>
+          this.sectorsLoadingState.update((state) => ({ ...state, [floorId]: false })),
+        ),
+      )
+      .subscribe({
+        next: (sectors) =>
+          this.sectorsByFloorState.update((state) => ({ ...state, [floorId]: sectors })),
+        error: () => this.errorState.set(this.sectorStrings.errors.loadFailed),
+      });
+  }
+
+  startNewSector(): void {
+    this.editingSectorIdState.set(null);
+    this.sectorDraftState.set({ ...EMPTY_SECTOR_DRAFT });
+    this.errorState.set(null);
+  }
+
+  editSector(sector: Sector): void {
+    this.editingSectorIdState.set(sector.id);
+    this.sectorDraftState.set({
+      name: sector.name,
+    });
+    this.errorState.set(null);
+  }
+
+  setSectorName(name: string): void {
+    this.sectorDraftState.update((draft) => ({ ...draft, name }));
+  }
+
+  createSector(floorId: string, name: string): Observable<Sector> {
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      this.errorState.set(this.sectorStrings.form.nameRequired);
+      return throwError(() => new Error('Name required'));
+    }
+    if (trimmedName.length > this.sectorStrings.form.nameMaxLength) {
+      this.errorState.set(this.sectorStrings.form.nameTooLong);
+      return throwError(() => new Error('Name too long'));
+    }
+
+    this.savingState.set(true);
+    this.errorState.set(null);
+
+    return this.api.createSector(floorId, trimmedName).pipe(
+      finalize(() => this.savingState.set(false)),
+      tap({
+        next: (saved) => {
+          this.sectorsByFloorState.update((state) => ({
+            ...state,
+            [floorId]: [saved, ...(state[floorId] ?? [])],
+          }));
+          this.startNewSector();
+        },
+        error: (response: { status?: number }) => {
+          this.errorState.set(
+            response?.status === 409
+              ? this.sectorStrings.errors.slugConflict
+              : response?.status === 404
+                ? this.sectorStrings.errors.floorNotFound
+                : this.sectorStrings.errors.saveFailed,
+          );
+        },
+      }),
+    );
+  }
+
+  /**
+   * Reordena sectores dentro de un piso tras un drag & drop (optimista, local).
+   * Ver la nota de `reorderFloors`: sin endpoint de persistencia todavía.
+   */
+  reorderSectors(floorId: string, previousIndex: number, currentIndex: number): void {
+    if (previousIndex === currentIndex) return;
+    this.sectorsByFloorState.update((state) => {
+      const sectors = [...(state[floorId] ?? [])];
+      const [moved] = sectors.splice(previousIndex, 1);
+      if (!moved) return state;
+      sectors.splice(currentIndex, 0, moved);
+      return { ...state, [floorId]: sectors };
+    });
+  }
+
+  removeSector(id: string): void {
+    // Find which floor this sector belongs to
+    let sectorFloorId: string | null = null;
+    let sectorName = '';
+    for (const [floorId, sectors] of Object.entries(this.sectorsByFloorState())) {
+      const sector = sectors.find((s) => s.id === id);
+      if (sector) {
+        sectorFloorId = floorId;
+        sectorName = sector.name;
+        break;
+      }
+    }
+
+    if (!sectorFloorId) return;
+
+    if (!confirm(this.sectorStrings.list.deleteConfirm.replace('{name}', sectorName))) {
+      return;
+    }
+
+    this.savingState.set(true);
+    this.errorState.set(null);
+    this.api
+      .deleteSector(id)
+      .pipe(finalize(() => this.savingState.set(false)))
+      .subscribe({
+        next: () => {
+          this.sectorsByFloorState.update((state) => {
+            const floorSectors = state[sectorFloorId] ?? [];
+            return {
+              ...state,
+              [sectorFloorId]: floorSectors.filter((s) => s.id !== id),
+            };
+          });
+          if (this.editingSectorIdState() === id) {
+            this.startNewSector();
+          }
+        },
+        error: () => this.errorState.set(this.sectorStrings.errors.deleteFailed),
+      });
+  }
+}

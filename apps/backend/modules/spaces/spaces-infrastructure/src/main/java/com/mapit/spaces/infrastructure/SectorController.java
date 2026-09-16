@@ -3,7 +3,10 @@ package com.mapit.spaces.infrastructure;
 import java.util.List;
 import java.util.UUID;
 
+import java.net.URI;
+
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mapit.spaces.application.CreateSectorCommand;
+import com.mapit.spaces.application.FloorNotFoundException;
 import com.mapit.spaces.application.CreateSectorUseCase;
 import com.mapit.spaces.application.DeleteSectorUseCase;
 import com.mapit.spaces.application.GetSectorByIdUseCase;
@@ -26,8 +30,15 @@ import com.mapit.spaces.application.SectorSlugAlreadyExistsException;
 import com.mapit.spaces.application.UpdateSectorCommand;
 import com.mapit.spaces.application.UpdateSectorUseCase;
 
+/**
+ * Adaptador REST de sectores (CU-05).
+ *
+ * <p>La base path es {@code /api/v1}, como en {@link FloorController}: con {@code /v1}
+ * el frontend (y el contrato OpenAPI) recibían 404 en
+ * {@code GET/POST /api/v1/floors/{floorId}/sectors}.
+ */
 @RestController
-@RequestMapping("/v1")
+@RequestMapping("/api/v1")
 public class SectorController {
 
   private final CreateSectorUseCase createSectorUseCase;
@@ -101,17 +112,38 @@ public class SectorController {
   }
 
   @ExceptionHandler(SectorNotFoundException.class)
-  public ResponseEntity<String> handleNotFound(SectorNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+  ResponseEntity<ProblemDetail> handleNotFound(SectorNotFoundException ex) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    problem.setTitle("Sector no encontrado");
+    problem.setType(URI.create("https://mapit.local/problems/resource-not-found"));
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+  }
+
+  @ExceptionHandler(FloorNotFoundException.class)
+  ResponseEntity<ProblemDetail> handleFloorNotFound(FloorNotFoundException ex) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    problem.setTitle("Piso no encontrado");
+    problem.setType(URI.create("https://mapit.local/problems/resource-not-found"));
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
   @ExceptionHandler(SectorSlugAlreadyExistsException.class)
-  public ResponseEntity<String> handleConflict(SectorSlugAlreadyExistsException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+  ResponseEntity<ProblemDetail> handleConflict(SectorSlugAlreadyExistsException ex) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    problem.setTitle("Conflicto en sector");
+    problem.setType(URI.create("https://mapit.local/problems/resource-conflict"));
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+  ResponseEntity<ProblemDetail> handleBadRequest(IllegalArgumentException ex) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    problem.setTitle("Datos inválidos");
+    problem.setType(URI.create("https://mapit.local/problems/invalid-input"));
+    return ResponseEntity.badRequest().body(problem);
   }
 }
