@@ -74,37 +74,39 @@ export const routes: Routes = [
     ],
   },
   {
-    // Establecimientos (CU-04): staff de un tenant (ADMIN+, con contexto tenant).
-    // No es sección de plataforma: queda fuera del shell de SUPER_ADMIN, pero ya
-    // no es pública — antes carecía de guard.
-    path: 'establishments',
+    // Shell de staff: topbar + sidebar para las secciones operativas del tenant
+    // (Inicio, Establecimientos, Pisos/sectores, Demo). Todo bajo authGuard.
+    path: '',
     canActivate: [authGuard],
-    loadComponent: () =>
-      import('./features/administration/establishments/ui/establishments').then(
-        (m) => m.Establishments,
-      ),
-  },
-  {
-    // CU-05 (MAP-67/MAP-68): configuración de pisos y sectores (HU-2.02).
-    path: 'spaces/floors',
-    canActivate: [authGuard],
-    loadComponent: () => import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
-  },
-  {
-    path: 'spaces/floors/:floorId/sectors',
-    canActivate: [authGuard],
-    loadComponent: () =>
-      import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
-  },
-  {
-    path: 'demo-items',
-    canActivate: [authGuard],
-    loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
-  },
-  {
-    path: 'home',
-    canActivate: [authGuard],
-    loadComponent: () => import('./features/home/home').then((m) => m.Home),
+    loadComponent: () => import('./layout/staff-shell').then((m) => m.StaffShell),
+    children: [
+      {
+        path: 'home',
+        loadComponent: () => import('./features/home/home').then((m) => m.Home),
+      },
+      {
+        // Establecimientos (CU-04): staff de un tenant (ADMIN+, con contexto tenant).
+        path: 'establishments',
+        loadComponent: () =>
+          import('./features/administration/establishments/ui/establishments').then(
+            (m) => m.Establishments,
+          ),
+      },
+      {
+        // CU-05 (MAP-67/MAP-68): configuración de pisos y sectores (HU-2.02).
+        path: 'spaces/floors',
+        loadComponent: () => import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
+      },
+      {
+        path: 'spaces/floors/:floorId/sectors',
+        loadComponent: () =>
+          import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
+      },
+      {
+        path: 'demo-items',
+        loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
+      },
+    ],
   },
   {
     path: '**',

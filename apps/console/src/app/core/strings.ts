@@ -36,6 +36,15 @@ export const STRINGS = {
     },
     sectionPending: 'Esta sección estará disponible en una próxima iteración.',
   },
+  /** Shell de la consola operativa de staff (por tenant). */
+  staffShell: {
+    brandArea: 'Consola',
+    nav: {
+      home: 'Inicio',
+      establishments: 'Establecimientos',
+      spaces: 'Pisos y sectores',
+    },
+  },
   adminDashboard: {
     title: 'Dashboard',
     eyebrow: 'MapIt · Plataforma',

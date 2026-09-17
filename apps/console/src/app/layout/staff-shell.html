@@ -1,0 +1,62 @@
+<div class="staff-shell">
+  <header class="topbar">
+    <button
+      class="menu-toggle"
+      type="button"
+      (click)="toggleMenu()"
+      [attr.aria-expanded]="menuOpen()"
+      [attr.aria-label]="menuOpen() ? strings.shell.closeMenu : strings.shell.openMenu"
+    >
+      ☰
+    </button>
+    <a class="brand" routerLink="/home" (click)="closeMenu()">
+      <span class="brand-name">{{ strings.brand.name }}</span>
+      <span class="brand-area">{{ strings.staffShell.brandArea }}</span>
+    </a>
+
+    @if (session.user(); as user) {
+      <div class="user-block">
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+        <span class="user-meta">
+          <span class="user-name">{{ user.fullName }}</span>
+          <span class="user-role">{{ roleLabel() }}</span>
+        </span>
+        <button class="logout" type="button" (click)="logout()" [attr.aria-label]="strings.shell.logout">
+          <svg lucideLogOut aria-hidden="true"></svg>
+          <span class="logout-label">{{ strings.shell.logout }}</span>
+        </button>
+      </div>
+    }
+  </header>
+
+  <div class="body">
+    @if (menuOpen()) {
+      <div class="scrim" (click)="closeMenu()" aria-hidden="true"></div>
+    }
+    <nav class="sidebar" [class.open]="menuOpen()" [attr.aria-label]="strings.staffShell.brandArea">
+      @for (item of navItems; track item.route) {
+        <a
+          class="nav-item"
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+          (click)="closeMenu()"
+        >
+          @switch (item.icon) {
+            @case ('home') {
+              <svg lucideHouse aria-hidden="true"></svg>
+            }
+            @case ('establishments') {
+              <svg lucideStore aria-hidden="true"></svg>
+            }
+          }
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>
