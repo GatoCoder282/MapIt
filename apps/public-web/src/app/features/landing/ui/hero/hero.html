@@ -1,0 +1,100 @@
+<section class="hero" id="producto" aria-labelledby="hero-title">
+  <div class="hero-inner">
+    <!-- Contenido izquierdo -->
+    <div class="hero-content">
+      <!-- Bretema (texto sin contorno ni punto parpadeante) -->
+      <p class="hero-eyebrow" [attr.aria-label]="strings.landing.hero.categoryAria">
+        {{ strings.landing.hero.badge }}
+      </p>
+
+      <!-- Título principal -->
+      <h1 id="hero-title" class="hero-title">
+        {{ strings.landing.hero.titleA }}<br />
+        <span class="hero-title-accent">{{ strings.landing.hero.titleB }}</span>
+      </h1>
+
+      <!-- Descripción -->
+      <p class="hero-description">{{ strings.landing.hero.description }}</p>
+
+      <!-- CTAs -->
+      <div class="hero-ctas">
+        <a href="#contacto" class="btn-primary">
+          {{ strings.landing.hero.primaryCta }}
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="btn-arrow">
+            <path
+              fill-rule="evenodd"
+              d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </a>
+        <a href="#como-funciona" class="btn-ghost">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            aria-hidden="true"
+            class="play-icon"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polygon points="10 8 16 12 10 16 10 8" />
+          </svg>
+          {{ strings.landing.hero.secondaryCta }}
+        </a>
+      </div>
+
+      <!-- Feature badges -->
+      <div class="hero-features" role="list">
+        @for (feature of strings.landing.hero.features; track feature; let i = $index) {
+          <div class="feature-badge" role="listitem">
+            @if (i === 0) {
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" class="feature-icon">
+                <circle cx="8" cy="8" r="3" />
+                <path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+            } @else if (i === 1) {
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                aria-hidden="true"
+                class="feature-icon"
+              >
+                <rect x="2" y="3" width="5" height="10" rx="1" />
+                <rect x="9" y="3" width="5" height="10" rx="1" />
+              </svg>
+            } @else {
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                aria-hidden="true"
+                class="feature-icon"
+              >
+                <path d="M3 8l3 3 7-7" />
+              </svg>
+            }
+            {{ feature }}
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Mockup del producto -->
+    <div class="hero-visual" [attr.aria-label]="strings.landing.hero.visualAria" role="img">
+      <img
+        ngSrc="assets/img/mockup_app.png"
+        [alt]="strings.landing.hero.visualAlt"
+        class="app-mockup-img"
+        width="1100"
+        height="630"
+        priority
+      />
+    </div>
+  </div>
+</section>

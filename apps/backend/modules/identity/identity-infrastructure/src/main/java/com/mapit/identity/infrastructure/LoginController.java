@@ -56,7 +56,7 @@ public class LoginController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, exception.getMessage());
     problem.setTitle("Credenciales inválidas");
-    problem.setType(URI.create("https://mapit.local/problems/invalid-credentials"));
+    problem.setType(URI.create(LoginProblemTypes.INVALID_CREDENTIALS));
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problem);
   }
 
@@ -69,7 +69,7 @@ public class LoginController {
         ProblemDetail.forStatusAndDetail(
             HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no es válido.");
     problem.setTitle("Solicitud inválida");
-    problem.setType(URI.create("https://mapit.local/problems/invalid-request"));
+    problem.setType(URI.create(LoginProblemTypes.INVALID_REQUEST));
     return ResponseEntity.badRequest().body(problem);
   }
 

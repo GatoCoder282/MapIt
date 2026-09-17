@@ -73,7 +73,7 @@ public class DemoItemController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     problem.setTitle("Elemento no encontrado");
-    problem.setType(URI.create("https://mapit.local/problems/demo-item-not-found"));
+    problem.setType(URI.create(SpacesProblemTypes.DEMO_ITEM_NOT_FOUND));
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 

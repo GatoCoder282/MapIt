@@ -1,6 +1,7 @@
 {
   "extends": "../../packages/config-typescript/angular-app.json",
   "compilerOptions": {
+    "noUnusedLocals": false, // El api-client generado importa tipos (p.ej. Problem) que el compilador consideraría "muertos"; igual que en console.
     "outDir": "../../dist/out-tsc/public-web",
     "rootDir": "../..",
     "types": [],

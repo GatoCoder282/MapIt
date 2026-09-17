@@ -1,0 +1,67 @@
+:host {
+  display: block;
+}
+
+.dashboard-section {
+  padding: 80px 24px;
+  background: var(--mapit-color-surface);
+  overflow: hidden;
+
+  @media (min-width: 1024px) {
+    padding: 100px 24px;
+  }
+}
+
+.dashboard-inner {
+  max-width: 1360px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.section-header {
+  text-align: center;
+}
+
+.section-badge {
+  display: block;
+  font-family: var(--mapit-font-sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mapit-color-accent);
+  margin-bottom: 16px;
+}
+
+.section-title {
+  margin: 0 0 12px;
+  font-family: var(--mapit-font-display);
+  font-size: clamp(26px, 3.2vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--mapit-color-text);
+}
+
+.section-subtitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--mapit-color-text-muted);
+}
+
+/* Visual del dashboard */
+.dashboard-visual {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.dashboard-img {
+  width: 100%;
+  max-width: 1300px;
+  height: auto;
+  border-radius: var(--mapit-radius-lg);
+  display: block;
+}

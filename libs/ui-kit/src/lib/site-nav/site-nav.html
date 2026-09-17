@@ -1,0 +1,42 @@
+<header class="nav-bar">
+  <div class="nav-inner">
+    <!-- Logo -->
+    <a href="/" class="nav-logo" [attr.aria-label]="strings.brandHomeAria">
+      <img ngSrc="assets/img/logo_mapit.png" priority [alt]="strings.brand" class="logo-img" width="132" height="60" />
+    </a>
+
+    <!-- Links de navegación (desktop) -->
+    <nav class="nav-links" [attr.aria-label]="strings.nav.aria">
+      <a href="/#producto" class="nav-link">{{ strings.nav.product }}</a>
+      <a href="/#como-funciona" class="nav-link">{{ strings.nav.howItWorks }}</a>
+      <a href="/#negocios" class="nav-link">{{ strings.nav.businesses }}</a>
+      <a routerLink="/reservas" routerLinkActive="nav-link--active" ariaCurrentWhenActive="page" class="nav-link">{{
+        strings.nav.bookings
+      }}</a>
+    </nav>
+
+    <!-- Botón hamburguesa (mobile) -->
+    <button
+      class="menu-toggle"
+      type="button"
+      [attr.aria-expanded]="menuOpen()"
+      aria-controls="mobile-menu"
+      [attr.aria-label]="menuOpen() ? strings.nav.closeMenu : strings.nav.openMenu"
+      (click)="toggleMenu()"
+    >
+      <span class="hamburger-bar" aria-hidden="true"></span>
+      <span class="hamburger-bar" aria-hidden="true"></span>
+      <span class="hamburger-bar" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <!-- Menú mobile -->
+  <div id="mobile-menu" class="mobile-menu" [class.mobile-menu--open]="menuOpen()">
+    <nav class="mobile-nav" [attr.aria-label]="strings.nav.mobileAria">
+      <a href="/#producto" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.product }}</a>
+      <a href="/#como-funciona" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.howItWorks }}</a>
+      <a href="/#negocios" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.businesses }}</a>
+      <a routerLink="/reservas" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.bookings }}</a>
+    </nav>
+  </div>
+</header>

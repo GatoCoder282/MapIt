@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { AuthSession } from '@mapit/auth';
 import { FeatureFlagService, FeatureFlagDirective } from '@mapit/feature-flags';
+import { STRINGS } from '../../core/strings';
 
 /**
  * Pantalla de arranque de la consola.
@@ -17,13 +18,16 @@ import { FeatureFlagService, FeatureFlagDirective } from '@mapit/feature-flags';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="home">
-      <h1>MapIt · Consola</h1>
-      <p class="sub">Mapea tu negocio, opéralo en tiempo real.</p>
+      <h1>{{ strings.home.title }}</h1>
+      <p class="sub">{{ strings.home.sub }}</p>
 
       @if (session.user(); as user) {
-        <p>Bienvenido, {{ user.fullName }}.</p>
-        <p>{{ user.email }} · Empresa: {{ user.tenantId }} · Rol: {{ user.role }}</p>
-        <button type="button" (click)="session.logout()">Cerrar sesión</button>
+        <p>{{ strings.home.welcome }} {{ user.fullName }}.</p>
+        <p>
+          {{ user.email }} · {{ strings.home.tenantLabel }} {{ user.tenantId }} ·
+          {{ strings.home.roleLabel }} {{ user.role }}
+        </p>
+        <button type="button" (click)="session.logout()">{{ strings.home.logout }}</button>
       }
       @if (session.warning()) {
         <p role="status">{{ session.warning() }}</p>
@@ -31,13 +35,13 @@ import { FeatureFlagService, FeatureFlagDirective } from '@mapit/feature-flags';
 
       @if (flags.isEnabled('demo.hello')()) {
         <aside class="banner" role="status">
-          <strong>El feature toggle está activo.</strong>
-          Apaga <code>demo.hello</code> en Unleash (:4242) y este banner desaparece sin recompilar.
+          <strong>{{ strings.home.flagBannerTitle }}</strong>
+          {{ strings.home.flagBannerBody }}
         </aside>
       }
 
       <!-- Misma flag con la directiva, que es lo habitual en plantillas grandes -->
-      <p *featureFlag="'payments.qr'">El pago con QR está habilitado (CU-17).</p>
+      <p *featureFlag="'payments.qr'">{{ strings.home.paymentsQrEnabled }}</p>
     </section>
   `,
   styles: `
@@ -65,4 +69,5 @@ import { FeatureFlagService, FeatureFlagDirective } from '@mapit/feature-flags';
 export class Home {
   protected readonly session = inject(AuthSession);
   protected readonly flags = inject(FeatureFlagService);
+  protected readonly strings = STRINGS;
 }

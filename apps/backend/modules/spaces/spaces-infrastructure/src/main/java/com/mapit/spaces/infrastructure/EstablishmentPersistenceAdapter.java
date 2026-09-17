@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.mapit.shared.tenant.TenantId;
+import com.mapit.shared.tenant.TenantScope;
 import com.mapit.spaces.domain.Establishment;
 import com.mapit.spaces.domain.EstablishmentRepository;
 import com.mapit.spaces.domain.Slug;
@@ -65,7 +66,6 @@ public class EstablishmentPersistenceAdapter implements EstablishmentRepository 
 
   private void setDatabaseTenant(TenantId tenantId) {
     // set_config(..., true) equivale a SET LOCAL y se revierte al terminar la transacción.
-    jdbcTemplate.queryForObject(
-        "select set_config('app.tenant_id', ?, true)", String.class, tenantId.value());
+    jdbcTemplate.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, tenantId.value());
   }
 }

@@ -1,7 +1,8 @@
-import { HttpErrorResponse } from '@angular/common/http';
+﻿import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { Tenant } from '@mapit/api-client';
 import { of, throwError } from 'rxjs';
+import { STRINGS } from '../../../../core/strings';
 import { TenantRegistrationApi } from '../data/tenant-registration-api';
 import { TenantRegistrationStore } from './tenant-registration-store';
 
@@ -58,7 +59,7 @@ describe('TenantRegistrationStore', () => {
       administratorEmail: 'admin@norte.bo',
     });
 
-    expect(store.error()).toBe('El slug ya está registrado.');
+    expect(store.error()).toBe(STRINGS.tenantForm.errors.slugConflict);
     expect(store.success()).toBeNull();
   });
 });

@@ -1,0 +1,252 @@
+:host {
+  display: block;
+  background: #ffffff;
+}
+
+.inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+h2 {
+  margin: 0;
+  font-family: var(--mapit-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--mapit-color-text);
+}
+
+.see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mapit-color-accent);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--mapit-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mapit-color-accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+
+  @media (max-width: 960px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: var(--mapit-shadow);
+  border: 1px solid rgb(229 231 235 / 0.6);
+  padding: 8px 8px 16px;
+  transition: transform var(--mapit-duration) var(--mapit-ease-out);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 28px rgb(0 0 0 / 0.09);
+    }
+  }
+}
+
+.media {
+  position: relative;
+  height: 190px;
+  border-radius: 12px;
+  overflow: hidden;
+
+  /* Placeholder degradado por categoría (hasta tener fotos reales) */
+  &[data-category='restaurante'] {
+    background: linear-gradient(135deg, #1d4ed8 0%, #6366f1 100%);
+  }
+
+  &[data-category='discoteca'] {
+    background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%);
+  }
+
+  &[data-category='eventos'] {
+    background: linear-gradient(135deg, #0f172a 0%, #3b5bdb 100%);
+  }
+
+  &[data-category='hotel'] {
+    background: linear-gradient(135deg, #0b3b66 0%, #1e88e5 100%);
+  }
+}
+
+.media-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgb(255 255 255 / 0.85);
+  font-family: var(--mapit-font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.media img {
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.95);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mapit-color-text);
+
+  &--dark {
+    background: var(--mapit-color-text);
+    color: #ffffff;
+  }
+}
+
+.badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mapit-state-available);
+}
+
+.body {
+  padding: 14px 8px 0;
+}
+
+.name {
+  margin: 0;
+  font-family: var(--mapit-font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--mapit-color-text);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--mapit-color-text-muted);
+
+  svg {
+    color: var(--mapit-color-text-muted);
+    flex-shrink: 0;
+  }
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--mapit-color-text-muted);
+
+  svg {
+    color: #f59e0b; // ámbar de valoraciones (ver design.md)
+  }
+
+  strong {
+    color: var(--mapit-color-text);
+    font-weight: 600;
+  }
+}
+
+.amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.amenity {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--mapit-color-text-muted);
+
+  svg {
+    color: var(--mapit-color-accent);
+  }
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 38px;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: var(--mapit-color-accent);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color var(--mapit-duration-fast) var(--mapit-ease-out),
+    transform var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  &:hover {
+    background: var(--mapit-color-primary);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mapit-color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .cta {
+    transition: none;
+  }
+}

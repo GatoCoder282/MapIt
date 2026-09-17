@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgOptimizedImage } from '@angular/common';
+import { STRINGS } from '../../../core/strings';
 import { LoginStore } from '../model/login-store';
 
 interface FloatingPath {
@@ -22,6 +23,7 @@ interface FloatingPath {
 })
 export class Login {
   protected readonly store = inject(LoginStore);
+  protected readonly strings = STRINGS;
 
   /** Coordenadas y parámetros para las curvas dinámicas SVG (FloatingPaths) */
   protected readonly pathsTop: readonly FloatingPath[] = Array.from({ length: 36 }, (_, i) => ({

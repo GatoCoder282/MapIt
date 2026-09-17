@@ -14,11 +14,14 @@
     "@angular/cdk": "^22.1.6",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
+    "@lucide/angular": "^1.45.0",
     "@mapit/api-client": "workspace:*",
     "@mapit/auth": "workspace:*",
     "@mapit/feature-flags": "workspace:*",
     "@mapit/map-engine": "workspace:*",
     "@mapit/realtime": "workspace:*",
-    "@mapit/ui-kit": "workspace:*"
+    "@mapit/ui-kit": "workspace:*",
+    "@ng-icons/core": "^36.0.0",
+    "@ng-icons/heroicons": "^36.0.0"
   }
 }

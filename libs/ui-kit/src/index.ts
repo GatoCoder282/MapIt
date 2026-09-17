@@ -8,3 +8,8 @@
  * Los componentes se añaden conforme las features los necesiten, no antes.
  */
 export const UI_KIT_VERSION = '0.1.0';
+
+export { SiteNav } from './lib/site-nav/site-nav';
+export { SiteFooter } from './lib/site-footer/site-footer';
+export { RevealOnScroll } from './lib/reveal-on-scroll/reveal-on-scroll';
+export { SITE_STRINGS } from './lib/site-strings';

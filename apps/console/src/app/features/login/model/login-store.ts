@@ -5,7 +5,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { filter, finalize, takeUntil, timeout } from 'rxjs';
 import { AuthSession } from '@mapit/auth';
+import { STRINGS } from '../../../core/strings';
+import { SLUG_PATTERN } from '../../../core/patterns';
 import { LoginApi } from '../data/login-api';
+
+/** Timeout de la llamada de login (ms): cubre cold starts en dev local. */
+const LOGIN_TIMEOUT_MS = 15_000;
 
 /** Estado y coordinación del inicio de sesión. */
 @Injectable()
@@ -29,13 +34,13 @@ export class LoginStore {
   readonly emailError = computed(() => {
     if (!this.submitted()) return '';
     const email = this.email().trim();
-    if (!email) return 'Ingresa tu correo electrónico.';
+    if (!email) return STRINGS.login.errors.emailRequired;
     return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
       ? ''
-      : 'Ingresa un correo electrónico válido.';
+      : STRINGS.login.errors.emailInvalid;
   });
   readonly passwordError = computed(() =>
-    this.submitted() && !this.password().trim() ? 'Ingresa tu contraseña.' : '',
+    this.submitted() && !this.password().trim() ? STRINGS.login.errors.passwordRequired : '',
   );
 
   setEmail(value: string): void {
@@ -61,8 +66,8 @@ export class LoginStore {
     this.submitted.set(true);
     this.message.set('');
     if (this.emailError() || this.passwordError()) return;
-    if (!/^[a-z0-9][a-z0-9-]{1,62}$/.test(this.tenantSlug())) {
-      this.message.set('Abre el enlace de acceso de tu empresa para continuar.');
+    if (!SLUG_PATTERN.test(this.tenantSlug())) {
+      this.message.set(STRINGS.login.errors.missingTenantLink);
       return;
     }
     const tenantSlug = this.tenantSlug();
@@ -71,7 +76,7 @@ export class LoginStore {
     this.api
       .login({ tenantSlug, email: this.email().trim().toLowerCase(), password: this.password() })
       .pipe(
-        timeout(15000),
+        timeout(LOGIN_TIMEOUT_MS),
         takeUntil(
           this.route.paramMap.pipe(filter((params) => params.get('tenantSlug') !== tenantSlug)),
         ),
@@ -83,27 +88,28 @@ export class LoginStore {
           try {
             this.session.start(response, tenantSlug, remember);
           } catch {
-            this.message.set('No se pudo iniciar la sesión. Inténtalo de nuevo.');
+            this.message.set(STRINGS.login.errors.startFailed);
             return;
           }
           this.password.set('');
-          void this.router.navigateByUrl('/home');
+          // Redirección por rol: el SUPER_ADMIN entra a la consola de plataforma;
+          // el resto a la consola operativa de su tenant. Se lee de la sesión
+          // validada (no del payload crudo) para no confiar en datos no verificados.
+          void this.router.navigateByUrl(
+            this.session.user()?.role === 'SUPER_ADMIN' ? '/admin/tenants' : '/home',
+          );
         },
         error: (error: unknown) => {
           this.message.set(
             error instanceof HttpErrorResponse && error.status === 401
-              ? 'Credenciales inválidas.'
-              : 'No pudimos conectar con el servicio. Inténtalo de nuevo.',
+              ? STRINGS.login.errors.invalidCredentials
+              : STRINGS.login.errors.connection,
           );
         },
       });
   }
 
   showHelp(kind: 'password' | 'access'): void {
-    this.message.set(
-      kind === 'password'
-        ? 'La recuperación de contraseña aún no está disponible. Contacta al administrador de tu empresa.'
-        : 'Las solicitudes de acceso aún no están disponibles desde esta pantalla.',
-    );
+    this.message.set(kind === 'password' ? STRINGS.login.help.password : STRINGS.login.help.access);
   }
 }

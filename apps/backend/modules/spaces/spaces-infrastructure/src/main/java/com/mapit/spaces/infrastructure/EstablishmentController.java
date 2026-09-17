@@ -84,7 +84,7 @@ public class EstablishmentController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     problem.setTitle("Establecimiento no encontrado");
-    problem.setType(URI.create("https://mapit.local/problems/establishment-not-found"));
+    problem.setType(URI.create(SpacesProblemTypes.ESTABLISHMENT_NOT_FOUND));
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
@@ -94,7 +94,7 @@ public class EstablishmentController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
     problem.setTitle("Slug ya utilizado");
-    problem.setType(URI.create("https://mapit.local/problems/establishment-slug-conflict"));
+    problem.setType(URI.create(SpacesProblemTypes.ESTABLISHMENT_SLUG_CONFLICT));
     return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 
@@ -109,7 +109,7 @@ public class EstablishmentController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
     problem.setTitle("Datos inválidos");
-    problem.setType(URI.create("https://mapit.local/problems/establishment-invalid"));
+    problem.setType(URI.create(SpacesProblemTypes.ESTABLISHMENT_INVALID));
     return ResponseEntity.badRequest().body(problem);
   }
 

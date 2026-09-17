@@ -11,9 +11,11 @@ describe('LoginStore', () => {
   const response = new Subject<LoginResponse>();
   const login = vi.fn<() => Observable<LoginResponse>>(() => response);
   const start = vi.fn();
+  const sessionUser = vi.fn(() => null);
   const navigateByUrl = vi.fn();
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionUser.mockReturnValue(null);
   });
   function create(tenant = 'empresa-prueba'): LoginStore {
     const paramMap = convertToParamMap(tenant ? { tenantSlug: tenant } : {});
@@ -21,7 +23,7 @@ describe('LoginStore', () => {
       providers: [
         LoginStore,
         { provide: LoginApi, useValue: { login } },
-        { provide: AuthSession, useValue: { start } },
+        { provide: AuthSession, useValue: { start, user: sessionUser } },
         { provide: Router, useValue: { navigateByUrl } },
         {
           provide: ActivatedRoute,
@@ -82,6 +84,22 @@ describe('LoginStore', () => {
     expect(store.password()).toBe('');
     expect(navigateByUrl).toHaveBeenCalledWith('/home');
     expect(store.pending()).toBe(false);
+  });
+
+  it('dirige al SUPER_ADMIN a la consola de plataforma', () => {
+    login.mockReturnValueOnce(of({ accessToken: 'token' } as LoginResponse));
+    sessionUser.mockReturnValue({
+      id: '00000000-0000-0000-0000-0000000000aa',
+      tenantId: 'platform',
+      email: 'superadmin@mapit.local',
+      fullName: 'Super Admin',
+      role: 'SUPER_ADMIN',
+    } as never);
+    const store = create();
+    store.setEmail('superadmin@mapit.local');
+    store.setPassword('clave');
+    store.submit();
+    expect(navigateByUrl).toHaveBeenCalledWith('/admin/tenants');
   });
 
   it('permite reintentar tras 401 sin mostrar detalles del servidor', () => {

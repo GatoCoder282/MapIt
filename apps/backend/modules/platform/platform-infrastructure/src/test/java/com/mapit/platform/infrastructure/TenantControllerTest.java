@@ -6,6 +6,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
@@ -15,10 +19,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
+import com.mapit.platform.application.RegisterTenantCommand;
+import com.mapit.platform.application.SecureTokenGenerator;
 import com.mapit.platform.application.TenantService;
 import com.mapit.platform.domain.BusinessVertical;
 import com.mapit.platform.domain.Tenant;
+import com.mapit.platform.domain.TenantPage;
 import com.mapit.platform.domain.TenantRepository;
+import com.mapit.platform.domain.TenantStatus;
+import com.mapit.shared.tenant.TenantId;
 
 class TenantControllerTest {
 
@@ -26,13 +35,20 @@ class TenantControllerTest {
 
   private final InMemoryTenantRepository repository = new InMemoryTenantRepository();
   private final LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+  private TenantService service;
   private RestTestClient client;
 
   @BeforeEach
   void setUp() {
     validator.afterPropertiesSet();
-    TenantService service =
-        new TenantService(repository, (tenant, recipient) -> {}, Clock.fixed(NOW, ZoneOffset.UTC));
+    service =
+        new TenantService(
+            repository,
+            invitation -> {}, // InvitationTokenRepository sin efecto en este test
+            (tenant, email, url) -> {},
+            new SecureTokenGenerator(),
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            "http://localhost:4300");
     client =
         RestTestClient.bindToController(new TenantController(service))
             .configureServer(builder -> builder.setValidator(validator))
@@ -71,6 +87,63 @@ class TenantControllerTest {
   }
 
   @Test
+  void lista_tenants_paginados() {
+    service.register(new RegisterTenantCommand("Empresa Norte", "empresa-norte", BusinessVertical.HOTEL, "a@n.bo"));
+    service.register(new RegisterTenantCommand("Empresa Sur", "empresa-sur", BusinessVertical.HOTEL, "b@s.bo"));
+
+    TenantController.TenantPageResponse page =
+        client.get().uri("/api/v1/tenants?page=0&size=10").exchange()
+            .expectStatus().isOk()
+            .expectBody(TenantController.TenantPageResponse.class)
+            .returnResult().getResponseBody();
+
+    assertThat(page).isNotNull();
+    assertThat(page.content()).hasSize(2);
+    assertThat(page.totalElements()).isEqualTo(2);
+  }
+
+  @Test
+  void devuelve_el_detalle_y_404_si_no_existe() {
+    Tenant tenant =
+        service.register(new RegisterTenantCommand("Empresa Norte", "empresa-norte", BusinessVertical.HOTEL, "a@n.bo"));
+
+    client.get().uri("/api/v1/tenants/" + tenant.id().value()).exchange().expectStatus().isOk();
+    client.get().uri("/api/v1/tenants/no-existe").exchange().expectStatus().isNotFound();
+  }
+
+  @Test
+  void edita_el_nombre_y_suspende_por_patch() {
+    Tenant tenant =
+        service.register(new RegisterTenantCommand("Empresa Norte", "empresa-norte", BusinessVertical.HOTEL, "a@n.bo"));
+
+    TenantController.TenantResponse updated =
+        client.patch().uri("/api/v1/tenants/" + tenant.id().value())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new TenantController.TenantUpdateRequest("Empresa Norte 2", TenantStatus.SUSPENDED))
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(TenantController.TenantResponse.class)
+            .returnResult().getResponseBody();
+
+    assertThat(updated).isNotNull();
+    assertThat(updated.name()).isEqualTo("Empresa Norte 2");
+    assertThat(updated.status()).isEqualTo(TenantStatus.SUSPENDED);
+    assertThat(updated.slug()).isEqualTo("empresa-norte");
+  }
+
+  @Test
+  void rechaza_un_patch_con_nombre_vacio() {
+    Tenant tenant =
+        service.register(new RegisterTenantCommand("Empresa Norte", "empresa-norte", BusinessVertical.HOTEL, "a@n.bo"));
+
+    client.patch().uri("/api/v1/tenants/" + tenant.id().value())
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(new TenantController.TenantUpdateRequest("", null))
+        .exchange()
+        .expectStatus().isBadRequest();
+  }
+
+  @Test
   void rechaza_una_solicitud_con_datos_invalidos() {
     TenantController.TenantRequest request =
         new TenantController.TenantRequest(
@@ -90,7 +163,7 @@ class TenantControllerTest {
 
   private static final class InMemoryTenantRepository implements TenantRepository {
     private final Set<String> slugs = new HashSet<>();
-    private final Set<Tenant> saved = new HashSet<>();
+    private final Map<String, Tenant> saved = new LinkedHashMap<>();
 
     @Override
     public boolean existsBySlug(String slug) {
@@ -100,8 +173,19 @@ class TenantControllerTest {
     @Override
     public Tenant save(Tenant tenant) {
       slugs.add(tenant.slug());
-      saved.add(tenant);
+      saved.put(tenant.id().value(), tenant);
       return tenant;
+    }
+
+    @Override
+    public Optional<Tenant> findById(TenantId id) {
+      return Optional.ofNullable(saved.get(id.value()));
+    }
+
+    @Override
+    public TenantPage search(String search, TenantStatus status, int page, int size) {
+      List<Tenant> all = List.copyOf(saved.values());
+      return new TenantPage(all, page, size, all.size(), all.isEmpty() ? 0 : 1);
     }
   }
 }

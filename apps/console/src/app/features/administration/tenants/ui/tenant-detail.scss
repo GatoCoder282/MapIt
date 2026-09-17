@@ -1,0 +1,225 @@
+.page {
+  display: grid;
+  gap: var(--mapit-space-6);
+  max-width: 44rem;
+}
+
+.page-header {
+  h1 {
+    margin: var(--mapit-space-1) 0 0;
+    font: var(--mapit-text-display);
+  }
+}
+
+.back {
+  font: var(--mapit-text-body);
+  color: var(--mapit-color-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.state {
+  padding: var(--mapit-space-8);
+  text-align: center;
+  background: var(--mapit-color-surface);
+  border-radius: var(--mapit-radius-lg);
+  box-shadow: var(--mapit-shadow);
+  color: var(--mapit-color-text-muted);
+  font: var(--mapit-text-body);
+
+  &.error {
+    color: var(--mapit-color-error);
+    display: grid;
+    gap: var(--mapit-space-3);
+    justify-items: center;
+  }
+}
+
+.card {
+  background: var(--mapit-color-surface);
+  border-radius: var(--mapit-radius-lg);
+  box-shadow: var(--mapit-shadow);
+  padding: var(--mapit-space-6);
+  display: grid;
+  gap: var(--mapit-space-6);
+}
+
+.fields {
+  display: grid;
+  gap: var(--mapit-space-4);
+  margin: 0;
+}
+
+.field {
+  display: grid;
+  gap: var(--mapit-space-1);
+
+  dt {
+    font: var(--mapit-text-caps);
+    color: var(--mapit-color-text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0;
+    font: var(--mapit-text-body);
+  }
+
+  .mono {
+    font-family: var(--mapit-font-mono);
+    font-size: 0.85rem;
+  }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mapit-space-2);
+  padding: 0.15rem 0.6rem;
+  border-radius: 9999px;
+  font: var(--mapit-text-metadata);
+  font-weight: 600;
+  background: var(--mapit-color-surface-raised);
+  color: var(--mapit-color-text-variant);
+
+  &::before {
+    content: '';
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    background: var(--mapit-color-error);
+  }
+
+  &.active::before {
+    background: #16a34a;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mapit-space-3);
+}
+
+.inline-input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--mapit-color-border-input);
+  border-radius: var(--mapit-radius-input);
+  font: var(--mapit-text-body);
+  width: 100%;
+  max-width: 22rem;
+
+  &:focus-visible {
+    outline: 2px solid var(--mapit-color-focus-ring);
+    border-color: var(--mapit-color-accent);
+  }
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--mapit-radius-lg);
+  font: var(--mapit-text-body-bold);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background var(--mapit-duration-fast) var(--mapit-ease-out),
+    color var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  &.primary {
+    background: var(--mapit-color-accent);
+    color: var(--mapit-color-on-primary);
+
+    &:hover:not(:disabled) {
+      background: var(--mapit-color-primary);
+    }
+  }
+
+  &.secondary {
+    background: var(--mapit-color-surface);
+    border-color: var(--mapit-color-border);
+    color: var(--mapit-color-text);
+
+    &:hover:not(:disabled) {
+      background: var(--mapit-color-surface-low);
+    }
+  }
+
+  &.danger {
+    background: transparent;
+    border-color: var(--mapit-color-error);
+    color: var(--mapit-color-error);
+
+    &:hover:not(:disabled) {
+      background: rgb(186 26 26 / 0.08);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.message {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--mapit-radius);
+  font: var(--mapit-text-body);
+
+  &.success {
+    color: #166534;
+    background: #dcfce7;
+  }
+
+  &.error {
+    color: var(--mapit-color-error);
+    background: #fee2e2;
+  }
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(15 23 42 / 0.4);
+  z-index: 40;
+}
+
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  width: min(24rem, calc(100vw - 2rem));
+  background: var(--mapit-color-surface);
+  border-radius: var(--mapit-radius-lg);
+  box-shadow: var(--mapit-shadow);
+  padding: var(--mapit-space-6);
+  display: grid;
+  gap: var(--mapit-space-3);
+
+  h2 {
+    margin: 0;
+    font: var(--mapit-text-section);
+  }
+
+  p {
+    margin: 0;
+    font: var(--mapit-text-body);
+    color: var(--mapit-color-text-variant);
+  }
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--mapit-space-3);
+  margin-top: var(--mapit-space-2);
+}

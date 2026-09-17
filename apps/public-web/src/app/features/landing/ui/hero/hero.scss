@@ -1,0 +1,204 @@
+:host {
+  display: block;
+}
+
+.hero {
+  padding: 80px 24px 72px;
+  background: var(--mapit-color-surface);
+  overflow: hidden;
+
+  @media (min-width: 1024px) {
+    padding: 96px 24px 80px;
+  }
+}
+
+.hero-inner {
+  max-width: 1360px;
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+  align-items: center;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1.35fr;
+    gap: 56px;
+  }
+
+  @media (min-width: 1280px) {
+    grid-template-columns: 1fr 1.55fr;
+    gap: 64px;
+  }
+}
+
+/* ── Contenido izquierdo ───────────────────────────────────── */
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.hero-eyebrow {
+  margin: 0;
+  font-family: var(--mapit-font-sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mapit-color-accent);
+}
+
+.hero-title {
+  margin: 0;
+  font-family: var(--mapit-font-display);
+  font-size: clamp(32px, 4.5vw, 52px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--mapit-color-text);
+}
+
+.hero-title-accent {
+  color: var(--mapit-color-accent);
+}
+
+.hero-description {
+  margin: 0;
+  font-family: var(--mapit-font-sans);
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--mapit-color-text-muted);
+  max-width: 48ch;
+}
+
+/* CTAs */
+.hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--mapit-radius-lg);
+  background: var(--mapit-color-accent);
+  color: #ffffff;
+  font-family: var(--mapit-font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color var(--mapit-duration-fast) var(--mapit-ease-out),
+    transform var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  &:hover {
+    background: var(--mapit-color-primary);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mapit-color-accent);
+    outline-offset: 3px;
+  }
+}
+
+.btn-arrow {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: var(--mapit-radius-lg);
+  border: 1.5px solid var(--mapit-color-border);
+  background: transparent;
+  color: var(--mapit-color-text-variant);
+  font-family: var(--mapit-font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    border-color var(--mapit-duration-fast) var(--mapit-ease-out),
+    color var(--mapit-duration-fast) var(--mapit-ease-out),
+    background-color var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  &:hover {
+    border-color: var(--mapit-color-text-variant);
+    color: var(--mapit-color-text);
+    background: var(--mapit-color-canvas);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mapit-color-accent);
+    outline-offset: 3px;
+  }
+}
+
+.play-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Feature badges */
+.hero-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.feature-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mapit-font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mapit-color-text-muted);
+}
+
+.feature-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--mapit-color-accent);
+  flex-shrink: 0;
+}
+
+/* ── Mockup visual del producto ────────────────────────────── */
+.hero-visual {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  @media (max-width: 1023px) {
+    order: -1;
+  }
+}
+
+.app-mockup-img {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  border-radius: var(--mapit-radius-lg);
+  border: 1px solid var(--mapit-color-border);
+  box-shadow:
+    0 20px 60px rgb(0 0 0 / 0.1),
+    0 4px 16px rgb(0 0 0 / 0.06);
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-dot {
+    animation: none;
+  }
+}

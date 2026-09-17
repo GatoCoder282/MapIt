@@ -12,6 +12,7 @@ import {
 import gsap from 'gsap';
 
 import { evaluatePassword, STRENGTH_LABELS } from '../model/password-rules';
+import { STRINGS } from '../../../core/strings';
 
 /**
  * Medidor de fortaleza de contraseña.
@@ -56,7 +57,7 @@ import { evaluatePassword, STRENGTH_LABELS } from '../model/password-rules';
             }
           </span>
           @if (result().guessable) {
-            <span class="warning">Patrón muy común</span>
+            <span class="warning">{{ strings.login.passwordStrength.warningLabel }}</span>
           }
         </div>
 
@@ -75,7 +76,11 @@ import { evaluatePassword, STRENGTH_LABELS } from '../model/password-rules';
                 </svg>
               </span>
               {{ rule.label }}
-              <span class="sr-only">{{ rule.met ? '(cumplido)' : '(pendiente)' }}</span>
+              <span class="sr-only">{{
+                rule.met
+                  ? strings.login.passwordStrength.ruleMetSr
+                  : strings.login.passwordStrength.rulePendingSr
+              }}</span>
             </li>
           }
         </ul>
@@ -249,6 +254,7 @@ import { evaluatePassword, STRENGTH_LABELS } from '../model/password-rules';
 export class PasswordStrength {
   readonly value = input.required<string>();
 
+  protected readonly strings = STRINGS;
   protected readonly labels = STRENGTH_LABELS;
   protected readonly result = computed(() => evaluatePassword(this.value()));
   protected readonly announcement = signal('');
@@ -274,14 +280,15 @@ export class PasswordStrength {
 
       // Anuncio accesible con el retardo de 700ms de la referencia.
       clearTimeout(this.announcementTimer);
+      const pw = STRINGS.login.passwordStrength;
       const unmet = rules.filter((r) => !r.met).map((r) => r.label.toLowerCase());
       const text =
         score === 0 && this.value() === ''
           ? ''
           : [
-              `Fortaleza de la contraseña: ${label.toLowerCase()}.`,
-              guessable ? 'Es un patrón muy común.' : '',
-              unmet.length === 0 ? 'Cumples todos los requisitos.' : `Falta: ${unmet.join(', ')}.`,
+              `${pw.announcePrefix} ${label.toLowerCase()}.`,
+              guessable ? pw.commonPattern : '',
+              unmet.length === 0 ? pw.allRulesMet : `${pw.missingPrefix} ${unmet.join(', ')}.`,
             ]
               .filter(Boolean)
               .join(' ');

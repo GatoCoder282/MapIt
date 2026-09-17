@@ -29,7 +29,10 @@ public class EstablishmentJpaEntity {
 
   @Id private UUID id;
 
-  @Column(name = "tenant_id", nullable = false, length = 63)
+  // Filtro ORM del ADR-0004 (misma fuente que la RLS: TenantContext del JWT).
+  // (nombre cualificado: colisiona con com.mapit.shared.tenant.TenantId)
+  @org.hibernate.annotations.TenantId
+  @Column(name = "tenant_id", nullable = false, updatable = false, length = 63)
   private String tenantId;
 
   @Column(nullable = false, length = 120)
