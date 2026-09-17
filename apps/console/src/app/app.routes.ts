@@ -1,5 +1,7 @@
-import { authGuard } from '@mapit/auth';
+import { authGuard, roleGuard } from '@mapit/auth';
 import { type Routes } from '@angular/router';
+
+import { STRINGS } from './core/strings';
 
 /**
  * Rutas de la consola de staff.
@@ -8,11 +10,13 @@ import { type Routes } from '@angular/router';
  * agrupar por feature, no por tipo de archivo). Cada feature se carga perezosamente
  * para que el editor de mapas —que es el bundle pesado— no penalice al resto.
  *
- * Las features llegan en sus casos de uso:
- *   map-editor      CU-06..CU-08   (Integrante C)
- *   operations      CU-09, CU-10   (Integrante D)
- *   reservations    CU-11..CU-14   (Integrante D)
- *   administration  CU-01..CU-05   (Integrante A/E)
+ * Estructura:
+ *   /login, /empresa/:tenantSlug/login   públicas
+ *   /admin/**                            SUPER_ADMIN (plataforma): auditoría CU-01/CU-03
+ *   /administration/*                    sección operativa de staff (futuros CU)
+ *   /home, /demo-items, /establishments  staff autenticado de cualquier rol
+ *
+ * El guard de rol es UX: la autorización real la aplica el backend (403).
  */
 export const routes: Routes = [
   {
@@ -29,25 +33,59 @@ export const routes: Routes = [
     redirectTo: 'login',
   },
   {
-    path: 'administration/tenants/new',
-    loadComponent: () =>
-      import('./features/administration/tenant-registration/ui/tenant-registration').then(
-        (m) => m.TenantRegistration,
-      ),
+    // Shell de plataforma: exclusivo del SUPER_ADMIN (CU-01/CU-03).
+    path: 'admin',
+    canActivate: [roleGuard('SUPER_ADMIN')],
+    loadComponent: () => import('./layout/admin-shell').then((m) => m.AdminShell),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/administration/dashboard/ui/dashboard').then((m) => m.AdminDashboard),
+      },
+      {
+        path: 'tenants',
+        loadComponent: () =>
+          import('./features/administration/tenants/ui/tenant-list').then((m) => m.TenantList),
+      },
+      {
+        path: 'tenants/new',
+        loadComponent: () =>
+          import('./features/administration/tenant-registration/ui/tenant-registration').then(
+            (m) => m.TenantRegistration,
+          ),
+      },
+      {
+        path: 'tenants/:tenantId',
+        loadComponent: () =>
+          import('./features/administration/tenants/ui/tenant-detail').then((m) => m.TenantDetail),
+      },
+      {
+        path: 'settings',
+        data: { title: STRINGS.shell.nav.settings },
+        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+      },
+      {
+        path: 'profile',
+        data: { title: STRINGS.shell.nav.profile },
+        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+      },
+    ],
   },
   {
-    path: 'demo-items',
-    canActivate: [authGuard],
-    loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
-  },
-  {
+    // Establecimientos (CU-04): staff de un tenant (ADMIN+, con contexto tenant).
+    // No es sección de plataforma: queda fuera del shell de SUPER_ADMIN, pero ya
+    // no es pública — antes carecía de guard.
     path: 'establishments',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/administration/establishments/ui/establishments').then(
         (m) => m.Establishments,
       ),
   },
   {
+    // CU-05 (MAP-67/MAP-68): configuración de pisos y sectores (HU-2.02).
     path: 'spaces/floors',
     canActivate: [authGuard],
     loadComponent: () => import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
@@ -57,6 +95,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
+  },
+  {
+    path: 'demo-items',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
   },
   {
     path: 'home',
