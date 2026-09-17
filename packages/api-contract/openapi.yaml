@@ -42,6 +42,8 @@ tags:
     description: CRUD de demostración para validar la integración Angular + Spring Boot
   - name: establishments
     description: Establecimientos de un tenant (CU-04)
+  - name: spaces
+    description: Gestión de pisos y sectores (CU-05)
 
 paths:
   /auth/login:
@@ -389,6 +391,255 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  # ── Pisos (CU-05) ────────────────────────────────────────────────
+  # `security: []` es TEMPORAL, igual que en demo-items: la autenticación JWT
+  # llega en CU-23/CU-24 y hasta entonces el tenant se resuelve en el servidor
+  # con el adaptador `DemoTenantContext`. El tenant NUNCA viaja en el cuerpo.
+  /floors:
+    get:
+      tags: [spaces]
+      summary: Listar todos los pisos del tenant
+      description: Devuelve todos los pisos del tenant actual (resuelto desde el JWT).
+      operationId: listFloors
+      security: [] # Temporary
+      responses:
+        "200":
+          description: Lista de pisos del tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Floor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [spaces]
+      summary: Crear un piso
+      description: Crea un nuevo piso para el tenant actual. El slug se autogenera y se valida su unicidad. Se asocia al establecimiento por defecto del tenant.
+      operationId: createFloorForTenant
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloorCreateRequest"
+      responses:
+        "201":
+          description: Piso creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Floor"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /establishments/{establishmentId}/floors:
+    parameters:
+      - name: establishmentId
+        in: path
+        required: true
+        description: Identificador del establecimiento
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [spaces]
+      summary: Listar los pisos de un establecimiento
+      description: Devuelve todos los pisos asociados a un establecimiento específico.
+      operationId: listFloorsByEstablishment
+      security: [] # Temporary
+      responses:
+        "200":
+          description: Lista de pisos para el establecimiento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Floor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [spaces]
+      summary: Crear un piso
+      description: Crea un nuevo piso para un establecimiento específico. El slug se autogenera y se valida su unicidad.
+      operationId: createFloor
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloorCreateRequest"
+      responses:
+        "201":
+          description: Piso creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Floor"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /floors/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador del piso
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [spaces]
+      summary: Obtener un piso
+      description: Devuelve un piso específico por su ID.
+      operationId: getFloor
+      security: [] # Temporary
+      responses:
+        "200":
+          description: Piso solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Floor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [spaces]
+      summary: Actualizar un piso
+      description: Actualiza un piso existente. El slug no se puede modificar.
+      operationId: updateFloor
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloorCreateRequest"
+      responses:
+        "200":
+          description: Piso actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Floor"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [spaces]
+      summary: Eliminar un piso
+      description: Elimina un piso (soft delete).
+      operationId: deleteFloor
+      security: [] # Temporary
+      responses:
+        "204":
+          description: Piso eliminado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Sectores (CU-05) ────────────────────────────────────────────────
+  # `security: []` es TEMPORAL, igual que en demo-items: la autenticación JWT
+  # llega en CU-23/CU-24 y hasta entonces el tenant se resuelve en el servidor
+  # con el adaptador `DemoTenantContext`. El tenant NUNCA viaja en el cuerpo.
+  /floors/{floorId}/sectors:
+    parameters:
+      - name: floorId
+        in: path
+        required: true
+        description: Identificador del piso al que pertenece el sector
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [spaces]
+      summary: Listar los sectores de un piso
+      description: Devuelve todos los sectores asociados a un piso específico.
+      operationId: listSectorsByFloor
+      security: [] # Temporary
+      responses:
+        "200":
+          description: Lista de sectores para el piso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sector"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # If floorId doesn't exist
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [spaces]
+      summary: Crear un sector
+      description: Crea un nuevo sector para un piso específico. El slug se autogenera y se valida su unicidad.
+      operationId: createSector
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SectorCreateRequest"
+      responses:
+        "201":
+          description: Sector creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sector"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Validation errors (e.g., name too long)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # If floorId doesn't exist
+        "409":
+          $ref: "#/components/responses/Conflict" # If generated slug conflicts
+        "500":
+          $ref: "#/components/responses/ServerError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -685,6 +936,95 @@ components:
           type: string
           maxLength: 64
           examples: ["America/La_Paz"]
+
+    Floor:
+      type: object
+      required: [id, name, slug, level, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+          readOnly: true
+        level:
+          type: integer
+          minimum: 0
+          maximum: 999
+        establishmentId:
+          type: string
+          format: uuid
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    FloorCreateRequest:
+      type: object
+      required: [name, level]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        level:
+          type: integer
+          minimum: 0
+          maximum: 999
+
+    Sector:
+      type: object
+      required: [id, name, slug, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100 # Corrected
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    SectorCreateRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100 # Corrected
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
 
     # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
     # así que todos los errores de la API usan este formato.
