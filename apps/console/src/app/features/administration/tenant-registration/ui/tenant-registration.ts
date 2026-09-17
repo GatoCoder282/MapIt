@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   type AbstractControl,
   NonNullableFormBuilder,
@@ -7,9 +8,9 @@ import {
   Validators,
 } from '@angular/forms';
 import type { BusinessVertical } from '@mapit/api-client';
+import { STRINGS } from '../../../../core/strings';
+import { SLUG_PATTERN } from '../../../../core/patterns';
 import { TenantRegistrationStore } from '../model/tenant-registration-store';
-
-const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/;
 const requiredValidator = (control: AbstractControl): ValidationErrors | null =>
   Validators.required(control);
 const maxLengthValidator =
@@ -30,23 +31,25 @@ const emailValidator = (control: AbstractControl): ValidationErrors | null =>
 /** Formulario de alta de una empresa en la plataforma. */
 @Component({
   selector: 'mapit-tenant-registration',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink],
   providers: [TenantRegistrationStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="page">
       <header class="page-header">
-        <p class="eyebrow">MapIt · Administración de plataforma</p>
-        <h1>Registrar tenant</h1>
-        <p class="intro">
-          Crea una organización y define la vertical con la que comenzará a trabajar.
-        </p>
+        <p class="eyebrow">{{ strings.tenantForm.createEyebrow }}</p>
+        <h1>{{ strings.tenantForm.createTitle }}</h1>
+        <p class="intro">{{ strings.tenantForm.createIntro }}</p>
       </header>
 
       @if (store.success(); as tenant) {
-        <p class="message success" role="status">
-          Tenant registrado correctamente. ID: <strong>{{ tenant.id }}</strong>
-        </p>
+        <div class="message success" role="status">
+          <p>
+            {{ strings.tenantForm.successCreate }} {{ strings.tenantForm.successIdPrefix }}
+            <strong>{{ tenant.id }}</strong>
+          </p>
+          <a class="link" routerLink="/admin/tenants">{{ strings.tenantForm.backToList }}</a>
+        </div>
       }
 
       @if (store.error(); as error) {
@@ -55,34 +58,34 @@ const emailValidator = (control: AbstractControl): ValidationErrors | null =>
 
       <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <label>
-          Nombre de la organización
+          {{ strings.tenantForm.nameLabel }}
           <input
             formControlName="name"
             autocomplete="organization"
             maxlength="120"
-            placeholder="Ej. Restaurante Central"
+            [placeholder]="strings.tenantForm.namePlaceholder"
           />
           @if (form.controls.name.invalid && form.controls.name.touched) {
-            <span class="field-error">Ingresa un nombre de hasta 120 caracteres.</span>
+            <span class="field-error">{{ strings.tenantForm.nameError }}</span>
           }
         </label>
 
         <label>
-          Slug
+          {{ strings.tenantForm.slugLabel }}
           <input
             formControlName="slug"
             autocomplete="off"
             maxlength="63"
-            placeholder="restaurante-central"
+            [placeholder]="strings.tenantForm.slugPlaceholder"
           />
-          <span class="hint">Usa minúsculas, números y guiones.</span>
+          <span class="hint">{{ strings.tenantForm.slugHint }}</span>
           @if (form.controls.slug.invalid && form.controls.slug.touched) {
-            <span class="field-error">El slug debe tener entre 2 y 63 caracteres válidos.</span>
+            <span class="field-error">{{ strings.tenantForm.slugError }}</span>
           }
         </label>
 
         <label>
-          Vertical de negocio
+          {{ strings.tenantForm.verticalLabel }}
           <select formControlName="vertical">
             @for (vertical of verticals; track vertical.value) {
               <option [value]="vertical.value">{{ vertical.label }}</option>
@@ -91,27 +94,29 @@ const emailValidator = (control: AbstractControl): ValidationErrors | null =>
         </label>
 
         <label>
-          Correo del administrador
+          {{ strings.tenantForm.adminEmailLabel }}
           <input
             formControlName="administratorEmail"
             type="email"
             autocomplete="email"
             maxlength="254"
-            placeholder="admin@empresa.com"
+            [placeholder]="strings.tenantForm.adminEmailPlaceholder"
           />
           @if (
             form.controls.administratorEmail.invalid && form.controls.administratorEmail.touched
           ) {
-            <span class="field-error">Ingresa un correo válido.</span>
+            <span class="field-error">{{ strings.tenantForm.adminEmailError }}</span>
           }
         </label>
 
         <div class="actions">
           <button class="primary" type="submit" [disabled]="store.saving()">
-            {{ store.saving() ? 'Registrando…' : 'Registrar tenant' }}
+            {{ store.saving() ? strings.tenantForm.submitSaving : strings.tenantForm.submitCreate }}
           </button>
           @if (store.success()) {
-            <button class="secondary" type="button" (click)="startAnother()">Registrar otro</button>
+            <button class="secondary" type="button" (click)="startAnother()">
+              {{ strings.tenantForm.registerAnother }}
+            </button>
           }
         </div>
       </form>
@@ -198,6 +203,13 @@ const emailValidator = (control: AbstractControl): ValidationErrors | null =>
       color: #166534;
       background: #dcfce7;
     }
+    .message p {
+      margin: 0 0 0.4rem;
+    }
+    .link {
+      color: #166534;
+      font-weight: 600;
+    }
     .error {
       color: #991b1b;
       background: #fee2e2;
@@ -233,12 +245,10 @@ const emailValidator = (control: AbstractControl): ValidationErrors | null =>
 export class TenantRegistration {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   protected readonly store = inject(TenantRegistrationStore);
-  protected readonly verticals: ReadonlyArray<{ value: BusinessVertical; label: string }> = [
-    { value: 'RESTAURANT', label: 'Restaurante' },
-    { value: 'NIGHTCLUB', label: 'Discoteca' },
-    { value: 'EVENT_HALL', label: 'Salón de eventos' },
-    { value: 'HOTEL', label: 'Hotel' },
-  ];
+  protected readonly strings = STRINGS;
+  protected readonly verticals: ReadonlyArray<{ value: BusinessVertical; label: string }> = (
+    ['RESTAURANT', 'NIGHTCLUB', 'EVENT_HALL', 'HOTEL'] as const
+  ).map((value) => ({ value, label: STRINGS.verticals[value] }));
 
   protected readonly form = this.formBuilder.group({
     name: ['', [requiredValidator, maxLengthValidator(120)]],

@@ -77,6 +77,7 @@ class AuthenticationIntegrationTest {
         registry.add("spring.flyway.url", () -> url);
         registry.add("spring.flyway.user", () -> user);
         registry.add("spring.flyway.password", () -> password);
+        registry.add("spring.flyway.placeholders.mapitAppDbPassword", () -> "test_app_password");
     }
 
     @AfterAll

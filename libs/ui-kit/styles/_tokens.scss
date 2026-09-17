@@ -75,18 +75,9 @@
   --mapit-duration: 250ms;
 }
 
-/* Modo oscuro: provisional. El DESIGN.md aún no define una paleta dark;
-   estos valores mantienen legibilidad hasta que el equipo la apruebe. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --mapit-color-canvas: #101216;
-    --mapit-color-surface: #191c22;
-    --mapit-color-surface-low: #1e2230;
-    --mapit-color-surface-raised: #232838;
-    --mapit-color-text: #e8eaed;
-    --mapit-color-text-variant: #b9bdcf;
-    --mapit-color-text-muted: #9aa1ad;
-    --mapit-color-border: #2a2e37;
-    --mapit-color-border-input: #3a3f4d;
-  }
-}
+/* Modo oscuro: removido hasta que DESIGN.md defina la paleta dark.
+   Un set provisional de textos claros sobre fondos de la interfaz clara
+   era exactamente por lo que "Reservas" se veía lavado y "Producto" raro:
+   el usuario con SO en dark-mode recibía una paleta heterogénea que ningún
+   diseñador aprobó. Cuando el equipo publique la paleta oscura, se reactiva
+   aquí el bloque @media (prefers-color-scheme: dark). */

@@ -19,9 +19,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Verifica que {@code establishment} queda aislada por tenant mediante PostgreSQL RLS (CA-9).
  *
  * <p>Las consultas se ejecutan bajo el rol {@code mapit_rls_test}, sin privilegios, porque el
- * usuario de la aplicación es superusuario y los superusuarios <strong>ignoran la RLS</strong>.
- * Probar con el usuario normal daría un falso verde: se verían todas las filas y el test no
- * demostraría nada.
+ * usuario de la aplicaciÃ³n es superusuario y los superusuarios <strong>ignoran la RLS</strong>.
+ * Probar con el usuario normal darÃ­a un falso verde: se verÃ­an todas las filas y el test no
+ * demostrarÃ­a nada.
  */
 @Tag("integration")
 @SpringBootTest
@@ -44,6 +44,10 @@ class EstablishmentIsolationIntegrationTest {
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
+    registry.add("spring.flyway.url", POSTGRES::getJdbcUrl);
+    registry.add("spring.flyway.user", POSTGRES::getUsername);
+    registry.add("spring.flyway.password", POSTGRES::getPassword);
+    registry.add("spring.flyway.placeholders.mapitAppDbPassword", () -> "test_app_password");
   }
 
   @BeforeEach
@@ -116,8 +120,8 @@ class EstablishmentIsolationIntegrationTest {
           jdbcTemplate.queryForObject(
               "select set_config('app.tenant_id', ?, true)", String.class, "other");
 
-          // El índice único es (tenant_id, slug): 'visible' ya existe en el tenant demo,
-          // así que si la unicidad fuese global esta inserción fallaría.
+          // El Ã­ndice Ãºnico es (tenant_id, slug): 'visible' ya existe en el tenant demo,
+          // asÃ­ que si la unicidad fuese global esta inserciÃ³n fallarÃ­a.
           jdbcTemplate.update(
               "insert into establishment (tenant_id, name, type, slug) values (?, ?, ?, ?)",
               "other",

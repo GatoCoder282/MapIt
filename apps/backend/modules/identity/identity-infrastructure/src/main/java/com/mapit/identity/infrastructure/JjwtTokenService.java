@@ -33,6 +33,13 @@ public class JjwtTokenService implements AccessTokenIssuer, AccessTokenVerifier 
     private static final String ACCESS_TYPE = "access";
     private static final String HS256 = "HS256";
 
+    // Nombres de los claims del contrato interno del token: un solo sitio para
+    // que emisión y verificación no puedan desajustarse.
+    private static final String CLAIM_TENANT = "tenant";
+    private static final String CLAIM_ROLE = "role";
+    private static final String CLAIM_EMAIL = "email";
+    private static final String CLAIM_TYPE = "typ";
+
     private final SecretKey key;
     private final String issuer;
     private final Duration ttl;
@@ -68,10 +75,10 @@ public class JjwtTokenService implements AccessTokenIssuer, AccessTokenVerifier 
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
                 .id(UUID.randomUUID().toString())
-                .claim("tenant", user.tenantId().value())
-                .claim("role", user.role().name())
-                .claim("email", user.email())
-                .claim("typ", ACCESS_TYPE)
+                .claim(CLAIM_TENANT, user.tenantId().value())
+                .claim(CLAIM_ROLE, user.role().name())
+                .claim(CLAIM_EMAIL, user.email())
+                .claim(CLAIM_TYPE, ACCESS_TYPE)
                 .signWith(key, Jwts.SIG.HS256)
                 .compact();
         return new IssuedAccessToken(token, expiresAt);
@@ -93,7 +100,7 @@ public class JjwtTokenService implements AccessTokenIssuer, AccessTokenVerifier 
                 return Optional.empty();
             }
             Claims claims = parsed.getPayload();
-            if (!ACCESS_TYPE.equals(claims.get("typ", String.class))
+            if (!ACCESS_TYPE.equals(claims.get(CLAIM_TYPE, String.class))
                     || claims.getIssuedAt() == null
                     || claims.getExpiration() == null
                     || claims.getId() == null
@@ -104,9 +111,9 @@ public class JjwtTokenService implements AccessTokenIssuer, AccessTokenVerifier 
             }
             return Optional.of(new AuthenticatedPrincipal(
                     UUID.fromString(requiredString(claims, Claims.SUBJECT)),
-                    TenantId.of(requiredString(claims, "tenant")),
-                    requiredString(claims, "email"),
-                    UserRole.valueOf(requiredString(claims, "role"))));
+                    TenantId.of(requiredString(claims, CLAIM_TENANT)),
+                    requiredString(claims, CLAIM_EMAIL),
+                    UserRole.valueOf(requiredString(claims, CLAIM_ROLE))));
         } catch (JwtException | IllegalArgumentException exception) {
             return Optional.empty();
         }

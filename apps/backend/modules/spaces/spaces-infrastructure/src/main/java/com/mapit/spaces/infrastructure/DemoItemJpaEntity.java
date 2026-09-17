@@ -18,7 +18,11 @@ public class DemoItemJpaEntity {
 
   @Id private UUID id;
 
-  @Column(name = "tenant_id", nullable = false, length = 63)
+  // Filtro ORM del ADR-0004: Hibernate añade `tenant_id = ?` a cada query y lo
+  // fija en los inserts. La RLS de PostgreSQL sigue como segunda red.
+  // (nombre cualificado: colisiona con com.mapit.shared.tenant.TenantId)
+  @org.hibernate.annotations.TenantId
+  @Column(name = "tenant_id", nullable = false, updatable = false, length = 63)
   private String tenantId;
 
   @Column(nullable = false, length = 120)

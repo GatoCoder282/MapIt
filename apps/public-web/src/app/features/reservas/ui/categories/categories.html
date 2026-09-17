@@ -1,0 +1,87 @@
+<section class="categories" aria-labelledby="categories-title">
+  <div class="inner">
+    <header class="head">
+      <h2 id="categories-title">{{ strings.reservas.categories.title }}</h2>
+      <p class="subtitle">{{ strings.reservas.categories.subtitle }}</p>
+    </header>
+
+    <div class="grid">
+      @for (category of categories; track category.title; let i = $index) {
+        <a class="card" href="#{{ category.title.toLowerCase() }}" mapitReveal [mapitRevealDelay]="i * 60">
+          <span class="icon-bubble" aria-hidden="true">
+            @switch ($index) {
+              @case (0) {
+                <svg viewBox="0 0 20 20" width="20" height="20">
+                  <path
+                    d="M5.5 2.5v5a1.5 1.5 0 0 0 3 0v-5M7 9.5V17M5.5 2.5V2M13.5 2.5c-1.7 0-2.6 1.9-2.6 4 0 1.8 1.2 2.5 2.6 2.5v8"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              }
+              @case (1) {
+                <svg viewBox="0 0 20 20" width="20" height="20">
+                  <path
+                    d="M3.5 3.5h13L10 10v6M6.5 16h7"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              }
+              @case (2) {
+                <svg viewBox="0 0 20 20" width="20" height="20">
+                  <rect
+                    x="3"
+                    y="4.5"
+                    width="14"
+                    height="12"
+                    rx="2"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M3 8.5h14M7 2.5v4M13 2.5v4"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              }
+              @case (3) {
+                <svg viewBox="0 0 20 20" width="20" height="20">
+                  <path
+                    d="M3 15.5v-9a1 1 0 0 1 1-1h9a3 3 0 0 1 3 3v7M3 15.5h14M3 15.5V17M16 15.5V17M6.5 8h4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              }
+            }
+          </span>
+          <span class="title">{{ category.title }}</span>
+          <span class="desc">{{ category.subtitle }}</span>
+          <svg class="arrow" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path
+              d="M2 8h11M9.5 3.5 14 8l-4.5 4.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </a>
+      }
+    </div>
+  </div>
+</section>

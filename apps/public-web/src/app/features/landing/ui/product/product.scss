@@ -1,0 +1,121 @@
+:host {
+  display: block;
+}
+
+.product {
+  padding: 80px 24px;
+  background: var(--mapit-color-canvas);
+}
+
+.product-inner {
+  max-width: 1360px;
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+  align-items: center;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1.45fr;
+    gap: 60px;
+  }
+
+  @media (min-width: 1280px) {
+    grid-template-columns: 1fr 1.65fr;
+    gap: 72px;
+  }
+}
+
+/* Contenido */
+.product-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-badge {
+  display: block;
+  font-family: var(--mapit-font-sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mapit-color-accent);
+}
+
+.product-title {
+  margin: 0;
+  font-family: var(--mapit-font-display);
+  font-size: clamp(26px, 3.2vw, 42px);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--mapit-color-text);
+}
+
+.product-tagline {
+  margin: 0;
+  font-family: var(--mapit-font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--mapit-color-text-variant);
+}
+
+.product-description {
+  margin: 0;
+  font-family: var(--mapit-font-sans);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--mapit-color-text-muted);
+  max-width: 46ch;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--mapit-radius-lg);
+  background: var(--mapit-color-accent);
+  color: #ffffff;
+  font-family: var(--mapit-font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  width: fit-content;
+  transition:
+    background-color var(--mapit-duration-fast) var(--mapit-ease-out),
+    transform var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  &:hover {
+    background: var(--mapit-color-primary);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mapit-color-accent);
+    outline-offset: 3px;
+  }
+}
+
+.play-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Mockup */
+.product-visual {
+  display: flex;
+  justify-content: center;
+}
+
+.app-mockup-img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--mapit-radius-lg);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--mapit-color-border);
+  display: block;
+}

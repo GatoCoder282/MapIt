@@ -1,9 +1,10 @@
-import { DatePipe } from '@angular/common';
+﻿import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import type { Establishment, EstablishmentType } from '@mapit/api-client';
 import { EstablishmentsStore } from '../model/establishments-store';
+import { STRINGS } from '../../../../core/strings';
 
-/** Pantalla de gestión de establecimientos del tenant (CU-04). */
+/** Pantalla de gestiÃ³n de establecimientos del tenant (CU-04). */
 @Component({
   selector: 'mapit-establishments',
   imports: [DatePipe],
@@ -13,12 +14,12 @@ import { EstablishmentsStore } from '../model/establishments-store';
     <main class="page">
       <header class="page-header">
         <div>
-          <p class="eyebrow">MapIt · administración</p>
-          <h1>Establecimientos</h1>
-          <p class="intro">Los lugares físicos que tu empresa opera en MapIt.</p>
+          <p class="eyebrow">{{ strings.establishments.eyebrow }}</p>
+          <h1>{{ strings.establishments.title }}</h1>
+          <p class="intro">{{ strings.establishments.intro }}</p>
         </div>
         <button class="secondary" type="button" (click)="store.startNew()">
-          Nuevo establecimiento
+          {{ strings.establishments.new }}
         </button>
       </header>
 
@@ -30,24 +31,36 @@ import { EstablishmentsStore } from '../model/establishments-store';
         <article class="card form-card">
           <div class="card-heading">
             <div>
-              <p class="eyebrow">{{ store.isEditing() ? 'Edición' : 'Alta' }}</p>
-              <h2>{{ store.isEditing() ? 'Editar establecimiento' : 'Crear establecimiento' }}</h2>
+              <p class="eyebrow">
+                {{
+                  store.isEditing()
+                    ? strings.establishments.form.eyebrowEdit
+                    : strings.establishments.form.eyebrowNew
+                }}
+              </p>
+              <h2>
+                {{
+                  store.isEditing()
+                    ? strings.establishments.form.titleEdit
+                    : strings.establishments.form.titleNew
+                }}
+              </h2>
             </div>
           </div>
 
           <label>
-            Nombre
+            {{ strings.establishments.form.nameLabel }}
             <input
               #name
               [value]="store.draft().name"
               maxlength="120"
-              placeholder="Ej. Bar Central"
+              [placeholder]="strings.establishments.form.namePlaceholder"
               (input)="store.setName(name.value)"
             />
           </label>
 
           <label>
-            Tipo
+            {{ strings.establishments.form.typeLabel }}
             <select
               #type
               [value]="store.draft().type"
@@ -62,30 +75,28 @@ import { EstablishmentsStore } from '../model/establishments-store';
             </select>
           </label>
           @if (store.isEditing()) {
-            <p class="hint">
-              El tipo no se puede cambiar: define qué plantillas de elemento aplican al mapa.
-            </p>
+            <p class="hint">{{ strings.establishments.form.typeImmutable }}</p>
           }
 
           <label>
-            Slug
+            {{ strings.establishments.form.slugLabel }}
             <input
               #slug
               [value]="store.draft().slug"
               maxlength="63"
-              placeholder="bar-central"
+              [placeholder]="strings.establishments.form.slugPlaceholder"
               (input)="store.setSlug(slug.value)"
             />
           </label>
-          <p class="hint">Se usa en la URL pública de reserva. Minúsculas, dígitos y guiones.</p>
+          <p class="hint">{{ strings.establishments.form.slugHint }}</p>
 
           <label>
-            Zona horaria
+            {{ strings.establishments.form.timezoneLabel }}
             <input
               #timezone
               [value]="store.draft().timezone"
               maxlength="64"
-              placeholder="America/La_Paz"
+              [placeholder]="strings.establishments.form.timezonePlaceholder"
               (input)="store.setTimezone(timezone.value)"
             />
           </label>
@@ -99,10 +110,10 @@ import { EstablishmentsStore } from '../model/establishments-store';
             >
               {{
                 store.saving()
-                  ? 'Guardando…'
+                  ? strings.establishments.form.submitting
                   : store.isEditing()
-                    ? 'Guardar cambios'
-                    : 'Crear establecimiento'
+                    ? strings.establishments.form.submitEdit
+                    : strings.establishments.form.submit
               }}
             </button>
             @if (store.isEditing()) {
@@ -112,7 +123,7 @@ import { EstablishmentsStore } from '../model/establishments-store';
                 [disabled]="store.saving()"
                 (click)="store.startNew()"
               >
-                Cancelar
+                {{ strings.establishments.form.cancel }}
               </button>
             }
           </div>
@@ -121,16 +132,16 @@ import { EstablishmentsStore } from '../model/establishments-store';
         <article class="card list-card">
           <div class="card-heading">
             <div>
-              <p class="eyebrow">Consulta</p>
-              <h2>Establecimientos registrados</h2>
+              <p class="eyebrow">{{ strings.establishments.list.eyebrow }}</p>
+              <h2>{{ strings.establishments.list.title }}</h2>
             </div>
             <span class="count">{{ store.items().length }}</span>
           </div>
 
           @if (store.loading()) {
-            <p class="empty">Cargando establecimientos…</p>
+            <p class="empty">{{ strings.establishments.list.loading }}</p>
           } @else if (store.items().length === 0) {
-            <p class="empty">Todavía no hay establecimientos. Crea el primero.</p>
+            <p class="empty">{{ strings.establishments.list.empty }}</p>
           } @else {
             <div class="items">
               @for (item of store.items(); track item.id) {
@@ -141,9 +152,12 @@ import { EstablishmentsStore } from '../model/establishments-store';
                       <span class="badge">{{ label(item.type) }}</span>
                     </div>
                     <p>
-                      <code>/{{ item.slug }}</code> · {{ item.timezone }}
+                      <code>/{{ item.slug }}</code> Â· {{ item.timezone }}
                     </p>
-                    <small>Actualizado {{ item.updatedAt | date: 'short' }}</small>
+                    <small
+                      >{{ strings.establishments.list.updatedPrefix }}
+                      {{ item.updatedAt | date: 'short' }}</small
+                    >
                   </div>
                   <div class="row-actions">
                     <button
@@ -152,7 +166,7 @@ import { EstablishmentsStore } from '../model/establishments-store';
                       [disabled]="store.saving()"
                       (click)="store.edit(item)"
                     >
-                      Editar
+                      {{ strings.establishments.list.edit }}
                     </button>
                     <button
                       class="danger"
@@ -160,7 +174,7 @@ import { EstablishmentsStore } from '../model/establishments-store';
                       [disabled]="store.saving()"
                       (click)="confirmRemove(item)"
                     >
-                      Dar de baja
+                      {{ strings.establishments.list.remove }}
                     </button>
                   </div>
                 </div>
@@ -369,16 +383,10 @@ import { EstablishmentsStore } from '../model/establishments-store';
 })
 export class Establishments {
   protected readonly store = inject(EstablishmentsStore);
-
-  private static readonly ETIQUETAS: Record<EstablishmentType, string> = {
-    RESTAURANT: 'Restaurante',
-    NIGHTCLUB: 'Discoteca',
-    EVENT_HALL: 'Salón de eventos',
-    HOTEL: 'Hotel',
-  };
+  protected readonly strings = STRINGS;
 
   protected label(type: EstablishmentType): string {
-    return Establishments.ETIQUETAS[type];
+    return STRINGS.verticals[type];
   }
 
   protected onTypeChange(value: string): void {
@@ -386,9 +394,9 @@ export class Establishments {
   }
 
   protected confirmRemove(item: Establishment): void {
-    if (
-      confirm(`¿Dar de baja "${item.name}"? Dejará de aparecer, pero no se borra el histórico.`)
-    ) {
+    // Plantilla de confirmaciÃ³n con hueco {name}: el nombre es dato, no texto.
+    const message = STRINGS.establishments.removeConfirm.replace('{name}', item.name);
+    if (confirm(message)) {
       this.store.remove(item.id);
     }
   }

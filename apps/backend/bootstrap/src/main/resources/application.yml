@@ -9,18 +9,27 @@ spring:
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/mapit}
-    username: ${POSTGRES_USER:mapit}
-    password: ${POSTGRES_PASSWORD:changeme_local}
+    # MAP-175: runtime como mapit_app (NOSUPERUSER, NOBYPASSRLS) — la RLS aplica
+    # de verdad. El owner `mapit` queda solo para migraciones (ver flyway abajo).
+    username: ${MAPIT_APP_DB_USER:mapit_app}
+    password: ${MAPIT_APP_DB_PASSWORD:changeme_local}
     hikari:
       maximum-pool-size: 10
       pool-name: mapit-pool
 
   # ── Migraciones ───────────────────────────────────────────
-  # Flyway crea y evoluciona el esquema. Ver plan §7.
+  # Flyway crea y evoluciona el esquema con el rol owner `mapit`, separado del
+  # datasource de runtime. Ver plan §7.
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/mapit}
+    user: ${POSTGRES_USER:mapit}
+    password: ${POSTGRES_PASSWORD:changeme_local}
+    placeholders:
+      # La contraseña de mapit_app solo existe en el entorno (ver V7).
+      mapitAppDbPassword: ${MAPIT_APP_DB_PASSWORD:}
 
   jpa:
     hibernate:
@@ -72,6 +81,12 @@ mapit:
     resolution-strategy: ${TENANT_RESOLUTION_STRATEGY:jwt-claim}
     header-name: ${TENANT_HEADER_NAME:X-Tenant-Id}
     default: ${TENANT_DEFAULT:demo}
+  # Bootstrap del SUPER_ADMIN de plataforma (tenant técnico `platform`, V6).
+  # Sin contraseña no se crea nada: la app arranca igual y solo lo avisa el log.
+  super-admin:
+    email: ${SUPER_ADMIN_EMAIL:superadmin@mapit.local}
+    full-name: ${SUPER_ADMIN_FULL_NAME:Super Administrador}
+    password: ${SUPER_ADMIN_PASSWORD:}
   mail:
     from: ${MAIL_FROM:no-reply@mapit.local}
   unleash:

@@ -1,0 +1,113 @@
+:host {
+  display: block;
+  background: #ffffff;
+}
+
+.inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 64px 24px 8px;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-family: var(--mapit-font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--mapit-color-text);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--mapit-color-text-variant);
+  max-width: 46ch;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 28px;
+
+  @media (max-width: 960px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--mapit-color-border);
+  background: #ffffff;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform var(--mapit-duration-fast) var(--mapit-ease-out),
+    box-shadow var(--mapit-duration-fast) var(--mapit-ease-out),
+    border-color var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgb(0 0 0 / 0.1);
+      border-color: transparent;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mapit-color-accent);
+    outline-offset: 2px;
+  }
+}
+
+.icon-bubble {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--mapit-color-primary-container);
+  color: var(--mapit-color-accent);
+}
+
+.title {
+  font-family: var(--mapit-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--mapit-color-text);
+}
+
+.desc {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--mapit-color-text-muted);
+}
+
+.arrow {
+  align-self: end;
+  margin-top: 8px;
+  color: var(--mapit-color-accent);
+  transition: transform var(--mapit-duration-fast) var(--mapit-ease-out);
+}
+
+.card:hover .arrow {
+  transform: translateX(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .arrow {
+    transition: none;
+  }
+}

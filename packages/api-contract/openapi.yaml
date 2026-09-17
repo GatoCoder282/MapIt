@@ -32,6 +32,8 @@ servers:
 tags:
   - name: auth
     description: Autenticación del staff de cada tenant
+  - name: users
+    description: Alta de usuarios de staff (CU-25)
   - name: health
     description: Estado del servicio
   - name: tenants
@@ -90,6 +92,54 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 
   /tenants:
+    get:
+      tags: [tenants]
+      summary: Listar tenants de la plataforma
+      description: |
+        Operación exclusiva de SUPER_ADMIN. La tabla `tenant` es global de la
+        plataforma (sin `tenant_id` ni RLS, por diseño — ver ADR-0004): el
+        aislamiento multi-tenant NO aplica aquí y esta es la única sección de
+        la API que ve todos los tenants. El backend la protege con el rol, no
+        solo el frontend.
+      operationId: listTenants
+      parameters:
+        - name: search
+          in: query
+          description: Filtra por nombre o slug (contiene, sin distinguir mayúsculas).
+          schema:
+            type: string
+            maxLength: 120
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/TenantStatus"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Página de tenants
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
     post:
       tags: [tenants]
       summary: Registrar un tenant
@@ -122,6 +172,150 @@ paths:
           $ref: "#/components/responses/Conflict"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+
+  /tenants/{tenantId}:
+    parameters:
+      - name: tenantId
+        in: path
+        required: true
+        description: Identificador del tenant (cadena generada por el backend).
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 63
+
+    get:
+      tags: [tenants]
+      summary: Consultar el detalle de un tenant
+      description: Solo SUPER_ADMIN. 404 si no existe.
+      operationId: getTenant
+      responses:
+        "200":
+          description: Tenant solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      tags: [tenants]
+      summary: Editar un tenant
+      description: |
+        Edición parcial: solo `name` y `status`. `slug` y `vertical` no están
+        en el esquema a propósito: son inmutables por dominio (el slug vive en
+        URLs públicas de login y reserva; la vertical se asigna al crear y
+        condiciona el onboarding). Enviarlos queda fuera del esquema.
+
+        `status` implementa el ciclo de vida de CU-03: ACTIVE ↔ SUSPENDED.
+        NO existe DELETE: el negocio suspende, no elimina.
+      operationId: updateTenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantUpdateRequest"
+      responses:
+        "200":
+          description: Tenant actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /auth/activate:
+    post:
+      tags: [auth]
+      summary: Activar la cuenta del primer ADMIN de un tenant
+      description: |
+        Onboarding de CU-25: el invitado abre el enlace que recibió por correo y
+        define su contraseña. Público (aún no existe sesión). Jamás viaja una
+        contraseña temporal ni un JWT: el enlace lleva un token opaco aleatorio
+        de un solo uso con caducidad de 24 h; en el servidor solo se guarda su
+        hash SHA-256.
+
+        Errores específicos (todos `application/problem+json`):
+        - `invitation-invalid`   — el token no existe o está mal formado
+        - `invitation-expired`   — el token existe pero caducó
+        - `invitation-used`      — el token ya se consumió
+        - `password-mismatch`    — password y su confirmación difieren
+        - `password-weak`        — no cumple las reglas de contraseña
+      operationId: activateAdmin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivationRequest"
+      responses:
+        "200":
+          description: Cuenta ADMIN creada y activa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /users:
+    post:
+      tags: [users]
+      summary: Crear un usuario de staff
+      description: |
+        Creación de cuentas de staff (CU-25 / MAP-185). Autorización exacta:
+
+        - **SUPER_ADMIN**: puede crear `ADMIN`, `MANAGER` o `STAFF`, y debe indicar
+          el tenant destino con `tenantSlug` (su sesión pertenece al tenant técnico
+          `platform`, no a un negocio).
+        - **ADMIN**: solo puede crear `STAFF` y siempre dentro de su propio tenant;
+          si envía `tenantSlug` distinto del suyo, recibe 403.
+        - **MANAGER** y **STAFF**: 403.
+
+        El `tenant_id` nunca se acepta como dato del cliente: sale del JWT (o del
+        slug indicado por el SUPER_ADMIN, que sí puede operar cross-tenant).
+        El correo es único por tenant; un duplicado responde 409. Nunca se devuelve
+        ni persiste una contraseña temporal en claro, ni se genera un JWT aquí.
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: Usuario creado y activo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /feature-flags:
     get:
@@ -711,6 +905,108 @@ components:
         role:
           $ref: "#/components/schemas/UserRole"
 
+    CreateUserRequest:
+      type: object
+      required: [email, fullName, password, role]
+      properties:
+        tenantSlug:
+          type: string
+          description: |
+            Solo para SUPER_ADMIN: tenant destino. Para ADMIN/MANAGER/STAFF el
+            tenant sale del JWT y este campo se rechaza si no coincide.
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+        role:
+          type: string
+          description: Rol a crear. SUPER_ADMIN nunca puede crearse por API.
+          enum: [ADMIN, MANAGER, STAFF]
+
+    CreatedUser:
+      type: object
+      required: [id, tenantId, email, fullName, role, active, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenantId:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        fullName:
+          type: string
+          readOnly: true
+        role:
+          $ref: "#/components/schemas/UserRole"
+        active:
+          type: boolean
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ActivationRequest:
+      type: object
+      required: [tenantSlug, token, password, passwordConfirm]
+      properties:
+        tenantSlug:
+          type: string
+          description: |
+            Slug del tenant, incluido en el enlace del correo. Permite acotar la
+            búsqueda a un tenant bajo RLS real: un slug manipulado con un token
+            válido simplemente no encuentra la invitación (no hay bypass).
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        token:
+          type: string
+          description: Token opaco del enlace de invitación; nunca se persiste en claro.
+          minLength: 32
+          maxLength: 200
+          writeOnly: true
+        password:
+          type: string
+          description: Contraseña elegida por el invitado. Reglas de CU-25.
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+        passwordConfirm:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+
+    ActivationResponse:
+      type: object
+      required: [tenantSlug, email]
+      properties:
+        tenantSlug:
+          type: string
+          readOnly: true
+          description: Slug del tenant activado, para redirigir a `/empresa/{slug}/login`.
+        email:
+          type: string
+          format: email
+          readOnly: true
+
     UserRole:
       type: string
       enum: [SUPER_ADMIN, ADMIN, MANAGER, STAFF]
@@ -767,9 +1063,7 @@ components:
         vertical:
           $ref: "#/components/schemas/BusinessVertical"
         status:
-          type: string
-          enum: [ACTIVE, SUSPENDED]
-          readOnly: true
+          $ref: "#/components/schemas/TenantStatus"
         createdAt:
           type: string
           format: date-time
@@ -798,6 +1092,43 @@ components:
           type: string
           format: email
           maxLength: 254
+
+    TenantStatus:
+      type: string
+      description: Ciclo de vida del tenant (CU-03). El negocio suspende; no hay borrado físico.
+      enum: [ACTIVE, SUSPENDED]
+
+    TenantPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tenant"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    TenantUpdateRequest:
+      type: object
+      description: |
+        Edición parcial (PATCH). Solo `name` y `status` son editables.
+        `slug` y `vertical` están ausentes deliberadamente: son inmutables
+        por dominio. Al menos un campo debe venir informado.
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        status:
+          $ref: "#/components/schemas/TenantStatus"
 
     DemoItem:
       type: object

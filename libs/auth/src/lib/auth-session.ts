@@ -1,6 +1,8 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AUTH_SESSION_INVALID, AUTH_STORAGE_WARNING } from './auth-strings';
+
 export interface SessionUser {
   id: string;
   tenantId: string;
@@ -22,8 +24,7 @@ interface StoredSession extends SessionResponse {
 
 const SESSION_KEY = 'mapit.auth.session';
 const SLUG_KEY = 'mapit.auth.tenant';
-const STORAGE_WARNING =
-  'La sesión se mantendrá solo en esta página porque el navegador no permite guardarla.';
+const STORAGE_WARNING = AUTH_STORAGE_WARNING;
 const validSlug = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-z0-9][a-z0-9-]{1,62}$/.test(value);
 
@@ -71,7 +72,7 @@ export class AuthSession {
 
   start(response: SessionResponse, tenantSlug: string, remember: boolean): void {
     const candidate: unknown = { ...response, tenantSlug };
-    if (!validSession(candidate)) throw new Error('Respuesta de autenticación inválida.');
+    if (!validSession(candidate)) throw new Error(AUTH_SESSION_INVALID);
     // Seleccionar campos explícitos impide persistir datos ajenos al contrato.
     const { id, tenantId, email, fullName, role } = candidate.user;
     this.current = {

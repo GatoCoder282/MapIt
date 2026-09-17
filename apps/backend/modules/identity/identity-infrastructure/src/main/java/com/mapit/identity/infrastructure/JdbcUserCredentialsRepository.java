@@ -14,6 +14,7 @@ import com.mapit.identity.domain.UserCredentials;
 import com.mapit.identity.domain.UserCredentialsRepository;
 import com.mapit.identity.domain.UserRole;
 import com.mapit.shared.tenant.TenantId;
+import com.mapit.shared.tenant.TenantScope;
 
 /** Consulta de credenciales anterior al JWT, aislada del contexto de cualquier petición. */
 @Repository
@@ -33,7 +34,7 @@ public class JdbcUserCredentialsRepository implements UserCredentialsRepository 
         }
         String tenantId = tenants.getFirst();
         // Parámetro ligado, alcance LOCAL: no queda en la conexión al terminar la transacción.
-        jdbc.queryForObject("select set_config('app.tenant_id', ?, true)", String.class, tenantId);
+        jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, tenantId);
         return jdbc.query("""
                 select u.id, u.tenant_id, u.email, u.full_name, u.role, u.password_hash,
                        u.active, t.status = 'ACTIVE' as tenant_active

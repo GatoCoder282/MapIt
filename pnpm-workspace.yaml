@@ -19,6 +19,7 @@ allowBuilds:
 # Angular y sus herramientas necesitan hoisting para resolver plugins.
 publicHoistPattern:
   - "*@angular*"
+  - "*@lucide*" # Angular resuelve deps del dev server desde la raíz virtual (.angular); sin hoist falla
   - "*eslint*"
   - "*prettier*"
   - "*vitest*"

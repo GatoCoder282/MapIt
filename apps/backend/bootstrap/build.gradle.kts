@@ -48,4 +48,6 @@ flyway {
     user = System.getenv("POSTGRES_USER") ?: "mapit"
     password = System.getenv("POSTGRES_PASSWORD") ?: "changeme_local"
     locations = arrayOf("filesystem:src/main/resources/db/migration")
+    // MAP-175: la contraseña de mapit_app llega del entorno, nunca del repo.
+    placeholders = mapOf("mapitAppDbPassword" to (System.getenv("MAPIT_APP_DB_PASSWORD") ?: ""))
 }

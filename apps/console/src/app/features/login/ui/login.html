@@ -1,28 +1,27 @@
 <main class="login-layout">
   <!-- ── Panel Izquierdo: Showcase visual con fondo blanco, curvas y eslogan ── -->
-  <aside class="showcase" aria-label="Plataforma MapIt">
+  <aside class="showcase" [attr.aria-label]="strings.login.showcaseAriaLabel">
     <div class="showcase-gradient" aria-hidden="true"></div>
 
     <!-- Mensaje de bienvenida y eslogan corporativo en español -->
     <div class="showcase-message">
-      <h2>Mapea tu negocio, opéralo en <span>Tiempo Real</span></h2>
-      <p>La plataforma inteligente para gestionar mesas, barras y zonas con máxima agilidad y control operativo.</p>
+      <h2>
+        {{ strings.login.showcaseHeadlineA }} <span>{{ strings.login.showcaseHighlight }}</span>
+      </h2>
+      <p>{{ strings.login.showcaseIntro }}</p>
     </div>
 
     <!-- Testimonio en español -->
     <div class="showcase-quote-wrapper">
       <blockquote class="quote">
-        <p class="quote-text">
-          &ldquo;Esta plataforma nos ha permitido coordinar los espacios y atender a los clientes con una velocidad y
-          precisión nunca antes vista.&rdquo;
-        </p>
+        <p class="quote-text">{{ strings.login.showcaseQuote }}</p>
       </blockquote>
     </div>
 
     <!-- Curvas dinámicas fluidas (FloatingPaths) -->
     <div class="floating-paths-container" aria-hidden="true">
       <svg class="floating-paths-svg" viewBox="0 0 696 316" fill="none">
-        <title>Curvas dinámicas decorativas</title>
+        <title>{{ strings.login.decorativePaths }}</title>
         @for (path of pathsTop; track path.id) {
           <path
             [attr.d]="path.d"
@@ -59,20 +58,27 @@
     <div class="login-content">
       <!-- Logo de MapIt justo arriba del inicio de sesión -->
       <div class="login-brand">
-        <img ngSrc="assets/img/logo_mapit_white.png" priority alt="MapIt" class="brand-logo" width="132" height="60" />
+        <img
+          ngSrc="assets/img/logo_mapit_white.png"
+          priority
+          [alt]="strings.login.logoAlt"
+          class="brand-logo"
+          width="132"
+          height="60"
+        />
       </div>
 
       <!-- Título de sección en español -->
       <div class="welcome">
         <br />
-        <h1 id="login-title">Iniciar sesión</h1>
-        <p>Ingresa tus credenciales para acceder a la plataforma.</p>
+        <h1 id="login-title">{{ strings.login.title }}</h1>
+        <p>{{ strings.login.subtitle }}</p>
       </div>
 
       <!-- Formulario de acceso -->
       <form (ngSubmit)="store.submit()" [attr.aria-busy]="store.pending()" novalidate class="login-form">
         <div class="field">
-          <label for="email">Correo electrónico</label>
+          <label for="email">{{ strings.login.emailLabel }}</label>
           <div class="input-container">
             <svg
               class="input-icon"
@@ -92,7 +98,7 @@
               name="email"
               type="email"
               autocomplete="username"
-              placeholder="tu.correo@ejemplo.com"
+              [placeholder]="strings.login.emailPlaceholder"
               [ngModel]="store.email()"
               (ngModelChange)="store.setEmail($event)"
               [attr.aria-invalid]="store.emailError() ? 'true' : null"
@@ -107,7 +113,7 @@
         </div>
 
         <div class="field">
-          <label for="password">Contraseña</label>
+          <label for="password">{{ strings.login.passwordLabel }}</label>
           <div class="input-container password-container">
             <svg
               class="input-icon"
@@ -139,7 +145,9 @@
               class="password-toggle"
               type="button"
               (click)="store.togglePassword()"
-              [attr.aria-label]="store.passwordVisible() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              [attr.aria-label]="
+                store.passwordVisible() ? strings.login.passwordToggleHide : strings.login.passwordToggleShow
+              "
               [attr.aria-pressed]="store.passwordVisible()"
             >
               <svg
@@ -176,15 +184,15 @@
               [checked]="store.remember()"
               (change)="store.toggleRemember()"
             />
-            <span>Recordarme</span>
+            <span>{{ strings.login.rememberMe }}</span>
           </label>
           <button type="button" class="text-button" (click)="store.showHelp('password')">
-            ¿Olvidaste tu contraseña?
+            {{ strings.login.forgotPassword }}
           </button>
         </div>
 
         <button type="submit" class="submit-button" [disabled]="store.pending()">
-          {{ store.pending() ? 'Iniciando sesión…' : 'Iniciar sesión' }}
+          {{ store.pending() ? strings.login.submitting : strings.login.submit }}
         </button>
 
         @if (store.message()) {
@@ -193,14 +201,17 @@
       </form>
 
       <p class="request-access">
-        ¿Nuevo negocio?
-        <button type="button" class="text-button" (click)="store.showHelp('access')">Solicita acceso</button>
+        {{ strings.login.newBusiness }}
+        <button type="button" class="text-button" (click)="store.showHelp('access')">
+          {{ strings.login.requestAccess }}
+        </button>
       </p>
 
       <p class="terms-disclaimer">
-        Al continuar, aceptas nuestros
-        <a href="#" class="legal-link">Términos de Servicio</a> y
-        <a href="#" class="legal-link">Política de Privacidad</a>.
+        {{ strings.login.termsPrefix }}
+        <a href="#" class="legal-link">{{ strings.login.termsLink }}</a> y
+        <a href="#" class="legal-link">{{ strings.login.privacyLink }}</a
+        >.
       </p>
     </div>
   </section>

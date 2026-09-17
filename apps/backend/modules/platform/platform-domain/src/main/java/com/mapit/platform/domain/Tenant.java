@@ -45,4 +45,20 @@ public record Tenant(
       TenantId id, String name, String slug, BusinessVertical vertical, Instant now) {
     return new Tenant(id, name, slug, vertical, TenantStatus.ACTIVE, now, now);
   }
+
+  /**
+   * Renombra el tenant. `slug` y `vertical` son inmutables de propósito: el slug
+   * vive en URLs públicas (login, reserva) y la vertical fija el onboarding.
+   */
+  public Tenant rename(String newName, Instant now) {
+    return new Tenant(id, newName, slug, vertical, status, createdAt, now);
+  }
+
+  /**
+   * Transición del ciclo de vida (CU-03): ACTIVE ↔ SUSPENDED.
+   * No hay borrado físico: el negocio suspende.
+   */
+  public Tenant changeStatus(TenantStatus newStatus, Instant now) {
+    return new Tenant(id, name, slug, vertical, newStatus, createdAt, now);
+  }
 }

@@ -22,7 +22,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.mapit.identity.domain.UserRole;
 import com.mapit.identity.infrastructure.JwtAuthenticationFilter;
+import com.mapit.shared.http.ApiPaths;
 
 /**
  * Configuración base de seguridad.
@@ -49,16 +51,19 @@ public class SecurityConfig {
         "/v3/api-docs/**",
         "/swagger-ui/**",
         "/swagger-ui.html",
-        // Superficie pública de reservas
-        "/api/v1/health",
-        "/api/v1/public/**",
-        // El login autentica las credenciales y por definición todavía no recibe JWT.
-        "/api/v1/auth/login",
+        // Superficie pública de reservas (CU-15, CU-16): el cliente final es anónimo.
+        ApiPaths.HEALTH,
+        ApiPaths.PUBLIC,
+        // El login y la activación del primer ADMIN son públicos por definición
+        // (la activación no recibe contraseña temporal ni JWT; solo el token del
+        // enlace, que ya es un secreto en sí mismo).
+        ApiPaths.AUTH_LOGIN,
+        ApiPaths.AUTH_ACTIVATE,
         // CRUD temporal que conserva acceso público para validar el stack.
-        "/api/v1/demo-items/**",
+        ApiPaths.DEMO_ITEMS,
         // CU-04. TEMPORAL: la autorización por rol llega en CU-23/CU-24. Hasta
         // entonces el tenant lo resuelve el servidor con DemoTenantContext.
-        "/api/v1/establishments/**",
+        ApiPaths.ESTABLISHMENTS,
         // CU-05 / MAP-67 / MAP-68. Configuración de Pisos y Sectores
         "/api/v1/floors/**",
         "/api/v1/sectors/**",
@@ -88,6 +93,11 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
+                        // Administración de tenants (CU-01/CU-03): operación exclusiva
+                        // del SUPER_ADMIN de plataforma. Cualquier otro rol autenticado
+                        // recibe 403; sin JWT recibe 401 por el entry point.
+                        .requestMatchers(ApiPaths.TENANTS, ApiPaths.TENANTS_ALL)
+                        .hasRole(UserRole.SUPER_ADMIN.name())
                         // Todo lo demás requiere autenticación: se deniega por defecto,
                         // que es la postura correcta. Abrir es una decisión explícita.
                         .anyRequest().authenticated())

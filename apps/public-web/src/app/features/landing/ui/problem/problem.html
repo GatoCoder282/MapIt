@@ -1,0 +1,26 @@
+<section class="problem" id="como-funciona" aria-labelledby="problem-title">
+  <div class="problem-inner">
+    <!-- Cabecera de sección -->
+    <div class="section-header">
+      <div class="section-badge">
+        {{ strings.landing.problem.badge }}
+      </div>
+      <h2 id="problem-title" class="section-title">
+        {{ strings.landing.problem.titleA }}<br />
+        <span class="title-accent">{{ strings.landing.problem.titleB }}</span>
+      </h2>
+      <p class="section-description">{{ strings.landing.problem.description }}</p>
+    </div>
+
+    <!-- Comparativa de herramientas (imagen real) -->
+    <div class="problem-visual">
+      <img
+        ngSrc="assets/img/problem_tools.jpg"
+        [alt]="strings.landing.problem.visualAlt"
+        class="problem-tools-img"
+        width="800"
+        height="200"
+      />
+    </div>
+  </div>
+</section>

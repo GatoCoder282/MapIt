@@ -1,42 +1,41 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-import { FeatureFlagService } from '@mapit/feature-flags';
+import { SiteNav, SiteFooter, RevealOnScroll } from '@mapit/ui-kit';
+
+import { LandingHero } from './ui/hero/hero';
+import { LandingProblem } from './ui/problem/problem';
+import { LandingProduct } from './ui/product/product';
+import { LandingBusinessTypes } from './ui/business-types/business-types';
+import { LandingEditor } from './ui/editor/editor';
+import { LandingBooking } from './ui/booking/booking';
+import { LandingDashboard } from './ui/dashboard/dashboard';
+import { LandingRealtime } from './ui/realtime/realtime';
+import { LandingCtaFinal } from './ui/cta-final/cta-final';
 
 /**
- * Portada pública. Se sustituirá por el buscador de disponibilidad (CU-15).
- *
- * Comparte la flag `demo.hello` con la consola a propósito: al apagarla en
- * Unleash, el banner desaparece de AMBAS apps a la vez. Eso demuestra que el
- * toggle es una decisión de servidor, no de cada bundle.
+ * Landing pública de MapIt.
+ * Compuesta por secciones standalone; cada una es lazy-friendly
+ * y sin estado compartido. Datos estáticos para el CU de marketing.
+ * Nav y footer viven en @mapit/ui-kit porque se reutilizan en /reservas.
  */
 @Component({
   selector: 'mp-landing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <section class="landing">
-      <h1>MapIt</h1>
-      <p>Consulta disponibilidad y reserva tu lugar.</p>
-
-      @if (flags.isEnabled('demo.hello')()) {
-        <aside class="banner" role="status">El feature toggle también está activo aquí.</aside>
-      }
-    </section>
-  `,
-  styles: `
-    .landing {
-      padding: 4rem 2rem;
-      max-width: 40rem;
-      margin-inline: auto;
-      text-align: center;
-    }
-    .banner {
-      margin-top: 2rem;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      border: 1px solid var(--mapit-color-accent, #3b82f6);
-    }
-  `,
+  imports: [
+    SiteNav,
+    SiteFooter,
+    RevealOnScroll,
+    LandingHero,
+    LandingProblem,
+    LandingProduct,
+    LandingBusinessTypes,
+    LandingEditor,
+    LandingBooking,
+    LandingDashboard,
+    LandingRealtime,
+    LandingCtaFinal,
+  ],
+  templateUrl: './landing.html',
+  styleUrl: './landing.scss',
 })
-export class Landing {
-  protected readonly flags = inject(FeatureFlagService);
-}
+export class Landing {}

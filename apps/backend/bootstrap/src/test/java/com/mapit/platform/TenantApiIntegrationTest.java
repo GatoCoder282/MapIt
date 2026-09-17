@@ -23,8 +23,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import com.mapit.platform.domain.AdminInvitationEmailPort;
 import com.mapit.platform.domain.BusinessVertical;
-import com.mapit.platform.domain.TenantConfirmationEmailPort;
 
 /** Verifica el registro completo contra PostgreSQL y el servidor HTTP. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -44,6 +44,10 @@ class TenantApiIntegrationTest {
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
+    registry.add("spring.flyway.url", POSTGRES::getJdbcUrl);
+    registry.add("spring.flyway.user", POSTGRES::getUsername);
+    registry.add("spring.flyway.password", POSTGRES::getPassword);
+    registry.add("spring.flyway.placeholders.mapitAppDbPassword", () -> "test_app_password");
   }
 
   @LocalServerPort private int port;
@@ -138,8 +142,8 @@ class TenantApiIntegrationTest {
 
     @Bean
     @Primary
-    TenantConfirmationEmailPort confirmationEmailPort() {
-      return (tenant, recipient) -> {};
+    AdminInvitationEmailPort adminInvitationEmailPort() {
+      return (tenant, email, url) -> {};
     }
 
     @Bean

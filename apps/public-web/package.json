@@ -10,9 +10,12 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
+    "@lucide/angular": "^1.45.0",
     "@mapit/api-client": "workspace:*",
     "@mapit/feature-flags": "workspace:*",
     "@mapit/map-engine": "workspace:*",
-    "@mapit/ui-kit": "workspace:*"
+    "@mapit/ui-kit": "workspace:*",
+    "@ng-icons/core": "^36.0.0",
+    "@ng-icons/heroicons": "^36.0.0"
   }
 }

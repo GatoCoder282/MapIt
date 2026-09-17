@@ -2,6 +2,8 @@
 
 Este archivo es un **enrutador de contexto**, no documentación. Encuentra tu tarea en la tabla, carga lo que indica, y trabaja con eso. Cada carpeta tiene su propio `AGENTS.md` con las reglas de su sección.
 
+**Requisitos del entorno:** Node 24, pnpm 11+, **JDK Temurin 25**, Docker. No instales Gradle ni Angular CLI: van en el repo (wrapper de Gradle y `pnpm exec ng`). Sin JDK, todo lo de backend se omite.
+
 ## Qué es MapIt
 
 Motor de gestión espacial **multi-tenant**: el mapa del local es la interfaz operativa del negocio, no un dibujo. Un mismo motor sirve 4 verticales (restaurante, discoteca, salón de eventos, hotel). Angular 22 + Spring Boot 4.1 + PostgreSQL.
@@ -32,7 +34,7 @@ Alcance real: `docs/roadmap/use_cases.md` (**manda sobre `project_definition.md`
 7. **No se importa `konva` fuera de su adaptador.** El motor de mapa está sin decidir.
 8. **Zoneless.** Nada de `provideZoneChangeDetection()` ni Zone.js.
 9. **Los módulos backend no se importan entre sí.** Solo `bootstrap` los conoce a todos.
-10. **Versiones en `gradle/libs.versions.toml`**, nunca escritas en un `build.gradle.kts`.
+10. **Versiones en `apps/backend/gradle/libs.versions.toml`** (version catalog), nunca escritas en un `build.gradle.kts`.
 
 ## Comandos esenciales
 
@@ -41,7 +43,8 @@ pnpm setup          # primer clone (~5 min): crea .env, levanta Docker, migra BD
 pnpm dev            # todo el stack: infra + backend + 2 apps Angular
 pnpm dev:front      # solo las apps Angular (console :4200, public-web :4300)
 pnpm dev:back       # solo infra + Spring Boot
-pnpm check          # ANTES DE CADA PUSH: lint + tipos + tests + build + api:check + ArchUnit
+pnpm check          # ANTES DE CADA PUSH: formato + lint + tipos + tests + build + api:check + ArchUnit
+pnpm fmt            # autofix de formato (prettier + spotless); lo 1º que pide `pnpm check`
 pnpm doctor         # diagnóstico completo del entorno
 pnpm stop           # baja contenedores
 pnpm api:gen        # regenerar contrato (cliente TS + interfaces Java)
@@ -50,24 +53,37 @@ pnpm be:it          # tests integración (Testcontainers)
 pnpm fe:test        # tests frontend (Vitest)
 pnpm db:new "msg"   # nueva migración Flyway
 pnpm new:flag ...   # nueva feature flag coherente en 3 sitios
+pnpm new:spec       # andamiar spec de un CU | new:module / new:feature para código
+pnpm db:seed        # datos de prueba · pnpm api:check = contrato sin drift
 ```
+
+Correr un solo test: backend `node tools/scripts/gradle.mjs :modulo:test --tests "ClaseTest"`; frontend `pnpm exec ng test console --include "**/archivo.spec.ts"` (el builder es Vitest, vía `ng test`).
 
 `pnpm check` no se detiene en el primer fallo: resume al final. Sin Java, el backend se omite con aviso.
 
 ## Puertos y URLs
 
-| Servicio                | URL                                               |
-| ----------------------- | ------------------------------------------------- |
-| Consola (staff)         | http://localhost:4200                             |
-| Vista pública           | http://localhost:4300                             |
-| API + Swagger           | http://localhost:8080/swagger-ui.html             |
-| Feature flags (Unleash) | http://localhost:4242 — `admin` / `unleash4all`   |
-| Correos de prueba       | http://localhost:8025                             |
-| PostgreSQL              | `localhost:5433` (host) / `5432` (Docker interno) |
+| Servicio                | URL                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| Consola (staff)         | http://localhost:4200                                                                      |
+| Vista pública           | http://localhost:4300                                                                      |
+| API + Swagger           | http://localhost:8080/swagger-ui.html                                                      |
+| Feature flags (Unleash) | http://localhost:4242 — `admin` / `unleash4all`                                            |
+| Proxy de flags          | http://localhost:3063/proxy — el frontend **solo** habla con él, nunca con Unleash directo |
+| Correos de prueba       | http://localhost:8025                                                                      |
+| PostgreSQL              | `localhost:5433` (host) / `5432` (Docker interno)                                          |
 
 ## Commits
 
-**Conventional Commits obligatorio**: el hook `commit-msg` (husky + commitlint) rechaza el commit en el momento. El scope debe ser uno de la lista cerrada de `commitlint.config.js` (`spaces`, `console`, `contract`, `db`, …). Mensajes en español.
+**Conventional Commits obligatorio**: el hook `commit-msg` (husky + commitlint) rechaza el commit en el momento. Mensajes en español. El scope es una **lista cerrada** en `commitlint.config.js`:
+
+```
+backend, platform, identity, spaces, operations, reservations, payments,
+frontend, console, public-web, ui-kit, api-client, auth, feature-flags,
+realtime, map-engine, contract, infra, e2e, db, ci, docs, specs, deps, tooling
+```
+
+Otro scope = commit rechazado. Cabecera máx. 100 caracteres.
 
 ## Trampas conocidas
 
@@ -143,10 +159,10 @@ docs/           roadmap, arquitectura (ADR), modelo de datos (DBML), diagramas
 
 ## Equipo y ownership
 
-| Integrante | Rol                          | Casos de uso           |
-| ---------- | ---------------------------- | ---------------------- |
-| A          | Backend Core                 | CU-01…CU-08            |
-| B          | Backend Reservas/Pagos       | CU-09, CU-11…CU-18     |
-| C          | Frontend Editor              | CU-06…CU-08            |
-| D          | Frontend Operación/Dashboard | CU-09, CU-10, CU-15…18 |
-| E          | Full-stack / QA / Verticales | CU-19…CU-24            |
+| Integrante | Rol                          | Casos de uso       |
+| ---------- | ---------------------------- | ------------------ |
+| A          | Backend Core                 | CU-01…CU-08        |
+| B          | Backend Reservas/Pagos       | CU-09, CU-11…CU-18 |
+| C          | Frontend Editor              | CU-06…CU-08        |
+| D          | Frontend Operación/Dashboard | CU-09…CU-18        |
+| E          | Full-stack / QA / Verticales | CU-19…CU-24        |

@@ -1,8 +1,9 @@
-import { HttpErrorResponse } from '@angular/common/http';
+﻿import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import type { BusinessVertical, Tenant, TenantRequest } from '@mapit/api-client';
 import { finalize } from 'rxjs';
 import { TenantRegistrationApi } from '../data/tenant-registration-api';
+import { STRINGS } from '../../../../core/strings';
 
 export interface TenantRegistrationDraft {
   name: string;
@@ -49,20 +50,14 @@ export class TenantRegistrationStore {
   }
 
   private messageFor(error: unknown): string {
+    const errors = STRINGS.tenantForm.errors;
     if (error instanceof HttpErrorResponse) {
-      if (error.status === 400) {
-        return 'Revisa los datos ingresados.';
-      }
-      if (error.status === 401 || error.status === 403) {
-        return 'No tienes permisos para registrar un tenant.';
-      }
-      if (error.status === 409) {
-        return 'El slug ya está registrado.';
-      }
-      if (error.status === 503) {
-        return 'No se pudo enviar el correo de confirmación. Intenta nuevamente.';
-      }
+      if (error.status === 400) return errors.badRequest;
+      if (error.status === 401) return errors.unauthorized;
+      if (error.status === 403) return errors.forbidden;
+      if (error.status === 409) return errors.slugConflict;
+      if (error.status === 503) return errors.emailUnavailable;
     }
-    return 'No se pudo registrar el tenant.';
+    return errors.generic;
   }
 }

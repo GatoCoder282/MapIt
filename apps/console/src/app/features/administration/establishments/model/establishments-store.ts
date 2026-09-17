@@ -1,6 +1,8 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+﻿import { Injectable, computed, inject, signal } from '@angular/core';
 import type { Establishment, EstablishmentType } from '@mapit/api-client';
 import { finalize } from 'rxjs';
+import { STRINGS } from '../../../../core/strings';
+import { SLUG_PATTERN } from '../../../../core/patterns';
 import { EstablishmentsApi } from '../data/establishments-api';
 
 export interface EstablishmentDraft {
@@ -18,7 +20,11 @@ export const ESTABLISHMENT_TYPES: readonly EstablishmentType[] = [
   'HOTEL',
 ];
 
-const ZONA_HORARIA_POR_DEFECTO = 'America/La_Paz';
+/**
+ * Zona horaria por defecto. Espejo 1:1 del dominio backend
+ * (`Establishment.ZONA_HORARIA_POR_DEFECTO`) y del placeholder que la UI sugiere.
+ */
+const ZONA_HORARIA_POR_DEFECTO = STRINGS.establishments.form.timezonePlaceholder;
 
 const EMPTY_DRAFT: EstablishmentDraft = {
   name: '',
@@ -27,7 +33,7 @@ const EMPTY_DRAFT: EstablishmentDraft = {
   timezone: ZONA_HORARIA_POR_DEFECTO,
 };
 
-const SLUG_FORMATO = /^[a-z0-9][a-z0-9-]{1,62}$/;
+const SLUG_FORMATO = SLUG_PATTERN;
 
 /** ViewModel con el estado y los comandos de la pantalla de establecimientos (CU-04). */
 @Injectable()
@@ -61,7 +67,7 @@ export class EstablishmentsStore {
       .pipe(finalize(() => this.loadingState.set(false)))
       .subscribe({
         next: (items) => this.itemsState.set(items),
-        error: () => this.errorState.set('No se pudieron cargar los establecimientos.'),
+        error: () => this.errorState.set(STRINGS.establishments.errors.load),
       });
   }
 
@@ -104,20 +110,18 @@ export class EstablishmentsStore {
     const slug = draft.slug.trim();
 
     if (!name) {
-      this.errorState.set('El nombre es obligatorio.');
+      this.errorState.set(STRINGS.establishments.errors.nameRequired);
       return;
     }
     if (!SLUG_FORMATO.test(slug)) {
-      this.errorState.set(
-        'El slug debe tener entre 2 y 63 caracteres: minúsculas, dígitos y guiones.',
-      );
+      this.errorState.set(STRINGS.establishments.errors.slugInvalid);
       return;
     }
 
     const timezone = draft.timezone.trim() || ZONA_HORARIA_POR_DEFECTO;
     const editingId = this.editingIdState();
 
-    // El tipo solo viaja al crear: es inmutable tras la creación (RN-3) y por eso
+    // El tipo solo viaja al crear: es inmutable tras la creaciÃ³n (RN-3) y por eso
     // `EstablishmentUpdateRequest` ni siquiera lo declara.
     const request$ =
       editingId === null
@@ -138,13 +142,13 @@ export class EstablishmentsStore {
       error: (response: { status?: number }) =>
         this.errorState.set(
           response?.status === 409
-            ? 'Ya existe un establecimiento con ese slug.'
-            : 'No se pudo guardar el establecimiento.',
+            ? STRINGS.establishments.errors.slugConflict
+            : STRINGS.establishments.errors.save,
         ),
     });
   }
 
-  /** Da de baja. Es lógica en el backend: la fila se conserva y el slug queda libre. */
+  /** Da de baja. Es lÃ³gica en el backend: la fila se conserva y el slug queda libre. */
   remove(id: string): void {
     this.savingState.set(true);
     this.errorState.set(null);
@@ -158,7 +162,7 @@ export class EstablishmentsStore {
             this.startNew();
           }
         },
-        error: () => this.errorState.set('No se pudo dar de baja el establecimiento.'),
+        error: () => this.errorState.set(STRINGS.establishments.errors.remove),
       });
   }
 }

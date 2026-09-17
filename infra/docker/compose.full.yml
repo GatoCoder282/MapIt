@@ -24,9 +24,17 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       # Dentro de la red de Docker se usan los nombres de servicio y el puerto interno.
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mapit}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-mapit}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-changeme_local}
+      # DB_URL alimenta tanto el datasource de runtime como Flyway (application.yml).
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mapit}
+      # Flyway/DDL queda con el owner `mapit`; el runtime usa `mapit_app` (MAP-175).
+      POSTGRES_USER: ${POSTGRES_USER:-mapit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_local}
+      MAPIT_APP_DB_USER: ${MAPIT_APP_DB_USER:-mapit_app}
+      MAPIT_APP_DB_PASSWORD: ${MAPIT_APP_DB_PASSWORD:-changeme_local}
+      # Bootstrap del SUPER_ADMIN (CU-25); vacío = no se crea.
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-superadmin@mapit.local}
+      SUPER_ADMIN_FULL_NAME: ${SUPER_ADMIN_FULL_NAME:-Super Administrador}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
       MAPIT_JWT_SECRET: ${JWT_SECRET}
       MAPIT_JWT_ISSUER: ${JWT_ISSUER:-mapit}
       MAPIT_JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MIN:-15}

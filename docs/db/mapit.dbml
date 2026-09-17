@@ -8,7 +8,10 @@
 //  Visualizar:  https://dbdiagram.io  (pegar este archivo)
 //  Exportar:    pnpm db:erd
 //
-//  ESTADO: implementadas `tenant` (V1), `demo_item` (V2) y `app_user` (V3).
+//  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
+//  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5)
+//  y el rol de runtime `mapit_app` (V7, MAP-175: NOSUPERUSER + NOBYPASSRLS;
+//  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
 //  El resto es el diseño previsto; cada tabla llega con su caso de uso.
 //
 //  CONVENCIÓN (ADR-0004): toda tabla de negocio lleva
