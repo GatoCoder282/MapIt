@@ -30,7 +30,7 @@ email y reduce la cantidad de estados intermedios del usuario.
 | Use Case (Application Service)     | `CreateSuperAdminUseCase`, `ActivateAdmin`, `CreateUser`                                                                                   | Un servicio transaccional por comando, orquestando puertos; mantiene las reglas fuera de los controllers.  | Lógica en el controller: duplicaría validaciones y dificultaría el testing.             |
 | Token criptográfico de un solo uso | `SecureTokenGenerator` + tabla `invitation_tokens`                                                                                         | El token es un secreto independiente del JWT; caduca, se consume atómicamente y es verificable en BD.      | Reutilizar el JWT como token de activación: acoplaría validez temporales y revocación.  |
 | Idempotent Bootstrap               | `ApplicationRunner` validando **por rol** (no por email)                                                                                   | Permite cambiar el email sin duplicar el super-admin; arranques repetidos son seguros.                     | Constraint por email: impediría rotar la credencial inicial.                            |
-| Tenant técnico `platform`          | Migración V6 + contexto de bootstrap                                                                                                       | Resuelve el `NOT NULL` de `app_user.tenant_id` para el SUPER_ADMIN sin violar el modelo multi-tenant.      | Hacer nullable la columna: debilitaría la garantía global del modelo.                   |
+| Tenant técnico `platform`          | Migración V8 + contexto de bootstrap                                                                                                       | Resuelve el `NOT NULL` de `app_user.tenant_id` para el SUPER_ADMIN sin violar el modelo multi-tenant.      | Hacer nullable la columna: debilitaría la garantía global del modelo.                   |
 | Mecanismo cross-tenant explícito   | `TenantScope` / contexto de actor (definido en MAP-175)                                                                                    | SUPER_ADMIN opera cross-tenant de forma controlada y probada; el rol `mapit_app` nunca obtiene bypass RLS. | Bypass global de RLS: rompería el aislamiento que MAP-175 viene a garantizar.           |
 
 ## 3. Cambios en el contrato API
@@ -60,9 +60,9 @@ email y reduce la cantidad de estados intermedios del usuario.
 ## 5. Base de datos
 
 - [x] Migración necesaria → `pnpm db:new`
-  - `V6__tenant_tecnico_platform.sql` — tenant técnico `platform`
-  - `V7__rol_runtime_mapit_app.sql` — rol runtime sin superuser/bypass RLS (MAP-175)
-  - `V8__crear_tabla_invitation_tokens.sql` — tabla de invitaciones
+  - `V8__tenant_tecnico_platform.sql` — tenant técnico `platform`
+  - `V9__rol_runtime_mapit_app.sql` — rol runtime sin superuser/bypass RLS (MAP-175)
+  - `V10__crear_tabla_invitation_tokens.sql` — tabla de invitaciones
 - [x] `tenant_id NOT NULL` + índice `(tenant_id, id)` + `enable_tenant_isolation()` en `invitation_tokens`
 - [x] `docs/db/mapit.dbml` actualizado en el **mismo** commit
 

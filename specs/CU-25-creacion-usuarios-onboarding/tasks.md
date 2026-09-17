@@ -6,7 +6,7 @@
 
 ## Orden de ejecución
 
-- [x] **T1 — Prerequisito MAP-175.** Crear rol `mapit_app` sin superusuario (V7),
+- [x] **T1 — Prerequisito MAP-175.** Crear rol `mapit_app` sin superusuario (V9),
       `TenantScope` con `SET LOCAL`, doble datasource en `application.yml`/`.env.example`,
       tests de aislamiento actualizados al rol real.
       _Verificación:_ `RuntimeRoleIntegrationTest` en verde; `SELECT rolsuper, rolbypassrls … WHERE rolname='mapit_app'` → `f, f`.
@@ -19,7 +19,7 @@
       _Nota:_ subido en CU-25 junto con el resto del flujo (pues el código depende
       del contrato generado). Dejar evidencia en el PR.
 
-- [ ] **T3 — Migración invitation_tokens.** `V8__crear_tabla_invitation_tokens.sql` con
+- [ ] **T3 — Migración invitation_tokens.** `V10__crear_tabla_invitation_tokens.sql` con
       `tenant_id` + índice + RLS + expiración 24 h.
       _Verificación:_ `pnpm db:migrate` aplica limpio; test de aislamiento entre tenants.
 
