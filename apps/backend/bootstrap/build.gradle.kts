@@ -32,7 +32,6 @@ dependencies {
     implementation(libs.spring.boot.starter.websocket)
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.springdoc.openapi)
-    implementation(libs.unleash.client)
     implementation(libs.bundles.jwt)
 
     testImplementation(libs.spring.boot.starter.test)

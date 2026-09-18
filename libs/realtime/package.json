@@ -2,6 +2,9 @@
   "name": "@mapit/realtime",
   "version": "0.1.0",
   "private": true,
+  "dependencies": {
+    "@stomp/stompjs": "7.3.0"
+  },
   "description": "Wrapper de WebSocket/STOMP para actualizaciones en vivo.",
   "sideEffects": false,
   "exports": {

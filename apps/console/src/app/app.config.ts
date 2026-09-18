@@ -7,9 +7,10 @@ import {
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
-import { authInterceptor, AUTH_API_URL } from '@mapit/auth';
+import { AuthSession, authInterceptor, AUTH_API_URL } from '@mapit/auth';
 import { BASE_PATH } from '@mapit/api-client';
-import { provideFeatureFlags } from '@mapit/feature-flags';
+import { FeatureFlagService, provideFeatureFlags } from '@mapit/feature-flags';
+import { provideRealtime } from '@mapit/realtime';
 import { provideRuntimeConfig, RuntimeConfigStore } from './core/runtime-config';
 import { routes } from './app.routes';
 
@@ -47,5 +48,18 @@ export const appConfig: ApplicationConfig = {
     provideRuntimeConfig(),
 
     provideFeatureFlags(),
+
+    // La librerÃ­a realtime no conoce AuthSession ni Unleash. La consola conecta esos puertos
+    // concretos con el runtime config y el kill switch de punta a punta.
+    provideRealtime(() => {
+      const runtime = inject(RuntimeConfigStore);
+      const flags = inject(FeatureFlagService);
+      const session = inject(AuthSession);
+      return {
+        brokerUrl: () => runtime.config().wsUrl,
+        accessToken: () => session.token(),
+        enabled: () => flags.isEnabledNow('realtime.websocket'),
+      };
+    }),
   ],
 };

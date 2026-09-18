@@ -48,7 +48,7 @@ Este documento extiende `project_definition.md`. Con un equipo de 5 personas se 
 
 ### 3.3 Operación en tiempo real
 
-- **CU-09** Cambiar el estado de un elemento (libre/ocupado/reservado/limpieza/fuera de servicio) y reflejarlo vía WebSocket a todos los clientes conectados en <2s.
+- **CU-09** Cambiar el estado de un elemento (libre/ocupado/reservado/limpieza/fuera de servicio) y reflejarlo vía WebSocket a todos los clientes conectados en <2s. La infraestructura habilitadora de la HU-3.02 está trazada en **MAP-103 / HUT-01**; el contrato STOMP vive en [`docs/api/realtime.md`](../api/realtime.md).
 - **CU-10** Dashboard operativo con ocupación en vivo, reservas activas y personas dentro.
 
 ### 3.4 Personas y reservas

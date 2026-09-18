@@ -9,4 +9,5 @@ dependencies {
     implementation(project(":modules:platform:platform-application"))
     implementation(project(":shared-kernel"))
     implementation(libs.spring.boot.starter.mail)
+    implementation(libs.unleash.client)
 }

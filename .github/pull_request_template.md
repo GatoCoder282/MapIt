@@ -2,13 +2,20 @@
 
 <Una o dos frases.>
 
-## Caso de uso
+## Trazabilidad Jira y ramas
 
-Especificación: `specs/CU-XX-.../`
+- Historia: `MAP-XXX` / `HUT-XX`
+- Rama base: `<rama-base>`
+- Siguiente PR apilado: `<enlace o N/A>`
 
-- [ ] `spec.md` completa y sus criterios de aceptación marcados
-- [ ] `plan.md` con la sección **Patrones de diseño aplicados** llena
-- [ ] `tasks.md` con las notas de ejecución
+## Caso de uso o historia técnica
+
+Especificación: `specs/CU-XX-.../`, o contrato/ADR de la historia técnica
+
+- [ ] Si aplica CU: `spec.md` completa y sus criterios de aceptación marcados
+- [ ] Si aplica CU: `plan.md` con la sección **Patrones de diseño aplicados** llena
+- [ ] Si aplica CU: `tasks.md` con las notas de ejecución
+- [ ] Si aplica historia técnica: contrato/ADR y subtareas de implementación actualizados
 
 ## Checklist
 
