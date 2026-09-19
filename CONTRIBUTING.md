@@ -71,6 +71,32 @@ docs/adr-motor-de-mapa
 chore/actualizar-angular
 ```
 
+Para una historia técnica de Jira se conserva el identificador de la historia en la rama.
+Cuando el trabajo tiene subtareas independientes, se usa una cadena de ramas apiladas: cada
+rama nace de la anterior y su PR apunta a esa rama base; solo la rama final apunta a `main`.
+El nombre de la rama raíz es el título normalizado de la historia y las ramas hijas incluyen la
+subtarea:
+
+```text
+feat/<usuario>/<HUT>-<descripcion>
+feat/<usuario>/MAP-<subtarea>-<descripcion>
+```
+
+Ejemplo de MAP-103 / HUT-01:
+
+```text
+feat/GatoCoder282/HUT-01-implementacion-infraestructura-websocket
+  -> feat/GatoCoder282/MAP-122-contrato-eventos-stomp
+  -> feat/GatoCoder282/MAP-120-servidor-stomp
+  -> feat/GatoCoder282/MAP-121-rooms-establishment-sector
+  -> feat/GatoCoder282/MAP-123-tests-client-reconexion
+```
+
+El cuerpo de cada PR enlaza la historia Jira, indica la rama base y deja el enlace del siguiente
+PR. Para MAP-103 no se abren ramas paralelas por componente: la secuencia mantiene el contrato
+primero, evita que una rama apunte a `main` antes de tener la infraestructura completa y deja un
+único PR final trazable a la historia.
+
 ### Commits — Conventional Commits
 
 ```

@@ -51,6 +51,10 @@ public class SecurityConfig {
         "/v3/api-docs/**",
         "/swagger-ui/**",
         "/swagger-ui.html",
+        // El handshake WebSocket no puede transportar el Bearer de forma portable; la identidad
+        // se autentica inmediatamente en el frame STOMP CONNECT por RealtimeStompInterceptor.
+        "/ws",
+        "/ws/**",
         // Superficie pública de reservas (CU-15, CU-16): el cliente final es anónimo.
         ApiPaths.HEALTH,
         ApiPaths.PUBLIC,
@@ -119,6 +123,7 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/ws/**", config);
         return source;
     }
 

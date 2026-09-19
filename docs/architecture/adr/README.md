@@ -45,3 +45,4 @@ descartaron las alternativas_. Sirve para dos cosas muy concretas:
 | [0006](ADR-0006-motor-de-mapa.md)                  | Motor de mapa tras un puerto                 | **Propuesto** |
 | [0007](ADR-0007-spec-driven-development.md)        | Spec-Driven Development                      | Aceptado      |
 | [0008](ADR-0008-consulta-credenciales-prelogin.md) | Consulta de credenciales antes del JWT       | **Propuesto** |
+| [0009](ADR-0009-realtime-websocket-outbox.md)      | WebSocket STOMP con outbox y broker simple   | Aceptado      |

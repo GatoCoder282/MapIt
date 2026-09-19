@@ -9,8 +9,9 @@
 //  Exportar:    pnpm db:erd
 //
 //  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
-//  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5)
-//  y el rol de runtime `mapit_app` (V7, MAP-175: NOSUPERUSER + NOBYPASSRLS;
+//  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5),
+//  `realtime_event_outbox` (V11, MAP-103/HUT-01) y el rol de runtime `mapit_app`
+//  (V9, MAP-175: NOSUPERUSER + NOBYPASSRLS;
 //  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
 //  El resto es el diseño previsto; cada tabla llega con su caso de uso.
 //
@@ -144,4 +145,34 @@ Table space_element {
   name      text        [not null]
   type      text
   config    jsonb
+}
+
+Table realtime_event_outbox {
+  event_id          uuid        [pk]
+  tenant_id         text        [not null, ref: > tenant.id]
+  event_type        text        [not null]
+  schema_version    int         [not null]
+  occurred_at       timestamptz [not null]
+  establishment_id  uuid        [not null]
+  sector_id         uuid
+  aggregate_version bigint      [not null]
+  payload           jsonb       [not null]
+  attempts          int         [not null, default: 0]
+  available_at      timestamptz [not null]
+  claimed_at        timestamptz
+  last_error        text
+  published_at      timestamptz
+  created_at        timestamptz [not null]
+  updated_at        timestamptz [not null]
+
+  Indexes {
+    (tenant_id, event_id)
+    (tenant_id, available_at, occurred_at, event_id) [note: 'Parcial: published_at IS NULL']
+    published_at [note: 'Parcial: published_at IS NOT NULL; retención']
+  }
+  Note: '''
+    MAP-103/HUT-01. Outbox durable multi-tenant para publicar eventos STOMP.
+    Tiene RLS forzada; el tenant no se duplica en el envelope público.
+    At-least-once: published_at se marca después del envío y event_id permite deduplicar.
+  '''
 }
