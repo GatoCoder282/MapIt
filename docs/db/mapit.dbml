@@ -139,12 +139,24 @@ Table sector {
 }
 
 Table space_element {
-  id        uuid        [pk]
-  tenant_id text        [not null, ref: > tenant.id]
-  sector_id uuid        [not null, ref: > sector.id]
-  name      text        [not null]
-  type      text
-  config    jsonb
+  id         uuid             [pk, note: 'default gen_random_uuid()']
+  tenant_id  text             [not null, ref: > tenant.id]
+  sector_id  uuid             [not null, ref: > sector.id, note: 'ON DELETE RESTRICT — sin orfandad']
+  type       text             [not null, note: 'TABLE | BAR | SECTOR_ZONE | STAGE | SEAT | ROOM | DECOR']
+  state      text             [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
+  x          double_precision [not null, note: 'relativa al sector, >= 0']
+  y          double_precision [not null, note: 'relativa al sector, >= 0']
+  created_at timestamptz      [not null, default: `now()`]
+  created_by uuid
+  updated_at timestamptz      [not null, default: `now()`]
+  updated_by uuid
+  deleted_at timestamptz
+  deleted_by uuid
+
+  Indexes {
+    (tenant_id, id)                                  [name: 'space_element_tenant_id_id_idx']
+    (tenant_id, sector_id, created_at)               [name: 'space_element_tenant_sector_vivos_idx', type: btree, note: 'PARCIAL: WHERE deleted_at IS NULL']
+  }
 }
 
 Table realtime_event_outbox {
