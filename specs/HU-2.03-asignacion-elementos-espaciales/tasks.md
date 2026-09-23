@@ -5,9 +5,10 @@
 
 ## Orden de ejecución
 
-- [ ] **T1 — Contrato.** Añadir a `openapi.yaml` las 3 rutas (`POST/GET/PUT/DELETE menos el
-    DELETE`), los schemas `SpaceElement`, `SpaceElementCreateRequest`,
-      `SpaceElementUpdateRequest` y las respuestas compartidas (400/401/404/500).
+- [ ] **T1 — Contrato.** Añadir a `openapi.yaml` las 4 operaciones (POST crear, GET lista,
+      GET detalle, PUT actualizar), los schemas `SpaceElement`,
+      `SpaceElementCreateRequest`, `SpaceElementUpdateRequest` y las respuestas
+      compartidas (400/401/404/500).
       _Verificación:_ `pnpm api:lint` verde y `pnpm api:gen` regenera sin drift.
 
 - [ ] **T2 — Migración.** `pnpm db:new "crear tabla space_element"` → `V12_…sql`
@@ -43,9 +44,9 @@
 | Subtarea    | Enunciado en Jira                      | Artefacto real                                                                                 | Tarea  |
 | ----------- | -------------------------------------- | ---------------------------------------------------------------------------------------------- | ------ |
 | **MAP-110** | Crear entidad SpaceElement             | Dominio + JPA                                                                                  | T3, T5 |
-| **MAP-111** | Crear migración Flyway                 | `V11_…sql`                                                                                     | T2     |
+| **MAP-111** | Crear migración Flyway                 | `V12__crear_tabla_space_element.sql`                                                           | T2     |
 | **MAP-112** | Implementar entidad SpaceElement       | **Duplicada de MAP-110** — es el mismo artefacto (la entidad). Se cierra con la misma entrega. | —      |
-| **MAP-113** | Crear migración Flyway de SpaceElement | **Duplicada de MAP-111** — mismo artefacto (la migración `V11`).                               | —      |
+| **MAP-113** | Crear migración Flyway de SpaceElement | **Duplicada de MAP-111** — mismo artefacto (la migración `V12`).                               | —      |
 | **MAP-114** | Implementar SpaceElementService        | `SpaceElementQueryService` + use cases                                                         | T4     |
 | **MAP-115** | Implementar endpoint de SpaceElement   | `SpaceElementController`                                                                       | T1, T5 |
 

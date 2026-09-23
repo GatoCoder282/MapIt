@@ -31,12 +31,12 @@ Catálogo: `docs/architecture/design-patterns.md`.
 - [x] Editar `packages/api-contract/openapi.yaml` **primero** → `pnpm api:lint` → `pnpm api:gen`.
 - Todas las rutas bajo `/api/v1`; errores con el esquema `Problem` compartido.
 
-| Método | Ruta                                       | Descripción                                                                  |
-| ------ | ------------------------------------------ | ---------------------------------------------------------------------------- |
-| POST   | `/sectors/{sectorId}/elements`             | Crear elemento; 201 + resumen. `initalState` opcional (default `AVAILABLE`). |
-| GET    | `/sectors/{sectorId}/elements`             | Lista de elementos vivos del sector (consulta de MAP-114).                   |
-| GET    | `/sectors/{sectorId}/elements/{elementId}` | Detalle (404 si ajeno/inexistente).                                          |
-| PUT    | `/sectors/{sectorId}/elements/{elementId}` | Reemplazo de campos editables (`type`, `x`, `y`). 200.                       |
+| Método | Ruta                                       | Descripción                                                                   |
+| ------ | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| POST   | `/sectors/{sectorId}/elements`             | Crear elemento; 201 + resumen. `initialState` opcional (default `AVAILABLE`). |
+| GET    | `/sectors/{sectorId}/elements`             | Lista de elementos vivos del sector (consulta de MAP-114).                    |
+| GET    | `/sectors/{sectorId}/elements/{elementId}` | Detalle (404 si ajeno/inexistente).                                           |
+| PUT    | `/sectors/{sectorId}/elements/{elementId}` | Reemplazo de campos editables (`type`, `x`, `y`). 200.                        |
 
 Schemas nuevos: `SpaceElement`, `SpaceElementCreateRequest`, `SpaceElementUpdateRequest`.
 

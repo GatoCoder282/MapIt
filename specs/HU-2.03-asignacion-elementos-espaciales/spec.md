@@ -44,7 +44,7 @@ pero un sector queda vacío: no hay forma de decir «en este sector hay una mesa
 ## 4. Flujo principal
 
 1. El cliente envía `POST /api/v1/sectors/{sectorId}/elements` con `type`, `x`, `y` y
-   `initialState`.
+   `initialState`. `initialState` es opcional y su default es `AVAILABLE`.
 2. El backend resuelve el tenant desde el contexto, verifica que el sector existe vivo
    **dentro de ese tenant** y valida los datos.
 3. Persiste el elemento con el tenant derivado del sector/contexto y devuelve 201.
@@ -75,8 +75,13 @@ pero un sector queda vacío: no hay forma de decir «en este sector hay una mesa
 - **RN-3:** El `type` es de un catálogo cerrado: `TABLE`, `BAR`, `SECTOR_ZONE`, `STAGE`,
   `SEAT`, `ROOM`, `DECOR` (el mismo que `libs/map-engine`; es nuestro modelo, ADR-0006).
 - **RN-4:** El tipo debe ser coherente con la vertical: `ROOM` solo en hotel y `SEAT`
-  solo en salón de eventos; el resto aplica a cualquier vertical. Criterio inicial
-  documentado en `plan.md`; CU-07 lo refinará con plantillas configurables.
+  solo en salón de eventos; el resto aplica a cualquier vertical. **Divergencia
+  documentada:** Jira dice "según la vertical del Tenant" pero el criterio se aplica
+  contra la vertical del **establecimiento** del sector (`tenant → sector → floor →
+establishment.type`), más granular y aprovechando que `tenant.vertical` tiene default
+  `RESTAURANT` (V4) y por tanto discrimina menos. Si Jira exige el tenant tras revisión,
+  el cambio es una línea en `SpaceElementTypePolicy`. La exclusividad es **provisional**:
+  CU-07 la refinará con plantillas configurables.
 - **RN-5:** `initialState` puede ser `AVAILABLE`, `OCCUPIED`, `RESERVED`, `CLEANING`,
   `OUT_OF_SERVICE`. Nace como estado actual del elemento; el estado es un dato mutable
   y su cambio auditado viene en HU-3.01, por eso el modelo no lo congela.
