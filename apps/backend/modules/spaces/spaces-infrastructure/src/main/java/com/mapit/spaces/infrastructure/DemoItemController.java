@@ -23,8 +23,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.mapit.spaces.application.DemoItemNotFoundException;
-import com.mapit.spaces.application.DemoItemService;
+import com.mapit.spaces.application.demo.DemoItemNotFoundException;
+import com.mapit.spaces.application.demo.DemoItemService;
 import com.mapit.spaces.domain.DemoItem;
 
 /** Adaptador REST del CRUD de demostración. */

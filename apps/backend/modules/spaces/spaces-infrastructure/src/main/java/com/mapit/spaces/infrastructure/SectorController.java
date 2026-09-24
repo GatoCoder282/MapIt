@@ -17,17 +17,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.mapit.spaces.application.CreateSectorCommand;
-import com.mapit.spaces.application.CreateSectorUseCase;
-import com.mapit.spaces.application.DeleteSectorUseCase;
-import com.mapit.spaces.application.FloorNotFoundException;
-import com.mapit.spaces.application.GetSectorByIdUseCase;
-import com.mapit.spaces.application.GetSectorsByFloorUseCase;
-import com.mapit.spaces.application.SectorNotFoundException;
-import com.mapit.spaces.application.SectorResponse;
-import com.mapit.spaces.application.SectorSlugAlreadyExistsException;
-import com.mapit.spaces.application.UpdateSectorCommand;
-import com.mapit.spaces.application.UpdateSectorUseCase;
+import com.mapit.spaces.application.floor.FloorNotFoundException;
+import com.mapit.spaces.application.sector.CreateSectorCommand;
+import com.mapit.spaces.application.sector.CreateSectorUseCase;
+import com.mapit.spaces.application.sector.DeleteSectorUseCase;
+import com.mapit.spaces.application.sector.GetSectorByIdUseCase;
+import com.mapit.spaces.application.sector.GetSectorsByFloorUseCase;
+import com.mapit.spaces.application.sector.SectorNotFoundException;
+import com.mapit.spaces.application.sector.SectorResponse;
+import com.mapit.spaces.application.sector.SectorSlugAlreadyExistsException;
+import com.mapit.spaces.application.sector.UpdateSectorCommand;
+import com.mapit.spaces.application.sector.UpdateSectorUseCase;
 
 /**
  * Adaptador REST de sectores (CU-05).

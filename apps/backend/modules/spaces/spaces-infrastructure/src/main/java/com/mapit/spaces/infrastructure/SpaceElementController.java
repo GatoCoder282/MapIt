@@ -16,15 +16,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.mapit.spaces.application.CreateSpaceElementCommand;
-import com.mapit.spaces.application.CreateSpaceElementUseCase;
-import com.mapit.spaces.application.InvalidElementTypeForVerticalException;
-import com.mapit.spaces.application.SectorNotFoundException;
-import com.mapit.spaces.application.SpaceElementNotFoundException;
-import com.mapit.spaces.application.SpaceElementQueryService;
-import com.mapit.spaces.application.SpaceElementResponse;
-import com.mapit.spaces.application.UpdateSpaceElementCommand;
-import com.mapit.spaces.application.UpdateSpaceElementUseCase;
+import com.mapit.spaces.application.sector.SectorNotFoundException;
+import com.mapit.spaces.application.spaceelement.CreateSpaceElementCommand;
+import com.mapit.spaces.application.spaceelement.CreateSpaceElementUseCase;
+import com.mapit.spaces.application.spaceelement.InvalidElementTypeForVerticalException;
+import com.mapit.spaces.application.spaceelement.SpaceElementNotFoundException;
+import com.mapit.spaces.application.spaceelement.SpaceElementQueryService;
+import com.mapit.spaces.application.spaceelement.SpaceElementResponse;
+import com.mapit.spaces.application.spaceelement.UpdateSpaceElementCommand;
+import com.mapit.spaces.application.spaceelement.UpdateSpaceElementUseCase;
 
 /**
  * Adaptador REST de elementos espaciales (HU-2.03 / MAP-115).

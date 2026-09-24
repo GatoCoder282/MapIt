@@ -27,12 +27,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.mapit.spaces.application.EstablishmentNotFoundException;
-import com.mapit.spaces.application.FloorHasActiveSectorsException;
-import com.mapit.spaces.application.FloorLevelAlreadyExistsException;
-import com.mapit.spaces.application.FloorNotFoundException;
-import com.mapit.spaces.application.FloorService;
-import com.mapit.spaces.application.FloorSlugAlreadyExistsException;
+import com.mapit.spaces.application.establishment.EstablishmentNotFoundException;
+import com.mapit.spaces.application.floor.FloorHasActiveSectorsException;
+import com.mapit.spaces.application.floor.FloorLevelAlreadyExistsException;
+import com.mapit.spaces.application.floor.FloorNotFoundException;
+import com.mapit.spaces.application.floor.FloorService;
+import com.mapit.spaces.application.floor.FloorSlugAlreadyExistsException;
 import com.mapit.spaces.domain.Floor;
 /**
  * Adaptador REST de la gestión de pisos (CU-05).

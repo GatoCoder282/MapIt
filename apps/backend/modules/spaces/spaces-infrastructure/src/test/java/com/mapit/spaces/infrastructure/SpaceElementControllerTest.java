@@ -15,9 +15,9 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
-import com.mapit.spaces.application.CreateSpaceElementUseCase;
-import com.mapit.spaces.application.SpaceElementQueryService;
-import com.mapit.spaces.application.UpdateSpaceElementUseCase;
+import com.mapit.spaces.application.spaceelement.CreateSpaceElementUseCase;
+import com.mapit.spaces.application.spaceelement.SpaceElementQueryService;
+import com.mapit.spaces.application.spaceelement.UpdateSpaceElementUseCase;
 import com.mapit.spaces.domain.AuditTrail;
 import com.mapit.spaces.domain.Establishment;
 import com.mapit.spaces.domain.EstablishmentRepository;
@@ -69,7 +69,7 @@ class SpaceElementControllerTest {
     FloorRepository floors = new PantryFloorRepository(List.of(floor));
     EstablishmentRepository establishments = new PantryEstablishmentRepository(List.of(est));
     TenantContext tenantContext = () -> Optional.of(TENANT_A);
-    var support = new com.mapit.spaces.application.SpaceElementSupport(sectors, floors, establishments);
+    var support = new com.mapit.spaces.application.spaceelement.SpaceElementSupport(sectors, floors, establishments);
     var clock = java.time.Clock.fixed(AHORA, java.time.ZoneOffset.UTC);
 
     SpaceElementController controller =

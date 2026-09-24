@@ -25,9 +25,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.mapit.spaces.application.EstablishmentNotFoundException;
-import com.mapit.spaces.application.EstablishmentService;
-import com.mapit.spaces.application.EstablishmentSlugAlreadyExistsException;
+import com.mapit.spaces.application.establishment.EstablishmentNotFoundException;
+import com.mapit.spaces.application.establishment.EstablishmentService;
+import com.mapit.spaces.application.establishment.EstablishmentSlugAlreadyExistsException;
 import com.mapit.spaces.domain.Establishment;
 import com.mapit.spaces.domain.EstablishmentType;
 import com.mapit.spaces.domain.Slug;
