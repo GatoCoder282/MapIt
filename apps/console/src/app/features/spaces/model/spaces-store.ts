@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { Floor, Sector } from '@mapit/api-client';
+import type { Floor, Sector, SpaceElement, SpaceElementCreateRequest } from '@mapit/api-client';
 import { type Observable, throwError } from 'rxjs';
 import { finalize, tap } from 'rxjs/operators';
 import { SpacesApiService, type FloorDraft, type SectorDraft } from '../data/spaces-api';
@@ -12,6 +12,20 @@ const EMPTY_FLOOR_DRAFT: FloorDraft = {
 
 const EMPTY_SECTOR_DRAFT: SectorDraft = {
   name: '',
+};
+
+export interface SpaceElementDraft {
+  type: string;
+  x: string;
+  y: string;
+  initialState: string;
+}
+
+const EMPTY_ELEMENT_DRAFT: SpaceElementDraft = {
+  type: 'TABLE',
+  x: '',
+  y: '',
+  initialState: 'AVAILABLE',
 };
 
 /** ViewModel con estado y comandos para la gestión de Pisos y Sectores (CU-05 · MAP-69/70). */
@@ -32,6 +46,12 @@ export class SpacesStore {
   private readonly sectorDraftState = signal<SectorDraft>({ ...EMPTY_SECTOR_DRAFT });
   private readonly editingSectorIdState = signal<string | null>(null);
 
+  // SpaceElement state (keyed by sectorId)
+  private readonly elementsBySectorState = signal<Record<string, SpaceElement[]>>({});
+  private readonly elementsLoadingState = signal<Record<string, boolean>>({});
+  private readonly elementDraftState = signal<SpaceElementDraft>({ ...EMPTY_ELEMENT_DRAFT });
+  private readonly editingElementIdState = signal<string | null>(null);
+
   // Shared state
   private readonly loadingState = signal(false);
   private readonly savingState = signal(false);
@@ -46,6 +66,11 @@ export class SpacesStore {
   readonly sectorsByFloor = computed(() => this.sectorsByFloorState());
   readonly sectorDraft = this.sectorDraftState.asReadonly();
   readonly isEditingSector = computed(() => this.editingSectorIdState() !== null);
+
+  // SpaceElement selectors
+  readonly elementsBySector = computed(() => this.elementsBySectorState());
+  readonly elementDraft = this.elementDraftState.asReadonly();
+  readonly isEditingElement = computed(() => this.editingElementIdState() !== null);
 
   // Shared selectors
   readonly loading = this.loadingState.asReadonly();
@@ -281,6 +306,131 @@ export class SpacesStore {
       return { ...state, [floorId]: sectors };
     });
   }
+
+  // ===== SPACE ELEMENT OPERATIONS (HU-2.03 / MAP-117-118) =====
+
+  elementsBySectorId(sectorId: string): SpaceElement[] {
+    return this.elementsBySectorState()[sectorId] ?? [];
+  }
+
+  elementsLoading(sectorId: string): boolean {
+    return this.elementsLoadingState()[sectorId] ?? false;
+  }
+
+  loadSpaceElementsBySector(sectorId: string): void {
+    this.elementsLoadingState.update((state) => ({ ...state, [sectorId]: true }));
+    this.errorState.set(null);
+    this.api
+      .listSpaceElementsBySector(sectorId)
+      .pipe(
+        finalize(() =>
+          this.elementsLoadingState.update((state) => ({ ...state, [sectorId]: false })),
+        ),
+      )
+      .subscribe({
+        next: (elements) =>
+          this.elementsBySectorState.update((state) => ({ ...state, [sectorId]: elements })),
+        error: () => this.errorState.set(this.strings_.elements.errors.loadFailed),
+      });
+  }
+
+  startNewElement(): void {
+    this.editingElementIdState.set(null);
+    this.elementDraftState.set({ ...EMPTY_ELEMENT_DRAFT });
+    this.errorState.set(null);
+  }
+
+  editElement(element: SpaceElement): void {
+    this.editingElementIdState.set(element.id);
+    this.elementDraftState.set({
+      type: element.type,
+      x: String(element.x),
+      y: String(element.y),
+      initialState: element.state,
+    });
+    this.errorState.set(null);
+  }
+
+  setElementType(type: string): void {
+    this.elementDraftState.update((draft) => ({ ...draft, type }));
+  }
+
+  setElementX(x: string): void {
+    this.elementDraftState.update((draft) => ({ ...draft, x }));
+  }
+
+  setElementY(y: string): void {
+    this.elementDraftState.update((draft) => ({ ...draft, y }));
+  }
+
+  setElementInitialState(initialState: string): void {
+    this.elementDraftState.update((draft) => ({ ...draft, initialState }));
+  }
+
+  saveElement(sectorId: string): Observable<SpaceElement> | null {
+    const draft = this.elementDraft();
+    const str = this.strings_.elements.form;
+
+    const x = parseFloat(draft.x);
+    const y = parseFloat(draft.y);
+    if (isNaN(x) || x < 0 || isNaN(y) || y < 0) {
+      this.errorState.set(str.coordsInvalid);
+      return null;
+    }
+
+    const editingId = this.editingElementIdState();
+    const request: SpaceElementCreateRequest = {
+      type: draft.type as SpaceElementCreateRequest.TypeEnum,
+      x,
+      y,
+      initialState:
+        (draft.initialState as SpaceElementCreateRequest.InitialStateEnum) ?? 'AVAILABLE',
+    };
+
+    this.savingState.set(true);
+    this.errorState.set(null);
+
+    const request$ =
+      editingId === null
+        ? this.api.createSpaceElement(sectorId, request)
+        : this.api.updateSpaceElement(sectorId, editingId, { type: request.type, x, y });
+
+    return request$.pipe(
+      finalize(() => this.savingState.set(false)),
+      tap({
+        next: (saved) => {
+          this.elementsBySectorState.update((state) => ({
+            ...state,
+            [sectorId]:
+              editingId === null
+                ? [saved, ...(state[sectorId] ?? [])]
+                : (state[sectorId] ?? []).map((e) => (e.id === saved.id ? saved : e)),
+          }));
+          this.startNewElement();
+        },
+        error: (response: { status?: number }) => {
+          this.errorState.set(
+            response?.status === 400
+              ? this.strings_.elements.errors.saveInvalid
+              : this.strings_.elements.errors.saveFailed,
+          );
+        },
+      }),
+    );
+  }
+
+  // Baja de elementos: no hay DELETE de elementos en el contrato todavía. Cuando se sume,
+  // aquí irá `deleteSpaceElement(sectorId, elementId)` — hoy declarativamente excluido
+  // para no esconder un endpoint disfrazado de borrado (ver tasks.md §16).
+
+  /** ¿El sector inicial draft está completo y válido? */
+  /** ¿El draft del elemento está completo y válido? */
+  elementFormValido(): boolean {
+    const draft = this.elementDraft();
+    return !!draft.type && draft.x !== '' && draft.y !== '';
+  }
+
+  // ===== SECTOR DELETE =====
 
   removeSector(id: string): void {
     // Find which floor this sector belongs to

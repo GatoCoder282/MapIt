@@ -1,6 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import type { Floor, Sector, FloorCreateRequest, SectorCreateRequest } from '@mapit/api-client';
+import type {
+  Floor,
+  Sector,
+  FloorCreateRequest,
+  SectorCreateRequest,
+  SpaceElement,
+  SpaceElementCreateRequest,
+  SpaceElementUpdateRequest,
+} from '@mapit/api-client';
 import { SpacesService } from '@mapit/api-client';
 import type { Observable } from 'rxjs';
 
@@ -68,5 +76,33 @@ export class SpacesApiService {
   /** DELETE /api/v1/sectors/{id} */
   deleteSector(id: string): Observable<void> {
     return this.http.delete<void>(`${API_BASE_URL}/sectors/${id}`);
+  }
+
+  // ===== SPACE ELEMENTS (HU-2.03 / MAP-117)
+
+  /** GET /api/v1/sectors/{sectorId}/elements */
+  listSpaceElementsBySector(sectorId: string): Observable<SpaceElement[]> {
+    return this.api.listSpaceElementsBySector({ sectorId });
+  }
+
+  /** POST /api/v1/sectors/{sectorId}/elements */
+  createSpaceElement(
+    sectorId: string,
+    request: SpaceElementCreateRequest,
+  ): Observable<SpaceElement> {
+    return this.api.createSpaceElement({ sectorId, spaceElementCreateRequest: request });
+  }
+
+  /** PUT /api/v1/sectors/{sectorId}/elements/{elementId} */
+  updateSpaceElement(
+    sectorId: string,
+    elementId: string,
+    request: SpaceElementUpdateRequest,
+  ): Observable<SpaceElement> {
+    return this.api.updateSpaceElement({
+      sectorId,
+      elementId,
+      spaceElementUpdateRequest: request,
+    });
   }
 }

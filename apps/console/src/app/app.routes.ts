@@ -98,6 +98,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
       },
       {
+        // Espacios HU-2.03 (MAP-117): elementos de un sector.
+        path: 'spaces/sectors/:sectorId/elements',
+        loadComponent: () =>
+          import('./features/spaces/ui/space-elements-page').then(
+            (m) => m.SpaceElementsPageComponent,
+          ),
+      },
+      {
         path: 'spaces/floors/:floorId/sectors',
         loadComponent: () =>
           import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),

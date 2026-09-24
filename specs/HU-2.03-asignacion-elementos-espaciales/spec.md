@@ -130,6 +130,33 @@ establishment.type`), más granular y aprovechando que `tenant.vertical` tiene d
 - Test de aislamiento CA-9, replicando `FloorSectorTenantIsolationIntegrationTest`
   (rol `mapit_rls_test` para no caer en el falso verde del superusuario).
 
+### Desvíos y deuda técnica registrada (fuera de HU-2.03)
+
+| Item                                                                       | Dónde                                               | Acción de equipo pendiente                                                                                                       |
+| -------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Rutas `/sectors/**` públicas con fallback `demo`                           | `SecurityConfig.java`                               | Cerrar cuando CU-23/CU-24 termine (autenticación por rol). Mismo riesgo que pisos/sectores.                                      |
+| `Instant.now()` en Create/Update/DeleteSectorUseCase                       | `spaces-application/sector/`                        | Inyectar `Clock` igual que ya lo hace `EstablishmentService` (evitar tiempo no-determinista en tests).                           |
+| `SectorResponse` mappeado 4 veces                                          | `spaces-application/sector/`                        | consolidar en `SectorResponse.fromDomain()`, como ya hace `SpaceElementResponse`.                                                |
+| `FloorService.generateSlugFromName` duplica el VO `Slug.fromName`          | `spaces-application/floor/`                         | Unificar; colisión de la `ñ` que el regex manual explica.                                                                        |
+| `FloorService.requireLevelFree` re-lee el propio piso                      | `spaces-application/floor/`                         | Añadir `existsAliveByLevel(..., exceptId)` al puerto; no re-leer.                                                                |
+| `FloorHasActiveSectorsException`                                           | `spaces-application/floor/` + handler en controller | ⚠️ código muerto: el throw está comentado en `FloorService`; eliminar cuando se decida la regla o implementarlo.                 |
+| `FloorResponse`/`EstablishmentResponse` mappean dominio en infraestructura | `spaces-infrastructure/`                            | Subir esas factories a `*-application`.                                                                                          |
+| `Checks` JSON del `SpaceElement.x/y` no cubren `NaN`/`Infinity`            | `V12__crear_tabla_space_element.sql`                | La validación real vive en dominio (`SpaceElement` constructor); opcional: añadir check `x <> 'NaC'::float8` si sube el volumen. |
+| Doble escritura de `updated_at`                                            | domain `touch` + trigger DB                         | Misma postura de sector/floor; dominar una sola si complica merges.                                                              |
+| `GET /sectors/{sectorId}/elements` sin paginación                          | API                                                 | Correcto hoy; añadir `page/size` cuando la lista crezca.                                                                         |
+
+### Lo que NO se corrigió aquí
+
+Sector seguirá mezclando `Instant.now()` y `SectorResponse` repetido 4 veces: no es mi HU, es de `CU-05` (otro integrante). Está documentada en `audit_application.md`.
+
+### Lo que quedó plano vs. reorganizado
+
+`spaces/application` quedó en subpaquetes por agregado (`establishment/`, `floor/`, `sector/`, `spaceelement/`, `demo/`), y lo mismo en `spaces-domain` (`establishment/`, `floor/`, `sector/`, `spaceelement/`, `demo/`) e `spaces-infrastructure` (`demo/`, `establishment/`, `floor/`, `sector/`, `spaceelement/`, `realtime/` ya existía). El commit `126fff8` (application) y `cabf132` (domain+infrastructure) son el reflejo de la auditoría.
+
+### Criterios de la época del scope
+
+Cada cambio hecho aquí llevó a este criterio aplicado al spec hermano (mapas editoriales, no estética vaga): no repiqueteos de motion — sólo el keyframe de entrada `formSlideIn` que ya existe; semáforos de loading/éxito/error en la capa de datos, no en la presentación; y tokens `--mapit-*` reutilizados.
+
 ## 10. Requerimientos relacionados
 
 RF04, RF05 de `docs/roadmap/project_definition.md`; CU-08; prepara HU-3.01 y HU-3.02.

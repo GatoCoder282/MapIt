@@ -76,6 +76,57 @@ export const SPACES_STRINGS = {
       notFound: 'Sector no encontrado.',
     },
   },
+  elements: {
+    title: 'Elementos espaciales',
+    subtitle: 'Mesas, barras, butacas y zonas dentro de un sector',
+    empty: 'Aún no hay elementos en este sector. Registra el primero.',
+    loading: 'Cargando elementos…',
+    createButton: 'Nuevo elemento',
+    form: {
+      createTitle: 'Registrar elemento',
+      editTitle: 'Editar elemento',
+      typeLabel: 'Tipo',
+      xLabel: 'X',
+      yLabel: 'Y',
+      initialStateLabel: 'Estado inicial',
+      coordsHint: 'Coordenadas relativas al sector, desde la esquina superior izquierda.',
+      coordsInvalid: 'X e Y deben ser números no negativos (relativos al sector).',
+      cancelButton: 'Cancelar',
+      saveButton: 'Registrar',
+      updateButton: 'Guardar cambios',
+      saving: 'Guardando…',
+    },
+    types: {
+      TABLE: 'Mesa',
+      BAR: 'Barra',
+      SECTOR_ZONE: 'Zona',
+      STAGE: 'Escenario',
+      SEAT: 'Butaca numerada',
+      ROOM: 'Habitación',
+      DECOR: 'Decoración',
+    },
+    states: {
+      AVAILABLE: 'Disponible',
+      OCCUPIED: 'Ocupado',
+      RESERVED: 'Reservado',
+      CLEANING: 'Limpieza',
+      OUT_OF_SERVICE: 'Fuera de servicio',
+    },
+    list: {
+      typeHeader: 'Tipo',
+      coordHeader: 'Ubicación (X, Y)',
+      stateHeader: 'Estado',
+      actionsHeader: 'Acciones',
+      editButton: 'Editar',
+    },
+    errors: {
+      loadFailed: 'No se pudieron cargar los elementos.',
+      saveFailed: 'No se pudo guardar el elemento.',
+      saveInvalid:
+        'Tipo o coordenadas rechazados por el servidor. Revisa el tipo permitido para tu vertical.',
+      notFound: 'Elemento no encontrado.',
+    },
+  },
 } as const;
 
 export type SpacesStrings = typeof SPACES_STRINGS;
