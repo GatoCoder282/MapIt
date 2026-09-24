@@ -8,11 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.mapit.shared.realtime.SpaceElementState;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
-import com.mapit.spaces.domain.EstablishmentRepository;
-import com.mapit.spaces.domain.EstablishmentType;
-import com.mapit.spaces.domain.FloorRepository;
 import com.mapit.spaces.domain.SectorId;
-import com.mapit.spaces.domain.SectorRepository;
 import com.mapit.spaces.domain.SpaceElement;
 import com.mapit.spaces.domain.SpaceElementId;
 import com.mapit.spaces.domain.SpaceElementRepository;
@@ -33,13 +29,10 @@ public class CreateSpaceElementUseCase {
 
   public CreateSpaceElementUseCase(
       SpaceElementRepository repository,
-      SectorRepository sectorRepository,
-      FloorRepository floorRepository,
-      EstablishmentRepository establishmentRepository,
+      SpaceElementSupport support,
       TenantContext tenantContext) {
     this.repository = repository;
-    this.support =
-        new SpaceElementSupport(sectorRepository, floorRepository, establishmentRepository);
+    this.support = support;
     this.tenantContext = tenantContext;
   }
 
@@ -48,10 +41,9 @@ public class CreateSpaceElementUseCase {
     TenantId tenantId = tenantContext.require();
 
     // Sector debe existir y ser del tenant actual; la vertical se toma de su establecimiento.
-    EstablishmentType vertical =
-        support.verticalDelSector(tenantId, new SectorId(command.sectorId()));
+    var vertical = support.verticalDelSector(tenantId, new SectorId(command.sectorId()));
 
-    SpaceElementType type = parseType(command.type());
+    SpaceElementType type = support.parseType(command.type());
     support.validarTipoPermitido(vertical, type);
 
     SpaceElementState initialState = parseState(command.initialState());
@@ -69,19 +61,6 @@ public class CreateSpaceElementUseCase {
                 Instant.now(),
                 null));
     return toResponse(saved);
-  }
-
-  private SpaceElementType parseType(String raw) {
-    if (raw == null || raw.isBlank()) {
-      throw new IllegalArgumentException("type es obligatorio");
-    }
-    try {
-      return SpaceElementType.valueOf(raw);
-    } catch (IllegalArgumentException ex) {
-      throw new IllegalArgumentException(
-          "type inválido: '%s'. Valores: TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR"
-              .formatted(raw));
-    }
   }
 
   private SpaceElementState parseState(String raw) {

@@ -97,9 +97,10 @@ class SpaceElementUseCaseTest {
     floors = new PantryFloorRepository(List.of(FLOOR_TENANT_A, FLOOR_TENANT_B));
     establishments = new PantryEstablishmentRepository(List.of(EST_TENANT_A, EST_TENANT_B_HOTEL));
     tenantContext = () -> Optional.of(TENANT_A);
-    create = new CreateSpaceElementUseCase(elements, sectors, floors, establishments, tenantContext);
-    update = new UpdateSpaceElementUseCase(elements, sectors, floors, establishments, tenantContext);
-    query = new SpaceElementQueryService(elements, sectors, floors, establishments, tenantContext);
+    var support = new SpaceElementSupport(sectors, floors, establishments);
+    create = new CreateSpaceElementUseCase(elements, support, tenantContext);
+    update = new UpdateSpaceElementUseCase(elements, support, tenantContext);
+    query = new SpaceElementQueryService(elements, support, tenantContext);
   }
 
   // ===== Creación =====
@@ -165,6 +166,18 @@ class SpaceElementUseCaseTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  @Test
+  void coordenadas_nulas_responden_400_no_500() {
+    // Antes la cadena llegaba a Objects.requireNonNull y terminaba en un 500 con stacktrace.
+    assertThatThrownBy(
+            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", null, 10.0, null)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("obligatorias");
+    assertThatThrownBy(
+            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", 10.0, null, null)))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
   // ===== Consulta =====
 
   @Test
@@ -197,6 +210,21 @@ class SpaceElementUseCaseTest {
     assertThat(r.state()).isEqualTo("OCCUPIED"); // no cambia, eso es HU-3.01
     var saved = elements.guardado();
     assertThat(saved.audit().updatedAt()).isAfterOrEqualTo(AHORA);
+  }
+
+  @Test
+  void actualizar_con_tipo_incompatible_con_la_vertical_responde_400() {
+    SpaceElement existente =
+        SpaceElement.register(
+            SpaceElementId.generate(), TENANT_A, SECTOR_A, SpaceElementType.TABLE, 1.0, 1.0,
+            SpaceElementState.AVAILABLE, AHORA, null);
+    elements.store(existente);
+
+    assertThatThrownBy(
+            () ->
+                update.update(
+                    new UpdateSpaceElementCommand(SECTOR_A, existente.id().value(), "ROOM", 5.0, 5.0)))
+        .isInstanceOf(InvalidElementTypeForVerticalException.class);
   }
 
   @Test

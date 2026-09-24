@@ -69,12 +69,13 @@ class SpaceElementControllerTest {
     FloorRepository floors = new PantryFloorRepository(List.of(floor));
     EstablishmentRepository establishments = new PantryEstablishmentRepository(List.of(est));
     TenantContext tenantContext = () -> Optional.of(TENANT_A);
+    var support = new com.mapit.spaces.application.SpaceElementSupport(sectors, floors, establishments);
 
     SpaceElementController controller =
         new SpaceElementController(
-            new CreateSpaceElementUseCase(elements, sectors, floors, establishments, tenantContext),
-            new UpdateSpaceElementUseCase(elements, sectors, floors, establishments, tenantContext),
-            new SpaceElementQueryService(elements, sectors, floors, establishments, tenantContext));
+            new CreateSpaceElementUseCase(elements, support, tenantContext),
+            new UpdateSpaceElementUseCase(elements, support, tenantContext),
+            new SpaceElementQueryService(elements, support, tenantContext));
     client = RestTestClient.bindToController(controller).build();
   }
 
@@ -164,6 +165,20 @@ class SpaceElementControllerTest {
         .exchange()
         .expectStatus()
         .isBadRequest();
+  }
+
+  @Test
+  void payload_con_tipo_pero_sin_coordenadas_devuelve_400_no_500() {
+    client
+        .post()
+        .uri("/api/v1/sectors/{s}/elements", SECTOR_A)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body("{\"type\":\"TABLE\"}") // sin x/y: antes era un 500 NPE, ahora 400 Problem
+        .exchange()
+        .expectStatus()
+        .isBadRequest()
+        .expectHeader()
+        .contentTypeCompatibleWith("application/problem+json");
   }
 
   // ===== PUT /sectors/{sectorId}/elements/{elementId} =====

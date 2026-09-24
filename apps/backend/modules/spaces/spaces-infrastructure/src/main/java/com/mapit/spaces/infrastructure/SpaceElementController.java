@@ -76,16 +76,7 @@ public class SpaceElementController {
   @GetMapping("/sectors/{sectorId}/elements/{elementId}")
   public ResponseEntity<SpaceElementResponse> getById(
       @PathVariable UUID sectorId, @PathVariable UUID elementId) {
-    // La consulta por id reutiliza la lista para mantener el scope del sector:
-    // el "no existe" y el "es de otro" siguen respondiendo lo mismo.
-    return query.bySector(sectorId).stream()
-        .filter(e -> e.id().equals(elementId))
-        .findFirst()
-        .map(ResponseEntity::ok)
-        .orElseGet(
-            () -> {
-              throw new SpaceElementNotFoundException(elementId);
-            });
+    return ResponseEntity.ok(query.byId(sectorId, elementId));
   }
 
   @PutMapping("/sectors/{sectorId}/elements/{elementId}")
