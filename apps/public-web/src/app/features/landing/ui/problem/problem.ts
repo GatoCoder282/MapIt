@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { NgOptimizedImage } from '@angular/common';
 
 import { STRINGS } from '../../../../core/strings';
 
 @Component({
   selector: 'mp-landing-problem',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgOptimizedImage],
+  imports: [],
   templateUrl: './problem.html',
   styleUrl: './problem.scss',
 })
