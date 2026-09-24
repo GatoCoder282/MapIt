@@ -146,7 +146,7 @@ class TenantAdministrationIntegrationTest {
             .returnResult()
             .getResponseBody();
     assertThat(created).isNotNull();
-    assertThat(created.status()).isEqualTo("ACTIVE");
+    assertThat(created.status()).isEqualTo("PENDING_APPROVAL");
 
     // Listado: sin filtro y con bÃºsqueda por fragmento de nombre/slug.
     TenantPageView page =
@@ -191,7 +191,13 @@ class TenantAdministrationIntegrationTest {
     assertThat(renamed.slug()).isEqualTo(slug);
     assertThat(renamed.vertical()).isEqualTo("RESTAURANT");
 
-    // Suspender y reactivar.
+    // Aprobar, suspender y reactivar; volver a aprobación es 400.
+    TenantView approved =
+        patchStatus(created.id(), "ACTIVE", token).expectStatus().isOk()
+            .expectBody(TenantView.class).returnResult().getResponseBody();
+    assertThat(approved).isNotNull();
+    assertThat(approved.status()).isEqualTo("ACTIVE");
+    patchStatus(created.id(), "PENDING_APPROVAL", token).expectStatus().isBadRequest();
     TenantView suspended =
         patchStatus(created.id(), "SUSPENDED", token).expectStatus().isOk()
             .expectBody(TenantView.class).returnResult().getResponseBody();

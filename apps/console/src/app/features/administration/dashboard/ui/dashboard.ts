@@ -38,6 +38,10 @@ import { STRINGS } from '../../../../core/strings';
             <span class="label">{{ strings.adminDashboard.tenantsWithData }}</span>
           </article>
           <article class="card">
+            <span class="value">{{ pending() }}</span>
+            <span class="label">{{ strings.adminDashboard.tenantsPending }}</span>
+          </article>
+          <article class="card">
             <span class="value">{{ active() }}</span>
             <span class="label">{{ strings.adminDashboard.tenantsActive }}</span>
           </article>
@@ -152,6 +156,7 @@ export class AdminDashboard implements OnInit {
   protected readonly loading = signal(true);
   protected readonly failed = signal(false);
   protected readonly total = signal(0);
+  protected readonly pending = signal(0);
   protected readonly active = signal(0);
   protected readonly suspended = signal(0);
 
@@ -164,13 +169,15 @@ export class AdminDashboard implements OnInit {
     this.failed.set(false);
     forkJoin({
       all: this.api.listTenants({ size: 1 }),
+      pending: this.api.listTenants({ size: 1, status: 'PENDING_APPROVAL' }),
       active: this.api.listTenants({ size: 1, status: 'ACTIVE' }),
       suspended: this.api.listTenants({ size: 1, status: 'SUSPENDED' }),
     })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: ({ all, active, suspended }) => {
+        next: ({ all, pending, active, suspended }) => {
           this.total.set(all.totalElements);
+          this.pending.set(pending.totalElements);
           this.active.set(active.totalElements);
           this.suspended.set(suspended.totalElements);
         },

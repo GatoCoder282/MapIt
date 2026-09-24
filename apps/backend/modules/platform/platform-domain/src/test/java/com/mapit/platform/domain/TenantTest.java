@@ -14,7 +14,7 @@ class TenantTest {
   private static final Instant NOW = Instant.parse("2026-09-03T12:00:00Z");
 
   @Test
-  void registra_un_tenant_activo_con_los_datos_normalizados() {
+  void registra_un_tenant_en_aprobacion_con_los_datos_normalizados() {
     Tenant tenant =
         Tenant.register(
             TenantId.generate(),
@@ -26,9 +26,23 @@ class TenantTest {
     assertThat(tenant.name()).isEqualTo("Restaurante Central");
     assertThat(tenant.slug()).isEqualTo("restaurante-central");
     assertThat(tenant.vertical()).isEqualTo(BusinessVertical.RESTAURANT);
-    assertThat(tenant.status()).isEqualTo(TenantStatus.ACTIVE);
+    assertThat(tenant.status()).isEqualTo(TenantStatus.PENDING_APPROVAL);
     assertThat(tenant.createdAt()).isEqualTo(NOW);
     assertThat(tenant.updatedAt()).isEqualTo(NOW);
+  }
+
+  @Test
+  void aprueba_un_tenant_y_no_permite_volver_a_aprobacion() {
+    Tenant pending =
+        Tenant.register(
+            TenantId.generate(), "Empresa", "empresa", BusinessVertical.HOTEL, NOW);
+
+    Tenant approved = pending.changeStatus(TenantStatus.ACTIVE, NOW);
+    assertThat(approved.status()).isEqualTo(TenantStatus.ACTIVE);
+
+    assertThatThrownBy(() -> approved.changeStatus(TenantStatus.PENDING_APPROVAL, NOW))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("aprobación");
   }
 
   @Test

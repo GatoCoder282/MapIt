@@ -62,7 +62,11 @@
             <div class="field">
               <dt>{{ strings.tenantDetail.fieldStatus }}</dt>
               <dd>
-                <span class="chip" [class.active]="tenant.status === 'ACTIVE'">
+                <span
+                  class="chip"
+                  [class.active]="tenant.status === 'ACTIVE'"
+                  [class.pending]="tenant.status === 'PENDING_APPROVAL'"
+                >
                   {{ strings.tenants.statusLabels[tenant.status] }}
                 </span>
               </dd>
@@ -95,7 +99,11 @@
                 {{ strings.tenantForm.cancel }}
               </button>
             }
-            @if (tenant.status === 'ACTIVE') {
+            @if (tenant.status === 'PENDING_APPROVAL') {
+              <button class="btn primary" type="button" (click)="store.askStatusChange()">
+                {{ strings.tenantDetail.approveAction }}
+              </button>
+            } @else if (tenant.status === 'ACTIVE') {
               <button class="btn danger" type="button" (click)="store.askStatusChange()">
                 {{ strings.tenantDetail.suspendAction }}
               </button>
@@ -107,32 +115,11 @@
           </footer>
         </article>
 
-        @if (store.confirming(); as target) {
+        @if (store.confirmKind(); as kind) {
           <div class="overlay" role="presentation" (click)="store.cancelStatusChange()"></div>
-          <div
-            class="dialog"
-            role="alertdialog"
-            aria-modal="true"
-            [attr.aria-label]="
-              target === 'SUSPENDED'
-                ? strings.tenantDetail.confirmSuspendTitle
-                : strings.tenantDetail.confirmReactivateTitle
-            "
-          >
-            <h2>
-              {{
-                target === 'SUSPENDED'
-                  ? strings.tenantDetail.confirmSuspendTitle
-                  : strings.tenantDetail.confirmReactivateTitle
-              }}
-            </h2>
-            <p>
-              {{
-                target === 'SUSPENDED'
-                  ? strings.tenantDetail.confirmSuspendMessage
-                  : strings.tenantDetail.confirmReactivateMessage
-              }}
-            </p>
+          <div class="dialog" role="alertdialog" aria-modal="true" [attr.aria-label]="confirmTitle(kind)">
+            <h2>{{ confirmTitle(kind) }}</h2>
+            <p>{{ confirmMessage(kind) }}</p>
             <div class="dialog-actions">
               <button class="btn secondary" type="button" (click)="store.cancelStatusChange()">
                 {{ strings.tenantDetail.cancel }}

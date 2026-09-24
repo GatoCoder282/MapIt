@@ -212,7 +212,8 @@ paths:
         URLs públicas de login y reserva; la vertical se asigna al crear y
         condiciona el onboarding). Enviarlos queda fuera del esquema.
 
-        `status` implementa el ciclo de vida de CU-03: ACTIVE ↔ SUSPENDED.
+        `status` implementa el ciclo de vida de CU-03: PENDING_APPROVAL → ACTIVE ↔ SUSPENDED.
+        Todo tenant nace en PENDING_APPROVAL; volver a ese estado responde 400.
         NO existe DELETE: el negocio suspende, no elimina.
       operationId: updateTenant
       requestBody:
@@ -1095,8 +1096,10 @@ components:
 
     TenantStatus:
       type: string
-      description: Ciclo de vida del tenant (CU-03). El negocio suspende; no hay borrado físico.
-      enum: [ACTIVE, SUSPENDED]
+      description: |
+        Ciclo de vida del tenant (CU-03). Nace en PENDING_APPROVAL y el SUPER_ADMIN
+        lo aprueba (ACTIVE). El negocio suspende; no hay borrado físico.
+      enum: [PENDING_APPROVAL, ACTIVE, SUSPENDED]
 
     TenantPage:
       type: object

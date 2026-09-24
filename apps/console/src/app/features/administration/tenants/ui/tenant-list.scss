@@ -193,6 +193,10 @@ table {
   &.active::before {
     background: #16a34a;
   }
+
+  &.pending::before {
+    background: #d97706;
+  }
 }
 
 .pagination {

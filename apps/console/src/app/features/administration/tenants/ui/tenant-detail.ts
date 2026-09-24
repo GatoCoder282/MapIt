@@ -4,7 +4,7 @@ import { DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 import { STRINGS } from '../../../../core/strings';
-import { TenantDetailStore } from '../model/tenant-detail-store';
+import { type ConfirmKind, TenantDetailStore } from '../model/tenant-detail-store';
 
 /**
  * Detalle de un tenant: consulta, edición del nombre (único campo editable)
@@ -35,6 +35,18 @@ export class TenantDetail {
       const id = this.params().get('tenantId');
       if (id) this.store.load(id);
     });
+  }
+
+  protected confirmTitle(kind: ConfirmKind): string {
+    const detail = this.strings.tenantDetail;
+    if (kind === 'approve') return detail.confirmApproveTitle;
+    return kind === 'suspend' ? detail.confirmSuspendTitle : detail.confirmReactivateTitle;
+  }
+
+  protected confirmMessage(kind: ConfirmKind): string {
+    const detail = this.strings.tenantDetail;
+    if (kind === 'approve') return detail.confirmApproveMessage;
+    return kind === 'suspend' ? detail.confirmSuspendMessage : detail.confirmReactivateMessage;
   }
 
   protected startEdit(): void {

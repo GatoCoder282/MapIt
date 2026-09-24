@@ -40,10 +40,10 @@ public record Tenant(
     }
   }
 
-  /** Crea un tenant nuevo en estado activo. */
+  /** Crea un tenant nuevo pendiente de aprobación por el SUPER_ADMIN. */
   public static Tenant register(
       TenantId id, String name, String slug, BusinessVertical vertical, Instant now) {
-    return new Tenant(id, name, slug, vertical, TenantStatus.ACTIVE, now, now);
+    return new Tenant(id, name, slug, vertical, TenantStatus.PENDING_APPROVAL, now, now);
   }
 
   /**
@@ -55,10 +55,14 @@ public record Tenant(
   }
 
   /**
-   * Transición del ciclo de vida (CU-03): ACTIVE ↔ SUSPENDED.
+   * Transición del ciclo de vida (CU-03): PENDING_APPROVAL → ACTIVE ↔ SUSPENDED.
+   * La aprobación no se revierte: ningún tenant vuelve a PENDING_APPROVAL.
    * No hay borrado físico: el negocio suspende.
    */
   public Tenant changeStatus(TenantStatus newStatus, Instant now) {
+    if (newStatus == TenantStatus.PENDING_APPROVAL && status != TenantStatus.PENDING_APPROVAL) {
+      throw new IllegalArgumentException("Un tenant aprobado no puede volver a estar en aprobación");
+    }
     return new Tenant(id, name, slug, vertical, newStatus, createdAt, now);
   }
 }

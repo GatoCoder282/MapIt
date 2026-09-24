@@ -8,6 +8,7 @@ import { STRINGS } from '../../../../core/strings';
 import { TenantsApi } from '../data/tenants-api';
 
 export type DetailStatus = 'loading' | 'ready' | 'error' | 'not-found';
+export type ConfirmKind = 'approve' | 'suspend' | 'reactivate';
 
 /** ViewModel del detalle de un tenant: carga, edición de nombre y ciclo de vida. */
 @Injectable()
@@ -22,6 +23,13 @@ export class TenantDetailStore {
   readonly feedback = signal<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   readonly isActive = computed(() => this.tenant()?.status === 'ACTIVE');
+  /** Qué transición se está confirmando, para elegir título y mensaje del diálogo. */
+  readonly confirmKind = computed<ConfirmKind | null>(() => {
+    const target = this.confirming();
+    if (!target) return null;
+    if (target === 'SUSPENDED') return 'suspend';
+    return this.tenant()?.status === 'PENDING_APPROVAL' ? 'approve' : 'reactivate';
+  });
 
   load(tenantId: string): void {
     this.status.set('loading');
@@ -64,6 +72,7 @@ export class TenantDetailStore {
       });
   }
 
+  /** Ciclo de vida: PENDING_APPROVAL → ACTIVE (aprobar) ↔ SUSPENDED. */
   askStatusChange(): void {
     const current = this.tenant();
     if (!current) return;

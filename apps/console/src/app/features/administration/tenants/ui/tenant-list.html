@@ -73,7 +73,11 @@
                   <td class="slug">{{ tenant.slug }}</td>
                   <td class="hide-mobile">{{ strings.tenants.verticalLabels[tenant.vertical] }}</td>
                   <td>
-                    <span class="chip" [class.active]="tenant.status === 'ACTIVE'">
+                    <span
+                      class="chip"
+                      [class.active]="tenant.status === 'ACTIVE'"
+                      [class.pending]="tenant.status === 'PENDING_APPROVAL'"
+                    >
                       {{ statusLabel(tenant.status) }}
                     </span>
                   </td>

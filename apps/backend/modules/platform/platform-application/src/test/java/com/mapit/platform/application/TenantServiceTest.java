@@ -106,17 +106,22 @@ class TenantServiceTest {
     assertThat(updated.name()).isEqualTo("Empresa Norte 2");
     assertThat(updated.slug()).isEqualTo("empresa-norte");
     assertThat(updated.vertical()).isEqualTo(BusinessVertical.HOTEL);
-    assertThat(updated.status()).isEqualTo(TenantStatus.ACTIVE);
+    assertThat(updated.status()).isEqualTo(TenantStatus.PENDING_APPROVAL);
   }
 
   @Test
-  void suspende_y_reactiva_un_tenant() {
+  void aprueba_suspende_y_reactiva_un_tenant() {
     var repository = new InMemoryTenantRepository();
     var service = service(repository, new InMemoryInvitationRepository(), new RecordingEmail());
     Tenant tenant =
         service.register(
             new RegisterTenantCommand(
                 "Empresa Norte", "empresa-norte", BusinessVertical.HOTEL, "admin@norte.bo"));
+    assertThat(tenant.status()).isEqualTo(TenantStatus.PENDING_APPROVAL);
+
+    Tenant approved =
+        service.update(new UpdateTenantCommand(tenant.id().value(), null, TenantStatus.ACTIVE));
+    assertThat(approved.status()).isEqualTo(TenantStatus.ACTIVE);
 
     Tenant suspended =
         service.update(new UpdateTenantCommand(tenant.id().value(), null, TenantStatus.SUSPENDED));

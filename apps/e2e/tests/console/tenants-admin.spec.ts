@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 /**
  * Flujo de administración de tenants (CU-01/CU-03) de punta a punta:
- *   login del SUPER_ADMIN → shell → listado → crear → detalle → editar → suspender/reactivar.
+ *   login del SUPER_ADMIN → shell → listado → crear → detalle → editar → aprobar → suspender/reactivar.
  *
  * Requiere: `pnpm dev` levantado y el SUPER_ADMIN sembrado por el backend
  * (SUPER_ADMIN_EMAIL / SUPER_ADMIN_PASSWORD). El slug es único por corrida.
@@ -73,6 +73,15 @@ test.describe('Consola — administración de tenants', () => {
     await page.getByRole('button', { name: /guardar cambios/i }).click();
     await expect(page.getByRole('status')).toBeVisible();
     await expect(page.getByText(`Empresa E2E ${slug} Editada`)).toBeVisible();
+
+    // Nace en aprobación: aprobar con confirmación.
+    await expect(page.getByText('En aprobación')).toBeVisible();
+    await page.getByRole('button', { name: /^aprobar$/i }).click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: /confirmar/i })
+      .click();
+    await expect(page.getByText('Activo')).toBeVisible();
 
     // Suspender con confirmación.
     await page.getByRole('button', { name: /suspender/i }).click();

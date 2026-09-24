@@ -20,6 +20,7 @@ export class TenantList implements OnInit {
   protected readonly strings = STRINGS;
   protected readonly statusFilters: ReadonlyArray<{ value: TenantStatus | ''; label: string }> = [
     { value: '', label: STRINGS.tenants.allStatuses },
+    { value: 'PENDING_APPROVAL', label: STRINGS.tenants.statusLabels.PENDING_APPROVAL },
     { value: 'ACTIVE', label: STRINGS.tenants.statusLabels.ACTIVE },
     { value: 'SUSPENDED', label: STRINGS.tenants.statusLabels.SUSPENDED },
   ];

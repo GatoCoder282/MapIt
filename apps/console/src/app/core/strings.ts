@@ -53,6 +53,7 @@ export const STRINGS = {
     quickActionsTitle: 'Accesos rápidos',
     goToTenants: 'Ir a Tenants',
     tenantsWithData: 'tenants registrados',
+    tenantsPending: 'en aprobación',
     tenantsActive: 'activos',
     tenantsSuspended: 'suspendidos',
     loading: 'Cargando resumen…',
@@ -71,6 +72,7 @@ export const STRINGS = {
     allStatuses: 'Todos',
     paginationLabel: 'Paginación',
     statusLabels: {
+      PENDING_APPROVAL: 'En aprobación',
       ACTIVE: 'Activo',
       SUSPENDED: 'Suspendido',
     },
@@ -145,8 +147,12 @@ export const STRINGS = {
     fieldCreatedAt: 'Alta',
     fieldUpdatedAt: 'Última modificación',
     editAction: 'Editar',
+    approveAction: 'Aprobar',
     suspendAction: 'Suspender',
     reactivateAction: 'Reactivar',
+    confirmApproveTitle: 'Aprobar tenant',
+    confirmApproveMessage:
+      'La empresa quedará activa y sus usuarios podrán iniciar sesión. ¿Continuar?',
     confirmSuspendTitle: 'Suspender tenant',
     confirmSuspendMessage:
       'Los usuarios de esta empresa no podrán iniciar sesión mientras esté suspendida. ¿Continuar?',

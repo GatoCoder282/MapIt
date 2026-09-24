@@ -27,8 +27,10 @@ import com.mapit.identity.application.AuthenticateUserCommand;
 import com.mapit.platform.application.RegisterTenantCommand;
 import com.mapit.platform.application.SecureTokenGenerator;
 import com.mapit.platform.application.TenantService;
+import com.mapit.platform.application.UpdateTenantCommand;
 import com.mapit.platform.domain.AdminInvitationEmailPort;
 import com.mapit.platform.domain.BusinessVertical;
+import com.mapit.platform.domain.TenantStatus;
 
 /**
  * CU-25 de punta a punta contra PostgreSQL real con el rol `mapit_app`:
@@ -103,6 +105,10 @@ class AdminActivationIntegrationTest {
     assertThat(response).isNotNull();
     assertThat(response.tenantSlug()).isEqualTo(slug);
     assertThat(response.email()).isEqualTo(email);
+
+    // El tenant nace en aprobación: el SUPER_ADMIN lo aprueba antes del primer login.
+    tenantService.update(
+        new UpdateTenantCommand(tenant.id().value(), null, TenantStatus.ACTIVE));
 
     // La cuenta ADMIN existe, quedó activada y autentica con el login normal.
     var login = authenticateUser.execute(new AuthenticateUserCommand(slug, email, "S3cur3?P4ss!"));

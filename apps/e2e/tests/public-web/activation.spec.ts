@@ -79,7 +79,15 @@ test.describe('CU-25 — onboarding del primer ADMIN', () => {
     await page.getByRole('button', { name: /activar cuenta/i }).click();
     await expect(page.getByRole('alert')).toBeVisible();
 
-    // 5. El ADMIN entra por login de la consola con el tenant de su empresa.
+    // 5. El tenant nace en aprobación: el SUPER_ADMIN lo aprueba antes del login.
+    const { id } = (await created.json()) as { id: string };
+    const approved = await request.patch(`${API}/tenants/${id}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      data: { status: 'ACTIVE' },
+    });
+    expect(approved.ok()).toBeTruthy();
+
+    // 6. El ADMIN entra por login de la consola con el tenant de su empresa.
     await page.goto(`${CONSOLE_URL}/empresa/${linkSlug}/login`);
     await page.getByLabel(/correo electr/i).fill(adminEmail);
     await page.locator('#password').fill('S3cur3?P4ss!');

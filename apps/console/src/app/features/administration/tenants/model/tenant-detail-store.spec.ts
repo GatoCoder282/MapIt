@@ -21,7 +21,7 @@ describe('TenantDetailStore', () => {
   let store: TenantDetailStore;
   const getById = vi.fn(() => of(TENANT));
   const update = vi.fn(() => of(TENANT));
-  const changeStatus = vi.fn(() => of({ ...TENANT, status: 'SUSPENDED' as const }));
+  const changeStatus = vi.fn(() => of<Tenant>({ ...TENANT, status: 'SUSPENDED' }));
   const api = { getById, update, changeStatus } as unknown as TenantsApi;
 
   beforeEach(() => {
@@ -69,6 +69,21 @@ describe('TenantDetailStore', () => {
     expect(changeStatus).toHaveBeenCalledWith(TENANT.id, 'SUSPENDED');
     expect(store.tenant()?.status).toBe('SUSPENDED');
     expect(store.confirming()).toBeNull();
+  });
+
+  it('aprueba un tenant en aprobación tras confirmar', () => {
+    getById.mockReturnValue(of({ ...TENANT, status: 'PENDING_APPROVAL' }));
+    changeStatus.mockReturnValue(of(TENANT));
+    store.load('t-1');
+
+    store.askStatusChange();
+    expect(store.confirming()).toBe('ACTIVE');
+    expect(store.confirmKind()).toBe('approve');
+
+    store.confirmStatusChange();
+
+    expect(changeStatus).toHaveBeenCalledWith(TENANT.id, 'ACTIVE');
+    expect(store.tenant()?.status).toBe('ACTIVE');
   });
 
   it('cancela la transición sin tocar la API', () => {

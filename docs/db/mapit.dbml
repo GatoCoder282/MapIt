@@ -32,7 +32,7 @@ Table tenant {
   name       text        [not null]
   slug       text        [not null, unique, note: 'Usado en URLs públicas de reserva (CU-15)']
   vertical   text        [not null, note: 'RESTAURANT | NIGHTCLUB | EVENT_HALL | HOTEL']
-  status     text        [not null, default: 'ACTIVE', note: 'ACTIVE | SUSPENDED']
+  status     text        [not null, default: 'PENDING_APPROVAL', note: 'PENDING_APPROVAL | ACTIVE | SUSPENDED (V12)']
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 
