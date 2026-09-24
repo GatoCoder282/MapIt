@@ -1,5 +1,6 @@
 package com.mapit.spaces.application;
 
+import java.time.Clock;
 import java.time.Instant;
 
 import org.springframework.stereotype.Service;
@@ -26,14 +27,17 @@ public class CreateSpaceElementUseCase {
   private final SpaceElementRepository repository;
   private final SpaceElementSupport support;
   private final TenantContext tenantContext;
+  private final Clock clock;
 
   public CreateSpaceElementUseCase(
       SpaceElementRepository repository,
       SpaceElementSupport support,
-      TenantContext tenantContext) {
+      TenantContext tenantContext,
+      Clock clock) {
     this.repository = repository;
     this.support = support;
     this.tenantContext = tenantContext;
+    this.clock = clock;
   }
 
   @Transactional
@@ -58,9 +62,9 @@ public class CreateSpaceElementUseCase {
                 command.x(),
                 command.y(),
                 initialState,
-                Instant.now(),
+                clock.instant(),
                 null));
-    return toResponse(saved);
+    return SpaceElementResponse.fromDomain(saved);
   }
 
   private SpaceElementState parseState(String raw) {
@@ -74,18 +78,5 @@ public class CreateSpaceElementUseCase {
           "initialState inválido: '%s'. Valores: AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE"
               .formatted(raw));
     }
-  }
-
-  static SpaceElementResponse toResponse(SpaceElement element) {
-    var audit = element.audit();
-    return new SpaceElementResponse(
-        element.id().value(),
-        element.sectorId(),
-        element.type().name(),
-        element.x(),
-        element.y(),
-        element.state().name(),
-        audit.createdAt(),
-        audit.updatedAt());
   }
 }

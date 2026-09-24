@@ -1,5 +1,6 @@
 package com.mapit.spaces.application;
 
+import java.time.Clock;
 import java.time.Instant;
 
 import org.springframework.stereotype.Service;
@@ -25,14 +26,17 @@ public class UpdateSpaceElementUseCase {
   private final SpaceElementRepository repository;
   private final SpaceElementSupport support;
   private final TenantContext tenantContext;
+  private final Clock clock;
 
   public UpdateSpaceElementUseCase(
       SpaceElementRepository repository,
       SpaceElementSupport support,
-      TenantContext tenantContext) {
+      TenantContext tenantContext,
+      Clock clock) {
     this.repository = repository;
     this.support = support;
     this.tenantContext = tenantContext;
+    this.clock = clock;
   }
 
   @Transactional
@@ -52,7 +56,8 @@ public class UpdateSpaceElementUseCase {
             .orElseThrow(() -> new SpaceElementNotFoundException(command.elementId()));
 
     SpaceElement saved =
-        repository.save(existing.update(type, command.x(), command.y(), Instant.now(), null));
-    return CreateSpaceElementUseCase.toResponse(saved);
+        repository.save(
+            existing.update(type, command.x(), command.y(), clock.instant(), null));
+    return SpaceElementResponse.fromDomain(saved);
   }
 }

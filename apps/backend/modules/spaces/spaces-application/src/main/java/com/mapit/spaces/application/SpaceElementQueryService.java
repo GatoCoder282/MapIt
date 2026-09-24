@@ -41,7 +41,7 @@ public class SpaceElementQueryService {
     TenantId tenantId = tenantContext.require();
     support.verticalDelSector(tenantId, new SectorId(sectorId));
     return repository.findAliveBySectorId(tenantId, sectorId).stream()
-        .map(CreateSpaceElementUseCase::toResponse)
+        .map(SpaceElementResponse::fromDomain)
         .toList();
   }
 
@@ -51,7 +51,7 @@ public class SpaceElementQueryService {
     support.verticalDelSector(tenantId, new SectorId(sectorId));
     return repository
         .findAliveById(tenantId, sectorId, new SpaceElementId(elementId))
-        .map(CreateSpaceElementUseCase::toResponse)
+        .map(SpaceElementResponse::fromDomain)
         .orElseThrow(() -> new SpaceElementNotFoundException(elementId));
   }
 }

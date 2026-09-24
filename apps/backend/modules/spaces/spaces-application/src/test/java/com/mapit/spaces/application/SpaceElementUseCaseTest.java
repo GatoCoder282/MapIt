@@ -98,8 +98,9 @@ class SpaceElementUseCaseTest {
     establishments = new PantryEstablishmentRepository(List.of(EST_TENANT_A, EST_TENANT_B_HOTEL));
     tenantContext = () -> Optional.of(TENANT_A);
     var support = new SpaceElementSupport(sectors, floors, establishments);
-    create = new CreateSpaceElementUseCase(elements, support, tenantContext);
-    update = new UpdateSpaceElementUseCase(elements, support, tenantContext);
+    var clock = java.time.Clock.fixed(AHORA, java.time.ZoneOffset.UTC);
+    create = new CreateSpaceElementUseCase(elements, support, tenantContext, clock);
+    update = new UpdateSpaceElementUseCase(elements, support, tenantContext, clock);
     query = new SpaceElementQueryService(elements, support, tenantContext);
   }
 

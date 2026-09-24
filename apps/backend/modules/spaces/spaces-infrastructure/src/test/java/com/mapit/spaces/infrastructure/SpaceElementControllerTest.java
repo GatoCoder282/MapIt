@@ -70,11 +70,12 @@ class SpaceElementControllerTest {
     EstablishmentRepository establishments = new PantryEstablishmentRepository(List.of(est));
     TenantContext tenantContext = () -> Optional.of(TENANT_A);
     var support = new com.mapit.spaces.application.SpaceElementSupport(sectors, floors, establishments);
+    var clock = java.time.Clock.fixed(AHORA, java.time.ZoneOffset.UTC);
 
     SpaceElementController controller =
         new SpaceElementController(
-            new CreateSpaceElementUseCase(elements, support, tenantContext),
-            new UpdateSpaceElementUseCase(elements, support, tenantContext),
+            new CreateSpaceElementUseCase(elements, support, tenantContext, clock),
+            new UpdateSpaceElementUseCase(elements, support, tenantContext, clock),
             new SpaceElementQueryService(elements, support, tenantContext));
     client = RestTestClient.bindToController(controller).build();
   }
