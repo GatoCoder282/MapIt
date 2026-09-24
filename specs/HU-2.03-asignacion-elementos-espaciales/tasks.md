@@ -56,6 +56,34 @@ criterios: FK a sector, tenant_id, índices, integridad). No se implementa dos v
 con la entrega de T2/T3/T5 quedan cubiertos los 4 tickets. No se cierra ni se
 modifica Jira desde esta sesión; es tarea del equipo al revisar.
 
+## Asignación Jira — Matias Moron
+
+> Tareas de la HU-2.03 (MAP-109) asignadas al integrante Matias Moron. Son de verificación
+> de la migración, validación por vertical, frontend (formulario + integración) y tests de
+> integración de la API. Esta sección no cambia el código de producción ya entregado;
+> solo resume la asignación y su trazabilidad al trabajo existente.
+
+| Subtarea    | Enunciado en Jira                               | Estado / artefacto                                                                                                                                                                                                                                                 |
+| ----------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **MAP-111** | Crear migración Flyway de SpaceElement          | ✅ Entregada como `V12__crear_tabla_space_element.sql` (commit 6882239): FK a `sector` con `ON DELETE RESTRICT`, `tenant_id`, checks de integridad, índice `(tenant_id, id)` + índice parcial de vivos; ejecutable en CI (regla `pnpm check`).                     |
+| **MAP-116** | Validar tipo de elemento según vertical         | ✅ Centralizada en backend: `SpaceElementTypePolicy` (dominio) + `SpaceElementSupport.validarTipoPermitido` (application). No hay catálogo paralelo: reutiliza `EstablishmentType` y el enum TS de `libs/map-engine`.                                              |
+| **MAP-117** | Crear formulario simple de alta de SpaceElement | ⬚ Pendiente (frontend). Alcance: sector, tipo, x/y, estado inicial. Sin drag&drop/editor visual (eso es HU-4.01). Respetar la arquitectura de `libs` (feature → model/data/ui).                                                                                    |
+| **MAP-118** | Integrar formulario de SpaceElement con API     | ⬚ Pendiente (frontend). Sustituir mocks por el `api-client` generado del contrato, gestionando loading/éxito/error, sin HTTP directo en los componentes.                                                                                                           |
+| **MAP-119** | Test de integración de API de SpaceElement      | ✅ Existentes en backend: `SpaceElementApiIntegrationTest` (8 tests: alta, consulta, persistencia, validación, 4xx) + `SpaceElementTenantIsolationIntegrationTest` (4: aislamiento Tenant→Sector, FK huérfana). Viven en `bootstrap` y corren con `pnpm be:it`/CI. |
+
+**Límites explícitos de esta asignación** (según las notas de Jira):
+
+- **MAP-113** existe en Jira pero **no está asignada a Matias**; además solapa a MAP-111
+  (mismo artefacto real). No se lista aquí como tarea de Matias ni se implementa dos veces.
+- Las validaciones críticas (tenant, sector, tipo, coordenadas) y la RLS multi-tenant
+  viven **siempre en backend**; el frontend solo ilustra los mismos errores del contrato.
+- La dependencia con HU-3.01/HU-3.02 ya está registrada en `spec.md` §6 RN-5; no se
+  implementa nada de esas historias aquí.
+- Esta actualización de la especificación **no incluye cambios de código de producción**:
+  solo añade esta sección de trazabilidad.
+
+---
+
 ## Notas de ejecución
 
 > Se rellenan **durante** la ejecución, no al final.
