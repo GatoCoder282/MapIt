@@ -12,15 +12,14 @@
       <p class="section-description">{{ strings.landing.problem.description }}</p>
     </div>
 
-    <!-- Comparativa de herramientas (imagen real) -->
-    <div class="problem-visual">
-      <img
-        ngSrc="assets/img/problem_tools.jpg"
-        [alt]="strings.landing.problem.visualAlt"
-        class="problem-tools-img"
-        width="800"
-        height="200"
-      />
+    <!-- Comparativa de herramientas en grid adaptable -->
+    <div class="problem-cards" role="list">
+      @for (card of strings.landing.problem.cards; track card.title) {
+        <article class="problem-card" role="listitem">
+          <h3 class="card-title">{{ card.title }}</h3>
+          <p class="card-description">{{ card.description }}</p>
+        </article>
+      }
     </div>
   </div>
 </section>
