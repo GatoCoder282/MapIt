@@ -8,11 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.mapit.shared.realtime.SpaceElementState;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
-import com.mapit.spaces.domain.SectorId;
-import com.mapit.spaces.domain.SpaceElement;
-import com.mapit.spaces.domain.SpaceElementId;
-import com.mapit.spaces.domain.SpaceElementRepository;
-import com.mapit.spaces.domain.SpaceElementType;
+import com.mapit.spaces.domain.sector.SectorId;
+import com.mapit.spaces.domain.spaceelement.SpaceElement;
+import com.mapit.spaces.domain.spaceelement.SpaceElementId;
+import com.mapit.spaces.domain.spaceelement.SpaceElementRepository;
+import com.mapit.spaces.domain.spaceelement.SpaceElementType;
 
 /** Caso de uso: dar de alta un elemento espacial dentro de un sector (HU-2.03 / MAP-114).
  *

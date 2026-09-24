@@ -11,10 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.spaces.application.establishment.EstablishmentNotFoundException;
-import com.mapit.spaces.domain.EstablishmentRepository;
-import com.mapit.spaces.domain.Floor;
-import com.mapit.spaces.domain.FloorRepository;
 import com.mapit.spaces.domain.Slug;
+import com.mapit.spaces.domain.establishment.EstablishmentRepository;
+import com.mapit.spaces.domain.floor.Floor;
+import com.mapit.spaces.domain.floor.FloorRepository;
 
 /**
  * Casos de uso de gestión de pisos (CU-05).

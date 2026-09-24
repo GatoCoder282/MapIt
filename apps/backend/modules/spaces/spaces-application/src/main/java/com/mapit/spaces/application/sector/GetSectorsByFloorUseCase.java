@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
-import com.mapit.spaces.domain.SectorRepository;
+import com.mapit.spaces.domain.sector.SectorRepository;
 
 /** Caso de uso: listar sectores de un piso. */
 @Service

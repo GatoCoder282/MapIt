@@ -9,10 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
-import com.mapit.spaces.domain.Sector;
-import com.mapit.spaces.domain.SectorId;
-import com.mapit.spaces.domain.SectorRepository;
 import com.mapit.spaces.domain.Slug;
+import com.mapit.spaces.domain.sector.Sector;
+import com.mapit.spaces.domain.sector.SectorId;
+import com.mapit.spaces.domain.sector.SectorRepository;
 
 /** Caso de uso: actualizar un sector. */
 @Service

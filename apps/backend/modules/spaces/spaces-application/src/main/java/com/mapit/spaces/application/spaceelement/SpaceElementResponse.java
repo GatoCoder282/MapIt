@@ -16,7 +16,7 @@ public record SpaceElementResponse(
 
   /** Mapeo dominio → respuesta en un único punto (la auditoría ya vive en la entidad). */
   public static SpaceElementResponse fromDomain(
-      com.mapit.spaces.domain.SpaceElement element) {
+      com.mapit.spaces.domain.spaceelement.SpaceElement element) {
     var audit = element.audit();
     return new SpaceElementResponse(
         element.id().value(),

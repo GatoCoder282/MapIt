@@ -11,10 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
-import com.mapit.spaces.domain.Establishment;
-import com.mapit.spaces.domain.EstablishmentRepository;
-import com.mapit.spaces.domain.EstablishmentType;
 import com.mapit.spaces.domain.Slug;
+import com.mapit.spaces.domain.establishment.Establishment;
+import com.mapit.spaces.domain.establishment.EstablishmentRepository;
+import com.mapit.spaces.domain.establishment.EstablishmentType;
 
 /**
  * Casos de uso de gestión de establecimientos (CU-04).

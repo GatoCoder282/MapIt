@@ -4,13 +4,13 @@ import org.springframework.stereotype.Service;
 
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.spaces.application.sector.SectorNotFoundException;
-import com.mapit.spaces.domain.EstablishmentRepository;
-import com.mapit.spaces.domain.EstablishmentType;
-import com.mapit.spaces.domain.FloorRepository;
-import com.mapit.spaces.domain.SectorId;
-import com.mapit.spaces.domain.SectorRepository;
-import com.mapit.spaces.domain.SpaceElementType;
-import com.mapit.spaces.domain.SpaceElementTypePolicy;
+import com.mapit.spaces.domain.establishment.EstablishmentRepository;
+import com.mapit.spaces.domain.establishment.EstablishmentType;
+import com.mapit.spaces.domain.floor.FloorRepository;
+import com.mapit.spaces.domain.sector.SectorId;
+import com.mapit.spaces.domain.sector.SectorRepository;
+import com.mapit.spaces.domain.spaceelement.SpaceElementType;
+import com.mapit.spaces.domain.spaceelement.SpaceElementTypePolicy;
 
 /**
  * Soporte compartido de los casos de uso de elementos espaciales (HU-2.03).

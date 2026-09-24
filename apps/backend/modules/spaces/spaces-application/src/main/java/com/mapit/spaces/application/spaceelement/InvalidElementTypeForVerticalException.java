@@ -1,8 +1,8 @@
 package com.mapit.spaces.application.spaceelement;
 
-import com.mapit.spaces.domain.EstablishmentType;
-import com.mapit.spaces.domain.SpaceElementType;
-import com.mapit.spaces.domain.SpaceElementTypePolicy;
+import com.mapit.spaces.domain.establishment.EstablishmentType;
+import com.mapit.spaces.domain.spaceelement.SpaceElementType;
+import com.mapit.spaces.domain.spaceelement.SpaceElementTypePolicy;
 
 /** El tipo de elemento no es válido para la vertical del establecimiento (RN-4). */
 public class InvalidElementTypeForVerticalException extends RuntimeException {

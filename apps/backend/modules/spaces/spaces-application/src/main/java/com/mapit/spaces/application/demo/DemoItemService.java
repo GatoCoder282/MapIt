@@ -10,8 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
-import com.mapit.spaces.domain.DemoItem;
-import com.mapit.spaces.domain.DemoItemRepository;
+import com.mapit.spaces.domain.demo.DemoItem;
+import com.mapit.spaces.domain.demo.DemoItemRepository;
 
 /** Casos de uso del CRUD de demostración. */
 @Service
