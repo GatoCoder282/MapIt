@@ -15,7 +15,7 @@ package com.mapit.spaces.domain;
 public enum SpaceElementType {
   /** Mesa (restaurante, discoteca, salón de eventos). */
   TABLE,
-  /** Barra o barra de servicio (restaurante, discoteca). */
+  /** Barra (barra de servicio / barra VIP). Se admite en cualquier vertical. */
   BAR,
   /** Zona o área sin asientos asignables (pista, zona VIP, pasillo amplio). */
   SECTOR_ZONE,

@@ -105,13 +105,14 @@ class SpaceElementTest {
   }
 
   @Test
-  void rechaza_coordenadas_null() {
+  void rechaza_coordenadas_null_con_400() {
     assertThatThrownBy(
             () ->
                 SpaceElement.register(
                     SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.TABLE, null,
                     0.0, null, AHORA, USUARIO))
-        .isInstanceOf(NullPointerException.class);
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("obligatorias");
   }
 
   @Test

@@ -79,8 +79,11 @@ public record SpaceElement(
       SpaceElementState initialState,
       Instant now,
       UUID by) {
-    Objects.requireNonNull(x, "x no puede ser null");
-    Objects.requireNonNull(y, "y no puede ser null");
+    // IllegalArgumentException (no NullPointerException): un body JSON sin x/y debe dar
+    // 400 controlado con Problem Details, no un 500 con stacktrace.
+    if (x == null || y == null) {
+      throw new IllegalArgumentException("x e y son obligatorias");
+    }
     return new SpaceElement(
         id,
         tenantId,
@@ -104,8 +107,9 @@ public record SpaceElement(
     if (audit.isDeleted()) {
       throw new IllegalStateException("No se puede actualizar un elemento dado de baja");
     }
-    Objects.requireNonNull(x, "x no puede ser null");
-    Objects.requireNonNull(y, "y no puede ser null");
+    if (x == null || y == null) {
+      throw new IllegalArgumentException("x e y son obligatorias");
+    }
     return new SpaceElement(
         id, tenantId, sectorId, type, x, y, state, audit.touched(now, by));
   }
