@@ -94,25 +94,25 @@ establishment.type`), más granular y aprovechando que `tenant.vertical` tiene d
 
 ## 7. Criterios de aceptación
 
-- [ ] **CA-1:** Dado un sector vivo del tenant, cuando envío `POST` con datos válidos,
+- [x] **CA-1:** Dado un sector vivo del tenant, cuando envío `POST` con datos válidos,
       entonces responde 201 y el elemento queda persistido con el tenant del contexto.
-- [ ] **CA-2:** Dado un sector que no existe, cuando envío `POST`, entonces responde 404.
-- [ ] **CA-3:** Dado un sector de OTRO tenant, cuando envío `POST`, entonces responde 404
+- [x] **CA-2:** Dado un sector que no existe, cuando envío `POST`, entonces responde 404.
+- [x] **CA-3:** Dado un sector de OTRO tenant, cuando envío `POST`, entonces responde 404
       y no se persiste nada (aislamiento cross-tenant).
-- [ ] **CA-4:** Dado un `type` no permitido por la vertical (p. ej. `ROOM` en un
+- [x] **CA-4:** Dado un `type` no permitido por la vertical (p. ej. `ROOM` en un
       restaurante), cuando envío `POST`, entonces responde 400 y señala el tipo.
-- [ ] **CA-5:** Dado `x` o `y` negativas o un `initialState` fuera de catálogo, cuando
+- [x] **CA-5:** Dado `x` o `y` negativas o un `initialState` fuera de catálogo, cuando
       envío `POST`, entonces responde 400.
-- [ ] **CA-6:** Dado un payload incompleto o inválido, entonces responde 400 Problem
+- [x] **CA-6:** Dado un payload incompleto o inválido, entonces responde 400 Problem
       Details sin reflejar datos internos.
-- [ ] **CA-7:** Dado un elemento vivo, cuando lo `PUT` con nuevos `type`/`x`/`y`, entonces
+- [x] **CA-7:** Dado un elemento vivo, cuando lo `PUT` con nuevos `type`/`x`/`y`, entonces
       responde 200 y `updatedAt` avanza; su estado no se toca.
-- [ ] **CA-8:** Dado un elemento inexistente o de otro tenant, cuando lo `PUT`, entonces
+- [x] **CA-8:** Dado un elemento inexistente o de otro tenant, cuando lo `PUT`, entonces
       responde 404.
-- [ ] **CA-9:** Dada la tabla `space_element`, cuando se consulta como tenant A bajo un rol
+- [x] **CA-9:** Dada la tabla `space_element`, cuando se consulta como tenant A bajo un rol
       sin bypass RLS, entonces no ve elementos del tenant B; sin `app.tenant_id` en sesión
       ve 0 filas (test de aislamiento, obligatorio por `specs/AGENTS.md` §4).
-- [ ] **CA-10:** Dada la migración nueva, cuando arranca CI, entonces Flyway la aplica
+- [x] **CA-10:** Dada la migración nueva, cuando arranca CI, entonces Flyway la aplica
       limpio y `ddl-auto: validate` pasa (compatibilidad CI reproducible).
 
 ## 8. Fuera de alcance
