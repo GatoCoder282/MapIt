@@ -3,7 +3,7 @@ import type { Floor, Sector, SpaceElement, SpaceElementCreateRequest } from '@ma
 import { type Observable, throwError } from 'rxjs';
 import { finalize, tap } from 'rxjs/operators';
 import { SpacesApiService, type FloorDraft, type SectorDraft } from '../data/spaces-api';
-import { SPACES_STRINGS } from './spaces.strings';
+import { STRINGS } from '../../../core/strings';
 
 const EMPTY_FLOOR_DRAFT: FloorDraft = {
   name: '',
@@ -32,8 +32,8 @@ const EMPTY_ELEMENT_DRAFT: SpaceElementDraft = {
 @Injectable()
 export class SpacesStore {
   private readonly api = inject(SpacesApiService);
-  private readonly floorStrings = SPACES_STRINGS.floors;
-  private readonly sectorStrings = SPACES_STRINGS.sectors;
+  private readonly floorStrings = STRINGS.spaces.floors;
+  private readonly sectorStrings = STRINGS.spaces.sectors;
 
   // Floor state
   private readonly floorsState = signal<Floor[]>([]);
@@ -78,7 +78,7 @@ export class SpacesStore {
   readonly error = this.errorState.asReadonly();
 
   // Expose strings for template
-  readonly strings_ = SPACES_STRINGS;
+  readonly strings_ = STRINGS.spaces;
 
   constructor() {
     this.loadFloors();

@@ -23,7 +23,7 @@ import { SectorListComponent } from './sector-list';
         <ul
           class="floor-tree"
           role="tree"
-          aria-label="Pisos y sectores"
+          [attr.aria-label]="store.strings_.floors.list.sectionAriaLabel"
           cdkDropList
           (cdkDropListDropped)="onFloorDropped($event)"
         >
@@ -45,7 +45,7 @@ import { SectorListComponent } from './sector-list';
                 <button
                   class="drag-handle"
                   type="button"
-                  aria-label="Arrastrar para reordenar piso"
+                  [attr.aria-label]="store.strings_.floors.list.reorderAriaLabel"
                   cdkDragHandle
                 >
                   <svg
@@ -93,7 +93,7 @@ import { SectorListComponent } from './sector-list';
                     type="button"
                     [disabled]="store.saving()"
                     (click)="store.editFloor(floor); $event.stopPropagation()"
-                    aria-label="Editar {{ floor.name }}"
+                    [attr.aria-label]="store.strings_.floors.list.editButton + ' ' + floor.name"
                   >
                     <svg
                       width="18"
@@ -113,7 +113,7 @@ import { SectorListComponent } from './sector-list';
                     type="button"
                     [disabled]="store.saving()"
                     (click)="store.removeFloor(floor.id); $event.stopPropagation()"
-                    aria-label="Eliminar {{ floor.name }}"
+                    [attr.aria-label]="store.strings_.floors.list.deleteButton + ' ' + floor.name"
                   >
                     <svg
                       width="18"

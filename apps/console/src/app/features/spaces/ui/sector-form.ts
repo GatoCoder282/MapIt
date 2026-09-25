@@ -10,7 +10,7 @@ import { SpacesStore } from '../model/spaces-store';
          Sin at-formEnter: Angular lo trataba como trigger sin declarar (NG05105). -->
     <div class="sector-form">
       <div class="form-header">
-        <p class="form-eyebrow">Nuevo sector</p>
+        <p class="form-eyebrow">{{ store.strings_.sectors.form.eyebrowNew }}</p>
         <h4 class="form-title">{{ store.strings_.sectors.form.createTitle }}</h4>
       </div>
 
@@ -37,7 +37,7 @@ import { SpacesStore } from '../model/spaces-store';
             }}</span
           >
         </div>
-        <p class="field-hint">El slug se genera automáticamente a partir del nombre.</p>
+        <p class="field-hint">{{ store.strings_.sectors.form.slugHint }}</p>
       </label>
 
       <div class="form-actions">

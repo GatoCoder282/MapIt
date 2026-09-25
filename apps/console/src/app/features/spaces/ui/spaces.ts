@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { PisoFormComponent } from './piso-form';
 import { PisoListComponent } from './piso-list';
 import { SpacesStore } from '../model/spaces-store';
+import { STRINGS } from '../../../core/strings';
 
 /** Pantalla principal del Setup Wizard - Step 2: Estructura del espacio (CU-05 · MAP-69/70). */
 @Component({
@@ -14,12 +15,19 @@ import { SpacesStore } from '../model/spaces-store';
       <!-- Top Bar -->
       <header class="wizard-topbar" role="banner">
         <div class="topbar-left">
-          <span class="brand">MapIt</span>
+          <span class="brand">{{ brand }}</span>
           <span class="divider" aria-hidden="true"></span>
-          <span class="wizard-title">Setup Wizard</span>
+          <span class="wizard-title">{{ store.strings_.wizard.title }}</span>
         </div>
         <div class="topbar-right">
-          <button class="help-btn" type="button" aria-label="Ayuda" (click)="openHelp()">?</button>
+          <button
+            class="help-btn"
+            type="button"
+            [attr.aria-label]="store.strings_.wizard.helpAriaLabel"
+            (click)="openHelp()"
+          >
+            ?
+          </button>
           <button class="exit-btn" type="button" (click)="exitWizard()">
             <svg
               width="14"
@@ -33,19 +41,23 @@ import { SpacesStore } from '../model/spaces-store';
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="18" x2="18" y2="6" />
             </svg>
-            Exit Setup
+            {{ store.strings_.wizard.exit }}
           </button>
         </div>
       </header>
 
       <!-- Stepper -->
-      <nav class="wizard-stepper" aria-label="Progreso del asistente" role="navigation">
+      <nav
+        class="wizard-stepper"
+        [attr.aria-label]="store.strings_.wizard.stepperAriaLabel"
+        role="navigation"
+      >
         <ol class="steps">
           <li class="step completed" [class.active]="false">
             <button
               class="step-circle"
               type="button"
-              aria-label="Paso 1: Business Details, completado"
+              [attr.aria-label]="store.strings_.wizard.stepBusinessAriaLabel"
               disabled
             >
               <svg
@@ -60,31 +72,31 @@ import { SpacesStore } from '../model/spaces-store';
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </button>
-            <span class="step-label">Business Details</span>
+            <span class="step-label">{{ store.strings_.wizard.stepBusiness }}</span>
           </li>
           <li class="step-divider completed" aria-hidden="true"></li>
           <li class="step active" [class.active]="true">
             <button
               class="step-circle"
               type="button"
-              aria-label="Paso 2: Space Structure, actual"
+              [attr.aria-label]="store.strings_.wizard.stepStructureAriaLabel"
               disabled
             >
               <span class="step-number">2</span>
             </button>
-            <span class="step-label">Space Structure</span>
+            <span class="step-label">{{ store.strings_.wizard.stepStructure }}</span>
           </li>
           <li class="step-divider" aria-hidden="true"></li>
           <li class="step pending" [class.active]="false">
             <button
               class="step-circle"
               type="button"
-              aria-label="Paso 3: Summary, pendiente"
+              [attr.aria-label]="store.strings_.wizard.stepSummaryAriaLabel"
               disabled
             >
               <span class="step-number">3</span>
             </button>
-            <span class="step-label">Summary</span>
+            <span class="step-label">{{ store.strings_.wizard.stepSummary }}</span>
           </li>
         </ol>
       </nav>
@@ -92,10 +104,9 @@ import { SpacesStore } from '../model/spaces-store';
       <!-- Page Header -->
       <section class="wizard-header">
         <div class="header-content">
-          <h1 class="page-title">Estructura del espacio</h1>
+          <h1 class="page-title">{{ store.strings_.wizard.pageTitle }}</h1>
           <p class="page-description">
-            Define the physical hierarchy of your location. Start by creating floors, then add
-            specific sectors or zones to each floor.
+            {{ store.strings_.wizard.pageDescription }}
           </p>
         </div>
       </section>
@@ -108,7 +119,7 @@ import { SpacesStore } from '../model/spaces-store';
               <p class="card-eyebrow">{{ store.strings_.floors.title }}</p>
               <h2 class="card-title">{{ store.strings_.floors.subtitle }}</h2>
             </div>
-            <span class="drag-badge" aria-label="Arrastra para reordenar">
+            <span class="drag-badge" [attr.aria-label]="store.strings_.wizard.dragReorder">
               <svg
                 width="14"
                 height="14"
@@ -125,7 +136,7 @@ import { SpacesStore } from '../model/spaces-store';
                 <circle cx="15" cy="12" r="1" />
                 <circle cx="15" cy="5" r="1" />
               </svg>
-              Drag to reorder
+              {{ store.strings_.wizard.dragReorder }}
             </span>
           </div>
 
@@ -157,7 +168,7 @@ import { SpacesStore } from '../model/spaces-store';
                   <line x1="5" y1="12" x2="19" y2="5" />
                 </svg>
               </span>
-              <span class="add-floor-text">Agregar piso</span>
+              <span class="add-floor-text">{{ store.strings_.wizard.addFloor }}</span>
             </button>
           </div>
         </div>
@@ -180,10 +191,10 @@ import { SpacesStore } from '../model/spaces-store';
               <line x1="19" y1="12" x2="5" y2="12" />
               <polyline points="12 19 5 12 12 5" />
             </svg>
-            Anterior
+            {{ store.strings_.wizard.previous }}
           </button>
           <button class="btn-primary" type="button" (click)="goNext()">
-            Siguiente
+            {{ store.strings_.wizard.next }}
             <svg
               width="18"
               height="18"
@@ -705,6 +716,7 @@ import { SpacesStore } from '../model/spaces-store';
 })
 export class SpacesComponent {
   protected readonly store = inject(SpacesStore);
+  protected readonly brand = STRINGS.brand.name;
   protected readonly showSectorForm = signal(false);
 
   openHelp(): void {

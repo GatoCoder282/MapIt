@@ -74,11 +74,7 @@ import { SpacesStore } from '../model/spaces-store';
             (ngModelChange)="store.setElementInitialState($event)"
             [disabled]="store.saving() || store.isEditingElement()"
             [attr.aria-label]="strings.form.initialStateLabel"
-            [title]="
-              store.isEditingElement()
-                ? 'El estado se transiciona en la operación (HU-3.01), no en la edición'
-                : ''
-            "
+            [title]="store.isEditingElement() ? strings.form.stateLockedHint : ''"
           >
             @for (s of stateKeys; track s) {
               <option [value]="s">{{ strings.states[s] }}</option>
