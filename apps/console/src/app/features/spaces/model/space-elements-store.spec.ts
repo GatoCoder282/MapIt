@@ -154,3 +154,89 @@ describe('SpacesStore — elementos espaciales', () => {
     sub?.unsubscribe();
   });
 });
+
+/**
+ * Contexto de establecimiento del wizard (corrección HU-2.03): el paso 2 solo
+ * consulta plantas cuando tiene un establishmentId real de la URL/paso 1.
+ */
+describe('SpacesStore — contexto de establecimiento', () => {
+  let api: {
+    createEstablishment: ReturnType<typeof vi.fn>;
+    listFloors: ReturnType<typeof vi.fn>;
+  };
+  let store: SpacesStore;
+
+  beforeEach(() => {
+    api = {
+      createEstablishment: vi.fn(),
+      listFloors: vi.fn().mockReturnValue(of([])),
+    };
+    TestBed.configureTestingModule({
+      providers: [SpacesStore, { provide: SpacesApiService, useValue: api }],
+    });
+    store = TestBed.inject(SpacesStore);
+  });
+
+  it('sin establecimiento no consulta plantas ni marca error', () => {
+    store.loadFloors();
+    expect(api.listFloors).not.toHaveBeenCalled();
+    expect(store.floors()).toEqual([]);
+    expect(store.error()).toBeNull();
+  });
+
+  it('selectEstablishment dispara la carga con el id real', () => {
+    api.listFloors.mockReturnValue(
+      of([
+        {
+          id: 'f1',
+          establishmentId: 'est-1',
+          name: 'Planta baja',
+          level: 1,
+          slug: 'planta-baja',
+          createdAt: '2026-09-25T00:00:00Z',
+          updatedAt: '2026-09-25T00:00:00Z',
+        },
+      ]),
+    );
+    store.selectEstablishment('est-1');
+    expect(api.listFloors).toHaveBeenCalledWith('est-1');
+    expect(store.floors()).toHaveLength(1);
+    expect(store.error()).toBeNull();
+  });
+
+  it('un fallo de carga marca error y NO mezcla con lista vacía', () => {
+    api.listFloors.mockReturnValue(throwError(() => ({ status: 404 })));
+    store.selectEstablishment('est-404');
+    expect(store.error()).toBe(store.strings_.floors.errors.loadFailed);
+    expect(store.floors()).toEqual([]);
+  });
+
+  it('createEstablishment fija el id como contexto del paso 2', () => {
+    const creado = {
+      id: 'est-nuevo',
+      name: 'Gran Hotel Plaza',
+      type: 'HOTEL',
+      slug: 'gran-hotel-plaza',
+      timezone: 'America/La_Paz',
+      createdAt: '2026-09-25T00:00:00Z',
+      updatedAt: '2026-09-25T00:00:00Z',
+    };
+    api.createEstablishment.mockReturnValue(of(creado));
+
+    const sub = store
+      .createEstablishment({
+        name: 'Gran Hotel Plaza',
+        type: 'HOTEL',
+        address: '',
+        timezone: 'America/La_Paz',
+      })
+      .subscribe();
+
+    expect(api.createEstablishment).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Gran Hotel Plaza', slug: 'gran-hotel-plaza' }),
+    );
+    // La zona vacía no se envía: la omite y la controla el backend.
+    expect(store.establishmentId()).toBe('est-nuevo');
+    sub.unsubscribe();
+  });
+});

@@ -1,9 +1,33 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { Floor, Sector, SpaceElement, SpaceElementCreateRequest } from '@mapit/api-client';
+import type {
+  Establishment,
+  EstablishmentCreateRequest,
+  Floor,
+  Sector,
+  SpaceElement,
+  SpaceElementCreateRequest,
+} from '@mapit/api-client';
 import { type Observable, throwError } from 'rxjs';
-import { finalize, tap } from 'rxjs/operators';
-import { SpacesApiService, type FloorDraft, type SectorDraft } from '../data/spaces-api';
+import { catchError, finalize, tap } from 'rxjs/operators';
+import {
+  SpacesApiService,
+  type EstablishmentDraft,
+  type FloorDraft,
+  type SectorDraft,
+} from '../data/spaces-api';
 import { STRINGS } from '../../../core/strings';
+
+/** Deriva un slug válido desde el nombre (misma regla que `Slug.fromName` del backend). */
+function slugify(name: string): string {
+  const base = name
+    .normalize('NFD')
+    .replaceAll(/\p{M}/gu, '')
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, '-')
+    .replaceAll(/^-+|-+$/g, '');
+  const candidato = base.length >= 2 ? base : `${base}-${base}`;
+  return candidato.slice(0, 63) || 'local';
+}
 
 const EMPTY_FLOOR_DRAFT: FloorDraft = {
   name: '',
@@ -28,12 +52,22 @@ const EMPTY_ELEMENT_DRAFT: SpaceElementDraft = {
   initialState: 'AVAILABLE',
 };
 
-/** ViewModel con estado y comandos para la gestión de Pisos y Sectores (CU-05 · MAP-69/70). */
-@Injectable()
+/**
+ * ViewModel con estado y comandos para la gestión de Pisos y Sectores (CU-05 · MAP-69/70).
+ *
+ * providedIn 'root': lo comparten el paso 1 del asistente (datos del negocio),
+ * el paso 2 (estructura) y las páginas hijas de sectores/elementos. El contexto
+ * de establecimiento viaja además en la URL, así que sobrevive a refrescos.
+ */
+@Injectable({ providedIn: 'root' })
 export class SpacesStore {
   private readonly api = inject(SpacesApiService);
   private readonly floorStrings = STRINGS.spaces.floors;
   private readonly sectorStrings = STRINGS.spaces.sectors;
+
+  // Contexto del wizard (CU-05): el paso 2 siempre opera sobre UN establecimiento,
+  // el creado/seleccionado en el paso 1. Sin él no se carga ni crea nada.
+  private readonly establishmentIdState = signal<string | null>(null);
 
   // Floor state
   private readonly floorsState = signal<Floor[]>([]);
@@ -76,21 +110,63 @@ export class SpacesStore {
   readonly loading = this.loadingState.asReadonly();
   readonly saving = this.savingState.asReadonly();
   readonly error = this.errorState.asReadonly();
+  readonly establishmentId = this.establishmentIdState.asReadonly();
 
   // Expose strings for template
   readonly strings_ = STRINGS.spaces;
 
-  constructor() {
+  /**
+   * Fija el establecimiento del wizard y carga sus plantas. Sin id no hay
+   * llamada: el paso 2 no tiene sentido sin saber de qué establecimiento se trata.
+   */
+  selectEstablishment(id: string | null): void {
+    if (id === this.establishmentIdState()) return;
+    this.establishmentIdState.set(id);
+    if (id === null) {
+      this.floorsState.set([]);
+      this.errorState.set(null);
+      return;
+    }
     this.loadFloors();
+  }
+
+  /** Paso 1: crea el establecimiento y lo fija como contexto del paso 2. */
+  createEstablishment(draft: EstablishmentDraft): Observable<Establishment> {
+    const address = draft.address.trim();
+    const timezone = draft.timezone;
+    this.savingState.set(true);
+    this.errorState.set(null);
+    return this.api
+      .createEstablishment({
+        name: draft.name,
+        type: draft.type as EstablishmentCreateRequest['type'],
+        slug: slugify(draft.name),
+        ...(address ? { address } : {}),
+        ...(timezone ? { timezone } : {}),
+      })
+      .pipe(
+        tap((est) => this.establishmentIdState.set(est.id)),
+        catchError((err: unknown) => {
+          this.errorState.set(this.strings_.wizard.createFailed);
+          return throwError(() => err);
+        }),
+        finalize(() => this.savingState.set(false)),
+      );
   }
 
   // ===== FLOOR OPERATIONS =====
 
   loadFloors(): void {
+    const establishmentId = this.establishmentIdState();
+    if (!establishmentId) {
+      this.floorsState.set([]);
+      this.errorState.set(null);
+      return;
+    }
     this.loadingState.set(true);
     this.errorState.set(null);
     this.api
-      .listFloors()
+      .listFloors(establishmentId)
       .pipe(finalize(() => this.loadingState.set(false)))
       .subscribe({
         next: (floors) => this.floorsState.set(floors),
@@ -137,10 +213,17 @@ export class SpacesStore {
 
     const level = draft.level;
     const editingId = this.editingFloorIdState();
+    const establishmentId = this.establishmentIdState();
+
+    if (editingId === null && !establishmentId) {
+      // Sin contexto de establecimiento no existe a qué colgar la planta.
+      this.errorState.set(this.floorStrings.errors.saveFailed);
+      return;
+    }
 
     const request$ =
       editingId === null
-        ? this.api.createFloor({ name, level })
+        ? this.api.createFloor({ name, level }, establishmentId as string)
         : this.api.updateFloor(editingId, { name, level });
 
     this.savingState.set(true);

@@ -17,9 +17,10 @@ import { SectorListComponent } from './sector-list';
 
       @if (store.loading()) {
         <div class="loading-state">{{ store.strings_.floors.loading }}</div>
-      } @else if (store.floors().length === 0) {
+      } @else if (store.floors().length === 0 && !store.error()) {
+        <!-- Estados excluyentes: un fallo nunca se disfraza de "lista vacía". -->
         <div class="empty-state">{{ store.strings_.floors.empty }}</div>
-      } @else {
+      } @else if (store.floors().length > 0) {
         <ul
           class="floor-tree"
           role="tree"

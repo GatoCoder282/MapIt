@@ -41,8 +41,7 @@ export const STRINGS = {
     brandArea: 'Consola',
     nav: {
       home: 'Inicio',
-      establishments: 'Establecimientos',
-      spaces: 'Pisos y sectores',
+      business: 'Mi negocio',
     },
   },
   adminDashboard: {
@@ -317,16 +316,13 @@ export const STRINGS = {
    */
   spaces: {
     wizard: {
-      title: 'Asistente de configuración',
-      helpAriaLabel: 'Ayuda',
-      exit: 'Salir del asistente',
       stepperAriaLabel: 'Progreso del asistente',
       stepBusiness: 'Datos del negocio',
       stepBusinessAriaLabel: 'Paso 1: Datos del negocio, completado',
+      stepBusinessCurrentAriaLabel: 'Paso 1: Datos del negocio, actual',
       stepStructure: 'Estructura del espacio',
       stepStructureAriaLabel: 'Paso 2: Estructura del espacio, actual',
-      stepSummary: 'Resumen',
-      stepSummaryAriaLabel: 'Paso 3: Resumen, pendiente',
+      stepStructurePendingAriaLabel: 'Paso 2: Estructura del espacio, pendiente',
       pageTitle: 'Estructura del espacio',
       pageDescription:
         'Define la jerarquía física de tu ubicación. Empieza creando plantas y luego añade sectores o zonas a cada una.',
@@ -334,6 +330,19 @@ export const STRINGS = {
       addFloor: 'Agregar piso',
       previous: 'Anterior',
       next: 'Siguiente',
+      finish: 'Finalizar',
+      step1Title: 'Configuración del establecimiento',
+      nameLabel: 'Nombre del establecimiento',
+      namePlaceholder: 'Ej. Gran Hotel Plaza',
+      typeLabel: 'Tipo de establecimiento',
+      addressLabel: 'Dirección',
+      addressPlaceholder: 'Calle principal 123',
+      timezoneLabel: 'Zona horaria',
+      timezonePlaceholder: 'Selecciona una zona',
+      creating: 'Creando…',
+      createFailed: 'No se pudo crear el establecimiento. Inténtalo de nuevo.',
+      nameRequired: 'Ingresa el nombre del establecimiento.',
+      typeRequired: 'Selecciona el tipo de establecimiento.',
     },
     floors: {
       title: 'Plantas',

@@ -1,51 +1,17 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { PisoFormComponent } from './piso-form';
 import { PisoListComponent } from './piso-list';
 import { SpacesStore } from '../model/spaces-store';
-import { STRINGS } from '../../../core/strings';
 
 /** Pantalla principal del Setup Wizard - Step 2: Estructura del espacio (CU-05 · MAP-69/70). */
 @Component({
   selector: 'mapit-spaces',
-  imports: [PisoFormComponent, PisoListComponent],
-  providers: [SpacesStore],
+  // El store se provee en la ruta padre `spaces`: lo comparten paso 1 y paso 2.
+  imports: [PisoFormComponent, PisoListComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wizard-layout">
-      <!-- Top Bar -->
-      <header class="wizard-topbar" role="banner">
-        <div class="topbar-left">
-          <span class="brand">{{ brand }}</span>
-          <span class="divider" aria-hidden="true"></span>
-          <span class="wizard-title">{{ store.strings_.wizard.title }}</span>
-        </div>
-        <div class="topbar-right">
-          <button
-            class="help-btn"
-            type="button"
-            [attr.aria-label]="store.strings_.wizard.helpAriaLabel"
-            (click)="openHelp()"
-          >
-            ?
-          </button>
-          <button class="exit-btn" type="button" (click)="exitWizard()">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              aria-hidden="true"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="18" x2="18" y2="6" />
-            </svg>
-            {{ store.strings_.wizard.exit }}
-          </button>
-        </div>
-      </header>
-
       <!-- Stepper -->
       <nav
         class="wizard-stepper"
@@ -53,12 +19,11 @@ import { STRINGS } from '../../../core/strings';
         role="navigation"
       >
         <ol class="steps">
-          <li class="step completed" [class.active]="false">
-            <button
+          <li class="step completed">
+            <a
               class="step-circle"
-              type="button"
+              routerLink="/spaces/setup"
               [attr.aria-label]="store.strings_.wizard.stepBusinessAriaLabel"
-              disabled
             >
               <svg
                 width="16"
@@ -71,32 +36,21 @@ import { STRINGS } from '../../../core/strings';
               >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-            </button>
+            </a>
             <span class="step-label">{{ store.strings_.wizard.stepBusiness }}</span>
           </li>
           <li class="step-divider completed" aria-hidden="true"></li>
-          <li class="step active" [class.active]="true">
+          <li class="step active">
             <button
               class="step-circle"
               type="button"
               [attr.aria-label]="store.strings_.wizard.stepStructureAriaLabel"
+              aria-current="step"
               disabled
             >
               <span class="step-number">2</span>
             </button>
             <span class="step-label">{{ store.strings_.wizard.stepStructure }}</span>
-          </li>
-          <li class="step-divider" aria-hidden="true"></li>
-          <li class="step pending" [class.active]="false">
-            <button
-              class="step-circle"
-              type="button"
-              [attr.aria-label]="store.strings_.wizard.stepSummaryAriaLabel"
-              disabled
-            >
-              <span class="step-number">3</span>
-            </button>
-            <span class="step-label">{{ store.strings_.wizard.stepSummary }}</span>
           </li>
         </ol>
       </nav>
@@ -194,7 +148,7 @@ import { STRINGS } from '../../../core/strings';
             {{ store.strings_.wizard.previous }}
           </button>
           <button class="btn-primary" type="button" (click)="goNext()">
-            {{ store.strings_.wizard.next }}
+            {{ store.strings_.wizard.finish }}
             <svg
               width="18"
               height="18"
@@ -242,94 +196,6 @@ import { STRINGS } from '../../../core/strings';
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
-    }
-
-    /* ===== TOP BAR ===== */
-    .wizard-topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 64px;
-      padding: 0 2rem;
-      background: var(--mapit-color-surface);
-      border-bottom: 1px solid var(--mapit-color-border);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .topbar-left {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .brand {
-      font-size: 1.125rem;
-      font-weight: 700;
-      color: var(--mapit-color-primary);
-      font-family: var(--mapit-font-display);
-    }
-
-    .divider {
-      width: 1px;
-      height: 20px;
-      background: var(--mapit-color-border);
-    }
-
-    .wizard-title {
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--mapit-color-text-variant);
-    }
-
-    .topbar-right {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .help-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border: 1.5px solid var(--mapit-color-border);
-      border-radius: 50%;
-      background: transparent;
-      color: var(--mapit-color-text-variant);
-      font: inherit;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition:
-        background 0.15s ease,
-        color 0.15s ease;
-    }
-
-    .help-btn:hover {
-      background: var(--mapit-color-surface-low);
-      color: var(--mapit-color-text);
-    }
-
-    .exit-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.4rem 0.25rem;
-      border: none;
-      background: transparent;
-      color: var(--mapit-color-text-variant);
-      font: inherit;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: color 0.15s ease;
-    }
-
-    .exit-btn:hover {
-      color: var(--mapit-color-text);
     }
 
     /* ===== STEPPER ===== */
@@ -715,27 +581,30 @@ import { STRINGS } from '../../../core/strings';
   `,
 })
 export class SpacesComponent {
+  /** Viene de la ruta (`/spaces/floors/:establishmentId`), no de estado efímero. */
+  readonly establishmentId = input<string>('');
+
   protected readonly store = inject(SpacesStore);
-  protected readonly brand = STRINGS.brand.name;
   protected readonly showSectorForm = signal(false);
+  private readonly router = inject(Router);
 
-  openHelp(): void {
-    // TODO: Implement help modal
-    console.warn('Help clicked');
-  }
-
-  exitWizard(): void {
-    // TODO: Implement exit confirmation
-    console.warn('Exit wizard clicked');
+  constructor() {
+    effect(() => {
+      const id = this.establishmentId();
+      if (!id) {
+        // El paso 2 no tiene sentido sin saber de qué establecimiento se trata.
+        void this.router.navigate(['/spaces/setup']);
+        return;
+      }
+      this.store.selectEstablishment(id);
+    });
   }
 
   goBack(): void {
-    // TODO: Navigate to step 1
-    console.warn('Go back to step 1');
+    void this.router.navigate(['/spaces/setup']);
   }
 
   goNext(): void {
-    // TODO: Navigate to step 3
-    console.warn('Go next to step 3');
+    void this.router.navigate(['/home']);
   }
 }
