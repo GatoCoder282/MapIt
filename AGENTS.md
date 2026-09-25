@@ -100,6 +100,8 @@ Otro scope = commit rechazado. Cabecera máx. 100 caracteres.
 - **`JAVA_HOME` en `.env` gana sobre la variable de sistema** (`gradle.mjs` la lee): permite apuntar al Temurin 25 correcto sin permisos de admin.
 - **El código bajo `**/generated/` no se edita**: se regenera desde el contrato.
 - **`springdoc` puede ir un paso atrás** respecto a Spring Framework 7. Si falla, el contrato sigue siendo el yaml.
+- **En PowerShell, `git show HEAD:archivo > salida` corrompe los UTF-8** (acentos → mojibake y el archivo entero falla en tests). Para extraer un archivo de git: fija primero `[Console]::OutputEncoding=[Text.Encoding]::UTF8` y escribe con `[IO.File]::WriteAllText(..., UTF8 sin BOM)`, o confirma el contenido con tests.
+- **`.env` está trackeado** (histórico). Edítalo con cuidado: sus cambios no siempre aparecen en `git status` (skip-worktree).
 
 ## Multi-tenant (clave)
 
