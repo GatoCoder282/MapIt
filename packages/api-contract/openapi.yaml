@@ -1404,8 +1404,7 @@ components:
           minLength: 2
           maxLength: 63
         address:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Dirección física (null la borra).
           maxLength: 200
         timezone:
