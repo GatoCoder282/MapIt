@@ -52,14 +52,15 @@ public class EstablishmentService {
   }
 
   @Transactional
-  public Establishment create(String name, EstablishmentType type, Slug slug, String timezone) {
+  public Establishment create(
+      String name, EstablishmentType type, Slug slug, String address, String timezone) {
     TenantId tenantId = tenantContext.require();
     requireSlugLibre(tenantId, slug, null);
 
     Instant now = clock.instant();
     Establishment establishment =
         Establishment.register(
-            UUID.randomUUID(), tenantId, name, type, slug, timezone, now, autorActual());
+            UUID.randomUUID(), tenantId, name, type, slug, address, timezone, now, autorActual());
     return repository.save(establishment);
   }
 
@@ -68,7 +69,7 @@ public class EstablishmentService {
    * y por eso ni siquiera es parámetro.
    */
   @Transactional
-  public Establishment update(UUID id, String name, Slug slug, String timezone) {
+  public Establishment update(UUID id, String name, Slug slug, String address, String timezone) {
     TenantId tenantId = tenantContext.require();
     Establishment actual =
         repository
@@ -78,7 +79,7 @@ public class EstablishmentService {
     requireSlugLibre(tenantId, slug, id);
 
     return repository.save(
-        actual.update(name, slug, timezone, clock.instant(), autorActual()));
+        actual.update(name, slug, address, timezone, clock.instant(), autorActual()));
   }
 
   /** Da de baja lógicamente. La fila se conserva; deja de aparecer y libera su slug. */

@@ -24,6 +24,7 @@ public record Establishment(
     String name,
     EstablishmentType type,
     Slug slug,
+    String address,
     String timezone,
     AuditTrail audit) {
 
@@ -31,6 +32,7 @@ public record Establishment(
   public static final String ZONA_HORARIA_POR_DEFECTO = "America/La_Paz";
 
   private static final int LARGO_MAXIMO_NOMBRE = 120;
+  private static final int LARGO_MAXIMO_DIRECCION = 200;
 
   public Establishment {
     Objects.requireNonNull(id, "El id no puede ser null");
@@ -49,6 +51,15 @@ public record Establishment(
       throw new IllegalArgumentException(
           "El nombre no puede superar los %d caracteres".formatted(LARGO_MAXIMO_NOMBRE));
     }
+    if (address != null) {
+      address = address.trim();
+      if (address.isEmpty()) {
+        address = null;
+      } else if (address.length() > LARGO_MAXIMO_DIRECCION) {
+        throw new IllegalArgumentException(
+            "La dirección no puede superar los %d caracteres".formatted(LARGO_MAXIMO_DIRECCION));
+      }
+    }
     if (!ZoneId.getAvailableZoneIds().contains(timezone)) {
       throw new IllegalArgumentException(
           "Zona horaria inválida: '%s'. Debe ser un identificador IANA.".formatted(timezone));
@@ -62,6 +73,7 @@ public record Establishment(
       String name,
       EstablishmentType type,
       Slug slug,
+      String address,
       String timezone,
       Instant now,
       UUID by) {
@@ -71,6 +83,7 @@ public record Establishment(
         name,
         type,
         slug,
+        address,
         timezone == null || timezone.isBlank() ? ZONA_HORARIA_POR_DEFECTO : timezone,
         AuditTrail.created(now, by));
   }
@@ -83,7 +96,8 @@ public record Establishment(
    * los mapas ya dibujados. El contrato OpenAPI lo hace cumplir antes incluso de llegar
    * aquí, al no incluir {@code type} en {@code EstablishmentUpdateRequest}.
    */
-  public Establishment update(String name, Slug slug, String timezone, Instant now, UUID by) {
+  public Establishment update(
+      String name, Slug slug, String address, String timezone, Instant now, UUID by) {
     if (audit.isDeleted()) {
       throw new IllegalStateException("No se puede actualizar un establecimiento dado de baja");
     }
@@ -93,6 +107,7 @@ public record Establishment(
         name,
         type,
         slug,
+        address,
         timezone == null || timezone.isBlank() ? ZONA_HORARIA_POR_DEFECTO : timezone,
         audit.touched(now, by));
   }
@@ -107,7 +122,8 @@ public record Establishment(
     if (audit.isDeleted()) {
       throw new IllegalStateException("El establecimiento ya estaba dado de baja");
     }
-    return new Establishment(id, tenantId, name, type, slug, timezone, audit.deleted(now, by));
+    return new Establishment(
+        id, tenantId, name, type, slug, address, timezone, audit.deleted(now, by));
   }
 
   public boolean isDeleted() {

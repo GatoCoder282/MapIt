@@ -25,6 +25,7 @@ class EstablishmentTest {
         "Bar Central",
         EstablishmentType.NIGHTCLUB,
         Slug.of("bar-central"),
+        null,
         "America/La_Paz",
         AHORA,
         null);
@@ -53,6 +54,7 @@ class EstablishmentTest {
             EstablishmentType.HOTEL,
             Slug.of("sin-zona"),
             null,
+            null,
             AHORA,
             null);
 
@@ -68,6 +70,7 @@ class EstablishmentTest {
             "   Con espacios   ",
             EstablishmentType.RESTAURANT,
             Slug.of("con-espacios"),
+            null,
             null,
             AHORA,
             null);
@@ -85,6 +88,7 @@ class EstablishmentTest {
                     "   ",
                     EstablishmentType.RESTAURANT,
                     Slug.of("vacio"),
+                    null,
                     null,
                     AHORA,
                     null))
@@ -105,6 +109,7 @@ class EstablishmentTest {
                     EstablishmentType.RESTAURANT,
                     Slug.of("largo"),
                     null,
+                    null,
                     AHORA,
                     null))
         .isInstanceOf(IllegalArgumentException.class)
@@ -121,6 +126,7 @@ class EstablishmentTest {
                     "Zona rara",
                     EstablishmentType.HOTEL,
                     Slug.of("zona-rara"),
+                    null,
                     "Marte/Olympus",
                     AHORA,
                     null))
@@ -134,7 +140,7 @@ class EstablishmentTest {
     Instant despues = AHORA.plus(1, ChronoUnit.HOURS);
 
     Establishment actualizado =
-        original.update("Bar Central VIP", Slug.of("bar-central-vip"), "America/Lima", despues, null);
+        original.update("Bar Central VIP", Slug.of("bar-central-vip"), null, "America/Lima", despues, null);
 
     // RN-3: el tipo es inmutable. Ni siquiera es parámetro del método.
     assertThat(actualizado.type()).isEqualTo(original.type());
@@ -149,7 +155,7 @@ class EstablishmentTest {
   void actualizar_no_muta_el_original() {
     Establishment original = unEstablecimiento();
 
-    original.update("Otro nombre", Slug.of("otro-nombre"), null, AHORA.plusSeconds(60), null);
+    original.update("Otro nombre", Slug.of("otro-nombre"), null, null, AHORA.plusSeconds(60), null);
 
     assertThat(original.name()).isEqualTo("Bar Central");
   }
@@ -181,7 +187,7 @@ class EstablishmentTest {
     Establishment dadoDeBaja = unEstablecimiento().softDelete(AHORA, null);
 
     assertThatThrownBy(
-            () -> dadoDeBaja.update("Nuevo", Slug.of("nuevo"), null, AHORA.plusSeconds(60), null))
+            () -> dadoDeBaja.update("Nuevo", Slug.of("nuevo"), null, null, AHORA.plusSeconds(60), null))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("dado de baja");
   }

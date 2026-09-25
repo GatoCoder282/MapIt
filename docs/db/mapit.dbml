@@ -79,6 +79,7 @@ Table establishment {
   name       text        [not null]
   type       text        [not null, note: 'RESTAURANT | NIGHTCLUB | EVENT_HALL | HOTEL']
   slug       text        [not null, note: 'URL pública de reserva']
+  address    text        [note: 'Dirección física opcional (máx. 200)']
   timezone   text        [not null, default: 'America/La_Paz']
   created_at timestamptz [not null]
   created_by uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']

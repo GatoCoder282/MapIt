@@ -1334,6 +1334,10 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+        address:
+          type: string
+          description: Dirección física del establecimiento (opcional).
+          maxLength: 200
         timezone:
           type: string
           description: Identificador IANA de zona horaria.
@@ -1373,6 +1377,10 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+        address:
+          type: string
+          description: Dirección física del establecimiento (opcional).
+          maxLength: 200
         timezone:
           type: string
           description: Si se omite, el backend aplica America/La_Paz.
@@ -1395,6 +1403,11 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+        address:
+          type: string
+          nullable: true
+          description: Dirección física (null la borra).
+          maxLength: 200
         timezone:
           type: string
           maxLength: 64

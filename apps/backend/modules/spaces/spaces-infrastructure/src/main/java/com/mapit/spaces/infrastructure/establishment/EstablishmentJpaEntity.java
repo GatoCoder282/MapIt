@@ -45,6 +45,9 @@ public class EstablishmentJpaEntity {
   @Column(nullable = false, length = 63)
   private String slug;
 
+  @Column(length = 200)
+  private String address;
+
   @Column(nullable = false, length = 64)
   private String timezone;
 
@@ -74,6 +77,7 @@ public class EstablishmentJpaEntity {
       String name,
       EstablishmentType type,
       String slug,
+      String address,
       String timezone,
       Instant createdAt,
       UUID createdBy,
@@ -86,6 +90,7 @@ public class EstablishmentJpaEntity {
     this.name = name;
     this.type = type;
     this.slug = slug;
+    this.address = address;
     this.timezone = timezone;
     this.createdAt = createdAt;
     this.createdBy = createdBy;
@@ -103,6 +108,7 @@ public class EstablishmentJpaEntity {
         establishment.name(),
         establishment.type(),
         establishment.slug().value(),
+        establishment.address(),
         establishment.timezone(),
         audit.createdAt(),
         audit.createdBy(),
@@ -119,6 +125,7 @@ public class EstablishmentJpaEntity {
         name,
         type,
         Slug.of(slug),
+        address,
         timezone,
         new AuditTrail(createdAt, createdBy, updatedAt, updatedBy, deletedAt, deletedBy));
   }

@@ -48,7 +48,7 @@ class FloorServiceTest {
     establecimiento =
         Establishment.register(
             EST_ID, TENANT, "Bar Central", EstablishmentType.RESTAURANT, Slug.of("bar-central"),
-            "Europe/Madrid", AHORA, null);
+            null, "Europe/Madrid", AHORA, null);
     service =
         new FloorService(
             new FakeFloorRepository(), new FakeEstablishmentRepository(), new FakeSectorRepository(),

@@ -63,10 +63,12 @@ class SpaceElementUseCaseTest {
   private static final Establishment EST_TENANT_A =
       new Establishment(
           EST_A, TENANT_A, "Est A", EstablishmentType.RESTAURANT, Slug.of("est-a"),
+          null,
           "America/La_Paz", AuditTrail.created(AHORA, null));
   private static final Establishment EST_TENANT_B_HOTEL =
       new Establishment(
           EST_B, TENANT_B, "Hotel B", EstablishmentType.HOTEL, Slug.of("hotel-b"),
+          null,
           "America/La_Paz", AuditTrail.created(AHORA, null));
   private static final Floor FLOOR_TENANT_B =
       Floor.register(FLOOR_B, TENANT_B, EST_B, "PB", 1, Slug.of("pb"), AHORA, null);

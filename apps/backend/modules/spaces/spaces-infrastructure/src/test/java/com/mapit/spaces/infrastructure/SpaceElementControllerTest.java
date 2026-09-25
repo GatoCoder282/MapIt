@@ -65,6 +65,7 @@ class SpaceElementControllerTest {
     Establishment est =
         new Establishment(
             EST_A, TENANT_A, "Rest A", EstablishmentType.RESTAURANT, Slug.of("rest-a"),
+            null,
             "America/La_Paz", AuditTrail.created(AHORA, null));
     SectorRepository sectors = new PantrySectorRepository(List.of(sector));
     FloorRepository floors = new PantryFloorRepository(List.of(floor));

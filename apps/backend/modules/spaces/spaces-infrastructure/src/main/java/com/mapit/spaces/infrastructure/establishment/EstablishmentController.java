@@ -64,6 +64,7 @@ public class EstablishmentController {
             request.name(),
             request.type(),
             Slug.of(request.slug()),
+            request.address(),
             request.timezone()));
   }
 
@@ -71,7 +72,8 @@ public class EstablishmentController {
   public EstablishmentResponse update(
       @PathVariable UUID id, @Valid @RequestBody EstablishmentUpdateRequest request) {
     return EstablishmentResponse.fromDomain(
-        service.update(id, request.name(), Slug.of(request.slug()), request.timezone()));
+        service.update(
+            id, request.name(), Slug.of(request.slug()), request.address(), request.timezone()));
   }
 
   @DeleteMapping("/{id}")
@@ -119,6 +121,7 @@ public class EstablishmentController {
       @NotBlank @Size(max = 120) String name,
       @NotNull EstablishmentType type,
       @NotBlank @Pattern(regexp = SLUG_REGEX) @Size(min = 2, max = 63) String slug,
+      @Size(max = 200) String address,
       @Size(max = 64) String timezone) {}
 
   /**
@@ -131,6 +134,7 @@ public class EstablishmentController {
   public record EstablishmentUpdateRequest(
       @NotBlank @Size(max = 120) String name,
       @NotBlank @Pattern(regexp = SLUG_REGEX) @Size(min = 2, max = 63) String slug,
+      @Size(max = 200) String address,
       @Size(max = 64) String timezone) {}
 
   /** Payload de salida. No expone {@code deletedAt} ni {@code tenantId}. */
@@ -139,6 +143,7 @@ public class EstablishmentController {
       String name,
       EstablishmentType type,
       String slug,
+      String address,
       String timezone,
       Instant createdAt,
       UUID createdBy,
@@ -151,6 +156,7 @@ public class EstablishmentController {
           establishment.name(),
           establishment.type(),
           establishment.slug().value(),
+          establishment.address(),
           establishment.timezone(),
           establishment.audit().createdAt(),
           establishment.audit().createdBy(),
