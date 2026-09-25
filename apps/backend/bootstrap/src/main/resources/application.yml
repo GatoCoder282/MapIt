@@ -78,8 +78,8 @@ mapit:
     access-ttl-minutes: ${JWT_ACCESS_TTL_MIN:15}
     refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}
   tenant:
-    resolution-strategy: ${TENANT_RESOLUTION_STRATEGY:jwt-claim}
-    header-name: ${TENANT_HEADER_NAME:X-Tenant-Id}
+    # Tenant fallback para contextos sin JWT (p. ej. la demo pública). El tenant
+    # de staff sale SIEMPRE del claim `tenant` del JWT — no de un header.
     default: ${TENANT_DEFAULT:demo}
   # Bootstrap del SUPER_ADMIN de plataforma (tenant técnico `platform`, V6).
   # Sin contraseña no se crea nada: la app arranca igual y solo lo avisa el log.

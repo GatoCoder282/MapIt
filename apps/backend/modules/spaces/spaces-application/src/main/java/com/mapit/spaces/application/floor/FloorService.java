@@ -1,5 +1,6 @@
 package com.mapit.spaces.application.floor;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +16,7 @@ import com.mapit.spaces.domain.Slug;
 import com.mapit.spaces.domain.establishment.EstablishmentRepository;
 import com.mapit.spaces.domain.floor.Floor;
 import com.mapit.spaces.domain.floor.FloorRepository;
+import com.mapit.spaces.domain.sector.SectorRepository;
 
 /**
  * Casos de uso de gestión de pisos (CU-05).
@@ -26,20 +28,24 @@ import com.mapit.spaces.domain.floor.FloorRepository;
 public class FloorService {
 
   private static final int LEVEL_MAX = 999;
-  private static final int SLUG_MAX_LENGTH = 64;
+  // Tope real del VO Slug: ^[a-z0-9][a-z0-9-]{1,62}$ = 63 caracteres máximo.
+  private static final int SLUG_MAX_LENGTH = 63;
 
   private final FloorRepository floorRepository;
   private final EstablishmentRepository establishmentRepository;
+  private final SectorRepository sectorRepository;
   private final TenantContext tenantContext;
-  private final java.time.Clock clock; // Using java.time.Clock for consistency
+  private final Clock clock;
 
   public FloorService(
       FloorRepository floorRepository,
       EstablishmentRepository establishmentRepository,
+      SectorRepository sectorRepository,
       TenantContext tenantContext,
-      java.time.Clock clock) {
+      Clock clock) {
     this.floorRepository = floorRepository;
     this.establishmentRepository = establishmentRepository;
+    this.sectorRepository = sectorRepository;
     this.tenantContext = tenantContext;
     this.clock = clock;
   }
@@ -95,7 +101,7 @@ public class FloorService {
         resolvedLevel,
         slug,
         now,
-        currentAuthor()); // Assuming currentAuthor() returns UUID or null
+        currentAuthor());
 
     return floorRepository.save(floor);
   }
@@ -120,7 +126,7 @@ public class FloorService {
 
     // Verificar unicidad del nivel (si cambió)
     if (resolvedLevel != actual.level()) {
-      requireLevelFree(tenantId, actual.establishmentId(), resolvedLevel, id);
+      requireLevelFree(tenantId, actual.establishmentId(), resolvedLevel, actual);
     }
 
     return floorRepository.save(
@@ -134,10 +140,12 @@ public class FloorService {
         .findAliveById(tenantId, id)
         .orElseThrow(() -> new FloorNotFoundException(id));
 
-    // TODO: Verificar que no tiene sectores activos (cuando CU-05 parte 2 esté implementado)
-    // if (sectorRepository.hasActiveSectorsByFloorId(tenantId, id)) {
-    //   throw new FloorHasActiveSectorsException(id);
-    // }
+    // RN: un piso con sectores vivos no se puede dar de baja — quedarían sectores
+    // visibles colgando de un piso inexistente. La baja es en cascada manual:
+    // primero los sectores, luego el piso.
+    if (!sectorRepository.findAliveByFloorId(tenantId, id).isEmpty()) {
+      throw new FloorHasActiveSectorsException(id);
+    }
 
     floorRepository.save(actual.softDelete(clock.instant(), currentAuthor()));
   }
@@ -164,50 +172,30 @@ public class FloorService {
     if (slugValue != null && !slugValue.isBlank()) {
       return Slug.of(slugValue);
     }
-    // Generar slug del nombre
-    String generated = generateSlugFromName(name);
-    // Verificar que no colisione; si colisiona, añadir sufijo numérico
+    // La normalización (tildes, ñ, unicode) vive en Slug.fromName; aquí solo se
+    // resuelven colisiones añadiendo sufijo numérico, respetando el tope del VO.
+    final String generated = derivarSlug(name);
     String candidate = generated;
     int suffix = 1;
-    // Use findAliveBySlug to check for existing slugs within the same establishment
     while (floorRepository.findAliveBySlug(tenantId, establishmentId, Slug.of(candidate)).isPresent()) {
-      candidate = generated + "-" + suffix;
-      // Ensure candidate length doesn't exceed max slug length after adding suffix
-      if (candidate.length() > SLUG_MAX_LENGTH) {
-        candidate = generated.substring(0, SLUG_MAX_LENGTH - String.valueOf(suffix).length() - 1) + "-" + suffix;
-        if (candidate.length() > SLUG_MAX_LENGTH) {
-            candidate = candidate.substring(0, SLUG_MAX_LENGTH); // Final truncation if necessary
-        }
-      }
+      String suffixText = "-" + suffix;
+      candidate = generated.substring(0, Math.min(generated.length(), SLUG_MAX_LENGTH - suffixText.length()))
+          + suffixText;
       suffix++;
     }
     return Slug.of(candidate);
   }
 
-  private String generateSlugFromName(String name) {
-    String normalized = name
-        .toLowerCase()
-        .replaceAll("[áàäâ]", "a")
-        .replaceAll("[éèëê]", "e")
-        .replaceAll("[íìïî]", "i")
-        .replaceAll("[óòöô]", "o")
-        .replaceAll("[úùüû]", "u")
-        .replaceAll("[ñ]", "n")
-        .replaceAll("[^a-z0-9]+", "-") // Replace non-alphanumeric with hyphen
-        .replaceAll("^-|-$", ""); // Remove leading/trailing hyphens
-
-    // Ensure it starts with alphanumeric and has minimum length
-    if (normalized.isEmpty()) {
-      normalized = "floor";
+  /**
+   * Slug derivado del nombre. Si el nombre no produce ningún carácter válido
+   * (p. ej. "!!!"), cae a un candidato neutro que el bucle de colisiones hará único.
+   */
+  private static String derivarSlug(String name) {
+    try {
+      return Slug.fromName(name).value();
+    } catch (IllegalArgumentException sinDerivacion) {
+      return "piso";
     }
-    if (normalized.length() < 2) {
-      normalized = normalized + "-floor"; // Append to ensure minimum length if needed
-    }
-    // Truncate if it exceeds max length
-    if (normalized.length() > SLUG_MAX_LENGTH) {
-      normalized = normalized.substring(0, SLUG_MAX_LENGTH);
-    }
-    return normalized;
   }
 
   private void requireSlugFree(
@@ -228,41 +216,17 @@ public class FloorService {
       TenantId tenantId,
       UUID establishmentId,
       int level,
-      UUID ownId) {
-    // First, check if the level exists at all for this establishment among live floors.
-    boolean levelExists = floorRepository.existsAliveByLevel(tenantId, establishmentId, level);
-
-    if (levelExists) {
-      // If the level exists, we need to verify if it belongs to the current entity being updated.
-      // If ownId is null, it means we are creating a new floor, so any existing level is a conflict.
-      if (ownId == null) {
-        throw new FloorLevelAlreadyExistsException(level);
-      } else {
-        // If ownId is not null, we are updating an existing floor.
-        // We need to retrieve the current floor to compare its level.
-        Optional<Floor> existingFloorOpt = floorRepository.findAliveById(tenantId, ownId);
-        if (existingFloorOpt.isPresent()) {
-          Floor existingFloor = existingFloorOpt.get();
-          // If the existing floor has a different level, then it's a conflict.
-          // If it has the same level, it's not a conflict (no change).
-          if (existingFloor.level() != level) {
-            throw new FloorLevelAlreadyExistsException(level);
-          }
-          // If existingFloor.level() == level, it's not a conflict, so we do nothing.
-        } else {
-          // This case should ideally not happen if findAliveById worked correctly above,
-          // but as a safeguard, if the entity to update isn't found, any existing level is a conflict.
-          throw new FloorLevelAlreadyExistsException(level);
-        }
-      }
+      Floor self) {
+    // Un nivel ocupado por otro piso vivo es conflicto. `self` es el piso que se
+    // está editando (null al crear): si el nivel ocupado es el suyo, no hay cambio.
+    boolean ocupado = floorRepository.existsAliveByLevel(tenantId, establishmentId, level);
+    if (ocupado && (self == null || self.level() != level)) {
+      throw new FloorLevelAlreadyExistsException(level);
     }
-    // If levelExists is false, no conflict.
   }
 
-
+  /** Autor de la auditoría: null hasta CU-23/CU-24 (no hay usuario autenticado en dominio). */
   private UUID currentAuthor() {
-    // This is a placeholder. In a real application, this would fetch the current user's ID from security context.
-    // For now, returning null as per instructions or previous context.
     return null;
   }
 }

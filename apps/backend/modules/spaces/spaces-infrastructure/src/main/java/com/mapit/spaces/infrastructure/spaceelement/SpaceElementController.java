@@ -25,6 +25,7 @@ import com.mapit.spaces.application.spaceelement.SpaceElementQueryService;
 import com.mapit.spaces.application.spaceelement.SpaceElementResponse;
 import com.mapit.spaces.application.spaceelement.UpdateSpaceElementCommand;
 import com.mapit.spaces.application.spaceelement.UpdateSpaceElementUseCase;
+import com.mapit.spaces.infrastructure.SpacesProblemTypes;
 
 /**
  * Adaptador REST de elementos espaciales (HU-2.03 / MAP-115).
@@ -96,7 +97,7 @@ public class SpaceElementController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     problem.setTitle("Elemento espacial no encontrado");
-    problem.setType(URI.create("https://mapit.local/problems/resource-not-found"));
+    problem.setType(URI.create(SpacesProblemTypes.RESOURCE_NOT_FOUND));
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
@@ -105,7 +106,7 @@ public class SpaceElementController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     problem.setTitle("Sector no encontrado");
-    problem.setType(URI.create("https://mapit.local/problems/resource-not-found"));
+    problem.setType(URI.create(SpacesProblemTypes.RESOURCE_NOT_FOUND));
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
@@ -114,7 +115,7 @@ public class SpaceElementController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setTitle("Tipo de elemento no permitido");
-    problem.setType(URI.create("https://mapit.local/problems/invalid-input"));
+    problem.setType(URI.create(SpacesProblemTypes.INVALID_INPUT));
     return ResponseEntity.badRequest().body(problem);
   }
 
@@ -123,7 +124,7 @@ public class SpaceElementController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setTitle("Datos inválidos");
-    problem.setType(URI.create("https://mapit.local/problems/invalid-input"));
+    problem.setType(URI.create(SpacesProblemTypes.INVALID_INPUT));
     return ResponseEntity.badRequest().body(problem);
   }
 }

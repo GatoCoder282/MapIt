@@ -34,6 +34,7 @@ import com.mapit.spaces.application.floor.FloorNotFoundException;
 import com.mapit.spaces.application.floor.FloorService;
 import com.mapit.spaces.application.floor.FloorSlugAlreadyExistsException;
 import com.mapit.spaces.domain.floor.Floor;
+import com.mapit.spaces.infrastructure.SpacesProblemTypes;
 /**
  * Adaptador REST de la gestión de pisos (CU-05).
  */
@@ -104,7 +105,7 @@ public class FloorController {
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     problem.setTitle("Piso no encontrado");
     // Using a common URI for not found errors, specific detail in message
-    problem.setType(URI.create("https://mapit.local/problems/resource-not-found"));
+    problem.setType(URI.create(SpacesProblemTypes.RESOURCE_NOT_FOUND));
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
@@ -114,7 +115,7 @@ public class FloorController {
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
     problem.setTitle("Conflicto en piso");
     // Using a common URI for conflict errors
-    problem.setType(URI.create("https://mapit.local/problems/resource-conflict"));
+    problem.setType(URI.create(SpacesProblemTypes.RESOURCE_CONFLICT));
     return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 
@@ -124,7 +125,7 @@ public class FloorController {
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
     problem.setTitle("Piso con sectores activos");
     // Specific URI for this type of conflict
-    problem.setType(URI.create("https://mapit.local/problems/floor-has-active-sectors"));
+    problem.setType(URI.create(SpacesProblemTypes.FLOOR_HAS_ACTIVE_SECTORS));
     return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 
@@ -134,7 +135,7 @@ public class FloorController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     problem.setTitle("Establecimiento no encontrado");
-    problem.setType(URI.create("https://mapit.local/problems/establishment-not-found"));
+    problem.setType(URI.create(SpacesProblemTypes.ESTABLISHMENT_NOT_FOUND));
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
@@ -143,7 +144,7 @@ public class FloorController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
     problem.setTitle("Datos inválidos");
-    problem.setType(URI.create("https://mapit.local/problems/invalid-input"));
+    problem.setType(URI.create(SpacesProblemTypes.INVALID_INPUT));
     return ResponseEntity.badRequest().body(problem);
   }
 

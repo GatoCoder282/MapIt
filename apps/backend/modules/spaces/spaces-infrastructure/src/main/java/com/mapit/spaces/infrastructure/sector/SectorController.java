@@ -28,6 +28,7 @@ import com.mapit.spaces.application.sector.SectorResponse;
 import com.mapit.spaces.application.sector.SectorSlugAlreadyExistsException;
 import com.mapit.spaces.application.sector.UpdateSectorCommand;
 import com.mapit.spaces.application.sector.UpdateSectorUseCase;
+import com.mapit.spaces.infrastructure.SpacesProblemTypes;
 
 /**
  * Adaptador REST de sectores (CU-05).
@@ -115,7 +116,7 @@ public class SectorController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     problem.setTitle("Sector no encontrado");
-    problem.setType(URI.create("https://mapit.local/problems/resource-not-found"));
+    problem.setType(URI.create(SpacesProblemTypes.RESOURCE_NOT_FOUND));
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
@@ -124,7 +125,7 @@ public class SectorController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     problem.setTitle("Piso no encontrado");
-    problem.setType(URI.create("https://mapit.local/problems/resource-not-found"));
+    problem.setType(URI.create(SpacesProblemTypes.RESOURCE_NOT_FOUND));
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
@@ -133,7 +134,7 @@ public class SectorController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     problem.setTitle("Conflicto en sector");
-    problem.setType(URI.create("https://mapit.local/problems/resource-conflict"));
+    problem.setType(URI.create(SpacesProblemTypes.RESOURCE_CONFLICT));
     return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 
@@ -142,7 +143,7 @@ public class SectorController {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setTitle("Datos inválidos");
-    problem.setType(URI.create("https://mapit.local/problems/invalid-input"));
+    problem.setType(URI.create(SpacesProblemTypes.INVALID_INPUT));
     return ResponseEntity.badRequest().body(problem);
   }
 }
