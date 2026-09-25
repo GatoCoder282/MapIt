@@ -105,9 +105,10 @@ Otro scope = commit rechazado. Cabecera máx. 100 caracteres.
 
 El tenant sale del **claim `tenant` del JWT**, no de un header (falsificable). Doble capa:
 
-1. Todas las queries filtran explícitamente por `tenant_id` (los repos solo tienen
-   métodos «vivos y del tenant»). No hay filtro automático de Hibernate (`@TenantId`):
-   no lo uses como excusa para omitir el filtro en código.
+1. Las entidades JPA antiguas llevan `@TenantId` de Hibernate (p. ej. `EstablishmentJpaEntity`,
+   `DemoItemJpaEntity`); las nuevas de spaces no — ahí **todas las queries filtran
+   explícitamente por `tenant_id`** (los repos solo tienen métodos «vivos y del tenant»).
+   En ambos casos: no omitas el filtro en código nuevo.
 2. PostgreSQL RLS filtra en la BD, incluso ante SQL nativo.
 
 Sin tenant en la sesión, las consultas devuelven **0 filas**. Falla cerrado, a propósito.
