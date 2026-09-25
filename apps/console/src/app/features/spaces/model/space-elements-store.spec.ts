@@ -108,7 +108,7 @@ describe('SpacesStore — elementos espaciales', () => {
     store.setElementType('ROOM');
     store.setElementX('1');
     store.setElementY('1');
-    const sub = store.saveElement('s-a')?.subscribe();
+    const sub = store.saveElement('s-a')?.subscribe({ error: () => {} });
     expect(store.error()).toContain('vertical');
     sub?.unsubscribe();
   });
@@ -118,7 +118,7 @@ describe('SpacesStore — elementos espaciales', () => {
     store.setElementType('BAR');
     store.setElementX('1');
     store.setElementY('1');
-    const sub = store.saveElement('s-a')?.subscribe();
+    const sub = store.saveElement('s-a')?.subscribe({ error: () => {} });
     expect(store.error()).toBe('No se pudo guardar el elemento.');
     sub?.unsubscribe();
   });

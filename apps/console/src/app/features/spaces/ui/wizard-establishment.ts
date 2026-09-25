@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { LucideBedDouble, LucideChefHat, LucideMartini, LucidePartyPopper } from '@lucide/angular';
 
 import { STRINGS } from '../../../core/strings';
@@ -17,14 +17,7 @@ type Step1Field = 'name' | 'type';
  */
 @Component({
   selector: 'mapit-wizard-establishment',
-  imports: [
-    FormsModule,
-    RouterLink,
-    LucideChefHat,
-    LucideMartini,
-    LucidePartyPopper,
-    LucideBedDouble,
-  ],
+  imports: [FormsModule, LucideChefHat, LucideMartini, LucidePartyPopper, LucideBedDouble],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wizard-layout">
