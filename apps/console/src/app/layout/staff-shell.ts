@@ -2,25 +2,25 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthSession } from '@mapit/auth';
-import { LucideHouse, LucideLogOut, LucideStore } from '@lucide/angular';
+import { LucideHouse, LucideLayers, LucideLogOut } from '@lucide/angular';
 
 import { STRINGS } from '../core/strings';
 
 interface StaffNavItem {
   label: string;
   route: string;
-  icon: 'home' | 'establishments';
+  icon: 'home' | 'spaces';
   exact?: boolean;
 }
 /**
  * Chrome de la consola de staff del tenant: sidebar con las secciones
- * operativas (Inicio, Establecimientos, Espacios) y topbar con el usuario.
+ * operativas (Inicio, Mi negocio) y topbar con el usuario.
  * Es el contenedor de las rutas privadas de staff; la plataforma usa
  * {@link AdminShell}.
  */
 @Component({
   selector: 'mapit-staff-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, LucideHouse, LucideStore, LucideLogOut],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, LucideHouse, LucideLayers, LucideLogOut],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,9 +33,9 @@ export class StaffShell {
   protected readonly navItems: readonly StaffNavItem[] = [
     { label: STRINGS.staffShell.nav.home, route: '/home', icon: 'home', exact: true },
     {
-      label: STRINGS.staffShell.nav.establishments,
-      route: '/establishments',
-      icon: 'establishments',
+      label: STRINGS.staffShell.nav.business,
+      route: '/spaces/setup',
+      icon: 'spaces',
     },
   ];
 

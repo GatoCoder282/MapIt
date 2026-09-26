@@ -834,6 +834,138 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  # ── Elementos espaciales (HU-2.03 / CU-08) ────────────────────────────────
+  # `security: []` es TEMPORAL, igual que en establishments/floors/sectors: la
+  # autenticación JWT llega en CU-23/CU-24 y hasta entonces el tenant se resuelve con
+  # `DemoTenantContext`. El tenant NUNCA viaja en el cuerpo y el sector del path se
+  # re-verifica contra el tenant de la petición.
+  /sectors/{sectorId}/elements:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector al que pertenecen los elementos
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [spaces]
+      summary: Listar los elementos espaciales de un sector
+      description: Devuelve solo los elementos vivos del sector, dentro del tenant actual.
+      operationId: listSpaceElementsBySector
+      security: [] # Temporary
+      responses:
+        "200":
+          description: Lista de elementos del sector
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpaceElement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # If sectorId doesn't exist or is another tenant's
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [spaces]
+      summary: Crear un elemento espacial
+      description: |
+        Registra un elemento dentro de un sector del tenant actual. El tipo debe ser
+        coherente con la vertical del establecimiento (`ROOM` solo en hotel, `SEAT` solo en
+        salón de eventos, el resto en cualquiera). Las coordenadas son relativas al sector
+        y no pueden ser negativas.
+      operationId: createSpaceElement
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceElementCreateRequest"
+      responses:
+        "201":
+          description: Elemento creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceElement"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Tipo/estado inválido, coords negativas, vertical incompatible
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # Si el sector no existe o es de otro tenant
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /sectors/{sectorId}/elements/{elementId}:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector al que pertenece el elemento
+        schema:
+          type: string
+          format: uuid
+      - name: elementId
+        in: path
+        required: true
+        description: Identificador del elemento espacial
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [spaces]
+      summary: Obtener un elemento espacial
+      description: Responde 404 si no existe, está dado de baja o es de otro sector/tenant.
+      operationId: getSpaceElement
+      security: [] # Temporary
+      responses:
+        "200":
+          description: Elemento solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceElement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [spaces]
+      summary: Actualizar un elemento espacial
+      description: |
+        Reemplaza tipo y coordenadas (semántica PUT de reemplazo completo, como el resto
+        del proyecto). El estado no viaja aquí: su transición auditada es de HU-3.01.
+      operationId: updateSpaceElement
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceElementUpdateRequest"
+      responses:
+        "200":
+          description: Elemento actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceElement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1202,6 +1334,10 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+        address:
+          type: string
+          description: Dirección física del establecimiento (opcional).
+          maxLength: 200
         timezone:
           type: string
           description: Identificador IANA de zona horaria.
@@ -1241,6 +1377,10 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+        address:
+          type: string
+          description: Dirección física del establecimiento (opcional).
+          maxLength: 200
         timezone:
           type: string
           description: Si se omite, el backend aplica America/La_Paz.
@@ -1263,6 +1403,10 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+        address:
+          type: [string, "null"]
+          description: Dirección física (null la borra).
+          maxLength: 200
         timezone:
           type: string
           maxLength: 64
@@ -1356,6 +1500,83 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+
+    # ── Elementos espaciales (HU-2.03) ──────────────────────────────────────
+    SpaceElement:
+      type: object
+      required: [id, sectorId, type, x, y, state, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sectorId:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+          description: Catálogo cerrado del modelo propio (ADR-0006). La validez por vertical la verifica el servidor.
+        x:
+          type: number
+          format: double
+          minimum: 0
+          description: Coordenada horizontal relativa al sector.
+        y:
+          type: number
+          format: double
+          minimum: 0
+          description: Coordenada vertical relativa al sector.
+        state:
+          type: string
+          enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
+          readOnly: true
+          description: Estado operativo actual (las transiciones auditadas son de HU-3.01).
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    SpaceElementCreateRequest:
+      type: object
+      required: [type, x, y]
+      properties:
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+        x:
+          type: number
+          format: double
+          minimum: 0
+        y:
+          type: number
+          format: double
+          minimum: 0
+        initialState:
+          type: string
+          enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
+          default: AVAILABLE
+
+    SpaceElementUpdateRequest:
+      type: object
+      required: [type, x, y]
+      properties:
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+        x:
+          type: number
+          format: double
+          minimum: 0
+        y:
+          type: number
+          format: double
+          minimum: 0
 
     # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
     # así que todos los errores de la API usan este formato.

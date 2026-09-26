@@ -93,14 +93,42 @@ export const routes: Routes = [
           ),
       },
       {
-        // CU-05 (MAP-67/MAP-68): configuración de pisos y sectores (HU-2.02).
-        path: 'spaces/floors',
-        loadComponent: () => import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
-      },
-      {
-        path: 'spaces/floors/:floorId/sectors',
-        loadComponent: () =>
-          import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
+        // CU-05 (MAP-67/MAP-68) + HU-2.03: asistente de configuración del espacio.
+        // Paso 1 (establecimiento) y paso 2 (pisos/sectores) comparten el store
+        // de la ruta; el establishmentId viaja en la URL del paso 2.
+        path: 'spaces',
+        children: [
+          {
+            path: 'setup',
+            loadComponent: () =>
+              import('./features/spaces/ui/wizard-establishment').then(
+                (m) => m.WizardEstablishmentComponent,
+              ),
+          },
+          {
+            path: 'floors',
+            pathMatch: 'full',
+            redirectTo: 'setup',
+          },
+          {
+            path: 'floors/:establishmentId',
+            loadComponent: () =>
+              import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
+          },
+          {
+            path: 'floors/:floorId/sectors',
+            loadComponent: () =>
+              import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
+          },
+          {
+            // Espacios HU-2.03 (MAP-117): elementos de un sector.
+            path: 'sectors/:sectorId/elements',
+            loadComponent: () =>
+              import('./features/spaces/ui/space-elements-page').then(
+                (m) => m.SpaceElementsPageComponent,
+              ),
+          },
+        ],
       },
       {
         path: 'demo-items',

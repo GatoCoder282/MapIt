@@ -9,8 +9,9 @@ import java.util.Optional;
  * sin saber de dónde sale. La infraestructura lo implementa leyendo el claim {@code tenant}
  * del JWT (rutas de staff) o el slug del establecimiento (rutas públicas).
  *
- * <p>Aunque Hibernate filtre por {@code @TenantId} y PostgreSQL aplique RLS, hay lógica
- * de negocio que necesita saber explícitamente en qué tenant está operando.
+ * <p>El aislamiento efectivo lo da la query explícita por tenant (y `@TenantId` en las
+ * entidades antiguas) más la RLS de PostgreSQL, pero hay lógica de negocio que necesita
+ * saber explícitamente en qué tenant está operando.
  */
 public interface TenantContext {
 

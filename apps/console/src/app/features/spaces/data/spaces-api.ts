@@ -1,8 +1,20 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import type { Floor, Sector, FloorCreateRequest, SectorCreateRequest } from '@mapit/api-client';
-import { SpacesService } from '@mapit/api-client';
+import type {
+  Establishment,
+  EstablishmentCreateRequest,
+  Floor,
+  Sector,
+  FloorCreateRequest,
+  SectorCreateRequest,
+  SpaceElement,
+  SpaceElementCreateRequest,
+  SpaceElementUpdateRequest,
+} from '@mapit/api-client';
+import { EstablishmentsService, SpacesService } from '@mapit/api-client';
 import type { Observable } from 'rxjs';
+
+import { RuntimeConfigStore } from '../../../core/runtime-config';
 
 export interface FloorDraft {
   name: string;
@@ -13,17 +25,28 @@ export interface SectorDraft {
   name: string;
 }
 
-const DEFAULT_ESTABLISHMENT_ID = '00000000-0000-0000-0000-000000000001';
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+export interface EstablishmentDraft {
+  name: string;
+  type: string;
+  address: string;
+  timezone: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class SpacesApiService {
   private readonly api = inject(SpacesService);
+  private readonly establishmentsApi = inject(EstablishmentsService);
   private readonly http = inject(HttpClient);
+  private readonly runtime = inject(RuntimeConfigStore);
 
   /** GET /api/v1/establishments/{establishmentId}/floors */
-  listFloors(establishmentId: string = DEFAULT_ESTABLISHMENT_ID): Observable<Floor[]> {
-    return this.http.get<Floor[]>(`${API_BASE_URL}/establishments/${establishmentId}/floors`);
+  listFloors(establishmentId: string): Observable<Floor[]> {
+    return this.api.listFloorsByEstablishment({ establishmentId });
+  }
+
+  /** POST /api/v1/establishments — paso 1 del asistente de configuración. */
+  createEstablishment(request: EstablishmentCreateRequest): Observable<Establishment> {
+    return this.establishmentsApi.createEstablishment({ establishmentCreateRequest: request });
   }
 
   /** GET /api/v1/floors/{id} */
@@ -32,14 +55,8 @@ export class SpacesApiService {
   }
 
   /** POST /api/v1/establishments/{establishmentId}/floors */
-  createFloor(
-    request: FloorCreateRequest,
-    establishmentId: string = DEFAULT_ESTABLISHMENT_ID,
-  ): Observable<Floor> {
-    return this.http.post<Floor>(
-      `${API_BASE_URL}/establishments/${establishmentId}/floors`,
-      request,
-    );
+  createFloor(request: FloorCreateRequest, establishmentId: string): Observable<Floor> {
+    return this.api.createFloor({ establishmentId, floorCreateRequest: request });
   }
 
   /** PUT /api/v1/floors/{id} */
@@ -67,6 +84,36 @@ export class SpacesApiService {
 
   /** DELETE /api/v1/sectors/{id} */
   deleteSector(id: string): Observable<void> {
-    return this.http.delete<void>(`${API_BASE_URL}/sectors/${id}`);
+    // El contrato aún no genera este endpoint (CU-05 pendiente de baja); mientras
+    // tanto la llamada se monta sobre la misma base URL del runtime config.
+    return this.http.delete<void>(`${this.runtime.config().apiBaseUrl}/sectors/${id}`);
+  }
+
+  // ===== SPACE ELEMENTS (HU-2.03 / MAP-117)
+
+  /** GET /api/v1/sectors/{sectorId}/elements */
+  listSpaceElementsBySector(sectorId: string): Observable<SpaceElement[]> {
+    return this.api.listSpaceElementsBySector({ sectorId });
+  }
+
+  /** POST /api/v1/sectors/{sectorId}/elements */
+  createSpaceElement(
+    sectorId: string,
+    request: SpaceElementCreateRequest,
+  ): Observable<SpaceElement> {
+    return this.api.createSpaceElement({ sectorId, spaceElementCreateRequest: request });
+  }
+
+  /** PUT /api/v1/sectors/{sectorId}/elements/{elementId} */
+  updateSpaceElement(
+    sectorId: string,
+    elementId: string,
+    request: SpaceElementUpdateRequest,
+  ): Observable<SpaceElement> {
+    return this.api.updateSpaceElement({
+      sectorId,
+      elementId,
+      spaceElementUpdateRequest: request,
+    });
   }
 }

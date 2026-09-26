@@ -47,7 +47,10 @@ export const appConfig: ApplicationConfig = {
     // solo cambia el archivo montado. Ver plan §10.
     provideRuntimeConfig(),
 
-    provideFeatureFlags(),
+    provideFeatureFlags(() => {
+      const config = inject(RuntimeConfigStore).config();
+      return { proxyUrl: config.unleashProxyUrl, clientKey: config.unleashClientKey };
+    }),
 
     // La librerÃ­a realtime no conoce AuthSession ni Unleash. La consola conecta esos puertos
     // concretos con el runtime config y el kill switch de punta a punta.

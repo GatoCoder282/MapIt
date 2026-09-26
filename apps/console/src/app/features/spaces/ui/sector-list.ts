@@ -48,7 +48,7 @@ import { SectorFormComponent } from './sector-form';
                 <button
                   class="drag-handle"
                   type="button"
-                  aria-label="Arrastrar para reordenar sector"
+                  [attr.aria-label]="store.strings_.sectors.list.reorderAriaLabel"
                   cdkDragHandle
                 >
                   <svg
@@ -129,7 +129,7 @@ import { SectorFormComponent } from './sector-form';
                     type="button"
                     [disabled]="store.saving()"
                     (click)="store.editSector(sector); $event.stopPropagation()"
-                    aria-label="Editar {{ sector.name }}"
+                    [attr.aria-label]="store.strings_.sectors.list.editButton + ' ' + sector.name"
                   >
                     <svg
                       width="16"
@@ -149,7 +149,7 @@ import { SectorFormComponent } from './sector-form';
                     type="button"
                     [disabled]="store.saving()"
                     (click)="store.removeSector(sector.id); $event.stopPropagation()"
-                    aria-label="Eliminar {{ sector.name }}"
+                    [attr.aria-label]="store.strings_.sectors.list.deleteButton + ' ' + sector.name"
                   >
                     <svg
                       width="16"
@@ -190,7 +190,7 @@ import { SectorFormComponent } from './sector-form';
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
             </span>
-            <span class="add-sector-text">Agregar Sector</span>
+            <span class="add-sector-text">{{ store.strings_.sectors.addButton }}</span>
           </button>
         </div>
 

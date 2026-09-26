@@ -15,7 +15,13 @@ import { SpacesStore } from '../model/spaces-store';
       <article class="form-card">
         <header class="card-header">
           <div>
-            <p class="eyebrow">{{ store.isEditingFloor() ? 'Edición' : 'Alta' }}</p>
+            <p class="eyebrow">
+              {{
+                store.isEditingFloor()
+                  ? store.strings_.floors.form.eyebrowEdit
+                  : store.strings_.floors.form.eyebrowNew
+              }}
+            </p>
             <h3>
               {{
                 store.isEditingFloor()
@@ -47,7 +53,7 @@ import { SpacesStore } from '../model/spaces-store';
           </label>
 
           <label>
-            {{ 'Nivel' }}
+            {{ store.strings_.floors.form.levelLabel }}
             <input
               type="number"
               [value]="store.floorDraft().level"
@@ -61,7 +67,7 @@ import { SpacesStore } from '../model/spaces-store';
 
           @if (store.isEditingFloor()) {
             <p class="hint">
-              El slug se genera automáticamente a partir del nombre y no se puede editar.
+              {{ store.strings_.floors.form.slugHint }}
             </p>
           }
 
