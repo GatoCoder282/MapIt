@@ -5,17 +5,7 @@
  */
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  ROOT,
-  c,
-  log,
-  capture,
-  isPortFree,
-  parseMajor,
-  readEnv,
-  IS_WINDOWS,
-  applyJavaHome,
-} from './_lib.mjs';
+import { ROOT, c, log, capture, isPortFree, parseMajor, readEnv, IS_WINDOWS } from './_lib.mjs';
 
 const REQUIRED_NODE = 22;
 const REQUIRED_JAVA = 25;
@@ -61,7 +51,6 @@ log.step('pnpm');
 /* ── 3. Java ─────────────────────────────────────────── */
 log.step('Java (JDK)');
 {
-  applyJavaHome();
   const r = capture('java', ['-version']);
   if (!r.ok) {
     fail(

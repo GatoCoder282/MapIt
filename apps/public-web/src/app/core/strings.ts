@@ -39,24 +39,6 @@ export const STRINGS = {
       description:
         'Hoy en día, la gestión de espacios depende de mensajes, hojas de cálculo, pizarras y llamadas. Esto genera errores, retrasos y una visión limitada de lo que realmente pasa en tu negocio.',
       visualAlt: 'Comparativa: WhatsApp, Hojas de cálculo, Pizarras vs MapIt',
-      cards: [
-        {
-          title: 'WhatsApp',
-          description: 'Información repartida entre mensajes.',
-        },
-        {
-          title: 'Hojas de cálculo',
-          description: 'Reservas y disponibilidad sin contexto espacial.',
-        },
-        {
-          title: 'Pizarras',
-          description: 'Estados que dependen de actualización manual.',
-        },
-        {
-          title: 'Mapit',
-          description: 'Un único mapa operativo conectado con reservas, personas y estados.',
-        },
-      ],
     },
     product: {
       badge: 'El corazón de MapIt',

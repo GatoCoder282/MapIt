@@ -5,10 +5,9 @@
  */
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { ROOT, run, capture, c, loadEnv, applyJavaHome } from './_lib.mjs';
+import { ROOT, run, capture, c, loadEnv } from './_lib.mjs';
 
 loadEnv();
-applyJavaHome();
 
 const node = process.execPath;
 const S = (f) => join(ROOT, 'tools', 'scripts', f);

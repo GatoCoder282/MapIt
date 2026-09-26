@@ -5,10 +5,14 @@
  */
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { ROOT, IS_WINDOWS, run, capture, die, loadEnv, applyJavaHome } from './_lib.mjs';
+import { ROOT, IS_WINDOWS, run, capture, die, loadEnv, readEnv } from './_lib.mjs';
 
 loadEnv();
-applyJavaHome();
+
+// JAVA_HOME en el .env tiene prioridad sobre la variable de sistema.
+// Permite corregir un JAVA_HOME incorrecto sin necesitar permisos de admin.
+const _envVars = readEnv();
+if (_envVars['JAVA_HOME']) process.env['JAVA_HOME'] = _envVars['JAVA_HOME'];
 
 const BACKEND = join(ROOT, 'apps', 'backend');
 const wrapper = join(BACKEND, IS_WINDOWS ? 'gradlew.bat' : 'gradlew');

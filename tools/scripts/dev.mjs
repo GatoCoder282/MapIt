@@ -5,21 +5,12 @@
  */
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import {
-  ROOT,
-  IS_WINDOWS,
-  run,
-  capture,
-  log,
-  c,
-  spawnPrefixed,
-  loadEnv,
-  applyJavaHome,
-  sleep,
-} from './_lib.mjs';
+import { ROOT, IS_WINDOWS, run, capture, log, c, spawnPrefixed, loadEnv, sleep } from './_lib.mjs';
 
-loadEnv();
-applyJavaHome();
+const envVars = loadEnv();
+// JAVA_HOME en el .env tiene prioridad sobre la variable de sistema.
+// Permite corregir un JAVA_HOME incorrecto sin necesitar permisos de admin.
+if (envVars['JAVA_HOME']) process.env['JAVA_HOME'] = envVars['JAVA_HOME'];
 
 const mode = process.argv[2] ?? 'all';
 const wantBack = mode === 'all' || mode === 'back';
