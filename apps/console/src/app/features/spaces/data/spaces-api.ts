@@ -49,6 +49,11 @@ export class SpacesApiService {
     return this.establishmentsApi.createEstablishment({ establishmentCreateRequest: request });
   }
 
+  /** GET /api/v1/establishments/{id} — paso 3 del asistente (resumen). */
+  getEstablishment(id: string): Observable<Establishment> {
+    return this.establishmentsApi.getEstablishment({ id });
+  }
+
   /** GET /api/v1/floors/{id} */
   getFloor(id: string): Observable<Floor> {
     return this.api.getFloor({ id });

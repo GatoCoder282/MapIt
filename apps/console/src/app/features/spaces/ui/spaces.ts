@@ -52,6 +52,16 @@ import { SpacesStore } from '../model/spaces-store';
             </button>
             <span class="step-label">{{ store.strings_.wizard.stepStructure }}</span>
           </li>
+          <li class="step-divider completed" aria-hidden="true"></li>
+          <li class="step pending">
+            <span
+              class="step-circle"
+              [attr.aria-label]="store.strings_.wizard.stepSummaryPendingAriaLabel"
+            >
+              <span class="step-number">3</span>
+            </span>
+            <span class="step-label">{{ store.strings_.wizard.stepSummary }}</span>
+          </li>
         </ol>
       </nav>
 
@@ -184,12 +194,30 @@ import { SpacesStore } from '../model/spaces-store';
       --mapit-color-text-muted: #64748b;
       --mapit-color-border: #e2e8f0;
       --mapit-color-border-input: #cbd5e1;
-      --mapit-color-primary: #2563eb;
-      --mapit-color-primary-container: #eff6ff;
+      --mapit-color-primary: #3b5fe5;
+      --mapit-color-primary-container: #eef2ff;
       --mapit-color-on-primary: #ffffff;
-      --mapit-color-focus-ring: rgb(59 130 246 / 0.2);
+      --mapit-color-focus-ring: rgb(59 95 229 / 0.2);
 
       background: var(--mapit-color-canvas);
+      animation: pageIn 180ms ease-out;
+    }
+
+    @keyframes pageIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :host {
+        animation: none;
+      }
     }
 
     .wizard-layout {
@@ -300,10 +328,11 @@ import { SpacesStore } from '../model/spaces-store';
       padding: 2rem;
       background: var(--mapit-color-surface);
       border-bottom: 1px solid var(--mapit-color-border);
+      text-align: center;
     }
 
     .header-content {
-      max-width: 720px;
+      max-width: 62rem;
       margin: 0 auto;
       text-align: center;
     }
@@ -334,7 +363,7 @@ import { SpacesStore } from '../model/spaces-store';
 
     .central-card {
       width: 100%;
-      max-width: 720px;
+      max-width: 62rem;
       background: var(--mapit-color-surface);
       border: 1px solid var(--mapit-color-border);
       border-radius: 16px;
@@ -497,7 +526,7 @@ import { SpacesStore } from '../model/spaces-store';
       align-items: center;
       justify-content: space-between;
       padding: 1rem 2rem;
-      max-width: 720px;
+      max-width: 62rem;
       margin: 0 auto;
     }
 
@@ -605,6 +634,6 @@ export class SpacesComponent {
   }
 
   goNext(): void {
-    void this.router.navigate(['/home']);
+    void this.router.navigate(['/spaces/summary', this.establishmentId()]);
   }
 }

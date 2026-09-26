@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { LucideBedDouble, LucideChefHat, LucideMartini, LucidePartyPopper } from '@lucide/angular';
 
 import { STRINGS } from '../../../core/strings';
@@ -17,7 +17,14 @@ type Step1Field = 'name' | 'type';
  */
 @Component({
   selector: 'mapit-wizard-establishment',
-  imports: [FormsModule, LucideChefHat, LucideMartini, LucidePartyPopper, LucideBedDouble],
+  imports: [
+    FormsModule,
+    RouterLink,
+    LucideChefHat,
+    LucideMartini,
+    LucidePartyPopper,
+    LucideBedDouble,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wizard-layout">
@@ -138,6 +145,21 @@ type Step1Field = 'name' | 'type';
 
           <footer class="wizard-footer">
             <div class="footer-actions">
+              <a class="btn-secondary" routerLink="/home">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+                {{ strings.wizard.previous }}
+              </a>
               <button class="btn-primary" type="submit" [disabled]="store.saving()">
                 {{ store.saving() ? strings.wizard.creating : strings.wizard.next }}
                 <svg
@@ -177,6 +199,24 @@ type Step1Field = 'name' | 'type';
       --mapit-color-error: #dc2626;
       background: var(--mapit-color-canvas);
       color: var(--mapit-color-text);
+      animation: pageIn 180ms ease-out;
+    }
+
+    @keyframes pageIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :host {
+        animation: none;
+      }
     }
 
     .wizard-layout {
@@ -243,6 +283,7 @@ type Step1Field = 'name' | 'type';
 
     .wizard-header {
       padding: 1.5rem 1.5rem 0.5rem;
+      text-align: center;
     }
 
     .page-title {
@@ -254,7 +295,7 @@ type Step1Field = 'name' | 'type';
     .wizard-main {
       flex: 1;
       padding: 0.5rem 1.5rem 1.5rem;
-      max-width: 52rem;
+      max-width: 62rem;
       width: 100%;
       margin: 0 auto;
     }
@@ -376,9 +417,46 @@ type Step1Field = 'name' | 'type';
 
     .wizard-footer {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       border-top: 1px solid var(--mapit-color-border);
       padding-top: 1rem;
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .btn-secondary,
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      border-radius: 0.5rem;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .btn-secondary {
+      border: 1px solid var(--mapit-color-border);
+      background: var(--mapit-color-surface);
+      color: var(--mapit-color-text);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--mapit-color-text-muted);
+    }
+
+    .btn-secondary:focus-visible,
+    .btn-primary:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px #3b5fe533;
     }
 
     .btn-primary {
