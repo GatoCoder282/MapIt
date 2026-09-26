@@ -9,13 +9,14 @@ import {
   signal,
 } from '@angular/core';
 import { FeatureFlagService } from '@mapit/feature-flags';
+import { RouterLink } from '@angular/router';
 import { SpacesStore } from '../model/spaces-store';
 import { SectorFormComponent } from './sector-form';
 
 /** Lista de sectores dentro de un piso (CU-05 · MAP-70). */
 @Component({
   selector: 'mapit-sector-list',
-  imports: [SectorFormComponent, CdkDropList, CdkDrag, CdkDragHandle],
+  imports: [SectorFormComponent, CdkDropList, CdkDrag, CdkDragHandle, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (flags.isEnabled('spaces.sectors')()) {
@@ -124,6 +125,28 @@ import { SectorFormComponent } from './sector-form';
                 <div class="sector-name">{{ sector.name }}</div>
 
                 <div class="sector-actions">
+                  <a
+                    class="action-btn elements"
+                    [routerLink]="['/spaces/sectors', sector.id, 'elements']"
+                    [attr.aria-label]="
+                      store.strings_.sectors.list.elementsButton + ' ' + sector.name
+                    "
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      aria-hidden="true"
+                    >
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                      <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                  </a>
                   <button
                     class="action-btn edit"
                     type="button"

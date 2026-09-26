@@ -410,6 +410,7 @@ export const STRINGS = {
       },
       list: {
         reorderAriaLabel: 'Arrastrar para reordenar sector',
+        elementsButton: 'Ver elementos de',
         nameHeader: 'Nombre',
         slugHeader: 'Slug',
         capacityHeader: 'Capacidad máx.',
