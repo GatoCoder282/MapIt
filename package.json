@@ -38,7 +38,7 @@
     "//── FRONTEND ───────────────────────────────────────": "",
     "fe:console": "ng serve console",
     "fe:public": "ng serve public-web",
-    "fe:test": "ng test console && ng test public-web && ng test libs",
+    "fe:test": "ng test console --no-watch && ng test public-web --no-watch && ng test libs --no-watch",
     "fe:test:watch": "ng test console --watch",
     "fe:build": "ng build console && ng build public-web",
     "fe:lint": "eslint apps libs packages tools --max-warnings=0",
