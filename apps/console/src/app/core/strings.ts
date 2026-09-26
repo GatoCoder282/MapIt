@@ -471,6 +471,15 @@ export const STRINGS = {
         actionsHeader: 'Acciones',
         editButton: 'Editar',
       },
+      stateAction: {
+        groupAriaLabel: 'Seleccionar nuevo estado operativo',
+        changeButton: 'Cambiar estado',
+        changeAriaLabel: 'Cambiar estado operativo del elemento',
+        label: 'Nuevo estado',
+        selectAriaLabel: 'Nuevo estado operativo',
+        confirmButton: 'Aplicar',
+        cancelButton: 'Cancelar',
+      },
       errors: {
         loadFailed: 'No se pudieron cargar los elementos.',
         saveFailed: 'No se pudo guardar el elemento.',

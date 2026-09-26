@@ -23,7 +23,7 @@
 
 ## MAP-127 — Acción frontend
 
-- [ ] Presentar estados disponibles y acción accesible en la vista Staff.
+- [x] Presentar estados disponibles y acción accesible en la vista Staff.
 
 ## MAP-128 — Integración API
 
@@ -74,3 +74,13 @@ SECURITY`, además de sus tres índices.
 - La excepción de dominio se traduce a `409 Problem Details` con los estados actual y
   solicitado.
 - Una transición inválida se rechaza antes de guardar el elemento o crear auditoría.
+
+### MAP-127
+
+- Rama `chris799-hub/map-127-accion-frontend-cambio-estado`, basada en MAP-126.
+- La lista de elementos incorpora una acción accesible para seleccionar el nuevo estado.
+- Las opciones replican la matriz de MAP-126 y nunca ofrecen el estado actual ni una
+  transición inválida.
+- La acción solo se presenta a sesiones con rol `ADMIN` o `STAFF`.
+- El componente emite una solicitud tipada con sector, elemento y estado; MAP-128 conectará
+  ese evento al cliente generado y resolverá los estados de carga, éxito y error.

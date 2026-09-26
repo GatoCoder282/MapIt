@@ -6,9 +6,14 @@ import {
   inject,
   input,
   signal,
+  output,
 } from '@angular/core';
+import type { SpaceElement, SpaceElementOperationalState } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
 import { SpacesStore } from '../model/spaces-store';
+import { canChangeSpaceElementState } from '../model/space-element-state-options';
 import { SpaceElementFormComponent } from './space-element-form';
+import { SpaceElementStateActionComponent } from './space-element-state-action';
 
 /**
  * Lista y registro de elementos espaciales dentro de un sector (HU-2.03 / MAP-117-118).
@@ -16,7 +21,7 @@ import { SpaceElementFormComponent } from './space-element-form';
  */
 @Component({
   selector: 'mapit-space-element-list',
-  imports: [SpaceElementFormComponent],
+  imports: [SpaceElementFormComponent, SpaceElementStateActionComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="elements-container">
@@ -57,14 +62,23 @@ import { SpaceElementFormComponent } from './space-element-form';
                 <td>({{ element.x }}, {{ element.y }})</td>
                 <td>{{ stateLabel(element.state) }}</td>
                 <td>
-                  <button
-                    class="btn-secondary"
-                    type="button"
-                    [disabled]="store.saving()"
-                    (click)="startEdit(element)"
-                  >
-                    {{ strings.list.editButton }}
-                  </button>
+                  <div class="element-actions">
+                    <button
+                      class="btn-secondary"
+                      type="button"
+                      [disabled]="store.saving()"
+                      (click)="startEdit(element)"
+                    >
+                      {{ strings.list.editButton }}
+                    </button>
+                    @if (canChangeState()) {
+                      <mapit-space-element-state-action
+                        [elementId]="element.id"
+                        [currentState]="element.state"
+                        (stateChangeRequested)="requestStateChange(element.id, $event)"
+                      />
+                    }
+                  </div>
                 </td>
               </tr>
             }
@@ -172,6 +186,13 @@ import { SpaceElementFormComponent } from './space-element-form';
       border-top: 1px solid var(--mapit-color-border);
     }
 
+    .element-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
     .btn {
       display: inline-flex;
       align-items: center;
@@ -208,8 +229,14 @@ import { SpaceElementFormComponent } from './space-element-form';
 })
 export class SpaceElementListComponent {
   readonly sectorId = input.required<string>();
+  readonly stateChangeRequested = output<{
+    sectorId: string;
+    elementId: string;
+    state: SpaceElementOperationalState;
+  }>();
 
   protected readonly store = inject(SpacesStore);
+  private readonly session = inject(AuthSession);
   protected readonly strings = this.store.strings_.elements;
 
   protected readonly showForm = signal(false);
@@ -218,6 +245,9 @@ export class SpaceElementListComponent {
     () => this.store.elementsBySector()[this.sectorId()] ?? [],
   );
   protected readonly loading = computed(() => this.store.elementsLoading(this.sectorId()));
+  protected readonly canChangeState = computed(() =>
+    canChangeSpaceElementState(this.session.user()?.role),
+  );
 
   constructor() {
     effect(() => {
@@ -232,15 +262,13 @@ export class SpaceElementListComponent {
     this.showForm.set(true);
   }
 
-  protected startEdit(element: {
-    id: string;
-    type: string;
-    x: number;
-    y: number;
-    state: string;
-  }): void {
-    this.store.editElement(element as never);
+  protected startEdit(element: SpaceElement): void {
+    this.store.editElement(element);
     this.showForm.set(true);
+  }
+
+  protected requestStateChange(elementId: string, state: SpaceElementOperationalState): void {
+    this.stateChangeRequested.emit({ sectorId: this.sectorId(), elementId, state });
   }
 
   protected onSaved(): void {
