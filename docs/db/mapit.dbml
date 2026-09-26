@@ -160,6 +160,23 @@ Table space_element {
   }
 }
 
+Table space_element_state_change {
+  id               uuid        [pk, note: 'default gen_random_uuid()']
+  tenant_id        text        [not null, ref: > tenant.id]
+  sector_id        uuid        [not null, ref: > sector.id]
+  space_element_id uuid        [not null, ref: > space_element.id]
+  previous_state   text        [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
+  new_state        text        [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
+  changed_by       uuid        [not null, ref: > app_user.id]
+  changed_at       timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (tenant_id, id)                               [name: 'space_element_state_change_tenant_id_id_idx']
+    (tenant_id, space_element_id, changed_at, id) [name: 'space_element_state_change_history_idx', type: btree]
+  }
+  Note: 'MAP-125 / HU-3.01. Auditoría inmutable con RLS; previous_state y new_state deben ser distintos.'
+}
+
 Table realtime_event_outbox {
   event_id          uuid        [pk]
   tenant_id         text        [not null, ref: > tenant.id]

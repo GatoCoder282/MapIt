@@ -46,6 +46,8 @@ tags:
     description: Establecimientos de un tenant (CU-04)
   - name: spaces
     description: Gestión de pisos y sectores (CU-05)
+  - name: operations
+    description: Operación en vivo de elementos espaciales (CU-09)
 
 paths:
   /auth/login:
@@ -966,6 +968,99 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /sectors/{sectorId}/elements/{elementId}/state:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector al que pertenece el elemento
+        schema:
+          type: string
+          format: uuid
+      - name: elementId
+        in: path
+        required: true
+        description: Identificador del elemento espacial cuyo estado se actualiza
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [operations]
+      summary: Actualizar el estado operativo de un elemento espacial
+      description: |
+        Cambia el estado de un elemento vivo del tenant autenticado. El tenant se obtiene
+        exclusivamente del claim `tenant` del JWT. Un elemento inexistente, dado de baja,
+        de otro sector o de otro tenant responde siempre `404`. Una transición fuera de la
+        máquina de estados operativa responde `409` sin modificar ni auditar el elemento.
+      operationId: updateSpaceElementState
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceElementStateUpdateRequest"
+      responses:
+        "200":
+          description: Estado actualizado o confirmado de forma idempotente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceElementStateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /sectors/{sectorId}/elements/{elementId}/state-history:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector al que pertenece el elemento
+        schema:
+          type: string
+          format: uuid
+      - name: elementId
+        in: path
+        required: true
+        description: Identificador del elemento espacial cuyo historial se consulta
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [operations]
+      summary: Consultar el historial de estados de un elemento espacial
+      description: |
+        Devuelve la trazabilidad persistente del elemento, de la más reciente a la más
+        antigua. El tenant se obtiene exclusivamente del JWT y un elemento ajeno responde
+        `404`, igual que uno inexistente.
+      operationId: listSpaceElementStateChanges
+      responses:
+        "200":
+          description: Historial de cambios del elemento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpaceElementStateChange"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1577,6 +1672,64 @@ components:
           type: number
           format: double
           minimum: 0
+
+    SpaceElementStateUpdateRequest:
+      type: object
+      required: [state]
+      additionalProperties: false
+      properties:
+        state:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+
+    SpaceElementStateResponse:
+      type: object
+      required: [id, sectorId, state, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sectorId:
+          type: string
+          format: uuid
+          readOnly: true
+        state:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    SpaceElementOperationalState:
+      type: string
+      enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
+      description: Estado operativo actual de un elemento espacial.
+
+    SpaceElementStateChange:
+      type: object
+      required: [id, elementId, previousState, newState, changedBy, changedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        elementId:
+          type: string
+          format: uuid
+          readOnly: true
+        previousState:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+        newState:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+        changedBy:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Usuario autenticado que realizó el cambio.
+        changedAt:
+          type: string
+          format: date-time
+          readOnly: true
 
     # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
     # así que todos los errores de la API usan este formato.

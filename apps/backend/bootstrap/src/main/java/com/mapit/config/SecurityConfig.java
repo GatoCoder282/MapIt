@@ -96,6 +96,17 @@ public class SecurityConfig {
                         // Conserva el status real de validación/404 durante el despacho de error.
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // MAP-124: la ruta vive debajo de /sectors/**, que aún conserva
+                        // acceso público temporal para HU-2.03. Esta regla específica debe
+                        // evaluarse antes y exige los roles definidos por HU-3.01.
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/v1/sectors/*/elements/*/state")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.STAFF.name())
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/v1/sectors/*/elements/*/state-history")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.STAFF.name())
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         // Administración de tenants (CU-01/CU-03): operación exclusiva
                         // del SUPER_ADMIN de plataforma. Cualquier otro rol autenticado

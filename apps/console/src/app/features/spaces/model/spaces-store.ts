@@ -6,6 +6,7 @@ import type {
   Sector,
   SpaceElement,
   SpaceElementCreateRequest,
+  SpaceElementOperationalState,
 } from '@mapit/api-client';
 import { type Observable, throwError } from 'rxjs';
 import { catchError, finalize, tap } from 'rxjs/operators';
@@ -43,6 +44,11 @@ export interface SpaceElementDraft {
   x: string;
   y: string;
   initialState: string;
+}
+
+export interface SpaceElementStateFeedback {
+  kind: 'success' | 'error';
+  message: string;
 }
 
 const EMPTY_ELEMENT_DRAFT: SpaceElementDraft = {
@@ -85,6 +91,10 @@ export class SpacesStore {
   private readonly elementsLoadingState = signal<Record<string, boolean>>({});
   private readonly elementDraftState = signal<SpaceElementDraft>({ ...EMPTY_ELEMENT_DRAFT });
   private readonly editingElementIdState = signal<string | null>(null);
+  private readonly elementStateSavingState = signal<Record<string, boolean>>({});
+  private readonly elementStateFeedbackState = signal<
+    Record<string, SpaceElementStateFeedback | undefined>
+  >({});
 
   // Shared state
   private readonly loadingState = signal(false);
@@ -400,6 +410,14 @@ export class SpacesStore {
     return this.elementsLoadingState()[sectorId] ?? false;
   }
 
+  elementStateSaving(elementId: string): boolean {
+    return this.elementStateSavingState()[elementId] ?? false;
+  }
+
+  elementStateFeedback(elementId: string): SpaceElementStateFeedback | undefined {
+    return this.elementStateFeedbackState()[elementId];
+  }
+
   loadSpaceElementsBySector(sectorId: string): void {
     this.elementsLoadingState.update((state) => ({ ...state, [sectorId]: true }));
     this.errorState.set(null);
@@ -500,6 +518,60 @@ export class SpacesStore {
         },
       }),
     );
+  }
+
+  changeElementState(
+    sectorId: string,
+    elementId: string,
+    state: SpaceElementOperationalState,
+  ): void {
+    const messages = this.strings_.elements.stateAction;
+    this.elementStateSavingState.update((current) => ({ ...current, [elementId]: true }));
+    this.elementStateFeedbackState.update((current) => ({
+      ...current,
+      [elementId]: undefined,
+    }));
+
+    this.api
+      .updateSpaceElementState(sectorId, elementId, state)
+      .pipe(
+        finalize(() =>
+          this.elementStateSavingState.update((current) => ({
+            ...current,
+            [elementId]: false,
+          })),
+        ),
+      )
+      .subscribe({
+        next: (updated) => {
+          this.elementsBySectorState.update((current) => ({
+            ...current,
+            [sectorId]: (current[sectorId] ?? []).map((element) =>
+              element.id === elementId
+                ? { ...element, state: updated.state, updatedAt: updated.updatedAt }
+                : element,
+            ),
+          }));
+          this.elementStateFeedbackState.update((current) => ({
+            ...current,
+            [elementId]: { kind: 'success', message: messages.success },
+          }));
+        },
+        error: (response: { status?: number }) => {
+          const message =
+            response?.status === 409
+              ? messages.invalidTransition
+              : response?.status === 403
+                ? messages.forbidden
+                : response?.status === 404
+                  ? messages.notFound
+                  : messages.updateFailed;
+          this.elementStateFeedbackState.update((current) => ({
+            ...current,
+            [elementId]: { kind: 'error', message },
+          }));
+        },
+      });
   }
 
   // Baja de elementos: no hay DELETE de elementos en el contrato todavía. Cuando se sume,
