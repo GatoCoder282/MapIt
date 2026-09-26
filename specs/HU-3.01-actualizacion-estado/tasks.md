@@ -31,7 +31,7 @@
 
 ## MAP-144 — Pruebas de integración
 
-- [ ] Probar transición válida e inválida, auditoría, roles y aislamiento por tenant.
+- [x] Probar transición válida e inválida, auditoría, roles y aislamiento por tenant.
 
 ## Notas de ejecución
 
@@ -95,3 +95,16 @@ SECURITY`, además de sus tres índices.
 - Cada elemento expone su propio estado de carga y un mensaje accesible de éxito o error.
 - Los errores `403`, `404` y `409` tienen mensajes específicos; ningún error modifica la
   copia local del elemento.
+
+### MAP-144
+
+- Rama `chris799-hub/map-144-pruebas-integracion-hu-3-01`, basada en MAP-128.
+- La prueba levanta el servidor Spring y PostgreSQL 16 mediante Testcontainers; recorre
+  seguridad, controller, aplicación, JDBC, Flyway y RLS en un flujo HTTP real.
+- ADMIN y STAFF ejecutan transiciones válidas y el historial conserva secuencia, actor,
+  estados anterior/nuevo e instante.
+- Una transición inválida responde `409 Problem Details` sin modificar el elemento ni
+  insertar auditoría.
+- Sin JWT se obtiene `401`; MANAGER y SUPER_ADMIN reciben `403`.
+- Recursos de otro tenant, otro sector, inexistentes o dados de baja responden `404` y no
+  revelan ni modifican datos.

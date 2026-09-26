@@ -59,17 +59,17 @@ El cuerpo solo contiene `state`. El tenant y el actor nunca se aceptan desde el 
 
 ## 7. Criterios de aceptación
 
-- [ ] **CA-1:** Dado un ADMIN o STAFF autenticado, cuando solicita una transición válida
+- [x] **CA-1:** Dado un ADMIN o STAFF autenticado, cuando solicita una transición válida
       sobre un elemento de su tenant, entonces recibe `200` y el estado queda persistido.
-- [ ] **CA-2:** Dado un elemento inexistente, dado de baja, de otro sector o de otro tenant,
+- [x] **CA-2:** Dado un elemento inexistente, dado de baja, de otro sector o de otro tenant,
       cuando se intenta cambiar su estado, entonces responde `404` sin filtrar su existencia.
-- [ ] **CA-3:** Dado un actor sin el rol permitido, cuando invoca el endpoint, entonces
+- [x] **CA-3:** Dado un actor sin el rol permitido, cuando invoca el endpoint, entonces
       responde `403`; sin JWT responde `401`.
-- [ ] **CA-4:** Dada una transición inválida, cuando se solicita, entonces responde `409`
+- [x] **CA-4:** Dada una transición inválida, cuando se solicita, entonces responde `409`
       con Problem Details y no modifica el elemento.
-- [ ] **CA-5:** Dado un cambio exitoso, entonces se registra actor, fecha, estado anterior
+- [x] **CA-5:** Dado un cambio exitoso, entonces se registra actor, fecha, estado anterior
       y nuevo estado de forma persistente y consultable.
-- [ ] **CA-6:** Dado el control de Staff, cuando la API confirma el cambio, entonces la
+- [x] **CA-6:** Dado el control de Staff, cuando la API confirma el cambio, entonces la
       interfaz muestra el nuevo estado; ante error conserva el anterior e informa el fallo.
 
 ## 8. Fuera de alcance
