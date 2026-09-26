@@ -54,6 +54,11 @@ export class SpacesApiService {
     return this.establishmentsApi.getEstablishment({ id });
   }
 
+  /** GET /api/v1/establishments — selector de «Mi negocio» (vivos del tenant). */
+  listEstablishments(): Observable<Establishment[]> {
+    return this.establishmentsApi.listEstablishments();
+  }
+
   /** GET /api/v1/floors/{id} */
   getFloor(id: string): Observable<Floor> {
     return this.api.getFloor({ id });
