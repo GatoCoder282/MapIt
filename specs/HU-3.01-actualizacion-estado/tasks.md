@@ -11,9 +11,10 @@
 
 ## MAP-125 — Auditoría
 
-- [ ] Crear migración y modelo de auditoría.
-- [ ] Persistir actor, instante, estado anterior y nuevo de forma atómica.
-- [ ] Actualizar `docs/db/mapit.dbml` y probar aislamiento.
+- [x] Crear migración y modelo de auditoría.
+- [x] Persistir actor, instante, estado anterior y nuevo de forma atómica.
+- [x] Actualizar `docs/db/mapit.dbml` y activar RLS forzada.
+- [x] Exponer una consulta autenticada del historial del elemento.
 
 ## MAP-126 — Transiciones
 
@@ -47,3 +48,18 @@
 - `pnpm api:check` y `pnpm be:test` finalizaron correctamente.
 - Auditoría persistente y matriz de transiciones quedan deliberadamente para MAP-125 y
   MAP-126, respectivamente.
+
+### MAP-125
+
+- Rama `chris799-hub/map-125-auditoria-cambios-estado`, basada en MAP-124 para conservar
+  la secuencia de la historia.
+- La migración `V14__crear_auditoria_de_cambios_de_estado.sql` crea una bitácora inmutable
+  con índices por tenant/elemento y RLS forzada.
+- El actor sale de `ActorContext`, implementado desde el principal reconstruido por el JWT;
+  el cliente no puede indicar `changed_by`.
+- El cambio del elemento y la entrada de auditoría comparten la transacción del caso de uso.
+- Repetir el mismo estado sigue siendo idempotente y no crea auditoría falsa.
+- `GET /api/v1/sectors/{sectorId}/elements/{elementId}/state-history` permite consultar la
+  trazabilidad sin exponer datos de otro tenant.
+- Flyway aplicó correctamente V12, V13 y V14; la tabla quedó con RLS y `FORCE ROW LEVEL
+SECURITY`, además de sus tres índices.

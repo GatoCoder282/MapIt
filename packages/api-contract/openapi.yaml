@@ -1016,6 +1016,48 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /sectors/{sectorId}/elements/{elementId}/state-history:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector al que pertenece el elemento
+        schema:
+          type: string
+          format: uuid
+      - name: elementId
+        in: path
+        required: true
+        description: Identificador del elemento espacial cuyo historial se consulta
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [operations]
+      summary: Consultar el historial de estados de un elemento espacial
+      description: |
+        Devuelve la trazabilidad persistente del elemento, de la más reciente a la más
+        antigua. El tenant se obtiene exclusivamente del JWT y un elemento ajeno responde
+        `404`, igual que uno inexistente.
+      operationId: listSpaceElementStateChanges
+      responses:
+        "200":
+          description: Historial de cambios del elemento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpaceElementStateChange"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1659,6 +1701,32 @@ components:
       type: string
       enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
       description: Estado operativo actual de un elemento espacial.
+
+    SpaceElementStateChange:
+      type: object
+      required: [id, elementId, previousState, newState, changedBy, changedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        elementId:
+          type: string
+          format: uuid
+          readOnly: true
+        previousState:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+        newState:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+        changedBy:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Usuario autenticado que realizó el cambio.
+        changedAt:
+          type: string
+          format: date-time
+          readOnly: true
 
     # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
     # así que todos los errores de la API usan este formato.

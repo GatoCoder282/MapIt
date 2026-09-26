@@ -18,7 +18,7 @@ MAP-124 reutiliza `space_element.state` y `updated_at`. El adaptador fija
 `SET LOCAL app.tenant_id` dentro de la transacción y restringe por `tenant_id`, `sector_id`,
 `id` y `deleted_at IS NULL`.
 
-MAP-125 añadirá la tabla de auditoría mediante una migración nueva. MAP-126 incorporará la
+MAP-125 añade la tabla de auditoría mediante una migración nueva. MAP-126 incorporará la
 matriz completa de transiciones al dominio.
 
 ## Patrones de diseño aplicados
