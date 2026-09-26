@@ -6,7 +6,6 @@ import {
   inject,
   input,
   signal,
-  output,
 } from '@angular/core';
 import type { SpaceElement, SpaceElementOperationalState } from '@mapit/api-client';
 import { AuthSession } from '@mapit/auth';
@@ -75,7 +74,9 @@ import { SpaceElementStateActionComponent } from './space-element-state-action';
                       <mapit-space-element-state-action
                         [elementId]="element.id"
                         [currentState]="element.state"
-                        (stateChangeRequested)="requestStateChange(element.id, $event)"
+                        [busy]="store.elementStateSaving(element.id)"
+                        [feedback]="store.elementStateFeedback(element.id)"
+                        (stateChangeRequested)="changeState(element.id, $event)"
                       />
                     }
                   </div>
@@ -229,11 +230,6 @@ import { SpaceElementStateActionComponent } from './space-element-state-action';
 })
 export class SpaceElementListComponent {
   readonly sectorId = input.required<string>();
-  readonly stateChangeRequested = output<{
-    sectorId: string;
-    elementId: string;
-    state: SpaceElementOperationalState;
-  }>();
 
   protected readonly store = inject(SpacesStore);
   private readonly session = inject(AuthSession);
@@ -267,8 +263,8 @@ export class SpaceElementListComponent {
     this.showForm.set(true);
   }
 
-  protected requestStateChange(elementId: string, state: SpaceElementOperationalState): void {
-    this.stateChangeRequested.emit({ sectorId: this.sectorId(), elementId, state });
+  protected changeState(elementId: string, state: SpaceElementOperationalState): void {
+    this.store.changeElementState(this.sectorId(), elementId, state);
   }
 
   protected onSaved(): void {

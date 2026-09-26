@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SpaceElement } from '@mapit/api-client';
 
@@ -14,6 +14,7 @@ describe('SpacesStore — elementos espaciales', () => {
   let api: {
     createSpaceElement: ReturnType<typeof vi.fn>;
     updateSpaceElement: ReturnType<typeof vi.fn>;
+    updateSpaceElementState: ReturnType<typeof vi.fn>;
     listSpaceElementsBySector: ReturnType<typeof vi.fn>;
     listFloors: ReturnType<typeof vi.fn>;
     listSectorsByFloor: ReturnType<typeof vi.fn>;
@@ -30,6 +31,7 @@ describe('SpacesStore — elementos espaciales', () => {
     api = {
       createSpaceElement: vi.fn(),
       updateSpaceElement: vi.fn(),
+      updateSpaceElementState: vi.fn(),
       listSpaceElementsBySector: vi.fn(),
       // El store arranca pidiendo floors/sectores; las mockeamos como vacías.
       listFloors: vi.fn().mockReturnValue(of([])),
@@ -152,6 +154,100 @@ describe('SpacesStore — elementos espaciales', () => {
       expect.objectContaining({ type: 'BAR', x: 9, y: 9 }),
     );
     sub?.unsubscribe();
+  });
+
+  it('PATCH actualiza el estado local solo después de la respuesta del servidor', () => {
+    const existing: SpaceElement = {
+      id: 'e1',
+      sectorId: 's-a',
+      type: 'TABLE',
+      x: 1,
+      y: 1,
+      state: 'AVAILABLE',
+      createdAt: '2026-09-23T00:00:00Z',
+      updatedAt: '2026-09-23T00:00:00Z',
+    };
+    api.listSpaceElementsBySector.mockReturnValue(of([existing]));
+    const response$ = new Subject<{
+      id: string;
+      sectorId: string;
+      state: 'OCCUPIED';
+      updatedAt: string;
+    }>();
+    api.updateSpaceElementState.mockReturnValue(response$);
+    store.loadSpaceElementsBySector('s-a');
+
+    store.changeElementState('s-a', 'e1', 'OCCUPIED');
+
+    expect(api.updateSpaceElementState).toHaveBeenCalledWith('s-a', 'e1', 'OCCUPIED');
+    expect(store.elementStateSaving('e1')).toBe(true);
+    expect(store.elementsBySector()['s-a']?.[0]?.state).toBe('AVAILABLE');
+
+    response$.next({
+      id: 'e1',
+      sectorId: 's-a',
+      state: 'OCCUPIED',
+      updatedAt: '2026-09-26T17:00:00Z',
+    });
+    response$.complete();
+
+    expect(store.elementStateSaving('e1')).toBe(false);
+    expect(store.elementsBySector()['s-a']?.[0]).toEqual(
+      expect.objectContaining({ state: 'OCCUPIED', updatedAt: '2026-09-26T17:00:00Z' }),
+    );
+    expect(store.elementStateFeedback('e1')).toEqual({
+      kind: 'success',
+      message: 'Estado actualizado correctamente.',
+    });
+  });
+
+  it('conserva el estado anterior y explica una transición rechazada con 409', () => {
+    const existing: SpaceElement = {
+      id: 'e1',
+      sectorId: 's-a',
+      type: 'TABLE',
+      x: 1,
+      y: 1,
+      state: 'OUT_OF_SERVICE',
+      createdAt: '2026-09-23T00:00:00Z',
+      updatedAt: '2026-09-23T00:00:00Z',
+    };
+    api.listSpaceElementsBySector.mockReturnValue(of([existing]));
+    api.updateSpaceElementState.mockReturnValue(throwError(() => ({ status: 409 })));
+    store.loadSpaceElementsBySector('s-a');
+
+    store.changeElementState('s-a', 'e1', 'RESERVED');
+
+    expect(store.elementsBySector()['s-a']?.[0]).toEqual(existing);
+    expect(store.elementStateSaving('e1')).toBe(false);
+    expect(store.elementStateFeedback('e1')).toEqual({
+      kind: 'error',
+      message: 'Ese cambio de estado ya no está permitido. Actualiza la vista.',
+    });
+  });
+
+  it('muestra el error de permisos del backend sin modificar el elemento', () => {
+    const existing: SpaceElement = {
+      id: 'e1',
+      sectorId: 's-a',
+      type: 'TABLE',
+      x: 1,
+      y: 1,
+      state: 'AVAILABLE',
+      createdAt: '2026-09-23T00:00:00Z',
+      updatedAt: '2026-09-23T00:00:00Z',
+    };
+    api.listSpaceElementsBySector.mockReturnValue(of([existing]));
+    api.updateSpaceElementState.mockReturnValue(throwError(() => ({ status: 403 })));
+    store.loadSpaceElementsBySector('s-a');
+
+    store.changeElementState('s-a', 'e1', 'OCCUPIED');
+
+    expect(store.elementsBySector()['s-a']?.[0]).toEqual(existing);
+    expect(store.elementStateFeedback('e1')).toEqual({
+      kind: 'error',
+      message: 'No tienes permisos para cambiar el estado.',
+    });
   });
 });
 

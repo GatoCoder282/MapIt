@@ -27,7 +27,7 @@
 
 ## MAP-128 — Integración API
 
-- [ ] Conectar el store al cliente generado y mostrar éxito/error.
+- [x] Conectar el store al cliente generado y mostrar éxito/error.
 
 ## MAP-144 — Pruebas de integración
 
@@ -84,3 +84,14 @@ SECURITY`, además de sus tres índices.
 - La acción solo se presenta a sesiones con rol `ADMIN` o `STAFF`.
 - El componente emite una solicitud tipada con sector, elemento y estado; MAP-128 conectará
   ese evento al cliente generado y resolverá los estados de carga, éxito y error.
+
+### MAP-128
+
+- Rama `chris799-hub/map-128-integrar-cambio-estado-api`, basada en MAP-127.
+- `SpacesApiService` usa `OperationsService` generado desde OpenAPI para ejecutar el PATCH;
+  el frontend no construye el tenant ni el actor.
+- El store conserva el estado anterior mientras la petición está pendiente y solo aplica la
+  respuesta confirmada por el backend.
+- Cada elemento expone su propio estado de carga y un mensaje accesible de éxito o error.
+- Los errores `403`, `404` y `409` tienen mensajes específicos; ningún error modifica la
+  copia local del elemento.

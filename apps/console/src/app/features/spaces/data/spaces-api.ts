@@ -9,9 +9,11 @@ import type {
   SectorCreateRequest,
   SpaceElement,
   SpaceElementCreateRequest,
+  SpaceElementOperationalState,
+  SpaceElementStateResponse,
   SpaceElementUpdateRequest,
 } from '@mapit/api-client';
-import { EstablishmentsService, SpacesService } from '@mapit/api-client';
+import { EstablishmentsService, OperationsService, SpacesService } from '@mapit/api-client';
 import type { Observable } from 'rxjs';
 
 import { RuntimeConfigStore } from '../../../core/runtime-config';
@@ -36,6 +38,7 @@ export interface EstablishmentDraft {
 export class SpacesApiService {
   private readonly api = inject(SpacesService);
   private readonly establishmentsApi = inject(EstablishmentsService);
+  private readonly operationsApi = inject(OperationsService);
   private readonly http = inject(HttpClient);
   private readonly runtime = inject(RuntimeConfigStore);
 
@@ -114,6 +117,19 @@ export class SpacesApiService {
       sectorId,
       elementId,
       spaceElementUpdateRequest: request,
+    });
+  }
+
+  /** PATCH /api/v1/sectors/{sectorId}/elements/{elementId}/state */
+  updateSpaceElementState(
+    sectorId: string,
+    elementId: string,
+    state: SpaceElementOperationalState,
+  ): Observable<SpaceElementStateResponse> {
+    return this.operationsApi.updateSpaceElementState({
+      sectorId,
+      elementId,
+      spaceElementStateUpdateRequest: { state },
     });
   }
 }

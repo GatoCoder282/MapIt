@@ -11,6 +11,7 @@ import type { SpaceElementOperationalState } from '@mapit/api-client';
 
 import { STRINGS } from '../../../core/strings';
 import { availableStateTransitions } from '../model/space-element-state-options';
+import type { SpaceElementStateFeedback } from '../model/spaces-store';
 
 /** Acción visual de MAP-127. La persistencia del evento corresponde a MAP-128. */
 @Component({
@@ -24,6 +25,7 @@ import { availableStateTransitions } from '../model/space-element-state-options'
           class="state-select"
           [id]="selectId()"
           [value]="selectedState()"
+          [disabled]="busy()"
           [attr.aria-label]="strings.selectAriaLabel"
           (change)="selectState($event)"
         >
@@ -32,10 +34,10 @@ import { availableStateTransitions } from '../model/space-element-state-options'
           }
         </select>
         <div class="state-buttons">
-          <button class="confirm-button" type="button" (click)="confirm()">
-            {{ strings.confirmButton }}
+          <button class="confirm-button" type="button" [disabled]="busy()" (click)="confirm()">
+            {{ busy() ? strings.updating : strings.confirmButton }}
           </button>
-          <button class="cancel-button" type="button" (click)="cancel()">
+          <button class="cancel-button" type="button" [disabled]="busy()" (click)="cancel()">
             {{ strings.cancelButton }}
           </button>
         </div>
@@ -49,6 +51,16 @@ import { availableStateTransitions } from '../model/space-element-state-options'
       >
         {{ strings.changeButton }}
       </button>
+    }
+    @if (feedback(); as result) {
+      <p
+        class="feedback"
+        [class.feedback-success]="result.kind === 'success'"
+        [class.feedback-error]="result.kind === 'error'"
+        [attr.role]="result.kind === 'error' ? 'alert' : 'status'"
+      >
+        {{ result.message }}
+      </p>
     }
   `,
   styles: `
@@ -120,11 +132,34 @@ import { availableStateTransitions } from '../model/space-element-state-options'
       outline: 3px solid var(--mapit-color-focus-ring);
       outline-offset: 2px;
     }
+
+    button:disabled,
+    .state-select:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .feedback {
+      margin: 0.35rem 0 0;
+      max-width: 18rem;
+      font-size: 0.6875rem;
+      line-height: 1.35;
+    }
+
+    .feedback-success {
+      color: #15803d;
+    }
+
+    .feedback-error {
+      color: var(--mapit-color-error);
+    }
   `,
 })
 export class SpaceElementStateActionComponent {
   readonly elementId = input.required<string>();
   readonly currentState = input.required<SpaceElementOperationalState>();
+  readonly busy = input(false);
+  readonly feedback = input<SpaceElementStateFeedback>();
   readonly stateChangeRequested = output<SpaceElementOperationalState>();
 
   protected readonly strings = STRINGS.spaces.elements.stateAction;
@@ -132,11 +167,17 @@ export class SpaceElementStateActionComponent {
   protected readonly options = computed(() => availableStateTransitions(this.currentState()));
   protected readonly selectedState = signal<SpaceElementOperationalState>('AVAILABLE');
   protected readonly selectId = computed(() => `state-${this.elementId()}`);
+  private previousState: SpaceElementOperationalState | undefined;
 
   constructor() {
     effect(() => {
+      const current = this.currentState();
       const firstOption = this.options()[0];
       if (firstOption) this.selectedState.set(firstOption);
+      if (this.previousState !== undefined && this.previousState !== current) {
+        this.expanded.set(false);
+      }
+      this.previousState = current;
     });
   }
 

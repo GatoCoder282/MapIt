@@ -479,6 +479,12 @@ export const STRINGS = {
         selectAriaLabel: 'Nuevo estado operativo',
         confirmButton: 'Aplicar',
         cancelButton: 'Cancelar',
+        updating: 'Actualizando…',
+        success: 'Estado actualizado correctamente.',
+        invalidTransition: 'Ese cambio de estado ya no está permitido. Actualiza la vista.',
+        forbidden: 'No tienes permisos para cambiar el estado.',
+        notFound: 'El elemento ya no está disponible.',
+        updateFailed: 'No se pudo actualizar el estado. Inténtalo de nuevo.',
       },
       errors: {
         loadFailed: 'No se pudieron cargar los elementos.',
