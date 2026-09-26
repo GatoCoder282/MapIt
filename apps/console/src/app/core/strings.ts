@@ -70,8 +70,8 @@ export const STRINGS = {
     allStatuses: 'Todos',
     paginationLabel: 'Paginación',
     statusLabels: {
-      ACTIVE: 'Activo',
-      SUSPENDED: 'Suspendido',
+      ACTIVE: '😊 Activo',
+      SUSPENDED: '😴 Suspendido',
     },
     verticalLabels: VERTICAL_LABELS,
     columns: {
