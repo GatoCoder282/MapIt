@@ -33,6 +33,16 @@ Los demás roles no pueden ejecutar la operación.
 La matriz de transiciones se centraliza en el dominio en MAP-126. Enviar el mismo estado
 es idempotente y no crea un cambio adicional.
 
+| Desde            | Hacia                                     |
+| ---------------- | ----------------------------------------- |
+| `AVAILABLE`      | `OCCUPIED`, `RESERVED`, `OUT_OF_SERVICE`  |
+| `RESERVED`       | `AVAILABLE`, `OCCUPIED`, `OUT_OF_SERVICE` |
+| `OCCUPIED`       | `AVAILABLE`, `CLEANING`, `OUT_OF_SERVICE` |
+| `CLEANING`       | `AVAILABLE`, `OUT_OF_SERVICE`             |
+| `OUT_OF_SERVICE` | `AVAILABLE`                               |
+
+El mismo estado se acepta en todos los casos como confirmación idempotente.
+
 ## 5. Contrato REST
 
 `PATCH /api/v1/sectors/{sectorId}/elements/{elementId}/state`

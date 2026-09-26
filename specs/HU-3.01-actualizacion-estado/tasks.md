@@ -18,8 +18,8 @@
 
 ## MAP-126 — Transiciones
 
-- [ ] Definir la matriz de transiciones en dominio.
-- [ ] Responder `409 ProblemDetail` sin persistir ante una transición inválida.
+- [x] Definir la matriz de transiciones en dominio.
+- [x] Responder `409 ProblemDetail` sin persistir ante una transición inválida.
 
 ## MAP-127 — Acción frontend
 
@@ -63,3 +63,14 @@
   trazabilidad sin exponer datos de otro tenant.
 - Flyway aplicó correctamente V12, V13 y V14; la tabla quedó con RLS y `FORCE ROW LEVEL
 SECURITY`, además de sus tres índices.
+
+### MAP-126
+
+- Rama `chris799-hub/map-126-validar-transiciones-estado`, basada en MAP-125.
+- `SpaceElementStateMachine` concentra la matriz y mantiene la confirmación del mismo
+  estado como operación idempotente.
+- `OUT_OF_SERVICE` solo puede volver a `AVAILABLE`; así se rechaza expresamente el salto
+  directo a `RESERVED` indicado por Jira.
+- La excepción de dominio se traduce a `409 Problem Details` con los estados actual y
+  solicitado.
+- Una transición inválida se rechaza antes de guardar el elemento o crear auditoría.

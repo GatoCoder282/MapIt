@@ -18,8 +18,8 @@ MAP-124 reutiliza `space_element.state` y `updated_at`. El adaptador fija
 `SET LOCAL app.tenant_id` dentro de la transacción y restringe por `tenant_id`, `sector_id`,
 `id` y `deleted_at IS NULL`.
 
-MAP-125 añade la tabla de auditoría mediante una migración nueva. MAP-126 incorporará la
-matriz completa de transiciones al dominio.
+MAP-125 añade la tabla de auditoría mediante una migración nueva. MAP-126 incorpora la
+matriz completa mediante `SpaceElementStateMachine`, dentro del dominio puro.
 
 ## Patrones de diseño aplicados
 
@@ -28,6 +28,7 @@ matriz completa de transiciones al dominio.
 | Ports and Adapters  | Puerto de estado en dominio y adaptador JDBC en infraestructura | Mantiene el caso de uso independiente de PostgreSQL y del módulo spaces | Importar el repositorio JPA de spaces acoplaría módulos backend |
 | Application Service | `UpdateSpaceElementState` delimita la transacción               | Coordina tenant, dominio y persistencia en un punto comprobable         | Poner la lógica en el controlador mezclaría HTTP y negocio      |
 | Repository          | Acceso al estado operativo mediante una interfaz del dominio    | Permite probar el caso de uso sin base de datos                         | Ejecutar SQL desde application rompería la arquitectura         |
+| State               | `SpaceElementStateMachine` concentra las transiciones válidas   | Hace explícito el ciclo operativo y evita reglas dispersas              | Condicionales en controlador y servicio duplicarían la política |
 
 ## Entregas por MAP
 

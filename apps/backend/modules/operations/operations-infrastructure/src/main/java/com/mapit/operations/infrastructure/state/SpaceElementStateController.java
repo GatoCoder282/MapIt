@@ -24,6 +24,7 @@ import com.mapit.operations.application.state.SpaceElementStateChangeResult;
 import com.mapit.operations.application.state.SpaceElementStateResult;
 import com.mapit.operations.application.state.UpdateSpaceElementState;
 import com.mapit.operations.application.state.UpdateSpaceElementStateCommand;
+import com.mapit.operations.domain.state.InvalidSpaceElementStateTransitionException;
 import com.mapit.shared.realtime.SpaceElementState;
 
 /** Adaptador REST de MAP-124; tenant y permisos se resuelven en el servidor. */
@@ -33,6 +34,8 @@ public class SpaceElementStateController {
 
   private static final String RESOURCE_NOT_FOUND =
       "https://mapit.local/problems/resource-not-found";
+  private static final String INVALID_STATE_TRANSITION =
+      "https://mapit.local/problems/invalid-state-transition";
 
   private final UpdateSpaceElementState updateState;
   private final ListSpaceElementStateChanges listChanges;
@@ -68,5 +71,17 @@ public class SpaceElementStateController {
     problem.setTitle("Elemento espacial no encontrado");
     problem.setType(URI.create(RESOURCE_NOT_FOUND));
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+  }
+
+  @ExceptionHandler(InvalidSpaceElementStateTransitionException.class)
+  ResponseEntity<ProblemDetail> handleInvalidTransition(
+      InvalidSpaceElementStateTransitionException exception) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problem.setTitle("Transición de estado no permitida");
+    problem.setType(URI.create(INVALID_STATE_TRANSITION));
+    problem.setProperty("currentState", exception.currentState());
+    problem.setProperty("requestedState", exception.requestedState());
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 }

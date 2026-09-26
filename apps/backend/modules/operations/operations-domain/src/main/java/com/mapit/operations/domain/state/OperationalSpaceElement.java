@@ -30,6 +30,7 @@ public record OperationalSpaceElement(
     if (state == newState) {
       return this;
     }
+    SpaceElementStateMachine.requireAllowed(state, newState);
     return new OperationalSpaceElement(id, tenantId, sectorId, newState, now);
   }
 }

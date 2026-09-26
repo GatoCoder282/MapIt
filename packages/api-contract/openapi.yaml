@@ -990,7 +990,8 @@ paths:
       description: |
         Cambia el estado de un elemento vivo del tenant autenticado. El tenant se obtiene
         exclusivamente del claim `tenant` del JWT. Un elemento inexistente, dado de baja,
-        de otro sector o de otro tenant responde siempre `404`.
+        de otro sector o de otro tenant responde siempre `404`. Una transición fuera de la
+        máquina de estados operativa responde `409` sin modificar ni auditar el elemento.
       operationId: updateSpaceElementState
       requestBody:
         required: true
@@ -1013,6 +1014,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 

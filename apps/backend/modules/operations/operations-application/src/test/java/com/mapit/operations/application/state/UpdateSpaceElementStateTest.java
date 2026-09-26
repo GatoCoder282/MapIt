@@ -14,6 +14,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.mapit.operations.domain.state.InvalidSpaceElementStateTransitionException;
 import com.mapit.operations.domain.state.OperationalSpaceElement;
 import com.mapit.operations.domain.state.SpaceElementStateChange;
 import com.mapit.operations.domain.state.SpaceElementStateChangeRepository;
@@ -120,6 +121,24 @@ class UpdateSpaceElementStateTest {
                     new UpdateSpaceElementStateCommand(
                         SECTOR, ELEMENT, SpaceElementState.CLEANING)))
         .isInstanceOf(OperationalSpaceElementNotFoundException.class);
+  }
+
+  @Test
+  void una_transicion_invalida_no_persiste_ni_registra_auditoria() {
+    repository.element =
+        new OperationalSpaceElement(
+            ELEMENT, TENANT, SECTOR, SpaceElementState.OUT_OF_SERVICE, BEFORE);
+
+    assertThatThrownBy(
+            () ->
+                useCase.execute(
+                    new UpdateSpaceElementStateCommand(
+                        SECTOR, ELEMENT, SpaceElementState.RESERVED)))
+        .isInstanceOf(InvalidSpaceElementStateTransitionException.class);
+
+    assertThat(repository.element.state()).isEqualTo(SpaceElementState.OUT_OF_SERVICE);
+    assertThat(repository.saves).isZero();
+    assertThat(changes.entries).isEmpty();
   }
 
   private static final class InMemoryRepository implements SpaceElementStateRepository {
