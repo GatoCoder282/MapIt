@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import type {
   Establishment,
   EstablishmentCreateRequest,
+  EstablishmentUpdateRequest,
   Floor,
   Sector,
   FloorCreateRequest,
@@ -50,6 +51,26 @@ export class SpacesApiService {
   /** POST /api/v1/establishments — paso 1 del asistente de configuración. */
   createEstablishment(request: EstablishmentCreateRequest): Observable<Establishment> {
     return this.establishmentsApi.createEstablishment({ establishmentCreateRequest: request });
+  }
+
+  /** GET /api/v1/establishments/{id} — paso 3 del asistente (resumen). */
+  getEstablishment(id: string): Observable<Establishment> {
+    return this.establishmentsApi.getEstablishment({ id });
+  }
+
+  /** GET /api/v1/establishments — selector de «Mi negocio» (vivos del tenant). */
+  listEstablishments(): Observable<Establishment[]> {
+    return this.establishmentsApi.listEstablishments();
+  }
+
+  /** PUT /api/v1/establishments/{id} — edición rápida desde «Mi negocio». */
+  updateEstablishment(id: string, request: EstablishmentUpdateRequest): Observable<Establishment> {
+    return this.establishmentsApi.updateEstablishment({ id, establishmentUpdateRequest: request });
+  }
+
+  /** DELETE /api/v1/establishments/{id} — baja desde el modal de edición. */
+  deleteEstablishment(id: string): Observable<unknown> {
+    return this.establishmentsApi.deleteEstablishment({ id });
   }
 
   /** GET /api/v1/floors/{id} */

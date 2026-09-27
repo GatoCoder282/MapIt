@@ -27,3 +27,197 @@ h3 {
 *::after {
   box-sizing: border-box;
 }
+
+/* ── Diálogos nativos compartidos (editar / confirmación destructiva) ──
+   Los usan varias features (spaces, administration); definirlos aquí evita
+   duplicarlos por componente y desbordar el presupuesto de estilos. */
+
+.edit-dialog {
+  width: min(26rem, calc(100% - 2rem));
+  padding: 0;
+  border: none;
+  border-radius: var(--mapit-radius-xl);
+  background: var(--mapit-color-surface);
+  color: var(--mapit-color-text);
+  box-shadow: var(--mapit-shadow);
+  overscroll-behavior: contain;
+}
+
+.edit-dialog::backdrop {
+  background: color-mix(in srgb, var(--mapit-color-text) 40%, transparent);
+}
+
+.edit-dialog[open] {
+  animation: modal-in 160ms var(--mapit-ease-out);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edit-dialog[open] {
+    animation: none;
+  }
+}
+
+.dialog-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 0;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--mapit-color-text-muted);
+  cursor: pointer;
+}
+
+.dialog-close:hover {
+  background: var(--mapit-color-surface-low);
+  color: var(--mapit-color-text);
+}
+
+.dialog-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
+}
+
+.dialog-body {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0 1.25rem 1.25rem;
+}
+
+.dialog-footer-spacer {
+  flex: 1;
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--mapit-color-error);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--mapit-color-error) 10%, var(--mapit-color-surface));
+}
+
+.btn-danger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger-solid {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--mapit-color-error);
+  color: var(--mapit-color-on-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.btn-danger-solid:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--mapit-color-error) 85%, black);
+}
+
+.btn-danger-solid:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
+}
+
+.btn-danger-solid:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Modal de confirmación destructiva (exige escribir el nombre) */
+.confirm-dialog {
+  width: min(22rem, calc(100% - 2rem));
+}
+
+.confirm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--mapit-color-error) 12%, var(--mapit-color-surface));
+  color: var(--mapit-color-error);
+  flex-shrink: 0;
+}
+
+.confirm-dialog .dialog-header {
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.confirm-warning {
+  margin: 0;
+  color: var(--mapit-color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.confirm-name {
+  color: var(--mapit-color-text);
+  font-weight: 700;
+  overflow-wrap: break-word;
+}
+
+.confirm-dialog .field input {
+  border-color: color-mix(in srgb, var(--mapit-color-error) 35%, var(--mapit-color-border));
+}

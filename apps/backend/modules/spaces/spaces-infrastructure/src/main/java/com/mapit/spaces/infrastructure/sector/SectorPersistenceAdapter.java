@@ -30,7 +30,7 @@ public class SectorPersistenceAdapter implements SectorRepository {
   public List<Sector> findAliveByFloorId(TenantId tenantId, UUID floorId) {
     setDatabaseTenant(tenantId);
     return repository
-        .findAllByTenantIdAndFloorIdOrderByNameAsc(tenantId.value(), floorId)
+        .findAllByTenantIdAndFloorIdAndDeletedAtIsNullOrderByNameAsc(tenantId.value(), floorId)
         .stream()
         .map(SectorJpaEntity::toDomain)
         .toList();
@@ -40,7 +40,7 @@ public class SectorPersistenceAdapter implements SectorRepository {
   public Optional<Sector> findAliveById(TenantId tenantId, SectorId id) {
     setDatabaseTenant(tenantId);
     return repository
-        .findByIdAndTenantId(id.value(), tenantId.value())
+        .findByIdAndTenantIdAndDeletedAtIsNull(id.value(), tenantId.value())
         .map(SectorJpaEntity::toDomain);
   }
 
@@ -48,7 +48,7 @@ public class SectorPersistenceAdapter implements SectorRepository {
   public Optional<Sector> findAliveBySlug(TenantId tenantId, UUID floorId, Slug slug) {
     setDatabaseTenant(tenantId);
     return repository
-        .findByTenantIdAndFloorIdAndSlug(tenantId.value(), floorId, slug.value())
+        .findByTenantIdAndFloorIdAndSlugAndDeletedAtIsNull(tenantId.value(), floorId, slug.value())
         .map(SectorJpaEntity::toDomain);
   }
 
