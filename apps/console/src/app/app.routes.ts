@@ -121,6 +121,11 @@ export const routes: Routes = [
               import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
           },
           {
+            path: 'summary/:establishmentId',
+            loadComponent: () =>
+              import('./features/spaces/ui/wizard-summary').then((m) => m.WizardSummaryComponent),
+          },
+          {
             // Espacios HU-2.03 (MAP-117): elementos de un sector.
             path: 'sectors/:sectorId/elements',
             loadComponent: () =>

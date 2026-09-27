@@ -265,12 +265,6 @@ import { SectorListComponent } from './sector-list';
     .floor-actions {
       display: flex;
       gap: 0.25rem;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-    }
-
-    .floor-row:hover .floor-actions {
-      opacity: 1;
     }
 
     .action-btn {

@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import type { SpaceElement, SpaceElementOperationalState } from '@mapit/api-client';
 import { AuthSession } from '@mapit/auth';
+import { Location } from '@angular/common';
 import { SpacesStore } from '../model/spaces-store';
 import { canChangeSpaceElementState } from '../model/space-element-state-options';
 import { SpaceElementFormComponent } from './space-element-form';
@@ -24,12 +25,40 @@ import { SpaceElementStateActionComponent } from './space-element-state-action';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="elements-container">
+      <button class="btn-back" type="button" (click)="goBack()">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </svg>
+        {{ strings.backButton }}
+      </button>
+
       <div class="elements-header">
         <div class="header-copy">
           <p class="elements-title">{{ strings.title }}</p>
           <p class="elements-subtitle">{{ strings.subtitle }}</p>
         </div>
         <button class="btn-primary" type="button" (click)="startCreate()">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
           {{ strings.createButton }}
         </button>
       </div>
@@ -103,6 +132,33 @@ import { SpaceElementStateActionComponent } from './space-element-state-action';
 
     .elements-container {
       margin-top: 1rem;
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      margin-bottom: 0.75rem;
+      padding: 0.375rem 0.75rem 0.375rem 0.5rem;
+      border: none;
+      border-radius: var(--mapit-radius);
+      background: transparent;
+      color: var(--mapit-color-text-muted);
+      font: inherit;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition:
+        background 150ms ease,
+        color 150ms ease;
+    }
+    .btn-back:hover {
+      background: var(--mapit-color-surface-low);
+      color: var(--mapit-color-text);
+    }
+    .btn-back:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
     }
 
     .elements-header {
@@ -198,21 +254,32 @@ import { SpaceElementStateActionComponent } from './space-element-state-action';
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 0.4rem;
       padding: 0.5rem 1rem;
       border-radius: var(--mapit-radius-input);
       font: inherit;
       font-size: 0.8125rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease;
     }
     .btn-primary {
+      padding: 0.55rem 1.1rem;
       border: none;
-      background: var(--mapit-color-primary);
+      border-radius: var(--mapit-radius);
+      background: var(--mapit-color-accent);
       color: var(--mapit-color-on-primary);
+      box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
     }
     .btn-primary:hover:not(:disabled) {
-      background: #1628b8;
+      background: color-mix(in srgb, var(--mapit-color-accent) 85%, black);
+    }
+    .btn-primary:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
     }
     .btn-secondary {
       border: 1px solid var(--mapit-color-border);
@@ -236,6 +303,12 @@ export class SpaceElementListComponent {
   protected readonly strings = this.store.strings_.elements;
 
   protected readonly showForm = signal(false);
+
+  private readonly location = inject(Location);
+
+  protected goBack(): void {
+    this.location.back();
+  }
 
   protected readonly elements = computed(
     () => this.store.elementsBySector()[this.sectorId()] ?? [],
