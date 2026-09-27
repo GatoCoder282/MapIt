@@ -11,10 +11,10 @@
 
 ## MAP-148 — Cliente STOMP en Angular
 
-- [ ] Operador `dedupeRealtimeEvents` en `libs/realtime` con tests.
-- [ ] Servicio `SpaceElementsRealtime` en la capa `data` de `spaces`: conecta con la primera
+- [x] Operador `dedupeRealtimeEvents` en `libs/realtime` con tests.
+- [x] Servicio `SpaceElementsRealtime` en la capa `data` de `spaces`: conecta con la primera
       suscripción, desconecta con la última, expone estado de conexión.
-- [ ] Tests del servicio con cliente STOMP falso (recepción de evento, desconexión).
+- [x] Tests del servicio con cliente STOMP falso (recepción de evento, desconexión).
 
 ## MAP-149 — Suscripción a rooms
 
@@ -56,3 +56,15 @@
   transición inválida, versiones 1 → 2) y
   `SpaceElementStateIntegrationTest#cada_cambio_escribe_el_evento_v1_en_el_outbox_con_version_creciente`
   contra PostgreSQL real. `test` + `integrationTest` completos en verde (42 suites).
+
+### MAP-148
+
+- No se reescribe el cliente: `RealtimeClient` de HUT-01 ya resuelve STOMP, JWT en `CONNECT`,
+  backoff 250 ms → 30 s y kill switch. La HU pedía SockJS; se mantiene WebSocket nativo porque
+  es lo que expone el servidor (ver spec §4).
+- `dedupeRealtimeEvents` (lib) guarda la última `aggregateVersion` por elemento: cubre la
+  entrega at-least-once y la doble sala establecimiento/sector que el contrato deja al cliente.
+- `SpaceElementsRealtime` (capa `data`) cuenta vistas: conecta con la primera y desconecta con
+  la última, diferido una microtarea para que un cambio de sector con `switchMap` no cierre y
+  reabra el socket (y no compita con el `disconnect()` asíncrono del cliente).
+- Tests: `dedupe.spec.ts` (3) y `space-elements-realtime.spec.ts` (3).
