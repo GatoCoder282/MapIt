@@ -45,6 +45,19 @@ import { SpaceElementStateActionComponent } from './space-element-state-action';
         <div class="header-copy">
           <p class="elements-title">{{ strings.title }}</p>
           <p class="elements-subtitle">{{ strings.subtitle }}</p>
+          <p
+            class="live-status"
+            role="status"
+            data-testid="live-status"
+            [attr.data-live]="store.liveStatus()"
+            [class.is-live]="store.liveStatus() === 'live'"
+            [title]="
+              store.liveStatus() === 'live' ? strings.live.liveHint : strings.live.pollingHint
+            "
+          >
+            <span class="live-dot" aria-hidden="true"></span>
+            {{ store.liveStatus() === 'live' ? strings.live.live : strings.live.polling }}
+          </p>
         </div>
         <button class="btn-primary" type="button" (click)="startCreate()">
           <svg
@@ -85,10 +98,12 @@ import { SpaceElementStateActionComponent } from './space-element-state-action';
           </thead>
           <tbody>
             @for (element of elements(); track element.id) {
-              <tr>
+              <tr data-testid="space-element-row" [attr.data-element-id]="element.id">
                 <td>{{ typeLabel(element.type) }}</td>
                 <td>({{ element.x }}, {{ element.y }})</td>
-                <td>{{ stateLabel(element.state) }}</td>
+                <td data-testid="space-element-state" [attr.data-state]="element.state">
+                  {{ stateLabel(element.state) }}
+                </td>
                 <td>
                   <div class="element-actions">
                     <button
@@ -288,6 +303,28 @@ import { SpaceElementStateActionComponent } from './space-element-state-action';
     }
     .btn-secondary:hover:not(:disabled) {
       background: var(--mapit-color-surface-low);
+    }
+    .live-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      margin: 0.375rem 0 0;
+      color: var(--mapit-color-text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .live-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.6;
+    }
+    .live-status.is-live {
+      color: var(--mapit-color-primary);
+    }
+    .live-status.is-live .live-dot {
+      opacity: 1;
     }
     .btn:disabled {
       opacity: 0.55;

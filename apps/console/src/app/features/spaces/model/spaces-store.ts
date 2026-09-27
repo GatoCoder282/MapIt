@@ -9,7 +9,7 @@ import type {
   SpaceElementOperationalState,
 } from '@mapit/api-client';
 import type { RealtimeEventEnvelope } from '@mapit/realtime';
-import { type Observable, Subscription, throwError } from 'rxjs';
+import { type Observable, Subscription, interval, throwError } from 'rxjs';
 import { catchError, finalize, tap } from 'rxjs/operators';
 import {
   SpacesApiService,
@@ -52,6 +52,9 @@ export interface SpaceElementStateFeedback {
   kind: 'success' | 'error';
   message: string;
 }
+
+/** Sondeo de respaldo cuando no hay WebSocket (kill switch `realtime.websocket` o caída). */
+export const LIVE_FALLBACK_POLL_MS = 10_000;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -101,6 +104,9 @@ export class SpacesStore {
     Record<string, SpaceElementStateFeedback | undefined>
   >({});
 
+  // Tiempo real (HU-3.02): hay sala abierta para el sector visible
+  private readonly liveRoomState = signal(false);
+
   // Shared state
   private readonly loadingState = signal(false);
   private readonly savingState = signal(false);
@@ -120,6 +126,10 @@ export class SpacesStore {
   readonly elementsBySector = computed(() => this.elementsBySectorState());
   readonly elementDraft = this.elementDraftState.asReadonly();
   readonly isEditingElement = computed(() => this.editingElementIdState() !== null);
+  /** `live` con sala abierta y socket conectado; si no, la vista se mantiene por sondeo. */
+  readonly liveStatus = computed<'live' | 'polling'>(() =>
+    this.liveRoomState() && this.realtime.connectionState() === 'connected' ? 'live' : 'polling',
+  );
 
   // Shared selectors
   readonly loading = this.loadingState.asReadonly();
@@ -588,22 +598,43 @@ export class SpacesStore {
    * <p>La sala se calcula con el establecimiento del contexto ya abierto (store o URL); nunca se
    * envía tenant. El servidor es quien autoriza la sala contra el JWT (HUT-01): aquí solo se
    * evita construir destinos con identificadores mal formados.
+   *
+   * <p>Mientras no haya socket conectado (flag apagada, caída o sin sala), se recarga por HTTP cada
+   * {@link LIVE_FALLBACK_POLL_MS}.
    */
   watchSectorLive(sectorId: string, establishmentFromUrl?: string | null): Subscription {
     const watch = new Subscription();
     const establishmentId = this.establishmentIdState() ?? establishmentFromUrl ?? null;
-    if (establishmentId && UUID_PATTERN.test(establishmentId) && UUID_PATTERN.test(sectorId)) {
-      // `untracked`: si se llama desde un effect, la conexión no debe volverse dependencia suya
-      // (el cliente lee su estado al suscribirse y cada cambio re-crearía la sala).
-      untracked(() =>
+    const canOpenRoom =
+      !!establishmentId && UUID_PATTERN.test(establishmentId) && UUID_PATTERN.test(sectorId);
+    // `untracked`: si se llama desde un effect, la conexión no debe volverse dependencia suya
+    // (el cliente lee su estado al suscribirse y cada cambio re-crearía la sala).
+    untracked(() => {
+      if (canOpenRoom) {
+        this.liveRoomState.set(true);
         watch.add(
           this.realtime
             .sectorEvents(establishmentId, sectorId)
             .subscribe((event) => this.applyRealtimeStateChange(event)),
-        ),
+        );
+        watch.add(() => this.liveRoomState.set(false));
+      }
+      watch.add(
+        interval(LIVE_FALLBACK_POLL_MS).subscribe(() => {
+          if (this.liveStatus() === 'polling') this.refreshSpaceElementsBySector(sectorId);
+        }),
       );
-    }
+    });
     return watch;
+  }
+
+  /** Recarga silenciosa (sin indicador de carga ni error visible) para el sondeo de respaldo. */
+  private refreshSpaceElementsBySector(sectorId: string): void {
+    this.api.listSpaceElementsBySector(sectorId).subscribe({
+      next: (elements) =>
+        this.elementsBySectorState.update((state) => ({ ...state, [sectorId]: elements })),
+      error: () => undefined,
+    });
   }
 
   /** Aplica un evento `space-element.state.changed.v1` sin mutar el estado existente. */
