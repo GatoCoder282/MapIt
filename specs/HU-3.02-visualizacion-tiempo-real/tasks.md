@@ -31,9 +31,9 @@
 
 ## MAP-151 — E2E de latencia
 
-- [ ] Sembrar datos por API real y abrir la vista del sector.
-- [ ] Medir `t0` (antes del PATCH) y `t1` (MutationObserver sobre `data-state`).
-- [ ] Fallar si alguna muestra no llega o `p95 ≥ 2000 ms`; adjuntar JSON de resultados.
+- [x] Sembrar datos por API real y abrir la vista del sector.
+- [x] Medir `t0` (antes del PATCH) y `t1` (MutationObserver sobre `data-state`).
+- [x] Fallar si alguna muestra no llega o `p95 ≥ 2000 ms`; adjuntar JSON de resultados.
 
 ## MAP-147 — Medición y evidencia
 
@@ -95,3 +95,17 @@
   E2E de latencia (MAP-151).
 - Tests: `space-elements-live-store.spec.ts` (8, con temporizadores falsos); suite de consola
   completa en verde (60).
+
+### MAP-151
+
+- `apps/e2e/tests/console/realtime-latency.spec.ts`: siembra por la API real (tenant → correo en
+  Mailpit → activación → login ADMIN → establecimiento, planta, sector, elemento), entra por la
+  consola y abre la vista del sector con `?establishmentId=`.
+- Antes de medir exige `data-live="live"`: si midiera con el sondeo de respaldo (10 s) el test no
+  tendría sentido.
+- Cada muestra: `t0` antes del `fetch` PATCH desde la página (fuera de la app, así la vista solo
+  se entera por el WebSocket) y `t1` cuando un `MutationObserver` ve el nuevo `data-state`.
+  Mismo reloj (`performance.now()`). Sin `waitForTimeout`; el tope de 5 s solo corta una
+  muestra perdida.
+- Falla si falta alguna muestra o `p95 ≥ 2000 ms`; adjunta `latencia-hu-3.02.json` al reporte.
+- Primera ejecución: 20/20 muestras, p50 268 ms, p95 276 ms, máx. 278 ms.
