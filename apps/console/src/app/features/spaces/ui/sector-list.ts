@@ -128,6 +128,7 @@ import { SectorFormComponent } from './sector-form';
                   <a
                     class="action-btn elements"
                     [routerLink]="['/spaces/sectors', sector.id, 'elements']"
+                    [queryParams]="{ establishmentId: store.establishmentId() }"
                     [attr.aria-label]="
                       store.strings_.sectors.list.elementsButton + ' ' + sector.name
                     "

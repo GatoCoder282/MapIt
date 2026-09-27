@@ -18,9 +18,9 @@
 
 ## MAP-149 — Suscripción a rooms
 
-- [ ] Resolver `establishmentId` desde el store o el query param del enlace de sectores.
-- [ ] `SpacesStore.watchSector` con `switchMap`: cambiar de sector cancela la sala anterior.
-- [ ] Test: solo se suscribe a la sala del sector actual; al cambiar no hay duplicados.
+- [x] Resolver `establishmentId` desde el store o el query param del enlace de sectores.
+- [x] `SpacesStore.watchSectorLive` + `effect`/`onCleanup`: cambiar de sector cancela la sala anterior.
+- [x] Test: solo se suscribe a la sala del sector actual; al cambiar no hay duplicados.
 
 ## MAP-150 — Vista reactiva
 
@@ -68,3 +68,16 @@
   la última, diferido una microtarea para que un cambio de sector con `switchMap` no cierre y
   reabra el socket (y no compita con el `disconnect()` asíncrono del cliente).
 - Tests: `dedupe.spec.ts` (3) y `space-elements-realtime.spec.ts` (3).
+
+### MAP-149
+
+- La sala se calcula con el `establishmentId` del `SpacesStore` o, al entrar por URL, del query
+  param que ahora añade el enlace de `sector-list` (misma convención de la consola: el contexto
+  viaja en la URL). No se envía tenant; el servidor autoriza la sala con el JWT (HUT-01) y aquí
+  no se duplica esa lógica: solo se rechazan identificadores que no son UUID.
+- En lugar de `switchMap`, la vista usa `effect` con `onCleanup`: cambiar de sector ejecuta la
+  limpieza (suelta la sala) antes de abrir la nueva. La suscripción va en `untracked` porque el
+  cliente lee su estado de conexión al suscribirse y el effect no debe depender de él.
+- `applyRealtimeStateChange` actualiza el elemento de forma inmutable y no toca nada si el
+  evento no cambia el estado o no es de un elemento cargado.
+- Tests: `space-elements-live-store.spec.ts` (5).
