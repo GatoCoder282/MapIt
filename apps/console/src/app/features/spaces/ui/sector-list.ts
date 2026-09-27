@@ -349,12 +349,6 @@ import { SectorFormComponent } from './sector-form';
     .sector-actions {
       display: flex;
       gap: 0.125rem;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-    }
-
-    .sector-row:hover .sector-actions {
-      opacity: 1;
     }
 
     .action-btn {

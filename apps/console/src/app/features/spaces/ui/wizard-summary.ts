@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+﻿import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
@@ -14,10 +23,10 @@ interface SummaryData {
 }
 
 /**
- * Paso 3 del asistente de configuración: resumen y confirmación.
+ * Paso 3 del asistente de configuraciÃ³n: resumen y confirmaciÃ³n.
  *
- * Solo lee: el establecimiento ya existe (paso 1) y la estructura también
- * (paso 2). El id viaja en la URL, así que el resumen sobrevive a refrescos.
+ * Solo lee: el establecimiento ya existe (paso 1) y la estructura tambiÃ©n
+ * (paso 2). El id viaja en la URL, asÃ­ que el resumen sobrevive a refrescos.
  */
 @Component({
   selector: 'mapit-wizard-summary',
@@ -89,7 +98,7 @@ interface SummaryData {
 
       <main class="wizard-main">
         @if (loading()) {
-          <div class="state">{{ strings.stepSummary }}…</div>
+          <div class="state">{{ strings.stepSummary }}â€¦</div>
         } @else if (error()) {
           <div class="state error" role="alert">
             {{ strings.summaryError }}
@@ -215,16 +224,6 @@ interface SummaryData {
       min-height: 100dvh;
       font-family: var(--mapit-font-sans);
       color-scheme: light;
-      --mapit-color-canvas: #f8fafc;
-      --mapit-color-surface: #ffffff;
-      --mapit-color-surface-low: #f1f5f9;
-      --mapit-color-border: #e2e8f0;
-      --mapit-color-text: #0f172a;
-      --mapit-color-text-muted: #475569;
-      --mapit-color-primary: #3b5fe5;
-      --mapit-color-primary-soft: #eef2ff;
-      --mapit-color-on-primary: #ffffff;
-      --mapit-color-error: #dc2626;
       background: var(--mapit-color-canvas);
       color: var(--mapit-color-text);
       animation: pageIn 180ms ease-out;
@@ -428,7 +427,7 @@ interface SummaryData {
       gap: 0.375rem;
       padding: 0.25rem 0.75rem;
       border-radius: 9999px;
-      background: var(--mapit-color-primary-soft);
+      background: var(--mapit-color-nav-active-bg);
       color: var(--mapit-color-primary);
       font-weight: 600;
       font-size: 0.8125rem;
@@ -472,7 +471,9 @@ interface SummaryData {
       font-size: 0.9375rem;
       cursor: pointer;
       text-decoration: none;
-      transition: all 0.15s ease;
+      transition:
+        background 150ms ease,
+        border-color 150ms ease;
     }
 
     .btn-secondary {
@@ -487,18 +488,18 @@ interface SummaryData {
 
     .btn-primary {
       border: none;
-      background: var(--mapit-color-primary);
+      background: var(--mapit-color-accent);
       color: var(--mapit-color-on-primary);
     }
 
     .btn-primary:hover {
-      background: #2f4fd0;
+      background: color-mix(in srgb, var(--mapit-color-accent) 85%, black);
     }
 
     .btn-primary:focus-visible,
     .btn-secondary:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px #3b5fe533;
+      box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
     }
 
     @media (max-width: 48rem) {
@@ -523,11 +524,26 @@ export class WizardSummaryComponent {
   protected readonly data = signal<SummaryData | null>(null);
 
   constructor() {
-    this.reload();
+    // El id viene del router (withComponentInputBinding) y NO existe aÃºn en la
+    // primera ejecuciÃ³n del constructor: leer `input.required` ahÃ­ lanza
+    // NG0950 y la pÃ¡gina quedaba en blanco. El effect corre tras el binding
+    // y se relanza solo si la ruta cambia de establecimiento.
+    effect(() => {
+      this.loadSummary(this.establishmentId());
+    });
   }
 
+  /** Reintento manual de carga (botÃ³n del estado de error). */
   protected reload(): void {
-    const id = this.establishmentId();
+    this.loadSummary(this.establishmentId());
+  }
+
+  private readonly destroyRef = inject(DestroyRef);
+  /** Consecutivo de peticiÃ³n: solo la Ãºltima respuesta pinta (evita carreras al cambiar de id). */
+  private requestSeq = 0;
+
+  private loadSummary(id: string): void {
+    const seq = ++this.requestSeq;
     this.loading.set(true);
     this.error.set(false);
     this.api
@@ -548,13 +564,16 @@ export class WizardSummaryComponent {
             ),
           ),
         ),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (summary) => {
+          if (seq !== this.requestSeq) return;
           this.data.set(summary);
           this.loading.set(false);
         },
         error: () => {
+          if (seq !== this.requestSeq) return;
           this.error.set(true);
           this.loading.set(false);
         },

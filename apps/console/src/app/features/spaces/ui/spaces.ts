@@ -104,8 +104,8 @@ import { SpacesStore } from '../model/spaces-store';
             </span>
           </div>
 
-          <!-- Zona con scroll: header/topbar/stepper/footer quedan fijos y la
-               lista crece dentro de la tarjeta sin romper el layout del wizard. -->
+          <!-- El listado es el protagonista: crece hasta llenar la tarjeta y
+               solo aparece scroll interno cuando el contenido desborda. -->
           <div class="card-scroll">
             <div class="floor-tree">
               <mapit-piso-list />
@@ -115,13 +115,16 @@ import { SpacesStore } from '../model/spaces-store';
             <div class="floor-form-slot">
               <mapit-piso-form />
             </div>
+          </div>
 
-            <!-- Add Floor Button (Bottom of Card) -->
+          <!-- Alta rápida: acción compacta integrada al área de plantas,
+               no un panel gigante. -->
+          <div class="card-footer">
             <button class="add-floor-btn" type="button" (click)="store.startNewFloor()">
               <span class="add-floor-icon" aria-hidden="true">
                 <svg
-                  width="24"
-                  height="24"
+                  width="18"
+                  height="18"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -266,7 +269,10 @@ import { SpacesStore } from '../model/spaces-store';
       font-size: 1rem;
       font-weight: 600;
       cursor: default;
-      transition: all 0.2s ease;
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
     }
 
     .step.completed .step-circle {
@@ -362,8 +368,14 @@ import { SpacesStore } from '../model/spaces-store';
     }
 
     .central-card {
+      display: flex;
+      flex-direction: column;
       width: 100%;
       max-width: 62rem;
+      /* La tarjeta crece verticalmente para que los dos paneles queden
+         grandes y equilibrados; el exceso de contenido lo absorbe el
+         scroll interno del panel superior, no la página. */
+      min-height: calc(100dvh - 320px);
       background: var(--mapit-color-surface);
       border: 1px solid var(--mapit-color-border);
       border-radius: 16px;
@@ -371,13 +383,11 @@ import { SpacesStore } from '../model/spaces-store';
       overflow: hidden;
     }
 
-    /*
-     * Contenedor con scroll vertical limitado: con 3+ pisos la lista crece
-     * AQUÍ dentro, mientras topbar, stepper, header y footer permanecen fijos.
-     * El alto disponible se deriva del viewport restando las zonas fijas.
-     */
+    /* El listado es el protagonista: llena toda la altura libre de la tarjeta
+       y el scroll interno solo aparece cuando el contenido realmente desborda. */
     .card-scroll {
-      max-height: calc(100dvh - 340px);
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 0 1.5rem 1.5rem;
@@ -386,7 +396,6 @@ import { SpacesStore } from '../model/spaces-store';
       scrollbar-width: thin;
       scrollbar-color: #cbd5e1 transparent;
     }
-
     .card-scroll::-webkit-scrollbar {
       width: 8px;
     }
@@ -405,8 +414,8 @@ import { SpacesStore } from '../model/spaces-store';
     }
 
     @media (max-width: 900px) {
-      .card-scroll {
-        max-height: calc(100dvh - 300px);
+      .central-card {
+        min-height: calc(100dvh - 280px);
       }
     }
 
@@ -462,17 +471,18 @@ import { SpacesStore } from '../model/spaces-store';
       padding: 0;
     }
 
-    /* ===== ADD FLOOR BUTTON ===== */
+    /* ===== ADD FLOOR: acción compacta al pie del área de plantas ===== */
+    .card-footer {
+      padding: 0.75rem 1.5rem 1.5rem;
+    }
+
     .add-floor-btn {
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0.75rem;
+      gap: 0.5rem;
       width: 100%;
-      min-height: 100px;
-      padding: 1.5rem;
-      margin-top: 1rem;
+      padding: 0.625rem 1rem;
       border: 2px dashed var(--mapit-color-border-input);
       border-radius: var(--mapit-radius-lg);
       background: var(--mapit-color-canvas);
@@ -480,7 +490,10 @@ import { SpacesStore } from '../model/spaces-store';
       font-size: 0.875rem;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition:
+        border-color 0.15s ease,
+        background 0.15s ease,
+        color 0.15s ease;
     }
 
     .add-floor-btn:hover {
@@ -493,8 +506,8 @@ import { SpacesStore } from '../model/spaces-store';
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 48px;
-      height: 48px;
+      width: 1.75rem;
+      height: 1.75rem;
       border-radius: 50%;
       background: var(--mapit-color-surface-low);
       color: var(--mapit-color-text-muted);
@@ -541,7 +554,9 @@ import { SpacesStore } from '../model/spaces-store';
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
     }
 
     .btn-secondary {
