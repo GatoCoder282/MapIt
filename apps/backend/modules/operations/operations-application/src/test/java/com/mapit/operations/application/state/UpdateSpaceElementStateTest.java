@@ -16,9 +16,12 @@ import org.junit.jupiter.api.Test;
 
 import com.mapit.operations.domain.state.InvalidSpaceElementStateTransitionException;
 import com.mapit.operations.domain.state.OperationalSpaceElement;
+import com.mapit.operations.domain.state.SpaceElementRealtimeContextRepository;
 import com.mapit.operations.domain.state.SpaceElementStateChange;
 import com.mapit.operations.domain.state.SpaceElementStateChangeRepository;
 import com.mapit.operations.domain.state.SpaceElementStateRepository;
+import com.mapit.shared.realtime.RealtimeEvent;
+import com.mapit.shared.realtime.RealtimeEventPublisher;
 import com.mapit.shared.realtime.SpaceElementState;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
@@ -30,22 +33,37 @@ class UpdateSpaceElementStateTest {
   private static final UUID SECTOR = UUID.randomUUID();
   private static final UUID ELEMENT = UUID.randomUUID();
   private static final UUID ACTOR = UUID.randomUUID();
+  private static final UUID ESTABLISHMENT = UUID.randomUUID();
   private static final Instant BEFORE = Instant.parse("2026-09-26T12:00:00Z");
   private static final Instant NOW = Instant.parse("2026-09-26T12:05:00Z");
 
   private InMemoryRepository repository;
   private InMemoryChanges changes;
+  private List<RealtimeEvent> published;
   private UpdateSpaceElementState useCase;
 
   @BeforeEach
   void setUp() {
     repository = new InMemoryRepository();
     changes = new InMemoryChanges();
+    published = new ArrayList<>();
+    // La versión del agregado es el número de cambios auditados, como en el adaptador JDBC.
+    SpaceElementRealtimeContextRepository realtimeContext =
+        (tenantId, sectorId, elementId) ->
+            new SpaceElementRealtimeContextRepository.SpaceElementRealtimeContext(
+                ESTABLISHMENT, changes.findByElement(tenantId, sectorId, elementId).size());
+    RealtimeEventPublisher publisher = published::add;
     TenantContext tenants = () -> Optional.of(TENANT);
     ActorContext actors = () -> Optional.of(ACTOR);
     useCase =
         new UpdateSpaceElementState(
-            repository, changes, tenants, actors, Clock.fixed(NOW, ZoneOffset.UTC));
+            repository,
+            changes,
+            realtimeContext,
+            publisher,
+            tenants,
+            actors,
+            Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   @Test
@@ -85,6 +103,7 @@ class UpdateSpaceElementStateTest {
     assertThat(result.updatedAt()).isEqualTo(BEFORE);
     assertThat(repository.saves).isZero();
     assertThat(changes.entries).isEmpty();
+    assertThat(published).isEmpty();
   }
 
   @Test
@@ -139,6 +158,48 @@ class UpdateSpaceElementStateTest {
     assertThat(repository.element.state()).isEqualTo(SpaceElementState.OUT_OF_SERVICE);
     assertThat(repository.saves).isZero();
     assertThat(changes.entries).isEmpty();
+    assertThat(published).isEmpty();
+  }
+
+  @Test
+  void un_cambio_publica_el_evento_v1_con_el_payload_del_contrato() {
+    repository.element =
+        new OperationalSpaceElement(
+            ELEMENT, TENANT, SECTOR, SpaceElementState.AVAILABLE, BEFORE);
+
+    useCase.execute(
+        new UpdateSpaceElementStateCommand(SECTOR, ELEMENT, SpaceElementState.OCCUPIED));
+
+    assertThat(published).singleElement().satisfies(event -> {
+      assertThat(event.eventType()).isEqualTo(RealtimeEvent.SPACE_ELEMENT_STATE_CHANGED_V1);
+      assertThat(event.schemaVersion()).isEqualTo(1);
+      assertThat(event.tenantId()).isEqualTo(TENANT);
+      assertThat(event.establishmentId()).isEqualTo(ESTABLISHMENT);
+      assertThat(event.sectorId()).contains(SECTOR);
+      assertThat(event.spaceElementId()).isEqualTo(ELEMENT);
+      assertThat(event.previousState()).contains(SpaceElementState.AVAILABLE);
+      assertThat(event.state()).isEqualTo(SpaceElementState.OCCUPIED);
+      assertThat(event.occurredAt()).isEqualTo(NOW);
+      assertThat(event.aggregateVersion()).isEqualTo(1);
+    });
+  }
+
+  @Test
+  void cambios_sucesivos_publican_versiones_crecientes() {
+    repository.element =
+        new OperationalSpaceElement(
+            ELEMENT, TENANT, SECTOR, SpaceElementState.AVAILABLE, BEFORE);
+
+    useCase.execute(
+        new UpdateSpaceElementStateCommand(SECTOR, ELEMENT, SpaceElementState.OCCUPIED));
+    useCase.execute(
+        new UpdateSpaceElementStateCommand(SECTOR, ELEMENT, SpaceElementState.CLEANING));
+
+    assertThat(published)
+        .extracting(RealtimeEvent::aggregateVersion)
+        .containsExactly(1L, 2L);
+    assertThat(published.get(1).previousState()).contains(SpaceElementState.OCCUPIED);
+    assertThat(published.get(0).eventId()).isNotEqualTo(published.get(1).eventId());
   }
 
   private static final class InMemoryRepository implements SpaceElementStateRepository {
