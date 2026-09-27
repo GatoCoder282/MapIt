@@ -37,8 +37,8 @@
 
 ## MAP-147 — Medición y evidencia
 
-- [ ] Ejecutar el E2E en condiciones documentadas (máquina, stack, N).
-- [ ] Registrar p50, p95 y máximo en `latency.md`.
+- [x] Ejecutar el E2E en condiciones documentadas (máquina, stack, N).
+- [x] Registrar p50, p95 y máximo en `latency.md`.
 
 ## Notas de ejecución
 
@@ -109,3 +109,14 @@
   muestra perdida.
 - Falla si falta alguna muestra o `p95 ≥ 2000 ms`; adjunta `latencia-hu-3.02.json` al reporte.
 - Primera ejecución: 20/20 muestras, p50 268 ms, p95 276 ms, máx. 278 ms.
+
+### MAP-147
+
+- Evidencia completa en [`latency.md`](latency.md): 3 corridas × 50 muestras en la misma máquina
+  y stack local. Total 150/150 muestras, **p50 274 ms, p95 287 ms, p99 302 ms, máx. 308 ms**.
+- Criterio: p95 < 2000 ms (no la media), además de que no se pierda ninguna muestra.
+- Control negativo: con el dispatcher a 3000 ms el test falla (`p95 3045 ms ≥ 2000 ms`).
+- La latencia la domina el sondeo del outbox (250 ms), no STOMP ni Angular.
+- Nota del entorno: la BD local de desarrollo tenía aplicada una V12 de otra rama
+  (`tenant estado en aprobacion`) que choca con la V12 de `main` (`space_element`). La medición se
+  hizo contra una BD aparte (`mapit_hu302`, `DB_URL=...`) para no tocar la del desarrollador.
