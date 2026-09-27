@@ -2,7 +2,7 @@
 
 Este archivo es un **enrutador de contexto**, no documentación. Encuentra tu tarea en la tabla, carga lo que indica, y trabaja con eso. Cada carpeta tiene su propio `AGENTS.md` con las reglas de su sección.
 
-**Requisitos del entorno:** Node 24, pnpm 11+, **JDK Temurin 25**, Docker. No instales Gradle ni Angular CLI: van en el repo (wrapper de Gradle y `pnpm exec ng`). Sin JDK, todo lo de backend se omite.
+**Requisitos del entorno:** Node 24 (fijado en `.nvmrc`; el mínimo duro es 22 según `engines`), pnpm 11+, **JDK Temurin 25**, Docker. No instales Gradle ni Angular CLI: van en el repo (wrapper de Gradle y `pnpm exec ng`). Sin JDK, todo lo de backend se omite.
 
 ## Qué es MapIt
 
@@ -14,7 +14,7 @@ Alcance real: `docs/roadmap/use_cases.md` (**manda sobre `project_definition.md`
 
 | Si la tarea es…                  | Lee                                                      | Agente              | Skill              |
 | -------------------------------- | -------------------------------------------------------- | ------------------- | ------------------ |
-| Un caso de uso completo          | `specs/AGENTS.md`                                        | —                   | `new-usecase`      |
+| Un caso de uso completo          | `specs/AGENTS.md` (carpetas `CU-XX-…` o `HU-X.XX-…`)     | —                   | `new-usecase`      |
 | Endpoint o cambio de contrato    | `packages/api-contract/AGENTS.md`                        | `api-contract`      | —                  |
 | Lógica de dominio / backend      | `apps/backend/AGENTS.md`                                 | `backend-hexagonal` | —                  |
 | Pantalla o feature Angular       | `apps/console/AGENTS.md` (o `apps/public-web/AGENTS.md`) | `angular-feature`   | —                  |
@@ -56,6 +56,7 @@ pnpm new:flag ...   # nueva feature flag coherente en 3 sitios
 pnpm new:spec       # andamiar spec de un CU | new:module / new:feature para código
 pnpm db:seed        # datos de prueba · pnpm api:check = contrato sin drift
 pnpm api:mock       # Prism sirve el contrato en :4010 — frontend sin backend
+pnpm e2e            # Playwright (apps/e2e) · e2e:ui con interfaz · fe:typecheck solo tipos
 ```
 
 Correr un solo test: backend `node tools/scripts/gradle.mjs :modulo:test --tests "ClaseTest"`; frontend `pnpm exec ng test console --include "**/archivo.spec.ts"` (el builder es Vitest, vía `ng test`).
@@ -85,6 +86,8 @@ realtime, map-engine, contract, infra, e2e, db, ci, docs, specs, deps, tooling
 ```
 
 Otro scope = commit rechazado. Cabecera máx. 100 caracteres.
+
+El hook `pre-commit` corre lint-staged (prettier + `eslint --fix` sobre lo stageado): no uses `--no-verify` ni stagees archivos que no pretendes subir.
 
 ## Trampas conocidas
 
