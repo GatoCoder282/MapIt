@@ -24,10 +24,10 @@
 
 ## MAP-150 — Vista reactiva
 
-- [ ] `applyRealtimeStateChange` inmutable con control de `aggregateVersion`.
-- [ ] Indicador de conexión en la lista y `data-state` por elemento para pruebas.
-- [ ] Sondeo HTTP de respaldo cuando no hay conexión.
-- [ ] Tests del store: aplica evento, ignora duplicado/antiguo, sondeo con flag apagada.
+- [x] `applyRealtimeStateChange` inmutable con control de `aggregateVersion`.
+- [x] Indicador de conexión en la lista y `data-state` por elemento para pruebas.
+- [x] Sondeo HTTP de respaldo cuando no hay conexión.
+- [x] Tests del store: aplica evento, ignora duplicado/antiguo, sondeo con flag apagada.
 
 ## MAP-151 — E2E de latencia
 
@@ -81,3 +81,17 @@
 - `applyRealtimeStateChange` actualiza el elemento de forma inmutable y no toca nada si el
   evento no cambia el estado o no es de un elemento cargado.
 - Tests: `space-elements-live-store.spec.ts` (5).
+
+### MAP-150
+
+- La vista de HU-2.03 (tabla tipo / (x, y) / estado) conserva su modelo; solo cambia el estado
+  del elemento al llegar un evento. No se añade edición ni drag & drop.
+- Indicador `role="status"` «En vivo» / «Actualización periódica» (`store.liveStatus`): en vivo
+  exige sala abierta **y** socket `connected`.
+- Sondeo de respaldo cada `LIVE_FALLBACK_POLL_MS` (10 s) solo mientras `liveStatus` es
+  `polling` (flag `realtime.websocket` apagada, caída o sin establecimiento); recarga silenciosa
+  para no parpadear el «Cargando…».
+- `data-testid="space-element-state"` + `data-state` por fila: es el punto de observación del
+  E2E de latencia (MAP-151).
+- Tests: `space-elements-live-store.spec.ts` (8, con temporizadores falsos); suite de consola
+  completa en verde (60).

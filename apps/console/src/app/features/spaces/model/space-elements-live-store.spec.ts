@@ -3,9 +3,9 @@ import { TestBed } from '@angular/core/testing';
 import type { SpaceElement } from '@mapit/api-client';
 import type { RealtimeEventEnvelope } from '@mapit/realtime';
 import { of, Subject } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SpacesStore } from './spaces-store';
+import { LIVE_FALLBACK_POLL_MS, SpacesStore } from './spaces-store';
 import { SpacesApiService } from '../data/spaces-api';
 import { SpaceElementsRealtime } from '../data/space-elements-realtime';
 
@@ -53,6 +53,12 @@ describe('SpacesStore — elementos en tiempo real', () => {
     sectorEvents: ReturnType<typeof vi.fn>;
   };
   let store: SpacesStore;
+  let api: {
+    listSpaceElementsBySector: ReturnType<typeof vi.fn>;
+    listFloors: ReturnType<typeof vi.fn>;
+  };
+
+  afterEach(() => vi.useRealTimers());
 
   beforeEach(() => {
     rooms = new Map();
@@ -64,7 +70,7 @@ describe('SpacesStore — elementos en tiempo real', () => {
         return room;
       }),
     };
-    const api = {
+    api = {
       listSpaceElementsBySector: vi.fn((sectorId: string) =>
         of([element(EL_1, sectorId), element(EL_2, sectorId)]),
       ),
@@ -132,5 +138,45 @@ describe('SpacesStore — elementos en tiempo real', () => {
     store.applyRealtimeStateChange(stateChanged(EL_1, 'OCCUPIED', SECTOR_B));
 
     expect(store.elementsBySector()).toBe(before);
+  });
+
+  it('marca la vista en vivo solo con sala abierta y socket conectado', () => {
+    expect(store.liveStatus()).toBe('polling');
+
+    const watch = store.watchSectorLive(SECTOR_A, EST);
+    expect(store.liveStatus()).toBe('live');
+
+    realtime.connectionState.set('disconnected');
+    expect(store.liveStatus()).toBe('polling');
+
+    realtime.connectionState.set('connected');
+    watch.unsubscribe();
+    expect(store.liveStatus()).toBe('polling');
+  });
+
+  it('con la flag apagada o sin conexión, se actualiza por sondeo HTTP', () => {
+    vi.useFakeTimers();
+    realtime.connectionState.set('disabled');
+    const watch = store.watchSectorLive(SECTOR_A, EST);
+    api.listSpaceElementsBySector.mockClear();
+
+    vi.advanceTimersByTime(LIVE_FALLBACK_POLL_MS);
+    expect(api.listSpaceElementsBySector).toHaveBeenCalledWith(SECTOR_A);
+
+    watch.unsubscribe();
+    api.listSpaceElementsBySector.mockClear();
+    vi.advanceTimersByTime(LIVE_FALLBACK_POLL_MS * 3);
+    expect(api.listSpaceElementsBySector).not.toHaveBeenCalled();
+  });
+
+  it('en vivo no sondea: los cambios llegan por el socket', () => {
+    vi.useFakeTimers();
+    const watch = store.watchSectorLive(SECTOR_A, EST);
+    api.listSpaceElementsBySector.mockClear();
+
+    vi.advanceTimersByTime(LIVE_FALLBACK_POLL_MS * 3);
+
+    expect(api.listSpaceElementsBySector).not.toHaveBeenCalled();
+    watch.unsubscribe();
   });
 });

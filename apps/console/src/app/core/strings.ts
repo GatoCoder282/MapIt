@@ -515,6 +515,12 @@ export const STRINGS = {
         OUT_OF_SERVICE: 'Fuera de servicio',
       },
       backButton: 'Volver',
+      live: {
+        live: 'En vivo',
+        polling: 'Actualización periódica',
+        liveHint: 'Los cambios de estado aparecen al instante.',
+        pollingHint: 'Sin conexión en tiempo real: la lista se actualiza cada pocos segundos.',
+      },
       list: {
         typeHeader: 'Tipo',
         coordHeader: 'Ubicación (X, Y)',
