@@ -11,7 +11,7 @@ import { SpaceElementListComponent } from './space-element-list';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (sectorId(); as sid) {
-      <mapit-space-element-list [sectorId]="sid" />
+      <mapit-space-element-list [sectorId]="sid" [establishmentId]="establishmentId()" />
     }
   `,
   styles: `
@@ -26,5 +26,10 @@ export class SpaceElementsPageComponent {
 
   protected readonly sectorId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('sectorId'))),
+  );
+
+  // Contexto de la sala en vivo (HU-3.02): viaja en la URL para sobrevivir a un refresco.
+  protected readonly establishmentId = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('establishmentId'))),
   );
 }

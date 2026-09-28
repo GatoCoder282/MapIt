@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal, untracked } from '@angular/core';
 import type {
   Establishment,
   EstablishmentCreateRequest,
@@ -8,7 +8,8 @@ import type {
   SpaceElementCreateRequest,
   SpaceElementOperationalState,
 } from '@mapit/api-client';
-import { type Observable, throwError } from 'rxjs';
+import type { RealtimeEventEnvelope } from '@mapit/realtime';
+import { type Observable, Subscription, throwError } from 'rxjs';
 import { catchError, finalize, tap } from 'rxjs/operators';
 import {
   SpacesApiService,
@@ -16,6 +17,7 @@ import {
   type FloorDraft,
   type SectorDraft,
 } from '../data/spaces-api';
+import { SpaceElementsRealtime } from '../data/space-elements-realtime';
 import { STRINGS } from '../../../core/strings';
 
 /** Deriva un slug válido desde el nombre (misma regla que `Slug.fromName` del backend). */
@@ -51,6 +53,8 @@ export interface SpaceElementStateFeedback {
   message: string;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const EMPTY_ELEMENT_DRAFT: SpaceElementDraft = {
   type: 'TABLE',
   x: '',
@@ -68,6 +72,7 @@ const EMPTY_ELEMENT_DRAFT: SpaceElementDraft = {
 @Injectable({ providedIn: 'root' })
 export class SpacesStore {
   private readonly api = inject(SpacesApiService);
+  private readonly realtime = inject(SpaceElementsRealtime);
   private readonly floorStrings = STRINGS.spaces.floors;
   private readonly sectorStrings = STRINGS.spaces.sectors;
 
@@ -572,6 +577,51 @@ export class SpacesStore {
           }));
         },
       });
+  }
+
+  // ===== TIEMPO REAL (HU-3.02 / MAP-149-150) =====
+
+  /**
+   * Escucha en vivo la sala del sector y devuelve la suscripción para que la vista la suelte al
+   * cambiar de sector o destruirse (no quedan salas duplicadas).
+   *
+   * <p>La sala se calcula con el establecimiento del contexto ya abierto (store o URL); nunca se
+   * envía tenant. El servidor es quien autoriza la sala contra el JWT (HUT-01): aquí solo se
+   * evita construir destinos con identificadores mal formados.
+   */
+  watchSectorLive(sectorId: string, establishmentFromUrl?: string | null): Subscription {
+    const watch = new Subscription();
+    const establishmentId = this.establishmentIdState() ?? establishmentFromUrl ?? null;
+    if (establishmentId && UUID_PATTERN.test(establishmentId) && UUID_PATTERN.test(sectorId)) {
+      // `untracked`: si se llama desde un effect, la conexión no debe volverse dependencia suya
+      // (el cliente lee su estado al suscribirse y cada cambio re-crearía la sala).
+      untracked(() =>
+        watch.add(
+          this.realtime
+            .sectorEvents(establishmentId, sectorId)
+            .subscribe((event) => this.applyRealtimeStateChange(event)),
+        ),
+      );
+    }
+    return watch;
+  }
+
+  /** Aplica un evento `space-element.state.changed.v1` sin mutar el estado existente. */
+  applyRealtimeStateChange(event: RealtimeEventEnvelope): void {
+    const sectorId = event.sectorId;
+    if (!sectorId) return;
+    const { spaceElementId, state } = event.payload;
+    this.elementsBySectorState.update((bySector) => {
+      const elements = bySector[sectorId];
+      const target = elements?.find((element) => element.id === spaceElementId);
+      if (!elements || !target || target.state === state) return bySector;
+      return {
+        ...bySector,
+        [sectorId]: elements.map((element) =>
+          element === target ? { ...element, state, updatedAt: event.occurredAt } : element,
+        ),
+      };
+    });
   }
 
   // Baja de elementos: no hay DELETE de elementos en el contrato todavía. Cuando se sume,

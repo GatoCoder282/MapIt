@@ -297,6 +297,7 @@ import { SpaceElementStateActionComponent } from './space-element-state-action';
 })
 export class SpaceElementListComponent {
   readonly sectorId = input.required<string>();
+  readonly establishmentId = input<string | null | undefined>();
 
   protected readonly store = inject(SpacesStore);
   private readonly session = inject(AuthSession);
@@ -323,6 +324,11 @@ export class SpaceElementListComponent {
       // Re-cargar cuando cambia el sector del input.
       const id = this.sectorId();
       if (id) this.store.loadSpaceElementsBySector(id);
+    });
+    effect((onCleanup) => {
+      // HU-3.02: una sala por sector; al cambiar de sector o salir, se suelta la anterior.
+      const watch = this.store.watchSectorLive(this.sectorId(), this.establishmentId());
+      onCleanup(() => watch.unsubscribe());
     });
   }
 
