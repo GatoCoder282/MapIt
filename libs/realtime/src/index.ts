@@ -22,3 +22,4 @@ export {
   type StompClientFactory,
   type StompClientLike,
 } from './realtime';
+export { dedupeRealtimeEvents } from './dedupe';
