@@ -67,32 +67,32 @@ con `spaceElementId`, `previousState` y `state`. No se modifica OpenAPI.
 
 ## 7. Criterios de aceptación
 
-- [ ] **CA-1 (MAP-146):** Dado un elemento en `AVAILABLE`, cuando se cambia a `OCCUPIED`,
+- [x] **CA-1 (MAP-146):** Dado un elemento en `AVAILABLE`, cuando se cambia a `OCCUPIED`,
       entonces se escribe en el outbox un evento `space-element.state.changed.v1` con
       `spaceElementId`, `establishmentId`, `sectorId`, `previousState = AVAILABLE`,
       `state = OCCUPIED`, `occurredAt` y `aggregateVersion` positiva.
-- [ ] **CA-2 (MAP-146):** Dado un cambio al mismo estado o una transición inválida, entonces
+- [x] **CA-2 (MAP-146):** Dado un cambio al mismo estado o una transición inválida, entonces
       no se escribe ningún evento.
-- [ ] **CA-3 (MAP-146):** Dados dos cambios sucesivos del mismo elemento, entonces el segundo
+- [x] **CA-3 (MAP-146):** Dados dos cambios sucesivos del mismo elemento, entonces el segundo
       evento tiene una `aggregateVersion` mayor que el primero.
-- [ ] **CA-4 (MAP-148):** Dado un usuario autenticado con la flag activa, cuando abre la vista,
+- [x] **CA-4 (MAP-148):** Dado un usuario autenticado con la flag activa, cuando abre la vista,
       entonces el cliente conecta; al cerrar sesión o salir de la vista, desconecta; ante un
       corte, reintenta con el backoff de HUT-01.
-- [ ] **CA-5 (MAP-149):** Dada la vista de un sector, entonces el cliente se suscribe
+- [x] **CA-5 (MAP-149):** Dada la vista de un sector, entonces el cliente se suscribe
       exactamente a la sala de ese sector; al cambiar de sector, la suscripción anterior se
       cancela y no se reciben eventos del sector previo.
-- [ ] **CA-6 (MAP-149):** Dado un usuario de otro tenant, cuando intenta suscribirse a la sala
+- [x] **CA-6 (MAP-149):** Dado un usuario de otro tenant, cuando intenta suscribirse a la sala
       de un sector ajeno, entonces el servidor la rechaza (cubierto por HUT-01; se verifica
       que el cliente no construye salas con datos fuera de su contexto).
-- [ ] **CA-7 (MAP-150):** Dado un evento recibido para un elemento visible, entonces la vista
+- [x] **CA-7 (MAP-150):** Dado un evento recibido para un elemento visible, entonces la vista
       muestra el nuevo estado sin recarga; un evento duplicado o con versión anterior no la
       altera.
-- [ ] **CA-8 (MAP-150):** Dada la flag `realtime.websocket` apagada, entonces la vista se
+- [x] **CA-8 (MAP-150):** Dada la flag `realtime.websocket` apagada, entonces la vista se
       actualiza por sondeo HTTP periódico y no abre WebSocket.
-- [ ] **CA-9 (MAP-151):** Existe un E2E contra el stack real que cambia el estado por la API y
+- [x] **CA-9 (MAP-151):** Existe un E2E contra el stack real que cambia el estado por la API y
       espera el cambio en la vista de otra sesión sin esperas fijas; falla si la latencia
       supera 2 s.
-- [ ] **CA-10 (MAP-147):** La latencia extremo a extremo se mide en N ≥ 20 muestras y se
+- [x] **CA-10 (MAP-147):** La latencia extremo a extremo se mide en N ≥ 20 muestras y se
       registran p50, p95 y máximo; se cumple si **p95 < 2000 ms**. La evidencia queda en
       `specs/HU-3.02-visualizacion-tiempo-real/latency.md`.
 
