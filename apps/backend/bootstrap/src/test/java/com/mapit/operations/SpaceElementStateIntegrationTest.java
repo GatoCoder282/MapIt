@@ -89,6 +89,7 @@ class SpaceElementStateIntegrationTest {
 
   @BeforeEach
   void fixtures() {
+    jdbc.update("delete from realtime_event_outbox where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update(
         "delete from space_element_state_change where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from space_element where tenant_id in (?, ?)", TENANT_A, TENANT_B);
@@ -173,6 +174,32 @@ class SpaceElementStateIntegrationTest {
 
     assertThat(stateOf(ELEMENT_A)).isEqualTo("AVAILABLE");
     assertThat(auditCount(ELEMENT_A)).isZero();
+    assertThat(outbox(ELEMENT_A)).isEmpty();
+  }
+
+  @Test
+  void cada_cambio_escribe_el_evento_v1_en_el_outbox_con_version_creciente() {
+    patch(SECTOR_A, ELEMENT_A, "OCCUPIED", token(STAFF_A, UserRole.STAFF)).expectStatus().isOk();
+    // Repetir el estado es idempotente: no audita ni publica.
+    patch(SECTOR_A, ELEMENT_A, "OCCUPIED", token(STAFF_A, UserRole.STAFF)).expectStatus().isOk();
+    patch(SECTOR_A, ELEMENT_A, "CLEANING", token(STAFF_A, UserRole.STAFF)).expectStatus().isOk();
+
+    List<OutboxRow> rows = outbox(ELEMENT_A);
+    assertThat(rows).hasSize(2);
+    assertThat(rows).extracting(OutboxRow::aggregateVersion).containsExactly(1L, 2L);
+    assertThat(rows)
+        .allSatisfy(
+            row -> {
+              assertThat(row.tenantId()).isEqualTo(TENANT_A);
+              assertThat(row.eventType()).isEqualTo("space-element.state.changed.v1");
+              assertThat(row.establishmentId()).isEqualTo(ESTABLISHMENT_A);
+              assertThat(row.sectorId()).isEqualTo(SECTOR_A);
+              assertThat(row.envelope()).doesNotContain("tenant");
+            });
+    assertThat(rows.get(0).previousState()).isEqualTo("AVAILABLE");
+    assertThat(rows.get(0).state()).isEqualTo("OCCUPIED");
+    assertThat(rows.get(1).previousState()).isEqualTo("OCCUPIED");
+    assertThat(rows.get(1).state()).isEqualTo("CLEANING");
   }
 
   @Test
@@ -255,6 +282,30 @@ class SpaceElementStateIntegrationTest {
     return count == null ? 0 : count;
   }
 
+  private List<OutboxRow> outbox(UUID elementId) {
+    return jdbc.query(
+        """
+        select tenant_id, event_type, establishment_id, sector_id, aggregate_version,
+               payload -> 'payload' ->> 'previousState' as previous_state,
+               payload -> 'payload' ->> 'state' as state,
+               payload::text as envelope
+        from realtime_event_outbox
+        where payload -> 'payload' ->> 'spaceElementId' = ?
+        order by aggregate_version
+        """,
+        (rs, rowNum) ->
+            new OutboxRow(
+                rs.getString("tenant_id"),
+                rs.getString("event_type"),
+                rs.getObject("establishment_id", UUID.class),
+                rs.getObject("sector_id", UUID.class),
+                rs.getLong("aggregate_version"),
+                rs.getString("previous_state"),
+                rs.getString("state"),
+                rs.getString("envelope")),
+        elementId.toString());
+  }
+
   private void tenant(String id, String name) {
     jdbc.update(
         "insert into tenant (id, name, slug, status, vertical) values (?, ?, ?, 'ACTIVE', 'RESTAURANT')",
@@ -308,6 +359,16 @@ class SpaceElementStateIntegrationTest {
         email,
         role.name());
   }
+
+  private record OutboxRow(
+      String tenantId,
+      String eventType,
+      UUID establishmentId,
+      UUID sectorId,
+      long aggregateVersion,
+      String previousState,
+      String state,
+      String envelope) {}
 
   private record StateView(UUID id, UUID sectorId, String state, Instant updatedAt) {}
 

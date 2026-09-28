@@ -88,6 +88,16 @@ apilados, cada uno debe indicar su rama base, el siguiente PR y el enlace a MAP-
 solo el último apunta a `main`. No se crean ramas por archivo ni ramas paralelas que oculten el
 orden de dependencias.
 
+## Productor y consumidor (HU-3.02)
+
+- **Productor (MAP-146):** `UpdateSpaceElementState` (módulo `operations`) publica el evento por
+  `RealtimeEventPublisher` tras auditar el cambio, en la misma transacción. Solo publica si el
+  estado cambió. `aggregateVersion` es el número de cambios auditados del elemento
+  (`space_element_state_change`), monotónico porque el `UPDATE` bloquea la fila hasta el commit.
+- **Consumidor:** la vista de elementos del sector de la consola escucha la sala del sector.
+  Especificación completa en
+  [`specs/HU-3.02-visualizacion-tiempo-real`](../../specs/HU-3.02-visualizacion-tiempo-real/spec.md).
+
 ## Fuera de HUT-01
 
 - No se implementa la actualización de estado de MAP-104/HU-3.01.
