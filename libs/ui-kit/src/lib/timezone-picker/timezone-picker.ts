@@ -41,11 +41,36 @@ export class TimezonePicker {
   protected readonly open = signal(false);
   protected readonly activeIndex = signal(-1);
 
+  /** Valor a mostrar en el input: incluye código cuando está cerrado y hay zona seleccionada. */
+  protected readonly displayValue = computed(() => {
+    const q = this.query();
+    if (this.open()) return q; // Mientras está abierto, solo el texto escrito
+    const tz = this.timezone();
+    if (!tz) return q; // Sin zona seleccionada
+    const code = this.timezoneCode(tz);
+    return code ? `${tz} (${code})` : tz;
+  });
+
   protected readonly filtered = computed(() => {
     const text = this.query().trim().toLowerCase();
     if (!text) return this.zones;
     return this.zones.filter((zone) => zone.toLowerCase().includes(text));
   });
+
+  /** Devuelve el código de zona horaria (p. ej. "BOT" para America/La_Paz). */
+  protected timezoneCode(zone: string): string {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: zone,
+        timeZoneName: 'short',
+      });
+      const parts = formatter.formatToParts(new Date());
+      const tzPart = parts.find((p) => p.type === 'timeZoneName');
+      return tzPart?.value ?? '';
+    } catch {
+      return '';
+    }
+  }
 
   protected activeOptionId(): string | null {
     const index = this.activeIndex();

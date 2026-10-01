@@ -12,7 +12,7 @@
     [attr.aria-label]="strings.timezoneAria"
     [disabled]="disabled()"
     [placeholder]="placeholder() || strings.timezonePlaceholder"
-    [value]="query()"
+    [value]="displayValue()"
     autocomplete="off"
     spellcheck="false"
     (focus)="onFocus()"
@@ -44,7 +44,7 @@
           (mousedown)="pick(zone)"
           (mouseenter)="activeIndex.set(i)"
         >
-          {{ zone }}
+          {{ zone }} ({{ timezoneCode(zone) }})
         </li>
       } @empty {
         <li class="tz-empty">{{ strings.timezoneNoResults }}</li>
