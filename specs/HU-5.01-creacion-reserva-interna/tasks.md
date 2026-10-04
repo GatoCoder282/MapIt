@@ -32,10 +32,10 @@
 
 ## MAP-212 — Endpoint POST
 
-- [ ] Editar primero el contrato OpenAPI de creación y ejecutar `pnpm api:gen`.
-- [ ] Implementar el controlador generado y autorización de roles.
-- [ ] Traducir errores a RFC 9457 (`400`, `404`, `409`).
-- [ ] Cubrir el controlador y el contrato.
+- [x] Editar primero el contrato OpenAPI de creación y ejecutar `pnpm api:gen`.
+- [x] Implementar el controlador generado y autorización de roles.
+- [x] Traducir errores a RFC 9457 (`400`, `404`, `409`).
+- [x] Cubrir el controlador y el contrato.
 
 ## MAP-213 — Cliente en consola
 
@@ -142,3 +142,21 @@
   incorrecto, elemento no reservable o fuera de servicio, duplicados y conflicto sin
   escritura parcial.
 - `pnpm check` quedó en verde con formato, contrato, frontend, backend y ArchUnit.
+
+### MAP-212
+
+- Rama `chris799-hub/map-212-endpoint-crear-reserva`, basada en MAP-211.
+- El contrato OpenAPI incorpora primero
+  `POST /establishments/{establishmentId}/reservations`, sus modelos tipados, límites y
+  respuestas `400`, `401`, `403`, `404`, `409` y `500`.
+- El cliente TypeScript se regeneró desde el contrato y quedó sin drift.
+- `ReservationController` transforma la solicitud en el comando del caso de uso y devuelve
+  `201` sin exponer `tenantId` ni aceptar estado o auditoría desde el cliente.
+- Los errores de referencias ocultas, datos inválidos y solapamientos se traducen a RFC
+  9457; el `409` incluye los identificadores de los elementos en conflicto.
+- `SecurityConfig` exige ADMIN, MANAGER o STAFF antes de la regla pública temporal de
+  establecimientos, evitando que ese prefijo abra accidentalmente la creación de reservas.
+- Cinco pruebas del controlador cubren el mapeo exitoso, validación y respuestas `400`,
+  `404` y `409`.
+- `pnpm check` quedó en verde con contrato sincronizado, 90 pruebas frontend, backend y
+  reglas de arquitectura.

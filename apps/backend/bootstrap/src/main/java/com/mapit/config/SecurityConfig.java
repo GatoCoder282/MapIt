@@ -113,6 +113,15 @@ public class SecurityConfig {
                                 UserRole.ADMIN.name(),
                                 UserRole.MANAGER.name(),
                                 UserRole.STAFF.name())
+                        // CU-12: debe evaluarse antes del acceso público temporal del CRUD
+                        // de establecimientos, porque comparte ese prefijo de ruta.
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v1/establishments/*/reservations")
+                        .hasAnyRole(
+                                UserRole.ADMIN.name(),
+                                UserRole.MANAGER.name(),
+                                UserRole.STAFF.name())
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         // Administración de tenants (CU-01/CU-03): operación exclusiva
                         // del SUPER_ADMIN de plataforma. Cualquier otro rol autenticado
