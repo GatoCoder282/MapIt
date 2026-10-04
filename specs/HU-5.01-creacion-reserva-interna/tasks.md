@@ -11,10 +11,10 @@
 
 ## MAP-209 — Persistencia
 
-- [ ] Crear migración Flyway para reservas y asociaciones.
-- [ ] Añadir índices, restricciones, FKs y RLS forzada.
-- [ ] Actualizar `docs/db/mapit.dbml` en el mismo commit.
-- [ ] Probar migración e aislamiento entre tenants.
+- [x] Crear migración Flyway para reservas y asociaciones.
+- [x] Añadir índices, restricciones, FKs y RLS forzada.
+- [x] Actualizar `docs/db/mapit.dbml` en el mismo commit.
+- [x] Probar migración e aislamiento entre tenants.
 
 ## MAP-210 — Clientes
 
@@ -92,3 +92,18 @@
 - Los UUID de establecimiento y elementos se conservan como referencias externas; su
   pertenencia al tenant se validará por puertos en MAP-211.
 - Se ejecutaron 12 pruebas unitarias del dominio sin fallos y ArchitectureTest quedó verde.
+
+### MAP-209
+
+- Rama `chris799-hub/map-209-migracion-flyway-reservation`, basada en MAP-208.
+- La migración V15 crea `person`, `reservation` y `reservation_space_element`; la tabla
+  `person` se crea aquí porque la FK obligatoria de la reserva debe ser válida desde el
+  primer arranque. Su dominio y endpoints se implementan en MAP-210.
+- Las referencias a persona, establecimiento, actor y elemento usan FKs compuestas con
+  `tenant_id`, de modo que ni SQL directo puede asociar datos entre empresas.
+- Las tres tablas tienen RLS forzada, índices por tenant y fallo cerrado sin
+  `app.tenant_id`.
+- PostgreSQL valida el intervalo `starts_at < ends_at` y evita repetir un elemento dentro
+  de la misma reserva.
+- Cinco pruebas con PostgreSQL 16 verifican migración, RLS bidireccional, fallo cerrado,
+  integridad temporal, duplicados y referencias cruzadas entre tenants.
