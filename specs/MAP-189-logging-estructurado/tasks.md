@@ -8,7 +8,7 @@
 - [x] Configurar Nginx y rotación Docker.
 - [x] Ejecutar prueba de integración del logger, E2E y check completo.
 - [x] Completar ADR, guía de uso y defensa.
-- [ ] Abrir PR con evidencias y enlace a Jira.
+- [x] Abrir [PR #34](https://github.com/GatoCoder282/MapIt/pull/34) con evidencias y enlace a Jira.
 
 ## Notas de ejecución
 
