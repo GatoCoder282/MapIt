@@ -23,6 +23,7 @@
     "@mapit/ui-kit": "workspace:*",
     "@stomp/stompjs": "7.3.0",
     "@ng-icons/core": "^36.0.0",
-    "@ng-icons/heroicons": "^36.0.0"
+    "@ng-icons/heroicons": "^36.0.0",
+    "@mapit/logging": "workspace:*"
   }
 }

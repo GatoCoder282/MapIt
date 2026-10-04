@@ -1,8 +1,9 @@
+import { logBootstrapFailure } from '@mapit/logging';
 import { bootstrapApplication } from '@angular/platform-browser';
 
 import { App } from './app/app';
 import { appConfig } from './app/app.config';
 
 bootstrapApplication(App, appConfig).catch((err: unknown) => {
-  console.error('No se pudo arrancar la vista pública de MapIt', err);
+  logBootstrapFailure('mapit-public-web', err);
 });

@@ -1,3 +1,4 @@
+import { provideLogging, loggingInterceptor, LOGGING_API_URL } from '@mapit/logging';
 import {
   type ApplicationConfig,
   inject,
@@ -24,10 +25,18 @@ import { routes } from './app.routes';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    provideLogging({ service: 'mapit-console' }),
+    {
+      provide: LOGGING_API_URL,
+      useFactory: () => {
+        const runtime = inject(RuntimeConfigStore);
+        return () => runtime.config().apiBaseUrl;
+      },
+    },
     provideCheckNoChangesConfig({ exhaustive: true, interval: 1000 }),
 
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([loggingInterceptor, authInterceptor])),
 
     {
       provide: BASE_PATH,

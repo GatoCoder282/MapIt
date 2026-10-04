@@ -4,5 +4,6 @@
   "wsUrl": "ws://localhost:8080/ws",
   "unleashProxyUrl": "http://localhost:3063/proxy",
   "unleashClientKey": "dev-proxy-key-change-me",
-  "environment": "development"
+  "environment": "development",
+  "logLevel": "INFO"
 }

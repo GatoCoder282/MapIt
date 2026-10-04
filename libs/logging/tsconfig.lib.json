@@ -1,0 +1,6 @@
+{
+  "extends": "../../packages/config-typescript/angular-lib.json",
+  "compilerOptions": { "outDir": "../../dist/out-tsc/logging", "types": [] },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts"]
+}
