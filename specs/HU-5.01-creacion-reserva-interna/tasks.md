@@ -25,10 +25,10 @@
 
 ## MAP-211 — Caso de uso
 
-- [ ] Definir puertos de personas, recursos, reservas y disponibilidad.
-- [ ] Implementar `CreateReservation` como transacción atómica.
-- [ ] Validar pertenencia al tenant y establecimiento sin importar otros módulos.
-- [ ] Rechazar cualquier solapamiento sin persistencia parcial.
+- [x] Definir puertos de personas, recursos, reservas y disponibilidad.
+- [x] Implementar `CreateReservation` como transacción atómica.
+- [x] Validar pertenencia al tenant y establecimiento sin importar otros módulos.
+- [x] Rechazar cualquier solapamiento sin persistencia parcial.
 
 ## MAP-212 — Endpoint POST
 
@@ -125,3 +125,20 @@
   correo duplicado a `409` mediante Problem Details.
 - Se añadieron siete pruebas unitarias entre dominio y aplicación. `pnpm check` quedó en
   verde, incluidos contrato, 90 pruebas frontend, backend y ArchUnit.
+
+### MAP-211
+
+- Rama `chris799-hub/map-211-caso-uso-creacion-reserva`, basada en MAP-210.
+- `CreateReservation` ejecuta en una sola transacción la validación de persona,
+  establecimiento, elementos, disponibilidad y persistencia del agregado completo.
+- Los puertos `ReservationResourceRepository`, `ReservationAvailabilityRepository` y
+  `ReservationRepository` mantienen el módulo desacoplado de `spaces` y de JDBC.
+- La proyección `ReservationResource` permite validar establecimiento, tipo reservable y
+  estado operativo sin importar clases de otro módulo. Hasta CU-07, `DECOR` es el único
+  tipo expresamente no reservable.
+- Los adaptadores JDBC aplican tenant explícito y RLS, comprueban solapamientos con la
+  fórmula `[inicio, fin)` e insertan reserva y asociaciones dentro de la misma transacción.
+- Las pruebas del caso de uso cubren éxito, referencias ajenas o ausentes, establecimiento
+  incorrecto, elemento no reservable o fuera de servicio, duplicados y conflicto sin
+  escritura parcial.
+- `pnpm check` quedó en verde con formato, contrato, frontend, backend y ArchUnit.

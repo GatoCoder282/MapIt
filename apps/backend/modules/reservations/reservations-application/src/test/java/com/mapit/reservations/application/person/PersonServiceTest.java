@@ -82,6 +82,14 @@ class PersonServiceTest {
     }
 
     @Override
+    public Optional<Person> findAliveById(TenantId tenantId, UUID id) {
+      return people.stream()
+          .filter(person -> person.tenantId().equals(tenantId))
+          .filter(person -> person.id().value().equals(id))
+          .findFirst();
+    }
+
+    @Override
     public Optional<Person> findAliveByEmail(TenantId tenantId, String normalizedEmail) {
       return people.stream()
           .filter(person -> person.tenantId().equals(tenantId))

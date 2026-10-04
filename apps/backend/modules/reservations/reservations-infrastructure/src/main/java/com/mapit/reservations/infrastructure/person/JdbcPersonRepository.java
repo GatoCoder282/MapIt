@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -63,6 +64,22 @@ public class JdbcPersonRepository implements PersonRepository {
         normalizedQuery,
         normalizedQuery,
         SEARCH_LIMIT);
+  }
+
+  @Override
+  public Optional<Person> findAliveById(TenantId tenantId, UUID id) {
+    setTenant(tenantId);
+    return jdbc
+        .query(
+            """
+            select * from person
+            where tenant_id = ? and id = ? and deleted_at is null
+            """,
+            JdbcPersonRepository::map,
+            tenantId.value(),
+            id)
+        .stream()
+        .findFirst();
   }
 
   @Override
