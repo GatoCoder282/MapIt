@@ -18,10 +18,10 @@
 
 ## MAP-210 — Clientes
 
-- [ ] Verificar nuevamente si `Person` existe al comenzar la subtarea.
-- [ ] Modelar y persistir `Person` si sigue ausente.
-- [ ] Editar primero el contrato de búsqueda/alta y regenerar clientes.
-- [ ] Implementar búsqueda normalizada y registro dentro del tenant.
+- [x] Verificar nuevamente si `Person` existe al comenzar la subtarea.
+- [x] Modelar y persistir `Person` si sigue ausente.
+- [x] Editar primero el contrato de búsqueda/alta y regenerar clientes.
+- [x] Implementar búsqueda normalizada y registro dentro del tenant.
 
 ## MAP-211 — Caso de uso
 
@@ -107,3 +107,21 @@
   de la misma reserva.
 - Cinco pruebas con PostgreSQL 16 verifican migración, RLS bidireccional, fallo cerrado,
   integridad temporal, duplicados y referencias cruzadas entre tenants.
+
+### MAP-210
+
+- Rama `chris799-hub/map-210-entidad-person-clientes`, basada en MAP-209.
+- Se confirmó que solo existía la tabla `person` creada por MAP-209; no había entidad,
+  puerto, caso de uso ni API para registrar clientes.
+- El contrato OpenAPI define `GET /people` y `POST /people`; el cliente TypeScript se
+  regeneró desde el contrato sin editar archivos generados.
+- `Person` normaliza el nombre, convierte correo a minúsculas, admite contacto opcional y
+  concentra las validaciones sin depender de Spring ni de persistencia.
+- `PersonService` obtiene tenant y actor exclusivamente de los contextos autenticados y
+  detecta correos duplicados por tenant.
+- `JdbcPersonRepository` filtra explícitamente por tenant, activa RLS y limita la búsqueda
+  normalizada a 20 coincidencias por nombre, correo o teléfono.
+- Los endpoints exigen rol ADMIN, MANAGER o STAFF y traducen datos inválidos a `400` y
+  correo duplicado a `409` mediante Problem Details.
+- Se añadieron siete pruebas unitarias entre dominio y aplicación. `pnpm check` quedó en
+  verde, incluidos contrato, 90 pruebas frontend, backend y ArchUnit.

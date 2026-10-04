@@ -48,8 +48,71 @@ tags:
     description: Gestión de pisos y sectores (CU-05)
   - name: operations
     description: Operación en vivo de elementos espaciales (CU-09)
+  - name: people
+    description: Clientes del tenant usados en reservas (CU-11)
 
 paths:
+  /people:
+    get:
+      tags: [people]
+      summary: Buscar clientes
+      description: |
+        Busca personas activas del tenant autenticado por nombre, correo o teléfono.
+        El tenant se obtiene exclusivamente del JWT.
+      operationId: searchPeople
+      parameters:
+        - name: query
+          in: query
+          description: Texto opcional para filtrar por nombre, correo o teléfono.
+          schema:
+            type: string
+            maxLength: 120
+      responses:
+        "200":
+          description: Personas activas que coinciden con la búsqueda
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Person"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [people]
+      summary: Registrar cliente
+      description: |
+        Registra una persona dentro del tenant autenticado. El identificador, el tenant y
+        la auditoría los decide el backend.
+      operationId: createPerson
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonCreateRequest"
+      responses:
+        "201":
+          description: Persona registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /auth/login:
     post:
       tags: [auth]
@@ -1073,6 +1136,57 @@ components:
         cliente podría falsificar).
 
   schemas:
+    Person:
+      type: object
+      required: [id, fullName, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        fullName:
+          type: string
+          maxLength: 120
+        email:
+          type: [string, "null"]
+          format: email
+          maxLength: 254
+        phone:
+          type: [string, "null"]
+          maxLength: 32
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        createdBy:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedBy:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+
+    PersonCreateRequest:
+      type: object
+      required: [fullName]
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: [string, "null"]
+          format: email
+          maxLength: 254
+        phone:
+          type: [string, "null"]
+          maxLength: 32
+
     LoginRequest:
       type: object
       required: [tenantSlug, email, password]

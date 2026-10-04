@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.mapit.reservations.domain.person.PersonId;
 import com.mapit.shared.tenant.TenantId;
 
 class ReservationTest {

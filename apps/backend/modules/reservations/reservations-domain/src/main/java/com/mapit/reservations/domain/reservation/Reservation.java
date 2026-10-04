@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import com.mapit.reservations.domain.person.PersonId;
 import com.mapit.shared.tenant.TenantId;
 
 /**

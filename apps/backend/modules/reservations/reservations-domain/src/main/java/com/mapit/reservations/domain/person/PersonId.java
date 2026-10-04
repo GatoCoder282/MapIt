@@ -1,9 +1,9 @@
-package com.mapit.reservations.domain.reservation;
+package com.mapit.reservations.domain.person;
 
 import java.util.Objects;
 import java.util.UUID;
 
-/** Identificador de la persona a la que pertenece la reserva. */
+/** Identificador opaco de una persona del tenant. */
 public record PersonId(UUID value) {
 
   public PersonId {
