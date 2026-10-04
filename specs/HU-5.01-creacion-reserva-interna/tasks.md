@@ -39,10 +39,10 @@
 
 ## MAP-213 — Cliente en consola
 
-- [ ] Crear feature `reservations` sin importar otras features.
-- [ ] Implementar búsqueda y selección de persona.
-- [ ] Implementar alta de persona dentro del flujo.
-- [ ] Cubrir el ViewModel con Vitest.
+- [x] Crear feature `reservations` sin importar otras features.
+- [x] Implementar búsqueda y selección de persona.
+- [x] Implementar alta de persona dentro del flujo.
+- [x] Cubrir el ViewModel con Vitest.
 
 ## MAP-214 — Formulario de reserva
 
@@ -160,3 +160,20 @@
   `404` y `409`.
 - `pnpm check` quedó en verde con contrato sincronizado, 90 pruebas frontend, backend y
   reglas de arquitectura.
+
+### MAP-213
+
+- Rama `chris799-hub/map-213-cliente-reservas-console`, basada en MAP-212.
+- Se creó la feature Angular `reservations` con límites `data`, `model` y `ui`, sin importar
+  código de otras features.
+- `ReservationsApi` encapsula `PeopleService`, generado desde OpenAPI, para buscar y crear
+  clientes con tipos compartidos por contrato.
+- `ReservationCustomerStore` controla consulta, resultados, selección, borrador de alta,
+  estados de carga y mensajes para errores de red, validación y correo duplicado.
+- `ReservationCustomerPicker` permite buscar por nombre, correo o teléfono, seleccionar un
+  resultado y registrar un cliente sin abandonar el flujo de reserva.
+- Todos los textos visibles se añadieron al catálogo central y el componente incluye
+  etiquetas, estados anunciables, foco visible y adaptación para pantallas pequeñas.
+- Ocho pruebas Vitest cubren búsqueda, selección, precarga del alta, creación, validaciones
+  y errores de API.
+- `pnpm check` quedó en verde con 99 pruebas frontend (57 de consola, 1 de public-web y 41 de librerías).
