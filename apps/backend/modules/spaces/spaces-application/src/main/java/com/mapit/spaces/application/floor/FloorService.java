@@ -71,7 +71,6 @@ public class FloorService {
   public Floor create(
       UUID establishmentId,
       String name,
-      Integer level,
       String slugValue) {
     TenantId tenantId = tenantContext.require();
 
@@ -80,8 +79,8 @@ public class FloorService {
         .findAliveById(tenantId, establishmentId)
         .orElseThrow(() -> new EstablishmentNotFoundException(establishmentId));
 
-    // Resolver nivel: si no se especifica, usar el siguiente disponible
-    int resolvedLevel = resolveLevel(tenantId, establishmentId, level);
+    // El nivel nunca lo decide el cliente: siempre el siguiente escalón (0, 1, 2, …).
+    int resolvedLevel = resolveLevel(tenantId, establishmentId);
 
     // Resolver slug: si no se especifica, generarlo del nombre
     Slug slug = resolveSlug(tenantId, establishmentId, slugValue, name);
@@ -90,7 +89,7 @@ public class FloorService {
     requireSlugFree(tenantId, establishmentId, slug, null);
 
     // Verificar unicidad del nivel
-    requireLevelFree(tenantId, establishmentId, resolvedLevel, null);
+    requireLevelFree(tenantId, establishmentId, resolvedLevel);
 
     Instant now = clock.instant();
     Floor floor = Floor.register(
@@ -107,7 +106,7 @@ public class FloorService {
   }
 
   @Transactional
-  public Floor update(UUID id, String name, Integer level, String slugValue) {
+  public Floor update(UUID id, String name, String slugValue) {
     TenantId tenantId = tenantContext.require();
     Floor actual = floorRepository
         .findAliveById(tenantId, id)
@@ -116,21 +115,14 @@ public class FloorService {
     // Resolver slug si se proporciona
     Slug resolvedSlug = slugValue != null && !slugValue.isBlank() ? Slug.of(slugValue) : actual.slug();
 
-    // Resolver nivel si se proporciona
-    int resolvedLevel = level != null ? level : actual.level();
-
     // Verificar unicidad del slug (si cambió)
     if (actual.slug() == null || !resolvedSlug.equals(actual.slug())) {
       requireSlugFree(tenantId, actual.establishmentId(), resolvedSlug, id);
     }
 
-    // Verificar unicidad del nivel (si cambió)
-    if (resolvedLevel != actual.level()) {
-      requireLevelFree(tenantId, actual.establishmentId(), resolvedLevel, actual);
-    }
-
+    // El nivel no es editable: el orden viene de la secuencia de alta (0, 1, 2, …).
     return floorRepository.save(
-        actual.update(name, resolvedLevel, resolvedSlug, clock.instant(), currentAuthor()));
+        actual.update(name, actual.level(), resolvedSlug, clock.instant(), currentAuthor()));
   }
 
   @Transactional
@@ -150,13 +142,10 @@ public class FloorService {
     floorRepository.save(actual.softDelete(clock.instant(), currentAuthor()));
   }
 
-  private int resolveLevel(TenantId tenantId, UUID establishmentId, Integer level) {
-    if (level != null) {
-      return level;
-    }
-    // Asignar el siguiente nivel disponible
+  private int resolveLevel(TenantId tenantId, UUID establishmentId) {
+    // Niveles escalonados desde 0: el siguiente piso vive un escalón por encima del máximo.
     Optional<Integer> maxLevel = floorRepository.findMaxLevel(tenantId, establishmentId);
-    int nextLevel = maxLevel.map(l -> l + 1).orElse(1);
+    int nextLevel = maxLevel.map(l -> l + 1).orElse(0);
     if (nextLevel > LEVEL_MAX) {
       throw new IllegalStateException(
           "No se pueden crear más pisos: se alcanzó el nivel máximo (%d)".formatted(LEVEL_MAX));
@@ -213,14 +202,9 @@ public class FloorService {
   }
 
   private void requireLevelFree(
-      TenantId tenantId,
-      UUID establishmentId,
-      int level,
-      Floor self) {
-    // Un nivel ocupado por otro piso vivo es conflicto. `self` es el piso que se
-    // está editando (null al crear): si el nivel ocupado es el suyo, no hay cambio.
-    boolean ocupado = floorRepository.existsAliveByLevel(tenantId, establishmentId, level);
-    if (ocupado && (self == null || self.level() != level)) {
+      TenantId tenantId, UUID establishmentId, int level) {
+    // Un nivel ocupado por otro piso vivo es conflicto.
+    if (floorRepository.existsAliveByLevel(tenantId, establishmentId, level)) {
       throw new FloorLevelAlreadyExistsException(level);
     }
   }

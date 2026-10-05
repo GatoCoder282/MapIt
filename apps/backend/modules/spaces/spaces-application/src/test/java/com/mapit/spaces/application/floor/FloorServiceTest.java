@@ -57,33 +57,40 @@ class FloorServiceTest {
 
   @Test
   void create_deriva_el_slug_del_nombre_con_la_regla_canonica() {
-    Floor creado = service.create(EST_ID, "Planta Baja", null, null);
+    Floor creado = service.create(EST_ID, "Planta Baja", null);
     assertThat(creado.slug()).isEqualTo(Slug.of("planta-baja"));
   }
 
   @Test
   void create_normaliza_tildes_y_enie_con_slug_fromname() {
-    Floor creado = service.create(EST_ID, "Salón Año Nuevo", null, null);
+    Floor creado = service.create(EST_ID, "Salón Año Nuevo", null);
     assertThat(creado.slug()).isEqualTo(Slug.of("salon-ano-nuevo"));
   }
 
   @Test
   void create_resuelve_colisiones_de_slug_con_sufijo() {
-    service.create(EST_ID, "Planta Baja", null, null);
-    Floor segundo = service.create(EST_ID, "Planta Baja", null, null);
+    service.create(EST_ID, "Planta Baja", null);
+    Floor segundo = service.create(EST_ID, "Planta Baja", null);
     assertThat(segundo.slug()).isEqualTo(Slug.of("planta-baja-1"));
   }
 
   @Test
   void create_rechaza_slug_duplicado_cuando_se_indica_explicito() {
-    service.create(EST_ID, "Uno", null, "terraza");
-    assertThatThrownBy(() -> service.create(EST_ID, "Dos", null, "terraza"))
+    service.create(EST_ID, "Uno", "terraza");
+    assertThatThrownBy(() -> service.create(EST_ID, "Dos", "terraza"))
         .isInstanceOf(FloorSlugAlreadyExistsException.class);
   }
 
   @Test
+  void create_asigna_niveles_escalonados_desde_cero() {
+    assertThat(service.create(EST_ID, "Planta Baja", null).level()).isZero();
+    assertThat(service.create(EST_ID, "Piso 1", null).level()).isEqualTo(1);
+    assertThat(service.create(EST_ID, "Piso 2", null).level()).isEqualTo(2);
+  }
+
+  @Test
   void softDelete_marca_la_baja_cuando_no_hay_sectores_vivos() {
-    Floor piso = service.create(EST_ID, "Planta Baja", null, null);
+    Floor piso = service.create(EST_ID, "Planta Baja", null);
     service.softDelete(piso.id());
     assertThat(pisos).singleElement().satisfies(f -> assertThat(f.audit().deletedAt())
         .isNotNull());
@@ -91,7 +98,7 @@ class FloorServiceTest {
 
   @Test
   void softDelete_rechaza_cuando_el_piso_tiene_sectores_vivos() {
-    Floor piso = service.create(EST_ID, "Planta Baja", null, null);
+    Floor piso = service.create(EST_ID, "Planta Baja", null);
     sectores.add(
         Sector.register(
             SectorId.of(UUID.randomUUID()), TENANT, piso.id(), "Salón", 20,
@@ -105,7 +112,7 @@ class FloorServiceTest {
 
   @Test
   void softDelete_de_sector_ajeno_no_cuenta_para_la_regla() {
-    Floor piso = service.create(EST_ID, "Planta Baja", null, null);
+    Floor piso = service.create(EST_ID, "Planta Baja", null);
     sectores.add(
         Sector.register(
             SectorId.of(UUID.randomUUID()), TenantId.of("otro-tenant"), piso.id(), "Ajeno", 20,

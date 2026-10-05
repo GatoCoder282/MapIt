@@ -133,6 +133,14 @@ export const routes: Routes = [
                 (m) => m.SpaceElementsPageComponent,
               ),
           },
+          {
+            // Plantillas de elementos HU-4.02 (MAP-191).
+            path: 'templates',
+            loadComponent: () =>
+              import('./features/spaces/ui/element-template-list-page').then(
+                (m) => m.ElementTemplateListPageComponent,
+              ),
+          },
         ],
       },
       {

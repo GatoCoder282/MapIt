@@ -2,14 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthSession } from '@mapit/auth';
-import { LucideHouse, LucideLayers, LucideLogOut } from '@lucide/angular';
+import { LucideHouse, LucideLayers, LucideLogOut, LucideComponent } from '@lucide/angular';
 
 import { STRINGS } from '../core/strings';
 
 interface StaffNavItem {
   label: string;
   route: string;
-  icon: 'home' | 'spaces';
+  icon: 'home' | 'spaces' | 'templates';
   exact?: boolean;
 }
 /**
@@ -20,7 +20,15 @@ interface StaffNavItem {
  */
 @Component({
   selector: 'mapit-staff-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, LucideHouse, LucideLayers, LucideLogOut],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    LucideHouse,
+    LucideLayers,
+    LucideLogOut,
+    LucideComponent,
+  ],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +44,11 @@ export class StaffShell {
       label: STRINGS.staffShell.nav.business,
       route: '/spaces/setup',
       icon: 'spaces',
+    },
+    {
+      label: STRINGS.staffShell.nav.templates,
+      route: '/spaces/templates',
+      icon: 'templates',
     },
   ];
 

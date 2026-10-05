@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SpacesStore } from '../model/spaces-store';
+import { TemplatesStore } from '../model/templates-store';
+import { STRINGS } from '../../../core/strings';
+import { TemplatePaletteComponent } from './template-palette';
 
 /** Formulario inline de registro/edición de elemento espacial (HU-2.03 / MAP-117). */
 @Component({
   selector: 'mapit-space-element-form',
-  imports: [FormsModule],
+  imports: [FormsModule, TemplatePaletteComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="element-form">
@@ -21,6 +24,8 @@ import { SpacesStore } from '../model/spaces-store';
       }
 
       <form class="element-grid" (ngSubmit)="save()">
+        <mapit-template-palette class="grid-span" (clicked)="onPalettePick($event)" />
+
         <label class="field">
           <span class="field-label">{{ strings.form.typeLabel }}</span>
           <select
@@ -85,6 +90,17 @@ import { SpacesStore } from '../model/spaces-store';
         <p class="field-hint grid-span">{{ strings.form.coordsHint }}</p>
 
         <div class="form-actions grid-span">
+          @if (store.isEditingElement()) {
+            <button
+              class="btn btn-secondary"
+              type="button"
+              [disabled]="store.saving()"
+              (click)="saveAsTemplate()"
+            >
+              {{ templateStrings.saveAsTemplateButton }}
+            </button>
+          }
+          <div style="flex: 1"></div>
           <button
             class="btn btn-secondary"
             type="button"
@@ -222,6 +238,7 @@ import { SpacesStore } from '../model/spaces-store';
     .form-actions {
       display: flex;
       justify-content: flex-end;
+      align-items: center;
       gap: 0.5rem;
       margin-top: 0.5rem;
       padding-top: 0.75rem;
@@ -268,8 +285,10 @@ export class SpaceElementFormComponent {
   readonly formClosed = output<void>();
 
   protected readonly store = inject(SpacesStore);
+  protected readonly templatesStore = inject(TemplatesStore);
 
   protected readonly strings = this.store.strings_.elements;
+  protected readonly templateStrings = STRINGS.spaces.templates;
 
   protected readonly _draft = computed(() => this.store.elementDraft());
 
@@ -311,6 +330,27 @@ export class SpaceElementFormComponent {
   }
 
   protected cancel(): void {
+    this.templatesStore.clearSelection();
     this.formClosed.emit();
+  }
+
+  /**
+   * Aplica la elección de la paleta (HU-4.02, nivel 1): la selección de plantilla ya la
+   * gestiona TemplatesStore; aquí solo se pre-rellena el tipo del borrador. Nunca se
+   * reutilizan ids de plantilla ni de instancia: el alta sigue el flujo normal.
+   */
+  protected onPalettePick(event: { templateId: string | null; type: string }): void {
+    this.store.setElementType(event.type);
+  }
+
+  protected saveAsTemplate(): void {
+    const d = this._draft();
+    const name = window.prompt(this.templateStrings.form.namePlaceholder);
+    if (name && name.trim().length > 0) {
+      this.templatesStore.saveFromElement(d.type, name.trim())?.subscribe({
+        next: () => window.alert('Plantilla guardada exitosamente.'),
+        error: () => window.alert(this.templatesStore.error() ?? 'Error al guardar'),
+      });
+    }
   }
 }

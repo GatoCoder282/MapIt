@@ -10,8 +10,20 @@ import { SpacesStore } from '../model/spaces-store';
          Sin at-formEnter: Angular lo trataba como trigger sin declarar (NG05105). -->
     <div class="sector-form">
       <div class="form-header">
-        <p class="form-eyebrow">{{ store.strings_.sectors.form.eyebrowNew }}</p>
-        <h4 class="form-title">{{ store.strings_.sectors.form.createTitle }}</h4>
+        <p class="form-eyebrow">
+          {{
+            store.isEditingSector()
+              ? store.strings_.sectors.form.eyebrowEdit
+              : store.strings_.sectors.form.eyebrowNew
+          }}
+        </p>
+        <h4 class="form-title">
+          {{
+            store.isEditingSector()
+              ? store.strings_.sectors.form.editTitle
+              : store.strings_.sectors.form.createTitle
+          }}
+        </h4>
       </div>
 
       @if (store.error(); as error) {
@@ -58,7 +70,9 @@ import { SpacesStore } from '../model/spaces-store';
           {{
             store.saving()
               ? store.strings_.sectors.form.saving
-              : store.strings_.sectors.form.saveButton
+              : store.isEditingSector()
+                ? store.strings_.sectors.form.updateButton
+                : store.strings_.sectors.form.saveButton
           }}
         </button>
       </div>
@@ -242,7 +256,7 @@ export class SectorFormComponent {
     const name = this.store.sectorDraft().name.trim();
     if (!name) return;
 
-    this.store.createSector(this.floorId(), name).subscribe({
+    this.store.saveSector(this.floorId(), name).subscribe({
       next: () => this.saved.emit(),
       error: () => {}, // Error handled in store
     });

@@ -70,14 +70,14 @@ class FloorTest {
   @Test
   void rechaza_niveles_fuera_de_rango() {
     assertThatThrownBy(() -> Floor.register(
-        UUID.randomUUID(), TENANT, ESTABLISHMENT_ID, "Sótano", 0, Slug.of("sotano"), AHORA, USER_ID))
+        UUID.randomUUID(), TENANT, ESTABLISHMENT_ID, "Sótano", -1, Slug.of("sotano"), AHORA, USER_ID))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("level debe estar entre 1 y 999");
+        .hasMessageContaining("level debe estar entre 0 y 999");
 
     assertThatThrownBy(() -> Floor.register(
         UUID.randomUUID(), TENANT, ESTABLISHMENT_ID, "Torre", 1000, Slug.of("torre"), AHORA, USER_ID))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("level debe estar entre 1 y 999");
+        .hasMessageContaining("level debe estar entre 0 y 999");
   }
 
   @Test
