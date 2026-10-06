@@ -1,11 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { TemplatesStore } from '../model/templates-store';
 import { ElementTemplateFormComponent } from './element-template-form';
 import { ElementTypeIconComponent } from './element-type-icon';
@@ -290,9 +283,7 @@ export class ElementTemplateListPageComponent {
   protected readonly loading = computed(() => this.store.loading());
 
   constructor() {
-    effect(() => {
-      this.store.loadTemplates();
-    });
+    this.store.loadTemplates();
   }
 
   protected startCreate(): void {

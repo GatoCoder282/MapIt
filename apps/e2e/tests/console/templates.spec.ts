@@ -24,7 +24,7 @@ test.describe('Consola — plantillas de elemento', () => {
       await page.locator('#password').fill(password);
       await page.getByRole('button', { name: /iniciar sesi/i }).click();
       const navigated = await page
-        .waitForURL(/\/home\//, { timeout: 8_000 })
+        .waitForURL(/\/home/, { timeout: 8_000 })
         .then(() => true)
         .catch(() => false);
       if (navigated) break;
