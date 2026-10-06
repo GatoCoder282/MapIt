@@ -1,7 +1,7 @@
 /* Estilos globales de la consola. Los tokens de diseño viven en @mapit/ui-kit. */
 @use 'ui-kit/styles/tokens' as *;
-@import '@fontsource-variable/inter';
-@import '@fontsource-variable/manrope'; /* stylelint-disable-line */
+@use '@fontsource-variable/inter' as *;
+@use '@fontsource-variable/manrope' as *; /* stylelint-disable-line */
 
 :root {
   color-scheme: light dark;

@@ -133,6 +133,14 @@ export const routes: Routes = [
                 (m) => m.SpaceElementsPageComponent,
               ),
           },
+          {
+            // CU-06 (MAP-196): editor visual de elementos espaciales (Konva.js).
+            path: 'editor/:sectorId',
+            loadComponent: () =>
+              import('./features/map-editor/ui/map-editor-page').then(
+                (m) => m.MapEditorPageComponent,
+              ),
+          },
         ],
       },
       {

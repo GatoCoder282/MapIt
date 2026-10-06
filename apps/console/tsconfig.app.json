@@ -12,7 +12,10 @@
       "@mapit/auth": ["../../libs/auth/src/index.ts"],
       "@mapit/feature-flags": ["../../libs/feature-flags/src/index.ts"],
       "@mapit/realtime": ["../../libs/realtime/src/index.ts"],
-      "@mapit/map-engine": ["../../libs/map-engine/src/index.ts"]
+      "@mapit/map-engine": ["../../libs/map-engine/src/index.ts"],
+      "@mapit/map-engine/adapters/konva/konva-map-engine": [
+        "../../libs/map-engine/src/lib/adapters/konva/konva-map-engine.ts"
+      ]
     }
   },
   "files": ["src/main.ts"],

@@ -27,6 +27,9 @@ export const FLAGS_POR_DEFECTO = {
   /** Gestión de sectores dentro de pisos (CU-05 · MAP-70). */
   'spaces.sectors': true,
 
+  /** Editor visual de elementos espaciales (CU-06 · MAP-196). */
+  'editor.map.enabled': true,
+
   /** Vertical Hotel: reservas por rango de fechas (CU-22). */
   'vertical.hotel': false,
 

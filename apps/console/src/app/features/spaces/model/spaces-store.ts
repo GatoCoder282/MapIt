@@ -308,6 +308,19 @@ export class SpacesStore {
     return this.sectorsByFloorState()[floorId] ?? [];
   }
 
+  floorIdForSector(sectorId: string): string | null {
+    for (const [floorId, sectors] of Object.entries(this.sectorsByFloorState())) {
+      if (sectors.some((s) => s.id === sectorId)) {
+        return floorId;
+      }
+    }
+    return null;
+  }
+
+  allSectors(): Sector[] {
+    return Object.values(this.sectorsByFloorState()).flat();
+  }
+
   sectorsLoading(floorId: string): boolean {
     return this.sectorsLoadingState()[floorId] ?? false;
   }
