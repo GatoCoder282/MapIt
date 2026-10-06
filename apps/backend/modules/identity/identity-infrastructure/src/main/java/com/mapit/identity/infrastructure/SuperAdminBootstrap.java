@@ -57,7 +57,7 @@ public class SuperAdminBootstrap implements ApplicationRunner {
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void run(ApplicationArguments args) {
     if (password.isBlank()) {
-      log.warn(
+      log.atWarn().addKeyValue("event", "identity.bootstrap.skipped").log(
           "mapit.super-admin.password sin configurar: no se crea el SUPER_ADMIN. "
               + "Sin él, la administración de tenants no tendrá acceso.");
       return;
@@ -72,7 +72,7 @@ public class SuperAdminBootstrap implements ApplicationRunner {
             Integer.class,
             PLATFORM_TENANT);
     if (existing != null && existing > 0) {
-      log.info("Ya existe un SUPER_ADMIN de plataforma; bootstrap sin cambios (email actual en BD, no el del entorno).");
+      log.atInfo().addKeyValue("event", "identity.bootstrap.unchanged").log("Ya existe un SUPER_ADMIN de plataforma; bootstrap sin cambios (email actual en BD, no el del entorno).");
       return;
     }
     // RLS de app_user exige el contexto: alcance LOCAL a esta transacción.
@@ -88,6 +88,6 @@ public class SuperAdminBootstrap implements ApplicationRunner {
         passwordEncoder.encode(password),
         fullName,
         UserRole.SUPER_ADMIN.name());
-    log.info("SUPER_ADMIN de plataforma creado ({}).", email);
+    log.atInfo().addKeyValue("event", "identity.bootstrap.created").log("Platform administrator created");
   }
 }

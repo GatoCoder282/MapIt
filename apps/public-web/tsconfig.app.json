@@ -6,6 +6,7 @@
     "rootDir": "../..",
     "types": [],
     "paths": {
+      "@mapit/logging": ["../../libs/logging/src/index.ts"],
       "@mapit/ui-kit": ["../../libs/ui-kit/src/index.ts"],
       "@mapit/api-client": ["../../libs/api-client/src/index.ts"],
       "@mapit/feature-flags": ["../../libs/feature-flags/src/index.ts"],

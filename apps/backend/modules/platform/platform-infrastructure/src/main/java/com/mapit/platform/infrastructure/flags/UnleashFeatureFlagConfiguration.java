@@ -27,6 +27,7 @@ public class UnleashFeatureFlagConfiguration {
             .apiKey(apiToken)
             .appName(appName)
             .environment(environment)
+            .subscriber(new UnleashLoggingSubscriber())
             .synchronousFetchOnInitialisation(false)
             .build();
     return new DefaultUnleash(config);

@@ -16,6 +16,7 @@
     "@mapit/map-engine": "workspace:*",
     "@mapit/ui-kit": "workspace:*",
     "@ng-icons/core": "^36.0.0",
-    "@ng-icons/heroicons": "^36.0.0"
+    "@ng-icons/heroicons": "^36.0.0",
+    "@mapit/logging": "workspace:*"
   }
 }

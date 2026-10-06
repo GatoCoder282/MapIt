@@ -2,6 +2,8 @@ package com.mapit.config;
 
 import java.util.List;
 
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
@@ -42,6 +44,35 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
 
   @Override
   public Message<?> preSend(Message<?> message, MessageChannel channel) {
+    var previous = MDC.getCopyOfContextMap();
+    MDC.clear();
+    var accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+    String operation = accessor != null && accessor.getCommand() != null ? accessor.getCommand().name() : "UNKNOWN";
+    if (accessor != null && accessor.getUser() instanceof Authentication authentication
+        && authentication.getPrincipal() instanceof AuthenticatedPrincipal principal) {
+      MDC.put("tenant_id", principal.tenantId().value());
+    }
+    try {
+      return inspect(message);
+    } catch (MessagingException exception) {
+      LoggerFactory.getLogger(RealtimeStompInterceptor.class).atWarn()
+          .addKeyValue("event", "realtime.access.denied")
+          .addKeyValue("operation", operation)
+          .log("STOMP command rejected");
+      throw exception;
+    } catch (RuntimeException exception) {
+      LoggerFactory.getLogger(RealtimeStompInterceptor.class).atError()
+          .addKeyValue("event", "realtime.processing.failed")
+          .addKeyValue("operation", operation)
+          .setCause(exception).log("STOMP processing failed");
+      throw exception;
+    } finally {
+      MDC.clear();
+      if (previous != null) MDC.setContextMap(previous);
+    }
+  }
+
+  private Message<?> inspect(Message<?> message) {
     StompHeaderAccessor accessor =
         (StompHeaderAccessor) MessageHeaderAccessor.getMutableAccessor(message);
     if (accessor == null || accessor.getMessageType() != SimpMessageType.CONNECT) {

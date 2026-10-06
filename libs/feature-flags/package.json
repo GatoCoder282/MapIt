@@ -13,5 +13,8 @@
   "scripts": {
     "test": "echo \"(sin tests todavía en @mapit/feature-flags)\"",
     "typecheck": "tsc -p tsconfig.lib.json --noEmit"
+  },
+  "dependencies": {
+    "@mapit/logging": "workspace:*"
   }
 }

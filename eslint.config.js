@@ -23,6 +23,12 @@ export default tseslint.config(
   ...base,
   ...angular,
   ...boundaries,
+  {
+    files: ['apps/console/**/*.ts', 'apps/public-web/**/*.ts', 'libs/**/*.ts'],
+    ignores: ['**/*.spec.ts', '**/generated/**'],
+    rules: { 'no-console': 'error' },
+  },
+  { files: ['libs/logging/src/console-adapter.ts'], rules: { 'no-console': 'off' } },
 
   // ── Prefijos de selector por app ────────────────────────────
   {

@@ -70,6 +70,7 @@
     "new:flag": "node tools/scripts/new-flag.mjs",
     "//── INTERNOS ───────────────────────────────────────": "",
     "doctor": "node tools/scripts/check-env.mjs",
+    "logging:smoke": "node tools/scripts/check-logging.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

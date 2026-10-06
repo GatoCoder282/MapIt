@@ -5,8 +5,12 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -28,6 +32,8 @@ import com.mapit.shared.tenant.TenantScope;
  */
 @Component
 public final class RealtimeOutboxDispatcher {
+
+  private static final Logger LOG = LoggerFactory.getLogger(RealtimeOutboxDispatcher.class);
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate transactions;
@@ -58,9 +64,14 @@ public final class RealtimeOutboxDispatcher {
 
   @Scheduled(fixedDelayString = "${mapit.realtime.outbox.poll-interval-ms:250}")
   public void dispatchPending() {
+    withScheduledContext(this::dispatchAllTenants);
+  }
+
+  private void dispatchAllTenants() {
     // El kill switch se evalúa antes de reclamar: apagarlo no deja filas en vuelo nuevas.
     if (!flags.isEnabled(FeatureFlag.REALTIME_WEBSOCKET, true)) return;
     for (String tenant : tenants()) {
+      MDC.put("tenant_id", tenant);
       transactions.executeWithoutResult(
           status -> dispatchTenant(TenantId.of(tenant)));
     }
@@ -68,8 +79,13 @@ public final class RealtimeOutboxDispatcher {
 
   @Scheduled(fixedDelayString = "${mapit.realtime.outbox.cleanup-interval-ms:3600000}")
   public void cleanPublished() {
+    withScheduledContext(this::cleanAllTenants);
+  }
+
+  private void cleanAllTenants() {
     Instant before = clock.instant().minus(retention);
     for (String tenant : tenants()) {
+      MDC.put("tenant_id", tenant);
       transactions.executeWithoutResult(
           status -> {
             TenantId tenantId = TenantId.of(tenant);
@@ -88,6 +104,10 @@ public final class RealtimeOutboxDispatcher {
   }
 
   private void dispatchTenant(TenantId tenantId) {
+    dispatchTenantRows(tenantId);
+  }
+
+  private void dispatchTenantRows(TenantId tenantId) {
     setTenant(tenantId);
     List<OutboxRow> rows =
         jdbc.query(
@@ -112,10 +132,23 @@ public final class RealtimeOutboxDispatcher {
             tenantId.value(),
             batchSize);
 
+    if (rows.isEmpty()) {
+      LOG.atDebug().addKeyValue("event", "outbox.idle").log("No pending realtime events");
+    }
     for (OutboxRow row : rows) {
+      MDC.put("event_id", row.eventId().toString());
+      try {
+        dispatchRow(tenantId, row);
+      } finally {
+        MDC.remove("event_id");
+      }
+    }
+  }
+
+  private void dispatchRow(TenantId tenantId, OutboxRow row) {
       jdbc.update(
-          "update realtime_event_outbox set claimed_at = now(), attempts = attempts + 1 where event_id = ?",
-          row.eventId());
+          "update realtime_event_outbox set claimed_at = now(), attempts = attempts + 1 where event_id = ? and tenant_id = ?",
+          row.eventId(), tenantId.value());
       try {
         broker.convertAndSend(
             new RealtimeDestination(row.establishmentId(), java.util.Optional.empty()).topic(),
@@ -127,17 +160,41 @@ public final class RealtimeOutboxDispatcher {
               row.payload());
         }
         jdbc.update(
-            "update realtime_event_outbox set published_at = ?, claimed_at = null, last_error = null where event_id = ? and published_at is null",
+            "update realtime_event_outbox set published_at = ?, claimed_at = null, last_error = null where event_id = ? and tenant_id = ? and published_at is null",
             Timestamp.from(clock.instant()),
-            row.eventId());
+            row.eventId(), tenantId.value());
+        LOG.atInfo().addKeyValue("event", "outbox.published")
+            .addKeyValue("attempt", row.attempts() + 1).log("Realtime event published");
       } catch (RuntimeException exception) {
         Instant nextAttempt = clock.instant().plusMillis(retryDelayMillis(row.attempts() + 1));
         jdbc.update(
-            "update realtime_event_outbox set available_at = ?, claimed_at = null, last_error = ? where event_id = ?",
+            "update realtime_event_outbox set available_at = ?, claimed_at = null, last_error = ? where event_id = ? and tenant_id = ?",
             Timestamp.from(nextAttempt),
-            exception.getMessage(),
-            row.eventId());
+            exception.getClass().getName(),
+            row.eventId(), tenantId.value());
+        int attempt = row.attempts() + 1;
+        var log = (attempt & (attempt - 1)) == 0 ? LOG.atWarn() : LOG.atDebug();
+        log.addKeyValue("event", "outbox.retry_scheduled")
+            .addKeyValue("attempt", attempt)
+            .addKeyValue("next_attempt", nextAttempt.toString())
+            .addKeyValue("error_type", exception.getClass().getName())
+            .log("Realtime publication failed; retry scheduled");
       }
+  }
+
+  private static void withScheduledContext(Runnable action) {
+    Map<String, String> previous = MDC.getCopyOfContextMap();
+    try {
+      MDC.clear();
+      action.run();
+    } catch (RuntimeException exception) {
+      // TransactionTemplate has already rolled back. The scheduler normally swallows
+      // failures too; recording here retains the failed tenant and avoids a duplicate.
+      LOG.atError().addKeyValue("event", "outbox.processing.failed")
+          .setCause(exception).log("Scheduled outbox processing failed");
+    } finally {
+      MDC.clear();
+      if (previous != null) MDC.setContextMap(previous);
     }
   }
 

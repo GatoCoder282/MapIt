@@ -126,6 +126,9 @@ importers:
       '@mapit/feature-flags':
         specifier: workspace:*
         version: link:../../libs/feature-flags
+      '@mapit/logging':
+        specifier: workspace:*
+        version: link:../../libs/logging
       '@mapit/map-engine':
         specifier: workspace:*
         version: link:../../libs/map-engine
@@ -165,6 +168,9 @@ importers:
       '@mapit/feature-flags':
         specifier: workspace:*
         version: link:../../libs/feature-flags
+      '@mapit/logging':
+        specifier: workspace:*
+        version: link:../../libs/logging
       '@mapit/map-engine':
         specifier: workspace:*
         version: link:../../libs/map-engine
@@ -182,12 +188,21 @@ importers:
 
   libs/auth: {}
 
-  libs/feature-flags: {}
+  libs/feature-flags:
+    dependencies:
+      '@mapit/logging':
+        specifier: workspace:*
+        version: link:../logging
+
+  libs/logging: {}
 
   libs/map-engine: {}
 
   libs/realtime:
     dependencies:
+      '@mapit/logging':
+        specifier: workspace:*
+        version: link:../logging
       '@stomp/stompjs':
         specifier: 7.3.0
         version: 7.3.0
