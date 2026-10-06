@@ -136,6 +136,11 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'reservations/new',
+        loadComponent: () =>
+          import('./features/reservations/ui/reservation-form').then((m) => m.ReservationForm),
+      },
+      {
         path: 'demo-items',
         loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
       },

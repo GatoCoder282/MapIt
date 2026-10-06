@@ -1,0 +1,235 @@
+:host {
+  display: block;
+}
+
+.reservation-page {
+  display: grid;
+  gap: var(--mapit-space-6);
+  width: min(70rem, 100%);
+  margin-inline: auto;
+}
+
+.page-header {
+  display: grid;
+  gap: var(--mapit-space-2);
+}
+
+.page-header h1,
+.page-header p,
+.form-card h2,
+.form-card p,
+.success-card h2,
+.success-card p {
+  margin: 0;
+}
+
+.page-header h1 {
+  font: var(--mapit-text-display);
+}
+
+.page-header > p:last-child,
+.elements-heading p,
+.timezone,
+.empty {
+  color: var(--mapit-color-text-muted);
+}
+
+.eyebrow {
+  color: var(--mapit-color-primary);
+  font: var(--mapit-text-caps);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.reservation-form {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.8fr) minmax(24rem, 1.2fr);
+  align-items: start;
+  gap: var(--mapit-space-5);
+}
+
+.form-card,
+.success-card {
+  display: grid;
+  gap: var(--mapit-space-5);
+  padding: var(--mapit-space-5);
+  background: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius);
+}
+
+.field {
+  display: grid;
+  gap: var(--mapit-space-2);
+  font-weight: 600;
+}
+
+select,
+input[type='datetime-local'] {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  color: var(--mapit-color-text);
+  background: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border-input);
+  border-radius: var(--mapit-radius-input);
+}
+
+select:focus-visible,
+input:focus-visible,
+.button:focus-visible,
+.element-option:has(input:focus-visible) {
+  outline: 2px solid var(--mapit-color-primary);
+  outline-offset: 2px;
+}
+
+.interval-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mapit-space-4);
+}
+
+.timezone {
+  margin-top: calc(var(--mapit-space-3) * -1) !important;
+  font-size: 0.875rem;
+}
+
+.elements {
+  display: grid;
+  gap: var(--mapit-space-3);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.elements legend {
+  margin-bottom: var(--mapit-space-2);
+  font-weight: 700;
+}
+
+.elements-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mapit-space-3);
+}
+
+.elements-heading span {
+  flex: none;
+  color: var(--mapit-color-primary);
+  font-weight: 700;
+}
+
+.element-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mapit-space-3);
+}
+
+.element-option {
+  display: flex;
+  align-items: center;
+  gap: var(--mapit-space-3);
+  padding: var(--mapit-space-3);
+  cursor: pointer;
+  background: var(--mapit-color-surface-low);
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius);
+}
+
+.element-option.selected {
+  background: var(--mapit-color-primary-container);
+  border-color: var(--mapit-color-primary);
+}
+
+.element-option span {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.element-option small {
+  color: var(--mapit-color-text-muted);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--mapit-space-4);
+  border-top: 1px solid var(--mapit-color-border);
+}
+
+.button {
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--mapit-radius-input);
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.primary {
+  color: var(--mapit-color-on-primary);
+  background: var(--mapit-color-primary);
+}
+
+.message.error {
+  padding: var(--mapit-space-3);
+  color: var(--mapit-color-error);
+  background: rgb(186 26 26 / 0.08);
+  border-radius: var(--mapit-radius);
+}
+
+.success-card {
+  justify-items: start;
+  width: min(36rem, 100%);
+  margin-inline: auto;
+}
+
+.success-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  color: var(--mapit-color-on-primary);
+  background: var(--mapit-color-primary);
+  border-radius: 999px;
+  font-size: 1.5rem;
+}
+
+.success-card dl,
+.success-card dd {
+  margin: 0;
+}
+
+.success-card dt {
+  color: var(--mapit-color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.success-card dd {
+  overflow-wrap: anywhere;
+  font-family: monospace;
+}
+
+@media (max-width: 64rem) {
+  .reservation-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 40rem) {
+  .interval-grid,
+  .element-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .elements-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

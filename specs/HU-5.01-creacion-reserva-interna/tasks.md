@@ -46,10 +46,10 @@
 
 ## MAP-214 — Formulario de reserva
 
-- [ ] Implementar selección de intervalo y uno o más elementos.
-- [ ] Conectar el store al cliente OpenAPI generado.
-- [ ] Manejar loading, éxito y errores `400`, `404` y `409`.
-- [ ] Verificar accesibilidad y comportamiento responsive.
+- [x] Implementar selección de intervalo y uno o más elementos.
+- [x] Conectar el store al cliente OpenAPI generado.
+- [x] Manejar loading, éxito y errores `400`, `404` y `409`.
+- [x] Verificar accesibilidad y comportamiento responsive.
 
 ## MAP-215 — Integración
 
@@ -177,3 +177,18 @@
 - Ocho pruebas Vitest cubren búsqueda, selección, precarga del alta, creación, validaciones
   y errores de API.
 - `pnpm check` quedó en verde con 99 pruebas frontend (57 de consola, 1 de public-web y 41 de librerías).
+
+### MAP-214
+
+- Rama `chris799-hub/map-214-formulario-reserva`, basada en MAP-213.
+- Se añadió la ruta `/reservations/new` y el acceso Reservas al menú de la consola de staff.
+- El formulario carga establecimientos y recorre pisos y sectores para presentar únicamente
+  elementos reservables; admite seleccionar uno o varios.
+- El ViewModel integra cliente, establecimiento, intervalo y elementos con el cliente OpenAPI,
+  convirtiendo la hora local según la zona IANA del establecimiento.
+- Los errores `400`, `404` y `409` conservan el formulario y muestran mensajes específicos; el
+  éxito cierra el flujo y presenta el identificador de la reserva creada.
+- Doce pruebas nuevas cubren validaciones, zona horaria, respuestas HTTP, carga jerárquica,
+  filtrado y serialización del cuerpo JSON.
+- `pnpm check` quedó en verde con 111 pruebas frontend (69 de consola, 1 de public-web y 41 de
+  librerías), builds, contrato, backend y ArchUnit.
