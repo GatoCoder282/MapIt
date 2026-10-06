@@ -15,20 +15,21 @@ decidirá en MAP-216 con una prueba que reproduzca dos solicitudes simultáneas.
 
 ## 2. Patrones de diseño aplicados
 
-| Patrón              | Dónde                                                                                                  | Por qué aquí                                                                                    | Alternativa descartada                                                |
-| ------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Ports and Adapters  | Puertos de personas, recursos y reservas en `reservations-domain`; adaptadores JDBC en infraestructura | Evita importar los módulos `spaces` o `identity` y permite probar el caso de uso sin PostgreSQL | Importar repositorios de otros módulos rompería los límites modulares |
-| Repository          | Persistencia y consulta de conflictos mediante interfaces del dominio                                  | El caso de uso expresa qué necesita consultar sin conocer SQL ni RLS                            | Ejecutar SQL desde application acoplaría negocio y base de datos      |
-| Value Object        | `ReservationId`, `PersonId` y `ReservationTimeRange`                                                   | Evita confundir UUID y concentra la validez del intervalo `[inicio, fin)`                       | Usar UUID e instantes sueltos permitiría combinaciones inválidas      |
-| Application Service | Caso de uso `CreateReservation`                                                                        | Coordina validaciones y persistencia dentro de una transacción atómica                          | Colocar la lógica en el controlador mezclaría HTTP y negocio          |
+| Patrón              | Dónde                                                                                                  | Por qué aquí                                                                                    | Alternativa descartada                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Ports and Adapters  | Puertos de personas, recursos y reservas en `reservations-domain`; adaptadores JDBC en infraestructura | Evita importar los módulos `spaces` o `identity` y permite probar el caso de uso sin PostgreSQL | Importar repositorios de otros módulos rompería los límites modulares  |
+| Repository          | Persistencia y consulta de conflictos mediante interfaces del dominio                                  | El caso de uso expresa qué necesita consultar sin conocer SQL ni RLS                            | Ejecutar SQL desde application acoplaría negocio y base de datos       |
+| Value Object        | `ReservationId`, `PersonId` y `ReservationTimeRange`                                                   | Evita confundir UUID y concentra la validez del intervalo `[inicio, fin)`                       | Usar UUID e instantes sueltos permitiría combinaciones inválidas       |
+| Application Service | Caso de uso `CreateReservation`                                                                        | Coordina validaciones y persistencia dentro de una transacción atómica                          | Colocar la lógica en el controlador mezclaría HTTP y negocio           |
+| Bloqueo pesimista   | Filas de `space_element`, en orden UUID, dentro de `CreateReservation`                                 | Serializa reservas concurrentes que comparten recursos y evita interbloqueos por distinto orden | Una consulta previa sola permite que dos transacciones vean disponible |
 
 No se aplica State en esta historia: la reserva solo nace en `CREATED`; las transiciones
 corresponden a CU-13.
 
 ## 3. Cambios en el contrato API
 
-- [ ] Editar `packages/api-contract/openapi.yaml` antes del controlador y del cliente.
-- [ ] Ejecutar `pnpm api:lint` y `pnpm api:gen` después del cambio.
+- [x] Editar `packages/api-contract/openapi.yaml` antes del controlador y del cliente.
+- [x] Ejecutar `pnpm api:lint` y `pnpm api:gen` después del cambio.
 
 | Método | Ruta                                                    | Descripción                                            |
 | ------ | ------------------------------------------------------- | ------------------------------------------------------ |
@@ -55,16 +56,17 @@ los puertos de reservations.
 
 ## 5. Base de datos
 
-- [ ] Crear migraciones nuevas con `pnpm db:new`; no editar migraciones mergeadas.
-- [ ] Crear `person`, `reservation` y la asociación de reserva con elementos.
-- [ ] Incluir `tenant_id NOT NULL`, índices multi-tenant y RLS forzada.
-- [ ] Mantener FKs compuestas o validaciones equivalentes que impidan asociaciones entre
+- [x] Crear migraciones nuevas con `pnpm db:new`; no editar migraciones mergeadas.
+- [x] Crear `person`, `reservation` y la asociación de reserva con elementos.
+- [x] Incluir `tenant_id NOT NULL`, índices multi-tenant y RLS forzada.
+- [x] Mantener FKs compuestas o validaciones equivalentes que impidan asociaciones entre
       tenants.
-- [ ] Actualizar `docs/db/mapit.dbml` en el mismo commit de migración.
+- [x] Actualizar `docs/db/mapit.dbml` en el mismo commit de migración.
 
-La representación del intervalo en PostgreSQL debe permitir comprobar la fórmula de
-solapamiento y soportar una garantía de concurrencia. MAP-216 elegirá entre una restricción
-de exclusión y un bloqueo transaccional por recurso basándose en una prueba concurrente.
+La fórmula de solapamiento se comprueba después de bloquear con `SELECT ... FOR UPDATE` las
+filas de todos los elementos solicitados. Los UUID se ordenan antes del bloqueo para que dos
+reservas con varios elementos adquieran las filas en el mismo orden y no formen un ciclo de
+espera. El bloqueo dura hasta confirmar o revertir la transacción completa.
 
 ## 6. Frontend
 
@@ -100,7 +102,7 @@ La ruta permanecerá fuera de la navegación hasta que el flujo completo esté i
 
 | Riesgo                                                              | Mitigación                                                                                     |
 | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Dos solicitudes pasan la consulta de disponibilidad al mismo tiempo | Prueba concurrente en MAP-216 y garantía en transacción/BD antes de cerrar la HU               |
+| Dos solicitudes pasan la consulta de disponibilidad al mismo tiempo | Bloqueo pesimista ordenado antes de consultar y prueba concurrente con un `201` y un `409`     |
 | Referencias cruzadas entre tenants                                  | Filtro explícito, RLS, índices/FKs multi-tenant y pruebas con dos tenants                      |
 | Acoplar reservations con spaces                                     | Puertos y proyecciones mínimas dentro de reservations; solo bootstrap conoce todos los módulos |
 | Ambigüedad de zonas horarias                                        | API y dominio usan instantes; la UI convierte con la zona IANA del establecimiento             |

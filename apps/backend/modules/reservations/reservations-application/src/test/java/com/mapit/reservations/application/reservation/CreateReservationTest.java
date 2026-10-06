@@ -22,6 +22,7 @@ import com.mapit.reservations.domain.person.PersonId;
 import com.mapit.reservations.domain.person.PersonRepository;
 import com.mapit.reservations.domain.reservation.Reservation;
 import com.mapit.reservations.domain.reservation.ReservationAvailabilityRepository;
+import com.mapit.reservations.domain.reservation.ReservationConcurrencyGuard;
 import com.mapit.reservations.domain.reservation.ReservationRepository;
 import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.reservations.domain.reservation.ReservationResourceRepository;
@@ -50,6 +51,7 @@ class CreateReservationTest {
 
   private FakePeople people;
   private FakeResources resources;
+  private FakeConcurrencyGuard concurrencyGuard;
   private FakeAvailability availability;
   private FakeReservations reservations;
   private CreateReservation useCase;
@@ -65,6 +67,7 @@ class CreateReservationTest {
         List.of(
             resource(ELEMENT_A, ESTABLISHMENT, ReservationResource.Kind.TABLE),
             resource(ELEMENT_B, ESTABLISHMENT, ReservationResource.Kind.TABLE));
+    concurrencyGuard = new FakeConcurrencyGuard();
     availability = new FakeAvailability();
     reservations = new FakeReservations();
     TenantContext tenantContext = () -> Optional.of(TENANT);
@@ -73,6 +76,7 @@ class CreateReservationTest {
         new CreateReservation(
             people,
             resources,
+            concurrencyGuard,
             availability,
             reservations,
             tenantContext,
@@ -92,6 +96,7 @@ class CreateReservationTest {
     assertThat(created.createdAt()).isEqualTo(NOW);
     assertThat(created.createdBy()).isEqualTo(ACTOR);
     assertThat(reservations.saved).isSameAs(created);
+    assertThat(concurrencyGuard.lockedIds).containsExactlyInAnyOrder(ELEMENT_A, ELEMENT_B);
   }
 
   @Test
@@ -255,6 +260,15 @@ class CreateReservationTest {
     public Set<UUID> findConflictingElementIds(
         TenantId tenantId, Set<UUID> elementIds, ReservationTimeRange timeRange) {
       return conflicts;
+    }
+  }
+
+  private static final class FakeConcurrencyGuard implements ReservationConcurrencyGuard {
+    private Set<UUID> lockedIds = Set.of();
+
+    @Override
+    public void lockResources(TenantId tenantId, Set<UUID> elementIds) {
+      lockedIds = Set.copyOf(elementIds);
     }
   }
 

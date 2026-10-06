@@ -60,15 +60,15 @@
 
 ## MAP-216 — Concurrencia
 
-- [ ] Crear una prueba concurrente reproducible sobre el mismo recurso e intervalo.
-- [ ] Seleccionar e implementar la garantía transaccional/BD con evidencia técnica.
-- [ ] Verificar exactamente un éxito y un conflicto determinista.
+- [x] Crear una prueba concurrente reproducible sobre el mismo recurso e intervalo.
+- [x] Seleccionar e implementar la garantía transaccional/BD con evidencia técnica.
+- [x] Verificar exactamente un éxito y un conflicto determinista.
 
 ## Cierre de HU-5.01
 
-- [ ] Ejecutar `pnpm check` y dejarlo en verde.
-- [ ] Marcar todos los criterios de aceptación de `spec.md`.
-- [ ] Completar las notas de ejecución de cada MAP.
+- [x] Ejecutar `pnpm check` y dejarlo en verde.
+- [x] Marcar todos los criterios de aceptación de `spec.md`.
+- [x] Completar las notas de ejecución de cada MAP.
 - [ ] Adjuntar evidencias de backend, frontend y Postman al PR.
 
 ## Notas de ejecución
@@ -208,3 +208,22 @@
   los JWT, referencias y datos persistidos permanecen aislados entre tenants.
 - La clase focalizada pasó sus 8 pruebas, la suite completa `pnpm be:it` y `pnpm check`
   terminaron en verde.
+
+### MAP-216
+
+- Rama `chris799-hub/map-216-concurrencia-reservas`, basada en MAP-215.
+- `ReservationConcurrencyGuard` expresa en el dominio la necesidad de serializar reservas
+  que comparten elementos sin acoplar el caso de uso a PostgreSQL.
+- `JdbcReservationConcurrencyGuard` bloquea las filas de `space_element` con
+  `SELECT ... FOR UPDATE`; ordena primero los UUID para prevenir interbloqueos entre
+  solicitudes con varios elementos.
+- `CreateReservation` toma los bloqueos dentro de su transacción, después de validar los
+  recursos y antes de consultar solapamientos. La segunda solicitud espera el commit de la
+  primera y entonces detecta el conflicto existente.
+- La prueba mantiene un bloqueo inicial controlado, espera hasta comprobar en PostgreSQL que
+  ambas solicitudes HTTP están bloqueadas y luego las libera. El resultado fue exactamente
+  un `201`, un `409`, una reserva y una asociación persistidas.
+- Las 9 pruebas de `ReservationCreationIntegrationTest` y las pruebas unitarias de aplicación
+  terminaron sin fallos.
+- `pnpm check` quedó en verde con formato, 111 pruebas frontend, builds, contrato, backend y
+  reglas de arquitectura.

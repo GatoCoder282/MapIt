@@ -93,30 +93,30 @@ distinto, cubierto por CU-16.
 
 ## 7. Criterios de aceptación
 
-- [ ] **CA-1:** Dado un ADMIN, MANAGER o STAFF autenticado, una persona válida y elementos
+- [x] **CA-1:** Dado un ADMIN, MANAGER o STAFF autenticado, una persona válida y elementos
       disponibles de su tenant, cuando crea una reserva con un intervalo válido, entonces
       recibe `201` y la reserva se persiste en estado `CREATED` con todas sus asociaciones.
-- [ ] **CA-2:** Dado un cliente inexistente, cuando el actor registra sus datos básicos desde
+- [x] **CA-2:** Dado un cliente inexistente, cuando el actor registra sus datos básicos desde
       el flujo y luego crea la reserva, entonces ambas operaciones terminan correctamente y
       la reserva referencia a la persona creada.
-- [ ] **CA-3:** Dada una reserva existente para un elemento, cuando se solicita otra cuyo
+- [x] **CA-3:** Dada una reserva existente para un elemento, cuando se solicita otra cuyo
       intervalo se superpone total o parcialmente, entonces responde `409` y no se persiste
       ninguna reserva ni asociación adicional.
-- [ ] **CA-4:** Dada una reserva existente que termina en un instante, cuando otra comienza
+- [x] **CA-4:** Dada una reserva existente que termina en un instante, cuando otra comienza
       exactamente en ese instante sobre el mismo elemento, entonces la nueva reserva se
       permite.
-- [ ] **CA-5:** Dada una solicitud con varios elementos, cuando cualquiera de ellos presenta
+- [x] **CA-5:** Dada una solicitud con varios elementos, cuando cualquiera de ellos presenta
       un conflicto, entonces se rechaza la solicitud completa sin reservar los demás.
-- [ ] **CA-6:** Dado un identificador de persona, establecimiento o elemento de otro tenant,
+- [x] **CA-6:** Dado un identificador de persona, establecimiento o elemento de otro tenant,
       cuando el actor intenta crear la reserva, entonces responde `404` y no revela ni
       modifica datos externos.
-- [ ] **CA-7:** Dado un intervalo inválido, una lista vacía o identificadores repetidos,
+- [x] **CA-7:** Dado un intervalo inválido, una lista vacía o identificadores repetidos,
       cuando se envía la solicitud, entonces responde `400` con Problem Details.
-- [ ] **CA-8:** Dado un usuario sin un rol permitido, cuando invoca el endpoint, entonces
+- [x] **CA-8:** Dado un usuario sin un rol permitido, cuando invoca el endpoint, entonces
       responde `403`; sin autenticación responde `401`.
-- [ ] **CA-9:** Dadas dos solicitudes concurrentes para el mismo elemento e intervalo,
+- [x] **CA-9:** Dadas dos solicitudes concurrentes para el mismo elemento e intervalo,
       cuando ambas se procesan, entonces solo una crea la reserva y la otra responde `409`.
-- [ ] **CA-10:** Dado el formulario de consola, cuando la API acepta la reserva, entonces se
+- [x] **CA-10:** Dado el formulario de consola, cuando la API acepta la reserva, entonces se
       muestra la confirmación y se limpia o cierra el formulario; ante `400`, `404` o `409`,
       conserva los datos útiles e informa el error correspondiente.
 

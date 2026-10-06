@@ -15,6 +15,7 @@ import com.mapit.reservations.domain.person.PersonId;
 import com.mapit.reservations.domain.person.PersonRepository;
 import com.mapit.reservations.domain.reservation.Reservation;
 import com.mapit.reservations.domain.reservation.ReservationAvailabilityRepository;
+import com.mapit.reservations.domain.reservation.ReservationConcurrencyGuard;
 import com.mapit.reservations.domain.reservation.ReservationId;
 import com.mapit.reservations.domain.reservation.ReservationRepository;
 import com.mapit.reservations.domain.reservation.ReservationResource;
@@ -30,6 +31,7 @@ public class CreateReservation {
 
   private final PersonRepository people;
   private final ReservationResourceRepository resources;
+  private final ReservationConcurrencyGuard concurrencyGuard;
   private final ReservationAvailabilityRepository availability;
   private final ReservationRepository reservations;
   private final TenantContext tenantContext;
@@ -39,6 +41,7 @@ public class CreateReservation {
   public CreateReservation(
       PersonRepository people,
       ReservationResourceRepository resources,
+      ReservationConcurrencyGuard concurrencyGuard,
       ReservationAvailabilityRepository availability,
       ReservationRepository reservations,
       TenantContext tenantContext,
@@ -46,6 +49,7 @@ public class CreateReservation {
       Clock clock) {
     this.people = people;
     this.resources = resources;
+    this.concurrencyGuard = concurrencyGuard;
     this.availability = availability;
     this.reservations = reservations;
     this.tenantContext = tenantContext;
@@ -72,6 +76,7 @@ public class CreateReservation {
     requirePerson(tenantId, reservation.personId());
     requireEstablishment(tenantId, reservation.establishmentId());
     requireValidResources(tenantId, reservation);
+    concurrencyGuard.lockResources(tenantId, reservation.spaceElementIds());
     requireAvailability(tenantId, reservation);
 
     return reservations.save(reservation);

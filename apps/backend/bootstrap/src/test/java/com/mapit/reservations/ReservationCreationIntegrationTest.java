@@ -2,10 +2,19 @@ package com.mapit.reservations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import javax.sql.DataSource;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -74,6 +83,7 @@ class ReservationCreationIntegrationTest {
 
   @LocalServerPort private int port;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private DataSource dataSource;
   @Autowired private AccessTokenIssuer tokens;
 
   @DynamicPropertySource
@@ -425,6 +435,86 @@ class ReservationCreationIntegrationTest {
     assertThat(associationCount(TENANT_A)).isZero();
     assertThat(reservationCount(TENANT_B)).isEqualTo(1);
     assertThat(associationCount(TENANT_B)).isEqualTo(1);
+  }
+
+  @Test
+  void concurrentRequestsForTheSameElementProduceOneCreationAndOneConflict()
+      throws Exception {
+    String staff = token(STAFF_A, TENANT_A, UserRole.STAFF);
+    CountDownLatch callersReady = new CountDownLatch(2);
+    CountDownLatch start = new CountDownLatch(1);
+
+    try (Connection blocker = dataSource.getConnection();
+        ExecutorService executor = Executors.newFixedThreadPool(2)) {
+      blocker.setAutoCommit(false);
+      lockElement(blocker, ELEMENT_A);
+
+      Future<Integer> first =
+          executor.submit(
+              () -> concurrentCreateStatus(staff, callersReady, start, "2026-10-19T10:00:00Z"));
+      Future<Integer> second =
+          executor.submit(
+              () -> concurrentCreateStatus(staff, callersReady, start, "2026-10-19T10:00:00Z"));
+
+      assertThat(callersReady.await(5, TimeUnit.SECONDS)).isTrue();
+      start.countDown();
+      awaitBlockedReservationRequests(2);
+      blocker.commit();
+
+      assertThat(List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)))
+          .containsExactlyInAnyOrder(201, 409);
+    }
+
+    assertThat(reservationCount(TENANT_A)).isEqualTo(1);
+    assertThat(associationCount(TENANT_A)).isEqualTo(1);
+  }
+
+  private int concurrentCreateStatus(
+      String token, CountDownLatch callersReady, CountDownLatch start, String startsAt)
+      throws InterruptedException {
+    callersReady.countDown();
+    if (!start.await(5, TimeUnit.SECONDS)) {
+      throw new AssertionError("Las solicitudes concurrentes no recibieron la señal de inicio");
+    }
+    return create(
+            ESTABLISHMENT_A,
+            PERSON_A,
+            List.of(ELEMENT_A),
+            startsAt,
+            "2026-10-19T12:00:00Z",
+            token)
+        .returnResult(Void.class)
+        .getStatus()
+        .value();
+  }
+
+  private void lockElement(Connection connection, UUID elementId) throws Exception {
+    try (PreparedStatement statement =
+        connection.prepareStatement("select id from space_element where id = ? for update")) {
+      statement.setObject(1, elementId);
+      statement.executeQuery().close();
+    }
+  }
+
+  private void awaitBlockedReservationRequests(int expected) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (System.nanoTime() < deadline) {
+      Long blocked =
+          jdbc.queryForObject(
+              """
+              select count(*)
+              from pg_stat_activity
+              where pid <> pg_backend_pid()
+                and query like '%reservation-concurrency-guard%'
+                and wait_event_type = 'Lock'
+              """,
+              Long.class);
+      if (blocked != null && blocked >= expected) {
+        return;
+      }
+      Thread.sleep(25);
+    }
+    throw new AssertionError("Las solicitudes no alcanzaron juntas el bloqueo transaccional");
   }
 
   private RestTestClient.ResponseSpec create(
