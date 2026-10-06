@@ -53,10 +53,10 @@
 
 ## MAP-215 — Integración
 
-- [ ] Probar creación válida y asociaciones múltiples con Testcontainers.
-- [ ] Probar intervalo, cliente, establecimiento, elementos y roles inválidos.
-- [ ] Probar solapamientos totales, parciales, contenidos y reservas consecutivas.
-- [ ] Probar aislamiento entre tenants y ausencia de escritura parcial.
+- [x] Probar creación válida y asociaciones múltiples con Testcontainers.
+- [x] Probar intervalo, cliente, establecimiento, elementos y roles inválidos.
+- [x] Probar solapamientos totales, parciales, contenidos y reservas consecutivas.
+- [x] Probar aislamiento entre tenants y ausencia de escritura parcial.
 
 ## MAP-216 — Concurrencia
 
@@ -192,3 +192,19 @@
   filtrado y serialización del cuerpo JSON.
 - `pnpm check` quedó en verde con 111 pruebas frontend (69 de consola, 1 de public-web y 41 de
   librerías), builds, contrato, backend y ArchUnit.
+
+### MAP-215
+
+- Rama `chris799-hub/map-215-pruebas-integracion-reservas`, basada en MAP-214.
+- `ReservationCreationIntegrationTest` recorre la API HTTP completa con JWT, seguridad,
+  aplicación, adaptadores JDBC y PostgreSQL 16 mediante Testcontainers.
+- Ocho pruebas verifican la creación válida con varias asociaciones, los roles ADMIN,
+  MANAGER y STAFF, y el rechazo de solicitudes anónimas o con rol no autorizado.
+- Las referencias inválidas o de otro tenant se ocultan como `404`; intervalos, elementos y
+  estados no válidos responden `400` sin persistir reservas ni asociaciones parciales.
+- Se cubren los cuatro tipos de solapamiento —total, izquierdo, contenido y derecho— y se
+  confirma que dos reservas consecutivas sí están permitidas por la semántica `[inicio, fin)`.
+- También se prueba que un conflicto entre varios elementos rechaza toda la operación y que
+  los JWT, referencias y datos persistidos permanecen aislados entre tenants.
+- La clase focalizada pasó sus 8 pruebas, la suite completa `pnpm be:it` y `pnpm check`
+  terminaron en verde.
