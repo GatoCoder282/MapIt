@@ -147,15 +147,26 @@ function createElementNode(
 
 function createTransformer(layer: Konva.Layer): Konva.Transformer {
   const transformer = new Konva.Transformer({
-    enabledAnchors: [],
+    enabledAnchors: [
+      'top-left',
+      'top-center',
+      'top-right',
+      'middle-right',
+      'bottom-right',
+      'bottom-center',
+      'bottom-left',
+      'middle-left',
+    ],
+    borderEnabled: true,
     rotateEnabled: true,
     rotationSnaps: [0, 45, 90, 135, 180, 225, 270, 315],
-    anchorSize: 14,
+    anchorSize: 10,
+    anchorCornerRadius: 5,
     anchorStroke: '#333333',
     anchorFill: '#ffffff',
-    anchorStrokeWidth: 2,
-    anchorCornerRadius: 7,
-    borderEnabled: false,
+    anchorStrokeWidth: 1,
+    borderStroke: '#007bff',
+    borderDash: [3, 3],
     keepRatio: false,
     centeredScaling: false,
     rotateAnchorOffset: 20,
@@ -200,6 +211,8 @@ export class KonvaMapEngine implements MapEnginePort {
   private rotateEndCallbacks: ((payload: { id: SpaceElementId; rotation: number }) => void)[] = [];
   private resizeEndCallbacks: ((payload: {
     id: SpaceElementId;
+    x: number;
+    y: number;
     width: number;
     height: number;
   }) => void)[] = [];
@@ -530,25 +543,31 @@ export class KonvaMapEngine implements MapEnginePort {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const scaleX = this.transformer!.getNode()!.scaleX();
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const _scaleY = this.transformer!.getNode()!.scaleY();
+      const scaleY = this.transformer!.getNode()!.scaleY();
 
       const shape = node.findOne('.shape');
       if (!isKonvaRect(shape)) return;
-      const newWidth = Math.max(20, Math.round(shape.width() * scaleX));
-      const newHeight = Math.max(20, Math.round(shape.height() * _scaleY));
 
+      // Calculate real size after scale
+      const newWidth = Math.max(20, Math.round(shape.width() * scaleX));
+      const newHeight = Math.max(20, Math.round(shape.height() * scaleY));
+
+      // Check bounds before applying
       if (this.isElementOutOfBounds(node, newWidth, newHeight)) {
-        // Revert rotation
+        // Revert rotation and scale
         node.rotation(0);
+        node.scale({ x: 1, y: 1 });
         this.transformer!.rotation(0);
         this.elementsLayer!.batchDraw();
         return;
       }
 
+      // Apply new size and reset scale
       shape.width(newWidth);
       shape.height(newHeight);
       node.scale({ x: 1, y: 1 });
 
+      // Update label position
       const label = node.findOne('.label');
       if (!isKonvaText(label)) return;
       label.x(newWidth / 2);
@@ -564,9 +583,11 @@ export class KonvaMapEngine implements MapEnginePort {
         capText.y(10);
       }
 
+      // Emit complete transform payload (position + rotation + size)
+      // Note: resize from left/top anchors changes x,y position
       this.rotateEndCallbacks.forEach((cb) => cb({ id: node.id(), rotation }));
       this.resizeEndCallbacks.forEach((cb) =>
-        cb({ id: node.id(), width: newWidth, height: newHeight }),
+        cb({ id: node.id(), x: node.x(), y: node.y(), width: newWidth, height: newHeight }),
       );
 
       this.elementsLayer!.batchDraw();
@@ -692,7 +713,15 @@ export class KonvaMapEngine implements MapEnginePort {
     this.rotateEndCallbacks.push(cb);
   }
 
-  onResizeEnd(cb: (payload: { id: SpaceElementId; width: number; height: number }) => void): void {
+  onResizeEnd(
+    cb: (payload: {
+      id: SpaceElementId;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => void,
+  ): void {
     this.resizeEndCallbacks.push(cb);
   }
 

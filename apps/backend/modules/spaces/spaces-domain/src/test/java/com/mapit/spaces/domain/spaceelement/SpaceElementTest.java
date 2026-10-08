@@ -28,6 +28,9 @@ class SpaceElementTest {
         SpaceElementType.TABLE,
         100.0,
         50.0,
+        80.0,
+        80.0,
+        0.0,
         SpaceElementState.AVAILABLE,
         AHORA,
         USUARIO);
@@ -50,7 +53,7 @@ class SpaceElementTest {
   void initialState_nulo_deja_available() {
     SpaceElement e =
         SpaceElement.register(
-            SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.TABLE, 0.0, 0.0, null,
+            SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.TABLE, 0.0, 0.0, 80.0, 80.0, 0.0, null,
             AHORA, USUARIO);
     assertThat(e.state()).isEqualTo(SpaceElementState.AVAILABLE);
   }
@@ -59,7 +62,7 @@ class SpaceElementTest {
   void acepta_el_origen_del_sector() {
     SpaceElement e =
         SpaceElement.register(
-            SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.DECOR, 0.0, 0.0,
+            SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.DECOR, 0.0, 0.0, 80.0, 80.0, 0.0,
             null, AHORA, USUARIO);
     assertThat(e.x()).isZero();
     assertThat(e.y()).isZero();
@@ -71,7 +74,7 @@ class SpaceElementTest {
             () ->
                 SpaceElement.register(
                     SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.TABLE, -1.0,
-                    0.0, null, AHORA, USUARIO))
+                    0.0, 80.0, 80.0, 0.0, SpaceElementState.AVAILABLE, AHORA, USUARIO))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("no pueden ser negativas");
   }
@@ -82,7 +85,7 @@ class SpaceElementTest {
             () ->
                 SpaceElement.register(
                     SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.TABLE, 0.0,
-                    -5.5, null, AHORA, USUARIO))
+                    -5.5, 80.0, 80.0, 0.0, SpaceElementState.AVAILABLE, AHORA, USUARIO))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("no pueden ser negativas");
   }
@@ -93,13 +96,13 @@ class SpaceElementTest {
             () ->
                 SpaceElement.register(
                     SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.TABLE,
-                    Double.NaN, 0.0, null, AHORA, USUARIO))
+                    Double.NaN, 0.0, 80.0, 80.0, 0.0, SpaceElementState.AVAILABLE, AHORA, USUARIO))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
             () ->
                 SpaceElement.register(
                     SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.TABLE, 0.0,
-                    Double.POSITIVE_INFINITY, null, AHORA, USUARIO))
+                    Double.POSITIVE_INFINITY, 80.0, 80.0, 0.0, SpaceElementState.AVAILABLE, AHORA, USUARIO))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -109,7 +112,7 @@ class SpaceElementTest {
             () ->
                 SpaceElement.register(
                     SpaceElementId.generate(), TENANT, SECTOR, SpaceElementType.TABLE, null,
-                    0.0, null, AHORA, USUARIO))
+                    0.0, 80.0, 80.0, 0.0, SpaceElementState.AVAILABLE, AHORA, USUARIO))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("obligatorias");
   }
@@ -118,11 +121,14 @@ class SpaceElementTest {
   void update_cambia_tipo_y_coordenadas_y_conserva_estado() {
     SpaceElement e = unElemento();
     Instant despues = AHORA.plusSeconds(60);
-    SpaceElement actualizado = e.update(SpaceElementType.BAR, 200.0, 10.0, despues, USUARIO);
+    SpaceElement actualizado = e.update(SpaceElementType.BAR, 200.0, 10.0, 100.0, 60.0, 45.0, despues, USUARIO);
 
     assertThat(actualizado.type()).isEqualTo(SpaceElementType.BAR);
     assertThat(actualizado.x()).isEqualTo(200.0);
     assertThat(actualizado.y()).isEqualTo(10.0);
+    assertThat(actualizado.width()).isEqualTo(100.0);
+    assertThat(actualizado.height()).isEqualTo(60.0);
+    assertThat(actualizado.rotation()).isEqualTo(45.0);
     assertThat(actualizado.state()).isEqualTo(SpaceElementState.AVAILABLE); // no tocado
     assertThat(actualizado.audit().createdAt()).isEqualTo(AHORA);
     assertThat(actualizado.audit().updatedAt()).isEqualTo(despues);
@@ -134,7 +140,7 @@ class SpaceElementTest {
     assertThatThrownBy(
             () ->
                 borrado.update(
-                    SpaceElementType.TABLE, 1.0, 1.0, AHORA.plusSeconds(2), USUARIO))
+                    SpaceElementType.TABLE, 1.0, 1.0, 20.0, 20.0, 0.0, AHORA.plusSeconds(2), USUARIO))
         .isInstanceOf(IllegalStateException.class);
   }
 

@@ -4,6 +4,7 @@ import {
   effect,
   inject,
   Injectable,
+  InjectionToken,
   signal,
   type Signal,
   type WritableSignal,
@@ -23,6 +24,11 @@ import {
 } from '@mapit/map-engine';
 
 import { STRINGS } from '../../../core/strings';
+
+export const MAP_EDITOR_DEBOUNCE_MS = new InjectionToken<number>('MAP_EDITOR_DEBOUNCE_MS', {
+  providedIn: 'root',
+  factory: () => 300,
+});
 
 const DEFAULT_SECTOR_SIZE: Size = { width: 1200, height: 800 };
 
@@ -46,8 +52,8 @@ function mapApiElementToLayoutElement(el: SpaceElement): MapSpaceElement {
     type: el.type,
     label: `${el.type} ${el.id.slice(0, 6)}`,
     position: { x: el.x, y: el.y },
-    size: defaults.size,
-    rotation: 0,
+    size: { width: el.width ?? defaults.size.width, height: el.height ?? defaults.size.height },
+    rotation: el.rotation ?? 0,
     state: el.state,
     capacity: defaults.capacity,
     reservable: defaults.reservable,
@@ -71,6 +77,8 @@ function clampPosition(
 interface PendingSave {
   elementId: SpaceElementId;
   previousPosition: Point;
+  previousRotation: number;
+  previousSize: Size;
 }
 
 interface ActiveDragCoords {
@@ -84,6 +92,7 @@ export class MapEditorStore {
   private readonly api = inject(MapEditorApiService);
   private readonly strings = STRINGS.spaces.editor;
   private readonly destroyRef = inject(DestroyRef);
+  private readonly debounceMs = inject(MAP_EDITOR_DEBOUNCE_MS);
 
   private readonly _sectorId = signal<string | null>(null);
   readonly sectorId = this._sectorId.asReadonly();
@@ -158,7 +167,7 @@ export class MapEditorStore {
     toObservable(this.layout)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
-        debounceTime(300),
+        debounceTime(this.debounceMs),
         distinctUntilChanged((prev: MapLayout, curr: MapLayout) => prev.elements === curr.elements),
       )
       .subscribe(() => {
@@ -272,7 +281,15 @@ export class MapEditorStore {
       return;
     }
 
-    this.pendingSave = { elementId: id, previousPosition: element.position };
+    // Track previous state for persistence (only if no pending save for this element)
+    if (!this.pendingSave || this.pendingSave.elementId !== id) {
+      this.pendingSave = {
+        elementId: id,
+        previousPosition: element.position,
+        previousRotation: element.rotation,
+        previousSize: element.size,
+      };
+    }
 
     this._layout.update((current) => ({
       ...current,
@@ -303,23 +320,55 @@ export class MapEditorStore {
 
   rotateElement(id: SpaceElementId, rotation: number): void {
     const normalizedRotation = ((rotation % 360) + 360) % 360;
+    const element = this._layout().elements.find((el) => el.id === id);
+    if (!element) return;
+
+    // Track previous state for persistence (only if no pending save for this element)
+    if (!this.pendingSave || this.pendingSave.elementId !== id) {
+      this.pendingSave = {
+        elementId: id,
+        previousPosition: element.position,
+        previousRotation: element.rotation,
+        previousSize: element.size,
+      };
+    }
+
     this._layout.update((current) => ({
       ...current,
       elements: current.elements.map((el) =>
         el.id === id ? { ...el, rotation: normalizedRotation } : el,
       ),
     }));
+
+    this.debouncedPersist();
   }
 
-  resizeElement(id: SpaceElementId, width: number, height: number): void {
+  resizeElement(id: SpaceElementId, x: number, y: number, width: number, height: number): void {
     const clampedWidth = Math.max(20, width);
     const clampedHeight = Math.max(20, height);
+    const element = this._layout().elements.find((el) => el.id === id);
+    if (!element) return;
+
+    // Track previous state for persistence (only if no pending save for this element)
+    if (!this.pendingSave || this.pendingSave.elementId !== id) {
+      this.pendingSave = {
+        elementId: id,
+        previousPosition: element.position,
+        previousRotation: element.rotation,
+        previousSize: element.size,
+      };
+    }
+
     this._layout.update((current) => ({
       ...current,
       elements: current.elements.map((el) =>
-        el.id === id ? { ...el, size: { width: clampedWidth, height: clampedHeight } } : el,
+        el.id === id
+          ? { ...el, position: { x, y }, size: { width: clampedWidth, height: clampedHeight } }
+          : el,
       ),
     }));
+
+    this.debouncedPersist();
   }
 
   private debouncedPersist(): void {
@@ -328,7 +377,10 @@ export class MapEditorStore {
       if (!this.pendingSave || this.pendingSave.elementId !== el.id) return false;
       return (
         el.position.x !== this.pendingSave.previousPosition.x ||
-        el.position.y !== this.pendingSave.previousPosition.y
+        el.position.y !== this.pendingSave.previousPosition.y ||
+        el.rotation !== this.pendingSave.previousRotation ||
+        el.size.width !== this.pendingSave.previousSize.width ||
+        el.size.height !== this.pendingSave.previousSize.height
       );
     });
 
@@ -338,6 +390,11 @@ export class MapEditorStore {
     if (element) {
       this.persistElementPosition(element);
     }
+  }
+
+  /** Método público solo para tests: dispara la persistencia inmediata sin debounce */
+  flushDebouncedPersist(): void {
+    this.debouncedPersist();
   }
 
   private persistElementPosition(element: MapSpaceElement): void {
@@ -351,6 +408,9 @@ export class MapEditorStore {
       type: element.type,
       x: element.position.x,
       y: element.position.y,
+      width: element.size.width,
+      height: element.size.height,
+      rotation: element.rotation,
     };
 
     this.api

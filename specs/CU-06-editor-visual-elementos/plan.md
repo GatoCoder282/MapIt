@@ -138,12 +138,12 @@ En `wizard-summary.ts`:
 
 ## 7. Feature toggle
 
-- [ ] **Sí, detrás de flag:** `editor.map.enabled` (tipo `release`).
-- [ ] `pnpm new:flag editor.map.enabled` (ejecutar antes de merge).
+- [ ] **Sí, detrás de flag:** `map-editor.enabled` (tipo `release`).
+- [ ] `pnpm new:flag map-editor.enabled` (ejecutar antes de merge).
 - Fecha de retiro: `2027-01-01` · Issue de limpieza: `#TBD`.
 
 ```html
-@if (flags.isEnabled('editor.map.enabled')()) {
+@if (flags.isEnabled('map-editor.enabled')()) {
 <button (click)="openEditor()">Finalizar y abrir editor de mapas</button>
 }
 ```

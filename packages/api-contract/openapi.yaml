@@ -1599,7 +1599,7 @@ components:
     # ── Elementos espaciales (HU-2.03) ──────────────────────────────────────
     SpaceElement:
       type: object
-      required: [id, sectorId, type, x, y, state, createdAt, updatedAt]
+      required: [id, sectorId, type, x, y, width, height, rotation, state, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1623,6 +1623,21 @@ components:
           format: double
           minimum: 0
           description: Coordenada vertical relativa al sector.
+        width:
+          type: number
+          format: double
+          minimum: 20
+          description: Ancho del elemento.
+        height:
+          type: number
+          format: double
+          minimum: 20
+          description: Alto del elemento.
+        rotation:
+          type: number
+          format: double
+          default: 0
+          description: Rotación en grados.
         state:
           type: string
           enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
@@ -1652,6 +1667,18 @@ components:
           type: number
           format: double
           minimum: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+        height:
+          type: number
+          format: double
+          minimum: 20
+        rotation:
+          type: number
+          format: double
+          default: 0
         initialState:
           type: string
           enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
@@ -1672,6 +1699,18 @@ components:
           type: number
           format: double
           minimum: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+        height:
+          type: number
+          format: double
+          minimum: 20
+        rotation:
+          type: number
+          format: double
+          default: 0
 
     SpaceElementStateUpdateRequest:
       type: object

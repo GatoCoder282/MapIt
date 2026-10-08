@@ -48,7 +48,15 @@ export interface MapEnginePort {
   onRotateEnd(cb: (payload: { id: SpaceElementId; rotation: number }) => void): void;
 
   /** Suscribe a eventos de fin de redimensionamiento de un elemento. */
-  onResizeEnd(cb: (payload: { id: SpaceElementId; width: number; height: number }) => void): void;
+  onResizeEnd(
+    cb: (payload: {
+      id: SpaceElementId;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => void,
+  ): void;
 
   /** Suscribe a eventos de clic en elemento (o fondo para deseleccionar). */
   onElementClick(cb: (payload: { id: SpaceElementId | null }) => void): void;

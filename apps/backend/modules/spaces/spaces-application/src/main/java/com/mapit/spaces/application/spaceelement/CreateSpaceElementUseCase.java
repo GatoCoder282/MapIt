@@ -60,6 +60,9 @@ public class CreateSpaceElementUseCase {
                 type,
                 command.x(),
                 command.y(),
+                command.width(),
+                command.height(),
+                command.rotation(),
                 initialState,
                 clock.instant(),
                 null));

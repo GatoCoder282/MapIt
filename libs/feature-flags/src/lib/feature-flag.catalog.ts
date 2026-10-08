@@ -28,7 +28,7 @@ export const FLAGS_POR_DEFECTO = {
   'spaces.sectors': true,
 
   /** Editor visual de elementos espaciales (CU-06 · MAP-196). */
-  'editor.map.enabled': true,
+  'map-editor.enabled': true,
 
   /** Vertical Hotel: reservas por rango de fechas (CU-22). */
   'vertical.hotel': false,

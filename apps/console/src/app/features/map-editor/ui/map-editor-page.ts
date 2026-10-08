@@ -667,7 +667,7 @@ export class MapEditorPageComponent implements OnDestroy {
         });
 
         this.port.onResizeEnd((payload) => {
-          this.store.resizeElement(payload.id, payload.width, payload.height);
+          this.store.resizeElement(payload.id, payload.x, payload.y, payload.width, payload.height);
         });
 
         this.port.onElementClick((payload) => {

@@ -36,6 +36,9 @@ public record SpaceElement(
     SpaceElementType type,
     double x,
     double y,
+    double width,
+    double height,
+    double rotation,
     SpaceElementState state,
     AuditTrail audit) {
 
@@ -54,6 +57,12 @@ public record SpaceElement(
       throw new IllegalArgumentException(
           "x e y son relativas al sector y no pueden ser negativas (recibidas x=%s, y=%s)"
               .formatted(x, y));
+    }
+    if (width < 20 || height < 20) {
+      throw new IllegalArgumentException("width y height deben ser >= 20");
+    }
+    if (!Double.isFinite(rotation)) {
+      throw new IllegalArgumentException("rotation debe ser un número finito");
     }
   }
 
@@ -78,13 +87,14 @@ public record SpaceElement(
       SpaceElementType type,
       Double x,
       Double y,
+      Double width,
+      Double height,
+      Double rotation,
       SpaceElementState initialState,
       Instant now,
       UUID by) {
-    // IllegalArgumentException (no NullPointerException): un body JSON sin x/y debe dar
-    // 400 controlado con Problem Details, no un 500 con stacktrace.
-    if (x == null || y == null) {
-      throw new IllegalArgumentException("x e y son obligatorias");
+    if (x == null || y == null || width == null || height == null) {
+      throw new IllegalArgumentException("x, y, width, height son obligatorias");
     }
     return new SpaceElement(
         id,
@@ -93,6 +103,9 @@ public record SpaceElement(
         type,
         x,
         y,
+        width != null ? width : 80.0,
+        height != null ? height : 80.0,
+        rotation != null ? rotation : 0.0,
         initialState == null ? SpaceElementState.AVAILABLE : initialState,
         AuditTrail.created(now, by));
   }
@@ -105,15 +118,15 @@ public record SpaceElement(
    * igual que en Sector/Floor.
    */
   public SpaceElement update(
-      SpaceElementType type, Double x, Double y, Instant now, UUID by) {
+      SpaceElementType type, Double x, Double y, Double width, Double height, Double rotation, Instant now, UUID by) {
     if (audit.isDeleted()) {
       throw new IllegalStateException("No se puede actualizar un elemento dado de baja");
     }
-    if (x == null || y == null) {
-      throw new IllegalArgumentException("x e y son obligatorias");
+    if (x == null || y == null || width == null || height == null) {
+      throw new IllegalArgumentException("x, y, width, height son obligatorias");
     }
     return new SpaceElement(
-        id, tenantId, sectorId, type, x, y, state, audit.touched(now, by));
+        id, tenantId, sectorId, type, x, y, width, height, rotation != null ? rotation : 0.0, state, audit.touched(now, by));
   }
 
   /**
@@ -126,7 +139,7 @@ public record SpaceElement(
       throw new IllegalStateException("No se puede cambiar el estado de un elemento dado de baja");
     }
     return new SpaceElement(
-        id, tenantId, sectorId, type, x, y, newState, audit.touched(now, by));
+        id, tenantId, sectorId, type, x, y, width, height, rotation, newState, audit.touched(now, by));
   }
 
   /**
@@ -138,7 +151,7 @@ public record SpaceElement(
       throw new IllegalStateException("El elemento ya estaba dado de baja");
     }
     return new SpaceElement(
-        id, tenantId, sectorId, type, x, y, state, audit.deleted(now, by));
+        id, tenantId, sectorId, type, x, y, width, height, rotation, state, audit.deleted(now, by));
   }
 
   public boolean isDeleted() {

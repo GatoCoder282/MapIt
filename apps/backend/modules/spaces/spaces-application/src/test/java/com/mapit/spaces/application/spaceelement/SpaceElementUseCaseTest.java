@@ -111,7 +111,7 @@ class SpaceElementUseCaseTest {
 
   @Test
   void alta_valida_deja_el_elemento_con_tenant_del_contexto() {
-    var r = create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", 100.0, 50.0, null));
+    var r = create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", 100.0, 50.0, 80.0, 80.0, 0.0, null));
     assertThat(r.type()).isEqualTo("TABLE");
     assertThat(r.state()).isEqualTo("AVAILABLE");
     assertThat(r.sectorId()).isEqualTo(SECTOR_A);
@@ -122,7 +122,7 @@ class SpaceElementUseCaseTest {
   @Test
   void alta_en_sector_de_otro_tenant_responde_404() {
     assertThatThrownBy(
-            () -> create.create(new CreateSpaceElementCommand(SECTOR_B, "TABLE", 10.0, 10.0, null)))
+            () -> create.create(new CreateSpaceElementCommand(SECTOR_B, "TABLE", 10.0, 10.0, 80.0, 80.0, 0.0, null)))
         .isInstanceOf(SectorNotFoundException.class);
   }
 
@@ -131,7 +131,7 @@ class SpaceElementUseCaseTest {
     assertThatThrownBy(
             () ->
                 create.create(
-                    new CreateSpaceElementCommand(UUID.randomUUID(), "TABLE", 10.0, 10.0, null)))
+                    new CreateSpaceElementCommand(UUID.randomUUID(), "TABLE", 10.0, 10.0, 80.0, 80.0, 0.0, null)))
         .isInstanceOf(SectorNotFoundException.class);
   }
 
@@ -139,7 +139,7 @@ class SpaceElementUseCaseTest {
   void tipo_no_permitido_por_la_vertical_responde_400() {
     // ROOM solo en hotel (RN-4); el tenant A es un restaurante.
     assertThatThrownBy(
-            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "ROOM", 10.0, 10.0, null)))
+            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "ROOM", 10.0, 10.0, 80.0, 80.0, 0.0, null)))
         .isInstanceOf(InvalidElementTypeForVerticalException.class)
         .hasMessageContaining("ROOM");
   }
@@ -148,7 +148,7 @@ class SpaceElementUseCaseTest {
   void tipo_invalido_responde_400() {
     assertThatThrownBy(
             () ->
-                create.create(new CreateSpaceElementCommand(SECTOR_A, "DRAGON", 10.0, 10.0, null)))
+                create.create(new CreateSpaceElementCommand(SECTOR_A, "DRAGON", 10.0, 10.0, 80.0, 80.0, 0.0, null)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("type inválido");
   }
@@ -158,7 +158,7 @@ class SpaceElementUseCaseTest {
     assertThatThrownBy(
             () ->
                 create.create(
-                    new CreateSpaceElementCommand(SECTOR_A, "TABLE", 10.0, 10.0, "WIZARD")))
+                    new CreateSpaceElementCommand(SECTOR_A, "TABLE", 10.0, 10.0, 80.0, 80.0, 0.0, "WIZARD")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("initialState inválido");
   }
@@ -166,7 +166,7 @@ class SpaceElementUseCaseTest {
   @Test
   void coordenada_negativa_responde_400() {
     assertThatThrownBy(
-            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", -1.0, 10.0, null)))
+            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", -1.0, 10.0, 80.0, 80.0, 0.0, null)))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -174,11 +174,11 @@ class SpaceElementUseCaseTest {
   void coordenadas_nulas_responden_400_no_500() {
     // Antes la cadena llegaba a Objects.requireNonNull y terminaba en un 500 con stacktrace.
     assertThatThrownBy(
-            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", null, 10.0, null)))
+            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", null, 10.0, 80.0, 80.0, 0.0, null)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("obligatorias");
     assertThatThrownBy(
-            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", 10.0, null, null)))
+            () -> create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", 10.0, null, 80.0, 80.0, 0.0, null)))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -188,12 +188,12 @@ class SpaceElementUseCaseTest {
   void consulta_solo_ve_elementos_de_su_sector_y_tenant() {
     elements.store(
         SpaceElement.register(
-            SpaceElementId.generate(), TENANT_A, SECTOR_A, SpaceElementType.TABLE, 1.0, 1.0, null,
-            AHORA, null));
+            SpaceElementId.generate(), TENANT_A, SECTOR_A, SpaceElementType.TABLE, 1.0, 1.0, 80.0, 80.0, 0.0,
+            null, AHORA, null));
     elements.store(
         SpaceElement.register(
-            SpaceElementId.generate(), TENANT_B, SECTOR_B, SpaceElementType.TABLE, 5.0, 5.0, null,
-            AHORA, null));
+            SpaceElementId.generate(), TENANT_B, SECTOR_B, SpaceElementType.TABLE, 5.0, 5.0, 80.0, 80.0, 0.0,
+            null, AHORA, null));
     assertThat(query.bySector(SECTOR_A)).hasSize(1);
     assertThatThrownBy(() -> query.bySector(SECTOR_B))
         .isInstanceOf(SectorNotFoundException.class);
@@ -205,11 +205,11 @@ class SpaceElementUseCaseTest {
   void actualizar_conserva_estado_y_toca_updated_at() {
     SpaceElement existente =
         SpaceElement.register(
-            SpaceElementId.generate(), TENANT_A, SECTOR_A, SpaceElementType.TABLE, 1.0, 1.0,
+            SpaceElementId.generate(), TENANT_A, SECTOR_A, SpaceElementType.TABLE, 1.0, 1.0, 80.0, 80.0, 0.0,
             SpaceElementState.OCCUPIED, AHORA, null);
     elements.store(existente);
 
-    var r = update.update(new UpdateSpaceElementCommand(SECTOR_A, existente.id().value(), "BAR", 20.0, 30.0));
+    var r = update.update(new UpdateSpaceElementCommand(SECTOR_A, existente.id().value(), "BAR", 20.0, 30.0, 100.0, 60.0, 45.0));
     assertThat(r.type()).isEqualTo("BAR");
     assertThat(r.state()).isEqualTo("OCCUPIED"); // no cambia, eso es HU-3.01
     var saved = elements.guardado();
@@ -220,14 +220,14 @@ class SpaceElementUseCaseTest {
   void actualizar_con_tipo_incompatible_con_la_vertical_responde_400() {
     SpaceElement existente =
         SpaceElement.register(
-            SpaceElementId.generate(), TENANT_A, SECTOR_A, SpaceElementType.TABLE, 1.0, 1.0,
+            SpaceElementId.generate(), TENANT_A, SECTOR_A, SpaceElementType.TABLE, 1.0, 1.0, 80.0, 80.0, 0.0,
             SpaceElementState.AVAILABLE, AHORA, null);
     elements.store(existente);
 
     assertThatThrownBy(
             () ->
                 update.update(
-                    new UpdateSpaceElementCommand(SECTOR_A, existente.id().value(), "ROOM", 5.0, 5.0)))
+                    new UpdateSpaceElementCommand(SECTOR_A, existente.id().value(), "ROOM", 5.0, 5.0, 80.0, 80.0, 0.0)))
         .isInstanceOf(InvalidElementTypeForVerticalException.class);
   }
 
@@ -235,8 +235,8 @@ class SpaceElementUseCaseTest {
   void actualizar_elemento_de_otro_tenant_responde_404() {
     SpaceElement ajeno =
         SpaceElement.register(
-            SpaceElementId.generate(), TENANT_B, SECTOR_B, SpaceElementType.TABLE, 1.0, 1.0, null,
-            AHORA, null);
+            SpaceElementId.generate(), TENANT_B, SECTOR_B, SpaceElementType.TABLE, 1.0, 1.0, 80.0, 80.0, 0.0,
+            null, AHORA, null);
     elements.store(ajeno);
 
     // El tenant A quiere tocar el elemento del tenant B: primero separa por sector; como el
@@ -244,7 +244,7 @@ class SpaceElementUseCaseTest {
     assertThatThrownBy(
             () ->
                 update.update(
-                    new UpdateSpaceElementCommand(SECTOR_A, ajeno.id().value(), "TABLE", 5.0, 5.0)))
+                    new UpdateSpaceElementCommand(SECTOR_A, ajeno.id().value(), "TABLE", 5.0, 5.0, 80.0, 80.0, 0.0)))
         .isInstanceOf(SpaceElementNotFoundException.class);
   }
 
@@ -253,7 +253,7 @@ class SpaceElementUseCaseTest {
     assertThatThrownBy(
             () ->
                 update.update(
-                    new UpdateSpaceElementCommand(SECTOR_B, UUID.randomUUID(), "TABLE", 5.0, 5.0)))
+                    new UpdateSpaceElementCommand(SECTOR_B, UUID.randomUUID(), "TABLE", 5.0, 5.0, 80.0, 80.0, 0.0)))
         .isInstanceOf(SectorNotFoundException.class);
   }
 

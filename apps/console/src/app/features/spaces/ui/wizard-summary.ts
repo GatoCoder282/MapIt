@@ -216,7 +216,7 @@ interface SummaryData {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </button>
-          @if (flags.isEnabled('editor.map.enabled')()) {
+          @if (flags.isEnabled('map-editor.enabled')()) {
             <button class="btn-accent" type="button" (click)="openEditor()">
               <svg
                 width="18"

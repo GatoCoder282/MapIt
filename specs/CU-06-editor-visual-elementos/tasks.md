@@ -35,7 +35,7 @@
     - `@Input() editable = true` → `port.setEditable(editable)`.
     - Solo presentación: cero lógica, solo monta el host.
   - [x] **MAP-196.8** Conectar botón en `wizard-summary.ts`:
-    - Añadir botón "Finalizar y abrir editor de mapas" (feature-flag `editor.map.enabled`).
+    - Añadir botón "Finalizar y abrir editor de mapas" (feature-flag `map-editor.enabled`).
     - Click → calcular `targetSectorId` (primer sector con elementos > primer sector > none).
     - Navegar `router.navigate(['/spaces/editor', targetSectorId], { queryParams: { sectorName } })`.
     - Test: click navega a ruta correcta con sectorId válido.
@@ -103,13 +103,13 @@
     - [x] **MAP-198.7.2** Implementado `isElementOutOfBounds()` que calcula las 4 esquinas del elemento rotado y verifica si alguna está fuera del sector.
     - [x] **MAP-198.7.3** Si el elemento no cabe rotado, se revierte automáticamente la rotación y no se emite evento `rotateEnd`.
 
-- [ ] **MAP-199 — Implementar resize de SpaceElements**
-  - [ ] **MAP-199.1** En adaptador Konva: añadir 8 handles de redimensionamiento (esquinas + bordes medios) visibles en selección.
-  - [ ] **MAP-199.2** Evento `resizeEnd` del port con `{ id, width, height }` (clamped a mínimos: ej. 20×20).
-  - [ ] **MAP-199.3** En `MapEditorStore`: `resizeElement(id, width, height)` actualiza `layout` local.
-  - [ ] **MAP-199.4** El size **no se persiste en backend** en esta entrega (solo en `MapLayout` local). Documentar en store.
-  - [ ] **MAP-199.5** Test Vitest: `resizeEnd` → `layout` refleja nuevo size → clamping mínimos funciona.
-  - [ ] **MAP-199.6** Verificación manual: redimensionar esquinas/bordes → elemento cambia tamaño → recarga (F5) → size vuelve a default (esperado).
+[ ] MAP-199 — Implementar resize de SpaceElements
+[ ] MAP-199.1 En adaptador Konva: añadir 8 handles de redimensionamiento (esquinas + bordes medios) visibles en selección.
+[ ] MAP-199.2 Evento resizeEnd del port con { id, width, height } (clamped a mínimos: ej. 20×20).
+[ ] MAP-199.3 En MapEditorStore: resizeElement(id, width, height) actualiza layout local y persiste los cambios en el backend.
+[ ] MAP-199.4 El size sí se persiste en backend en esta entrega (enviando la actualización correspondiente).
+[ ] MAP-199.5 Test Vitest: resizeEnd → layout refleja nuevo size y se envía al backend → clamping mínimos funciona.
+[ ] MAP-199.6 Verificación manual: redimensionar esquinas/bordes → elemento cambia tamaño → recarga (F5) → size se mantiene con los cambios realizados (esperado).
 
 - [ ] **MAP-200 — Persistir cambios de posición vía API**
   - [ ] **MAP-200.1** En `MapEditorStore.saveElementPosition(id)`: construye `SpaceElementUpdateRequest` con `type` (actual), `x`, `y` desde `layout`.
@@ -150,7 +150,7 @@
 - **KonvaMapEngine**: El adaptador Konva no existía; creé `KonvaMapEngine` en `libs/map-engine/src/lib/adapters/konva/konva-map-engine.ts` implementando `MapEnginePort`. El puerto se extendió con callbacks `onDragEnd`, `onRotateEnd`, `onResizeEnd`, `onElementClick` para que el store reaccione a eventos del canvas.
 - **Inyección del adaptador**: El adaptador se registra vía `provideKonvaMapEngine()` en `apps/console/src/app/app.config.ts`. El paquete `@mapit/map-engine` exporta el adaptador en `package.json` bajo `./adapters/konva/konva-map-engine`.
 - **MapEditorStore**: Usa `DestroyRef` + `takeUntilDestroyed(destroyRef)` para limpieza de suscripciones. El clamping de coordenadas usa `layout.size` (1200×800 fallback) porque el sector no tiene dimensiones en BD aún (ver `SpaceElement.java:24`). El debounce de 300ms coalesce múltiples drags rápidos en un solo PUT.
-- **Navegación desde wizard-summary**: El botón "Finalizar y abrir editor de mapas" (feature-flag `editor.map.enabled`) navega a `/spaces/editor/:sectorId` pasando el `sectorName` como query param. El `MapEditorPageComponent` lee el query param y lo pasa a `store.loadSector(sectorId, sectorName)`.
+- **Navegación desde wizard-summary**: El botón "Finalizar y abrir editor de mapas" (feature-flag `map-editor.enabled`) navega a `/spaces/editor/:sectorId` pasando el `sectorName` como query param. El `MapEditorPageComponent` lee el query param y lo pasa a `store.loadSector(sectorId, sectorName)`.
 - **Eliminación de dependencia cross-feature**: Se eliminó la inyección de `SpacesStore` en `MapEditorStore`; el nombre del sector ahora viaja por query param desde `wizard-summary`.
 - **Build**: `pnpm fe:build` compila correctamente. El chunk `map-editor-page` se carga perezosamente (~15 KB gzipped).
 - **Lint pendiente**: Quedan warnings de ESLint (imports type-only, assertions innecesarias, lifecycle vacíos) que se resolverán en siguiente iteración antes de `pnpm check`.

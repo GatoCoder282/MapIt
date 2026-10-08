@@ -91,7 +91,7 @@ class SpaceElementControllerTest {
             .post()
             .uri("/api/v1/sectors/{s}/elements", SECTOR_A)
             .contentType(MediaType.APPLICATION_JSON)
-            .body("{\"type\":\"TABLE\",\"x\":10,\"y\":20,\"initialState\":\"AVAILABLE\"}")
+            .body("{\"type\":\"TABLE\",\"x\":10,\"y\":20,\"width\":80,\"height\":80,\"rotation\":0,\"initialState\":\"AVAILABLE\"}")
             .exchange()
             .expectStatus()
             .isCreated()
@@ -111,7 +111,7 @@ class SpaceElementControllerTest {
         .post()
         .uri("/api/v1/sectors/{s}/elements", UUID.randomUUID())
         .contentType(MediaType.APPLICATION_JSON)
-        .body("{\"type\":\"TABLE\",\"x\":1,\"y\":1}")
+        .body("{\"type\":\"TABLE\",\"x\":1,\"y\":1,\"width\":80,\"height\":80,\"rotation\":0}")
         .exchange()
         .expectStatus()
         .isNotFound()
@@ -125,7 +125,7 @@ class SpaceElementControllerTest {
         .post()
         .uri("/api/v1/sectors/{s}/elements", SECTOR_A)
         .contentType(MediaType.APPLICATION_JSON)
-        .body("{\"type\":\"ROOM\",\"x\":1,\"y\":1}")
+        .body("{\"type\":\"ROOM\",\"x\":1,\"y\":1,\"width\":80,\"height\":80,\"rotation\":0}")
         .exchange()
         .expectStatus()
         .isBadRequest()
@@ -140,7 +140,7 @@ class SpaceElementControllerTest {
         .post()
         .uri("/api/v1/sectors/{s}/elements", SECTOR_A)
         .contentType(MediaType.APPLICATION_JSON)
-        .body("{\"type\":\"DRAGON\",\"x\":1,\"y\":1}")
+        .body("{\"type\":\"DRAGON\",\"x\":1,\"y\":1,\"width\":80,\"height\":80,\"rotation\":0}")
         .exchange()
         .expectStatus()
         .isBadRequest();
@@ -152,7 +152,7 @@ class SpaceElementControllerTest {
         .post()
         .uri("/api/v1/sectors/{s}/elements", SECTOR_A)
         .contentType(MediaType.APPLICATION_JSON)
-        .body("{\"type\":\"TABLE\",\"x\":-5,\"y\":1}")
+        .body("{\"type\":\"TABLE\",\"x\":-5,\"y\":1,\"width\":80,\"height\":80,\"rotation\":0}")
         .exchange()
         .expectStatus()
         .isBadRequest();
@@ -194,7 +194,7 @@ class SpaceElementControllerTest {
             .put()
             .uri("/api/v1/sectors/{s}/elements/{e}", SECTOR_A, id)
             .contentType(MediaType.APPLICATION_JSON)
-            .body("{\"type\":\"BAR\",\"x\":42,\"y\":42}")
+            .body("{\"type\":\"BAR\",\"x\":42,\"y\":42,\"width\":80,\"height\":80,\"rotation\":0}")
             .exchange()
             .expectStatus()
             .isOk()
@@ -212,7 +212,7 @@ class SpaceElementControllerTest {
         .put()
         .uri("/api/v1/sectors/{s}/elements/{e}", SECTOR_A, UUID.randomUUID())
         .contentType(MediaType.APPLICATION_JSON)
-        .body("{\"type\":\"TABLE\",\"x\":1,\"y\":1}")
+        .body("{\"type\":\"TABLE\",\"x\":1,\"y\":1,\"width\":80,\"height\":80,\"rotation\":0}")
         .exchange()
         .expectStatus()
         .isNotFound();
@@ -226,7 +226,7 @@ class SpaceElementControllerTest {
         .put()
         .uri("/api/v1/sectors/{s}/elements/{e}", UUID.randomUUID(), id)
         .contentType(MediaType.APPLICATION_JSON)
-        .body("{\"type\":\"TABLE\",\"x\":1,\"y\":1}")
+        .body("{\"type\":\"TABLE\",\"x\":1,\"y\":1,\"width\":80,\"height\":80,\"rotation\":0}")
         .exchange()
         .expectStatus()
         .isNotFound();
@@ -271,6 +271,9 @@ class SpaceElementControllerTest {
             SpaceElementType.valueOf(type),
             x,
             y,
+            80.0,
+            80.0,
+            0.0,
             com.mapit.shared.realtime.SpaceElementState.valueOf(state),
             AHORA,
             null);

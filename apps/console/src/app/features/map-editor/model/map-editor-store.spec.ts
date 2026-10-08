@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { MapEditorStore } from './map-editor-store';
 import { MapEditorApiService } from '../data/map-editor-api';
+import { MAP_EDITOR_DEBOUNCE_MS } from './map-editor-store';
 import { of, throwError } from 'rxjs';
 import type { SpaceElement } from '@mapit/api-client';
 
@@ -13,6 +14,9 @@ const MOCK_ELEMENTS: SpaceElement[] = [
     type: 'TABLE',
     x: 100,
     y: 100,
+    width: 80,
+    height: 80,
+    rotation: 0,
     state: 'AVAILABLE',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -23,6 +27,9 @@ const MOCK_ELEMENTS: SpaceElement[] = [
     type: 'BAR',
     x: 300,
     y: 200,
+    width: 100,
+    height: 100,
+    rotation: 0,
     state: 'OCCUPIED',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -46,6 +53,7 @@ describe('MapEditorStore', () => {
         provideZonelessChangeDetection(),
         MapEditorStore,
         { provide: MapEditorApiService, useValue: mockApi },
+        { provide: MAP_EDITOR_DEBOUNCE_MS, useValue: 0 },
       ],
     });
 
@@ -58,7 +66,7 @@ describe('MapEditorStore', () => {
   });
 
   it('should load sector and populate layout with mapped elements', () => {
-    store.loadSector('sector-1');
+    store.loadSector('sector-1', 'Terraza');
     vi.runAllTicks();
 
     expect(mockApi.listSpaceElementsBySector).toHaveBeenCalledWith('sector-1');
@@ -128,13 +136,13 @@ describe('MapEditorStore', () => {
     store.loadSector('sector-1');
     vi.runAllTicks();
 
-    store.resizeElement('elem-1', 200, 150);
+    store.resizeElement('elem-1', 200, 150, 200, 150);
     expect(store.layout().elements.find((e) => e.id === 'elem-1')?.size).toEqual({
       width: 200,
       height: 150,
     });
 
-    store.resizeElement('elem-1', 10, 10);
+    store.resizeElement('elem-1', 10, 10, 20, 20);
     expect(store.layout().elements.find((e) => e.id === 'elem-1')?.size).toEqual({
       width: 20,
       height: 20,
@@ -149,13 +157,16 @@ describe('MapEditorStore', () => {
 
     expect(store.saving()).toBe(false);
 
-    vi.advanceTimersByTime(300);
+    store.flushDebouncedPersist();
     vi.runAllTicks();
 
     expect(mockApi.updateSpaceElement).toHaveBeenCalledWith('sector-1', 'elem-1', {
       type: 'TABLE',
       x: 200,
       y: 200,
+      width: 80,
+      height: 80,
+      rotation: 0,
     });
     expect(store.saving()).toBe(false);
   });
@@ -168,7 +179,7 @@ describe('MapEditorStore', () => {
 
     const originalPos = store.layout().elements.find((e) => e.id === 'elem-1')?.position;
     store.dragElement('elem-1', 500, 500);
-    vi.advanceTimersByTime(300);
+    store.flushDebouncedPersist();
     vi.runAllTicks();
 
     expect(store.error()).toBeTruthy();
@@ -183,7 +194,7 @@ describe('MapEditorStore', () => {
     vi.runAllTicks();
 
     store.dragElement('elem-1', 500, 500);
-    vi.advanceTimersByTime(300);
+    store.flushDebouncedPersist();
     vi.runAllTicks();
 
     expect(store.error()).toContain('inválidos');
@@ -196,7 +207,7 @@ describe('MapEditorStore', () => {
     vi.runAllTicks();
 
     store.dragElement('elem-1', 500, 500);
-    vi.advanceTimersByTime(300);
+    store.flushDebouncedPersist();
     vi.runAllTicks();
 
     expect(store.error()).toContain('encontrado');
@@ -210,7 +221,7 @@ describe('MapEditorStore', () => {
     store.dragElement('elem-1', 200, 200);
     store.dragElement('elem-1', 300, 300);
 
-    vi.advanceTimersByTime(300);
+    store.flushDebouncedPersist();
     vi.runAllTicks();
 
     expect(mockApi.updateSpaceElement).toHaveBeenCalledTimes(1);
@@ -218,20 +229,30 @@ describe('MapEditorStore', () => {
       type: 'TABLE',
       x: 300,
       y: 300,
+      width: 80,
+      height: 80,
+      rotation: 0,
     });
   });
 
-  it('should not trigger API call when rotating or resizing (not persisted in this delivery)', () => {
+  it('should persist element rotation and size on transform end', () => {
     store.loadSector('sector-1');
     vi.runAllTicks();
 
     store.rotateElement('elem-1', 45);
-    store.resizeElement('elem-1', 120, 120);
+    store.resizeElement('elem-1', 120, 120, 120, 120);
 
-    vi.advanceTimersByTime(500);
+    store.flushDebouncedPersist();
     vi.runAllTicks();
 
-    expect(mockApi.updateSpaceElement).not.toHaveBeenCalled();
+    expect(mockApi.updateSpaceElement).toHaveBeenCalledWith('sector-1', 'elem-1', {
+      type: 'TABLE',
+      x: 120, // position updated by resizeElement
+      y: 120,
+      width: 120,
+      height: 120,
+      rotation: 45,
+    });
   });
 
   it('should expose sectorId signal', () => {

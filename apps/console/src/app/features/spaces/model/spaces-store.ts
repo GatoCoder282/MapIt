@@ -493,10 +493,16 @@ export class SpacesStore {
     }
 
     const editingId = this.editingElementIdState();
+    const existingElement = editingId
+      ? this.elementsBySectorState()[sectorId]?.find((el: SpaceElement) => el.id === editingId)
+      : null;
     const request: SpaceElementCreateRequest = {
       type: draft.type as SpaceElementCreateRequest.TypeEnum,
-      x,
-      y,
+      x: parseFloat(draft.x),
+      y: parseFloat(draft.y),
+      width: existingElement?.width ?? 20,
+      height: existingElement?.height ?? 20,
+      rotation: existingElement?.rotation ?? 0,
       initialState:
         (draft.initialState as SpaceElementCreateRequest.InitialStateEnum) ?? 'AVAILABLE',
     };
@@ -507,7 +513,14 @@ export class SpacesStore {
     const request$ =
       editingId === null
         ? this.api.createSpaceElement(sectorId, request)
-        : this.api.updateSpaceElement(sectorId, editingId, { type: request.type, x, y });
+        : this.api.updateSpaceElement(sectorId, editingId, {
+            type: request.type,
+            x,
+            y,
+            width: request.width ?? 20,
+            height: request.height ?? 20,
+            rotation: request.rotation ?? 0,
+          });
 
     return request$.pipe(
       finalize(() => this.savingState.set(false)),

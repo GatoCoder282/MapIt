@@ -58,6 +58,9 @@ describe('SpacesStore — elementos espaciales', () => {
         type: 'TABLE',
         x: 1,
         y: 2,
+        width: 80,
+        height: 80,
+        rotation: 0,
         state: 'AVAILABLE',
         createdAt: '2026-09-24T00:00:00Z',
         updatedAt: '2026-09-24T00:00:00Z',
@@ -86,6 +89,9 @@ describe('SpacesStore — elementos espaciales', () => {
       type: 'TABLE',
       x: 5,
       y: 10,
+      width: 80,
+      height: 80,
+      rotation: 0,
       state: 'AVAILABLE',
       createdAt: '2026-09-24T00:00:00Z',
       updatedAt: '2026-09-24T00:00:00Z',
@@ -98,7 +104,15 @@ describe('SpacesStore — elementos espaciales', () => {
     const subscription = store.saveElement('s-a')?.subscribe();
     expect(api.createSpaceElement).toHaveBeenCalledWith(
       's-a',
-      expect.objectContaining({ type: 'TABLE', x: 5, y: 10, initialState: 'AVAILABLE' }),
+      expect.objectContaining({
+        type: 'TABLE',
+        x: 5,
+        y: 10,
+        width: 20,
+        height: 20,
+        rotation: 0,
+        initialState: 'AVAILABLE',
+      }),
     );
     expect(store.elementsBySector()['s-a']?.[0]).toEqual(created);
     expect(store.elementDraft().type).toBe('TABLE'); // reset suave post-save
@@ -132,12 +146,27 @@ describe('SpacesStore — elementos espaciales', () => {
       type: 'TABLE',
       x: 1,
       y: 1,
+      width: 80,
+      height: 80,
+      rotation: 0,
       state: 'OCCUPIED',
       createdAt: '2026-09-23T00:00:00Z',
       updatedAt: '2026-09-23T00:00:00Z',
     };
-    const updated = { ...existing, type: 'BAR' as const, x: 9, y: 9 };
+    const updated = {
+      ...existing,
+      type: 'BAR' as const,
+      x: 9,
+      y: 9,
+      width: 80,
+      height: 80,
+      rotation: 0,
+    };
+    api.listSpaceElementsBySector.mockReturnValue(of([existing]));
     api.updateSpaceElement.mockReturnValue(of(updated));
+
+    // Cargar el elemento en el store primero
+    store.loadSpaceElementsBySector('s-a');
 
     // Simular contexto editando el elemento existente
     store.setElementType('BAR');
@@ -151,7 +180,7 @@ describe('SpacesStore — elementos espaciales', () => {
     expect(api.updateSpaceElement).toHaveBeenCalledWith(
       's-a',
       'e1',
-      expect.objectContaining({ type: 'BAR', x: 9, y: 9 }),
+      expect.objectContaining({ type: 'BAR', x: 9, y: 9, width: 80, height: 80, rotation: 0 }),
     );
     sub?.unsubscribe();
   });
@@ -163,6 +192,9 @@ describe('SpacesStore — elementos espaciales', () => {
       type: 'TABLE',
       x: 1,
       y: 1,
+      width: 80,
+      height: 80,
+      rotation: 0,
       state: 'AVAILABLE',
       createdAt: '2026-09-23T00:00:00Z',
       updatedAt: '2026-09-23T00:00:00Z',
@@ -208,6 +240,9 @@ describe('SpacesStore — elementos espaciales', () => {
       type: 'TABLE',
       x: 1,
       y: 1,
+      width: 80,
+      height: 80,
+      rotation: 0,
       state: 'OUT_OF_SERVICE',
       createdAt: '2026-09-23T00:00:00Z',
       updatedAt: '2026-09-23T00:00:00Z',
@@ -233,6 +268,9 @@ describe('SpacesStore — elementos espaciales', () => {
       type: 'TABLE',
       x: 1,
       y: 1,
+      width: 80,
+      height: 80,
+      rotation: 0,
       state: 'AVAILABLE',
       createdAt: '2026-09-23T00:00:00Z',
       updatedAt: '2026-09-23T00:00:00Z',
