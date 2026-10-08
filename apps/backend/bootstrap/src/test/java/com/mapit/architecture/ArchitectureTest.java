@@ -117,6 +117,15 @@ class ArchitectureTest {
           .callMethod(System.class, "currentTimeMillis")
           .because("usa java.time.Clock inyectado: si no, el tiempo no se puede testear.");
 
+  @ArchTest
+  static final ArchRule no_stdout = noClasses().should().accessField(System.class, "out");
+
+  @ArchTest
+  static final ArchRule no_stderr = noClasses().should().accessField(System.class, "err");
+
+  @ArchTest
+  static final ArchRule no_print_stack_trace = noClasses().should().callMethod(Throwable.class, "printStackTrace");
+
   /**
    * Comprobación de humo: si el import no encuentra clases, las reglas de arriba pasarían
    * vacías y darían una falsa sensación de seguridad.

@@ -4,6 +4,8 @@
 # =============================================================
 
 spring:
+  main:
+    banner-mode: "off"
   application:
     name: mapit-backend
 
@@ -131,5 +133,16 @@ springdoc:
 
 logging:
   level:
-    com.mapit: DEBUG
+    root: ${LOG_LEVEL:INFO}
+    com.mapit: ${MAPIT_LOG_LEVEL:INFO}
     org.springframework.web: INFO
+  structured:
+    format:
+      console: logstash
+    json:
+      customizer: com.mapit.config.logging.SafeJsonMembersCustomizer
+      stacktrace:
+        printer: com.mapit.config.logging.SafeStackTracePrinter
+      add:
+        service: mapit-backend
+        environment: ${APP_ENV:development}

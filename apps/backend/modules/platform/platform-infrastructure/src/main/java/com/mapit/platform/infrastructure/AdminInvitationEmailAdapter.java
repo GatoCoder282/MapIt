@@ -1,5 +1,9 @@
 package com.mapit.platform.infrastructure;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -15,6 +19,8 @@ import com.mapit.platform.domain.Tenant;
 @Component
 class AdminInvitationEmailAdapter implements AdminInvitationEmailPort {
 
+  private static final Logger LOG = LoggerFactory.getLogger(AdminInvitationEmailAdapter.class);
+  private final AtomicBoolean degraded = new AtomicBoolean();
   private final JavaMailSender mailSender;
   private final String sender;
 
@@ -38,6 +44,17 @@ class AdminInvitationEmailAdapter implements AdminInvitationEmailPort {
             + activationUrl + "\n\n"
             + "Si no esperabas este correo, ignóralo: el token caduca solo.\n\n"
             + "— Equipo MapIt");
-    mailSender.send(message);
+    try {
+      mailSender.send(message);
+      if (degraded.getAndSet(false)) {
+        LOG.atInfo().addKeyValue("event", "integration.recovered").addKeyValue("integration", "smtp")
+            .log("Mail transport recovered");
+      }
+    } catch (RuntimeException exception) {
+      var log = degraded.getAndSet(true) ? LOG.atDebug() : LOG.atWarn();
+      log.addKeyValue("event", "integration.failed").addKeyValue("integration", "smtp")
+          .addKeyValue("error_type", exception.getClass().getName()).log("Invitation delivery failed");
+      throw exception;
+    }
   }
 }

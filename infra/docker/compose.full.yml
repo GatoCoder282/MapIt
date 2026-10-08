@@ -9,8 +9,15 @@
 
 name: ${COMPOSE_PROJECT_NAME:-mapit}
 
+x-application-logging: &application-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   backend:
+    logging: *application-logging
     build:
       context: ../..
       dockerfile: infra/docker/backend.Dockerfile
@@ -23,6 +30,9 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      APP_ENV: ${APP_ENV:-docker}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      MAPIT_LOG_LEVEL: ${MAPIT_LOG_LEVEL:-INFO}
       # Dentro de la red de Docker se usan los nombres de servicio y el puerto interno.
       # DB_URL alimenta tanto el datasource de runtime como Flyway (application.yml).
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mapit}
@@ -53,6 +63,7 @@ services:
       start_period: 60s
 
   console:
+    logging: *application-logging
     build:
       context: ../..
       dockerfile: infra/docker/frontend.Dockerfile
@@ -67,6 +78,7 @@ services:
       - "${CONSOLE_PORT:-4200}:8080"
 
   public-web:
+    logging: *application-logging
     build:
       context: ../..
       dockerfile: infra/docker/frontend.Dockerfile

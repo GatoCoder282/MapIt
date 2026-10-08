@@ -33,3 +33,9 @@ ADR-0006). Por eso:
 2. **Las libs no importan de `apps/`.** La dependencia va en un solo sentido.
 3. Toda lib exporta su API pública por `src/index.ts`. Nada de imports profundos.
 4. Una lib no debe conocer a otra salvo que sea evidente y esté documentado aquí.
+
+## Logging compartido
+
+`@mapit/logging` es la salida de logs del navegador. `feature-flags` y
+`realtime` pueden depender de ella para eventos tecnicos; logging no importa
+auth, api-client ni apps. Solo el adaptador de consola puede usar `console`.
