@@ -308,6 +308,15 @@ import { STRINGS } from '../../../core/strings';
       }
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      .saving-indicator {
+        animation: none;
+      }
+      .error-toast {
+        animation: none;
+      }
+    }
+
     .header-center {
       display: flex;
       align-items: center;

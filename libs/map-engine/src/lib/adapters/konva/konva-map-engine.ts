@@ -74,13 +74,49 @@ function createElementNode(
     height: elementHeight,
     rotation: element.rotation,
     draggable: true,
-    dragBoundFunc: (pos) => {
-      const newX = Math.max(0, Math.min(pos.x, sectorWidth - elementWidth));
-      const newY = Math.max(0, Math.min(pos.y, sectorHeight - elementHeight));
+    dragBoundFunc: (pos: Konva.Vector2d) => {
+      // Use the group from closure to get actual dimensions and rotation
+      const rotation = group.rotation();
+      const w = group.width();
+      const h = group.height();
+
+      // Convertir rotación a radianes
+      const rad = (rotation * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      // Calcular las 4 esquinas del objeto rotado respecto a su origen (0,0)
+      // La caja AABB es el rectángulo que envuelve el objeto rotado
+      const corners = [
+        { x: 0, y: 0 }, // Arriba-Izquierda
+        { x: w * cos, y: w * sin }, // Arriba-Derecha
+        { x: -h * sin, y: h * cos }, // Abajo-Izquierda
+        { x: w * cos - h * sin, y: w * sin + h * cos }, // Abajo-Derecha
+      ];
+
+      // Encontrar los deltas mínimos y máximos de la caja rotada (AABB)
+      const minX = Math.min(...corners.map((c) => c.x));
+      const maxX = Math.max(...corners.map((c) => c.x));
+      const minY = Math.min(...corners.map((c) => c.y));
+      const maxY = Math.max(...corners.map((c) => c.y));
+
+      // Calcular los límites reales permitidos para pos.x y pos.y
+      // sectorWidth y sectorHeight vienen del scope de la función
+      const newX = Math.max(-minX, Math.min(pos.x, sectorWidth - maxX));
+      const newY = Math.max(-minY, Math.min(pos.y, sectorHeight - maxY));
+
       return { x: newX, y: newY };
     },
     name: 'space-element',
   });
+
+  // Override getClientRect so Transformer only wraps the .shape (not label/capacity)
+  group.getClientRect = function (config) {
+    const shape = this.findOne('.shape');
+    return shape
+      ? shape.getClientRect(config)
+      : Konva.Group.prototype.getClientRect.call(this, config);
+  };
 
   const { width, height } = element.size;
   const colors = STATE_COLORS[element.state];
@@ -110,29 +146,39 @@ function createElementNode(
     name: 'label',
   });
 
+  const radius = 14;
+  const offset = 12; // Separación desde la esquina
+
   const capacityIndicator =
     element.capacity !== null && element.reservable
       ? new Konva.Circle({
-          x: width - 10,
-          y: 10,
-          radius: 10,
-          fill: '#1f2937',
-          stroke: '#fff',
+          x: width - offset,
+          y: offset,
+          radius: radius,
+          fill: '#3b82f6', // Azul más visible e integrado
+          stroke: '#ffffff',
           strokeWidth: 2,
+          shadowColor: 'rgba(0,0,0,0.2)',
+          shadowBlur: 4,
+          shadowOffset: { x: 0, y: 2 },
           name: 'capacity-bg',
         })
       : null;
 
   const capacityText = capacityIndicator
     ? new Konva.Text({
-        x: width - 10,
-        y: 10,
+        x: width - offset, // Mismo centro que el círculo
+        y: offset,
         text: String(element.capacity),
-        fontSize: 11,
+        fontSize: 14,
+        fontStyle: 'bold',
         fontFamily: 'system-ui, sans-serif',
-        fill: '#fff',
+        fill: '#ffffff',
         align: 'center',
         verticalAlign: 'middle',
+        width: radius * 2,
+        offsetX: radius, // Desplaza la caja de texto a la izquierda por la mitad de su ancho
+        offsetY: 7, // Desplaza hacia arriba la mitad del tamaño de la fuente (14/2)
         name: 'capacity-text',
       })
     : null;
@@ -145,7 +191,7 @@ function createElementNode(
   return group;
 }
 
-function createTransformer(layer: Konva.Layer): Konva.Transformer {
+function createTransformer(layer: Konva.Layer, engine: KonvaMapEngine): Konva.Transformer {
   const transformer = new Konva.Transformer({
     enabledAnchors: [
       'top-left',
@@ -174,6 +220,20 @@ function createTransformer(layer: Konva.Layer): Konva.Transformer {
     ignoreStroke: true,
     visible: false,
     name: 'transformer',
+    boundBoxFunc: (oldBox, newBox) => {
+      const sectorWidth = engine.layout()?.size?.width || 0;
+      const sectorHeight = engine.layout()?.size?.height || 0;
+
+      if (
+        newBox.x < 0 ||
+        newBox.y < 0 ||
+        newBox.x + newBox.width > sectorWidth ||
+        newBox.y + newBox.height > sectorHeight
+      ) {
+        return oldBox;
+      }
+      return newBox;
+    },
   });
   layer.add(transformer);
   return transformer;
@@ -242,7 +302,7 @@ export class KonvaMapEngine implements MapEnginePort {
     this.stage.add(this.layer);
     this.stage.add(this.elementsLayer);
 
-    this.transformer = createTransformer(this.elementsLayer);
+    this.transformer = createTransformer(this.elementsLayer, this);
     // Ensure transformer is in the elementsLayer
     this.elementsLayer.add(this.transformer);
 
@@ -347,8 +407,34 @@ export class KonvaMapEngine implements MapEnginePort {
       const node = this.elementsLayer!.findOne(`#${el.id}`) as Konva.Group;
 
       if (node && isKonvaGroup(node)) {
-        // Nodo existente: solo actualizar posición visual
+        // Nodo existente: sincronizar TODA la geometría (posición, rotación, tamaño)
         node.position({ x: el.position.x, y: el.position.y });
+        node.rotation(el.rotation);
+
+        // Actualizar tamaño de la figura principal (.shape)
+        const shape = node.findOne('.shape') as Konva.Rect;
+        if (shape) {
+          shape.width(el.size.width);
+          shape.height(el.size.height);
+        }
+
+        // Actualizar label (centrado horizontal)
+        const label = node.findOne('.label') as Konva.Text;
+        if (label) {
+          label.x(el.size.width / 2);
+          label.y(el.size.height + 16);
+          label.width(Math.max(el.size.width, 80));
+        }
+
+        // Actualizar capacity-bg y capacity-text si existen
+        const capBg = node.findOne('.capacity-bg') as Konva.Circle;
+        const capText = node.findOne('.capacity-text') as Konva.Text;
+        if (capBg && capText) {
+          capBg.x(el.size.width - 10);
+          capBg.y(10);
+          capText.x(el.size.width - 10);
+          capText.y(10);
+        }
       } else {
         // Nodo nuevo: crearlo, agregarlo a la capa y ATAR handlers
         const newNode = createElementNode(el, sectorSize);
@@ -443,6 +529,8 @@ export class KonvaMapEngine implements MapEnginePort {
         prevNode.off('.mapTransform');
       }
     }
+    // Clean transformer listeners to avoid ghost references
+    this.transformer.off('transformend');
     this._selectedElement.set(null);
     this.transformer.nodes([]);
     this.transformer.hide();
@@ -535,10 +623,13 @@ export class KonvaMapEngine implements MapEnginePort {
   private attachTransformHandlers(node: Konva.Group): void {
     if (!this.transformer) return;
 
+    // Clean up previous transformend listeners to avoid multiple callbacks
+    this.transformer.off('transformend');
     this.transformer.on('transformend', () => {
       // Skip if this is a programmatic transform (e.g., during element selection)
       if (this._isProgrammaticTransform) return;
 
+      // Get the current transform state from the transformer
       const rotation = Math.round(this.transformer!.rotation() % 360);
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const scaleX = this.transformer!.getNode()!.scaleX();
@@ -548,24 +639,28 @@ export class KonvaMapEngine implements MapEnginePort {
       const shape = node.findOne('.shape');
       if (!isKonvaRect(shape)) return;
 
-      // Calculate real size after scale
-      const newWidth = Math.max(20, Math.round(shape.width() * scaleX));
-      const newHeight = Math.max(20, Math.round(shape.height() * scaleY));
+      // Calculate real size after scale - bake the scale into actual dimensions
+      const newWidth = Math.max(20, Math.round(shape.width() * Math.abs(scaleX)));
+      const newHeight = Math.max(20, Math.round(shape.height() * Math.abs(scaleY)));
 
-      // Check bounds before applying
+      // Check bounds before applying - use node's x,y and new dimensions
+      // Check bounds before applying - use node's x,y and new dimensions
       if (this.isElementOutOfBounds(node, newWidth, newHeight)) {
-        // Revert rotation and scale
-        node.rotation(0);
+        // Revert scale only, keep rotation
         node.scale({ x: 1, y: 1 });
-        this.transformer!.rotation(0);
         this.elementsLayer!.batchDraw();
         return;
       }
 
-      // Apply new size and reset scale
+      // Bake the scale into the node: reset scale to 1 and set actual width/height
+      node.scaleX(1);
+      node.scaleY(1);
+      node.width(newWidth);
+      node.height(newHeight);
+
+      // Apply new size to the shape
       shape.width(newWidth);
       shape.height(newHeight);
-      node.scale({ x: 1, y: 1 });
 
       // Update label position
       const label = node.findOne('.label');
@@ -574,13 +669,14 @@ export class KonvaMapEngine implements MapEnginePort {
       label.y(newHeight + 16);
       label.width(Math.max(newWidth, 80));
 
+      // Update capacity indicator positions
       const capBg = node.findOne('.capacity-bg');
       const capText = node.findOne('.capacity-text');
       if (isKonvaCircle(capBg) && isKonvaText(capText)) {
-        capBg.x(newWidth - 10);
-        capBg.y(10);
-        capText.x(newWidth - 10);
-        capText.y(10);
+        capBg.x(newWidth - 12);
+        capBg.y(12);
+        capText.x(newWidth - 12);
+        capText.y(12);
       }
 
       // Emit complete transform payload (position + rotation + size)
@@ -590,6 +686,14 @@ export class KonvaMapEngine implements MapEnginePort {
         cb({ id: node.id(), x: node.x(), y: node.y(), width: newWidth, height: newHeight }),
       );
 
+      this.elementsLayer!.batchDraw();
+
+      // Forzar al transformador a recalcular la caja delimitadora con los nuevos anchos/altos sin escala
+      if (this.transformer) {
+        this.transformer.forceUpdate();
+      }
+
+      // Redibujar la capa para aplicar el cambio visual instantáneamente
       this.elementsLayer!.batchDraw();
     });
   }
@@ -626,12 +730,8 @@ export class KonvaMapEngine implements MapEnginePort {
       const worldX = node.x() + rx;
       const worldY = node.y() + ry;
 
-      if (
-        worldX < 0 ||
-        worldX > this._layout().size.width ||
-        worldY < 0 ||
-        worldY > this._layout().size.height
-      ) {
+      const sectorSize = this.layout().size;
+      if (worldX < 0 || worldX > sectorSize.width || worldY < 0 || worldY > sectorSize.height) {
         return true;
       }
     }

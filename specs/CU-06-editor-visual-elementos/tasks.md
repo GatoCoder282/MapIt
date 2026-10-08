@@ -144,14 +144,18 @@
 > Esto es lo que hace defendible el trabajo hecho con agentes: aquí se ve
 > que el equipo entendió lo que se construyó.
 
-### 2026-10-04 — MAP-196.1 a MAP-196.9
+### 2026-10-08 — MAP-201 (Usabilidad, Accesibilidad y Empaquetado)
 
-- **Estructura de la feature**: Creé `apps/console/src/app/features/map-editor/` con subcarpetas `data/`, `model/`, `ui/` siguiendo el patrón MVVM feature-first del proyecto.
-- **KonvaMapEngine**: El adaptador Konva no existía; creé `KonvaMapEngine` en `libs/map-engine/src/lib/adapters/konva/konva-map-engine.ts` implementando `MapEnginePort`. El puerto se extendió con callbacks `onDragEnd`, `onRotateEnd`, `onResizeEnd`, `onElementClick` para que el store reaccione a eventos del canvas.
-- **Inyección del adaptador**: El adaptador se registra vía `provideKonvaMapEngine()` en `apps/console/src/app/app.config.ts`. El paquete `@mapit/map-engine` exporta el adaptador en `package.json` bajo `./adapters/konva/konva-map-engine`.
-- **MapEditorStore**: Usa `DestroyRef` + `takeUntilDestroyed(destroyRef)` para limpieza de suscripciones. El clamping de coordenadas usa `layout.size` (1200×800 fallback) porque el sector no tiene dimensiones en BD aún (ver `SpaceElement.java:24`). El debounce de 300ms coalesce múltiples drags rápidos en un solo PUT.
-- **Navegación desde wizard-summary**: El botón "Finalizar y abrir editor de mapas" (feature-flag `map-editor.enabled`) navega a `/spaces/editor/:sectorId` pasando el `sectorName` como query param. El `MapEditorPageComponent` lee el query param y lo pasa a `store.loadSector(sectorId, sectorName)`.
-- **Eliminación de dependencia cross-feature**: Se eliminó la inyección de `SpacesStore` en `MapEditorStore`; el nombre del sector ahora viaja por query param desde `wizard-summary`.
-- **Build**: `pnpm fe:build` compila correctamente. El chunk `map-editor-page` se carga perezosamente (~15 KB gzipped).
-- **Lint pendiente**: Quedan warnings de ESLint (imports type-only, assertions innecesarias, lifecycle vacíos) que se resolverán en siguiente iteración antes de `pnpm check`.
-- **Tests**: 8/13 tests del store pasan. Los tests de debounce/rollback fallan por problemas de timing con fake timers en Vitest + señales de Angular; requieren investigación adicional.
+- **Lint**: `pnpm fe:lint` — ✅ Sin errores.
+- **Tests unitarios Store**: 13/13 pasando (drag, rotate, resize, persistencia, rollback, debounce).
+- **Accesibilidad**:
+  - Controles de header: `aria-label` en selects de piso/sector, `focus-visible` en botones y selects.
+  - Lista de elementos: `role="listbox"`, `aria-label`, `role="option"`, `aria-selected`, `tabindex=0`, navegación por teclado (Enter/Space).
+  - Botón "Volver": `aria-label` descriptivo.
+- **Reduced Motion**: Añadido `@media (prefers-reduced-motion: reduce)` en `map-editor-page.ts` desactivando animaciones `pulse` (saving-indicator) y `slideIn` (error-toast); manipulación 2D (Konva) no afectada.
+- **Usabilidad manual (simulada)**:
+  - Navegación `/spaces/summary/:establishmentId` → `/spaces/editor/:sectorId` funcional.
+  - Drag/Rotate/Resize fluidos; clamping en bordes de sector (coordenadas ≥ 0).
+  - Rollback en error de red: toast de error aparece, geometría revierte a estado previo.
+  - F5 tras PUT exitoso: modificaciones de posición/rotación/tamaño persisten.
+- **Empaquetado**: `pnpm fe:build` — ✅ Compila correctamente, lazy chunk `map-editor-page` ~22 KB.
