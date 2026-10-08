@@ -440,7 +440,14 @@ export class MapEditorStore {
     this._layout.update((current) => ({
       ...current,
       elements: current.elements.map((el) =>
-        el.id === elementId ? { ...el, position: this.pendingSave!.previousPosition } : el,
+        el.id === elementId
+          ? {
+              ...el,
+              position: this.pendingSave!.previousPosition,
+              rotation: this.pendingSave!.previousRotation,
+              size: this.pendingSave!.previousSize,
+            }
+          : el,
       ),
     }));
     this.pendingSave = null;
