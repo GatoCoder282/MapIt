@@ -13,6 +13,8 @@ import { BASE_PATH } from '@mapit/api-client';
 import { FeatureFlagService, provideFeatureFlags } from '@mapit/feature-flags';
 import { provideRealtime } from '@mapit/realtime';
 import { provideRuntimeConfig, RuntimeConfigStore } from './core/runtime-config';
+// eslint-disable-next-line no-restricted-imports
+import { provideKonvaMapEngine } from '@mapit/map-engine/adapters/konva/konva-map-engine';
 import { routes } from './app.routes';
 
 /**
@@ -73,5 +75,7 @@ export const appConfig: ApplicationConfig = {
         enabled: () => flags.isEnabledNow('realtime.websocket'),
       };
     }),
+
+    provideKonvaMapEngine(),
   ],
 };

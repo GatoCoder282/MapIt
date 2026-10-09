@@ -40,6 +40,32 @@ export interface MapEnginePort {
 
   /** Libera recursos. Obligatorio: el canvas retiene memoria si no se llama. */
   destroy(): void;
+
+  /** Suscribe a eventos de fin de arrastre de un elemento. */
+  onDragEnd(cb: (payload: { id: SpaceElementId; x: number; y: number }) => void): void;
+
+  /** Suscribe a eventos de fin de rotación de un elemento. */
+  onRotateEnd(cb: (payload: { id: SpaceElementId; rotation: number }) => void): void;
+
+  /** Suscribe a eventos de fin de redimensionamiento de un elemento. */
+  onResizeEnd(
+    cb: (payload: {
+      id: SpaceElementId;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => void,
+  ): void;
+
+  /** Suscribe a eventos de clic en elemento (o fondo para deseleccionar). */
+  onElementClick(cb: (payload: { id: SpaceElementId | null }) => void): void;
+
+  /** Suscribe a eventos de arrastre en tiempo real (dragmove). */
+  onDragMove(cb: (payload: { id: SpaceElementId; x: number; y: number }) => void): void;
+
+  /** Suscribe a eventos de inicio de arrastre. */
+  onDragStart(cb: (id: SpaceElementId) => void): void;
 }
 
 export const MAP_ENGINE = new InjectionToken<MapEnginePort>('mapit.map-engine');

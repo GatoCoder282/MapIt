@@ -141,7 +141,11 @@ type Step1Field = 'name' | 'type';
                         <circle cx="12" cy="19" r="1" />
                       </svg>
                     </button>
-                    <button class="btn-primary small" type="button" (click)="selectEst(est.id)">
+                    <button
+                      class="btn-primary small"
+                      type="button"
+                      (click)="selectEst(est.id, est.type)"
+                    >
                       {{ strings.wizard.select }}
                     </button>
                   </div>
@@ -965,8 +969,8 @@ export class WizardEstablishmentComponent {
     });
   }
 
-  protected selectEst(id: string): void {
-    this.store.selectEstablishment(id);
+  protected selectEst(id: string, type: string): void {
+    this.store.selectEstablishment(id, type);
     void this.router.navigate(['/spaces/floors', id]);
   }
 

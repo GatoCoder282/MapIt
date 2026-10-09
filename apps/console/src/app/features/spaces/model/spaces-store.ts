@@ -51,6 +51,20 @@ export interface SpaceElementStateFeedback {
   message: string;
 }
 
+/** Dimensiones por defecto según el tipo de elemento (proporcionales y lógicas). */
+const DEFAULT_DIMENSIONS: Record<
+  SpaceElementCreateRequest.TypeEnum,
+  { width: number; height: number }
+> = {
+  TABLE: { width: 60, height: 60 },
+  BAR: { width: 120, height: 40 },
+  SECTOR_ZONE: { width: 200, height: 200 },
+  STAGE: { width: 300, height: 150 },
+  SEAT: { width: 30, height: 30 },
+  ROOM: { width: 200, height: 150 },
+  DECOR: { width: 40, height: 40 },
+};
+
 const EMPTY_ELEMENT_DRAFT: SpaceElementDraft = {
   type: 'TABLE',
   x: '',
@@ -74,6 +88,7 @@ export class SpacesStore {
   // Contexto del wizard (CU-05): el paso 2 siempre opera sobre UN establecimiento,
   // el creado/seleccionado en el paso 1. Sin él no se carga ni crea nada.
   private readonly establishmentIdState = signal<string | null>(null);
+  private readonly establishmentTypeState = signal<string | null>(null);
 
   // Floor state
   private readonly floorsState = signal<Floor[]>([]);
@@ -121,6 +136,12 @@ export class SpacesStore {
   readonly saving = this.savingState.asReadonly();
   readonly error = this.errorState.asReadonly();
   readonly establishmentId = this.establishmentIdState.asReadonly();
+  readonly establishmentType = this.establishmentTypeState.asReadonly();
+
+  /** Establece un mensaje de error manualmente (para errores de UI). */
+  setError(message: string): void {
+    this.errorState.set(message);
+  }
 
   // Expose strings for template
   readonly strings_ = STRINGS.spaces;
@@ -129,9 +150,10 @@ export class SpacesStore {
    * Fija el establecimiento del wizard y carga sus plantas. Sin id no hay
    * llamada: el paso 2 no tiene sentido sin saber de qué establecimiento se trata.
    */
-  selectEstablishment(id: string | null): void {
+  selectEstablishment(id: string | null, type: string | null = null): void {
     if (id === this.establishmentIdState()) return;
     this.establishmentIdState.set(id);
+    this.establishmentTypeState.set(type);
     if (id === null) {
       this.floorsState.set([]);
       this.errorState.set(null);
@@ -155,7 +177,10 @@ export class SpacesStore {
         ...(timezone ? { timezone } : {}),
       })
       .pipe(
-        tap((est) => this.establishmentIdState.set(est.id)),
+        tap((est) => {
+          this.establishmentIdState.set(est.id);
+          this.establishmentTypeState.set(est.type);
+        }),
         catchError((err: unknown) => {
           this.errorState.set(this.strings_.wizard.createFailed);
           return throwError(() => err);
@@ -306,6 +331,19 @@ export class SpacesStore {
 
   sectorsByFloorId(floorId: string): Sector[] {
     return this.sectorsByFloorState()[floorId] ?? [];
+  }
+
+  floorIdForSector(sectorId: string): string | null {
+    for (const [floorId, sectors] of Object.entries(this.sectorsByFloorState())) {
+      if (sectors.some((s) => s.id === sectorId)) {
+        return floorId;
+      }
+    }
+    return null;
+  }
+
+  allSectors(): Sector[] {
+    return Object.values(this.sectorsByFloorState()).flat();
   }
 
   sectorsLoading(floorId: string): boolean {
@@ -480,10 +518,23 @@ export class SpacesStore {
     }
 
     const editingId = this.editingElementIdState();
+    const existingElement = editingId
+      ? this.elementsBySectorState()[sectorId]?.find((el: SpaceElement) => el.id === editingId)
+      : null;
+
+    // Usa dimensiones por defecto según el tipo si es creación, o mantiene las existentes si es edición
+    const defaultDims = DEFAULT_DIMENSIONS[draft.type as SpaceElementCreateRequest.TypeEnum] ?? {
+      width: 40,
+      height: 40,
+    };
+
     const request: SpaceElementCreateRequest = {
       type: draft.type as SpaceElementCreateRequest.TypeEnum,
-      x,
-      y,
+      x: parseFloat(draft.x),
+      y: parseFloat(draft.y),
+      width: existingElement?.width ?? defaultDims.width,
+      height: existingElement?.height ?? defaultDims.height,
+      rotation: existingElement?.rotation ?? 0,
       initialState:
         (draft.initialState as SpaceElementCreateRequest.InitialStateEnum) ?? 'AVAILABLE',
     };
@@ -494,7 +545,14 @@ export class SpacesStore {
     const request$ =
       editingId === null
         ? this.api.createSpaceElement(sectorId, request)
-        : this.api.updateSpaceElement(sectorId, editingId, { type: request.type, x, y });
+        : this.api.updateSpaceElement(sectorId, editingId, {
+            type: request.type,
+            x,
+            y,
+            width: request.width ?? 20,
+            height: request.height ?? 20,
+            rotation: request.rotation ?? 0,
+          });
 
     return request$.pipe(
       finalize(() => this.savingState.set(false)),

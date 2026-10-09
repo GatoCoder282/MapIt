@@ -1,8 +1,12 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DestroyRef } from '@angular/core';
 import { PisoFormComponent } from './piso-form';
 import { PisoListComponent } from './piso-list';
 import { SpacesStore } from '../model/spaces-store';
+import { SpacesApiService } from '../data/spaces-api';
+import type { Establishment } from '@mapit/api-client';
 
 /** Pantalla principal del Setup Wizard - Step 2: Estructura del espacio (CU-05 · MAP-69/70). */
 @Component({
@@ -632,6 +636,10 @@ export class SpacesComponent {
   protected readonly showSectorForm = signal(false);
   private readonly router = inject(Router);
 
+  private readonly api = inject<SpacesApiService>(SpacesApiService);
+
+  private readonly destroyRef = inject<DestroyRef>(DestroyRef);
+
   constructor() {
     effect(() => {
       const id = this.establishmentId();
@@ -640,7 +648,18 @@ export class SpacesComponent {
         void this.router.navigate(['/spaces/setup']);
         return;
       }
-      this.store.selectEstablishment(id);
+
+      this.api
+        .getEstablishment(id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+
+        .subscribe({
+          next: (est: Establishment) => this.store.selectEstablishment(est.id, est.type),
+          error: () => {
+            this.store.selectEstablishment(id, null);
+            this.store.setError(this.store.strings_.wizard.loadFailed);
+          },
+        });
     });
   }
 
