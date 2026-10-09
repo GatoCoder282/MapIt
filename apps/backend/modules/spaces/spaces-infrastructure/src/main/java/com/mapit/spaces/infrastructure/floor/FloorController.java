@@ -7,8 +7,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -77,7 +75,6 @@ public class FloorController {
         service.create(
             establishmentId,
             request.name(),
-            request.level(), // Level can be null from request, service handles default
             request.slug()));
   }
 
@@ -86,8 +83,7 @@ public class FloorController {
       @PathVariable UUID id,
       @Valid @RequestBody FloorUpdateRequest request) {
     // Delegate to service and map domain object to DTO
-    return FloorResponse.fromDomain(
-        service.update(id, request.name(), request.level(), request.slug()));
+    return FloorResponse.fromDomain(service.update(id, request.name(), request.slug()));
   }
 
   @DeleteMapping("/floors/{id}")
@@ -148,16 +144,14 @@ public class FloorController {
     return ResponseEntity.badRequest().body(problem);
   }
 
-  /** Payload de alta. Level y slug son opcionales. */
+  /** Payload de alta. El nivel lo asigna el servidor (siguiente escalón desde 0). */
   public record FloorCreateRequest(
       @NotBlank @Size(max = 100) String name,
-      @Min(1) @Max(999) Integer level, // Optional Integer for level
       @Pattern(regexp = SLUG_REGEX) @Size(min = 2, max = 64) String slug) {}
 
-  /** Payload de edición. Todos opcionales (pero al menos uno debe enviarse). */
+  /** Payload de edición. El nivel no es editable. */
   public record FloorUpdateRequest(
       @Size(max = 100) String name,
-      @Min(1) @Max(999) Integer level, // Optional Integer for level
       @Pattern(regexp = SLUG_REGEX) @Size(min = 2, max = 64) String slug) {}
 
   /** Payload de salida. No expone deletedAt ni tenantId. */

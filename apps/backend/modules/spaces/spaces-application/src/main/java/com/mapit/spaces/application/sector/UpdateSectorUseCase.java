@@ -2,7 +2,6 @@ package com.mapit.spaces.application.sector;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,20 +34,28 @@ public class UpdateSectorUseCase {
             .findAliveById(tenantId, SectorId.of(command.id()))
             .orElseThrow(() -> new SectorNotFoundException(command.id()));
 
-    requireSlugLibre(tenantId, sector.floorId(), command.slug());
+    // Igual que en create: slug vacío se autogenera a partir del nombre.
+    Slug slug =
+        command.slug() == null || command.slug().isBlank()
+            ? Slug.fromName(command.name())
+            : Slug.of(command.slug());
+
+    requireSlugLibre(tenantId, sector, slug);
+
+    // maxCapacity nulo conserva el actual: el formulario solo edita el nombre.
+    Integer maxCapacity = command.maxCapacity() != null ? command.maxCapacity() : sector.maxCapacity();
 
     Instant now = Instant.now();
-    sector = sector.update(command.name(), command.maxCapacity(), Slug.of(command.slug()), now, null);
+    sector = sector.update(command.name(), maxCapacity, slug, now, null);
     Sector saved = repository.save(sector);
     return toResponse(saved, now);
   }
 
   /** Verifica que el slug esté libre en el mismo piso y tenant, excluyendo el propio sector. */
-  private void requireSlugLibre(TenantId tenantId, UUID floorId, String slugValue) {
-    Optional<Sector> duenio =
-        repository.findAliveBySlug(tenantId, floorId, Slug.of(slugValue));
-    if (duenio.isPresent()) {
-      throw new SectorSlugAlreadyExistsException(slugValue);
+  private void requireSlugLibre(TenantId tenantId, Sector sector, Slug slug) {
+    Optional<Sector> duenio = repository.findAliveBySlug(tenantId, sector.floorId(), slug);
+    if (duenio.isPresent() && !duenio.get().id().equals(sector.id())) {
+      throw new SectorSlugAlreadyExistsException(slug.value());
     }
   }
 

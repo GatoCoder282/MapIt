@@ -48,6 +48,8 @@ tags:
     description: Gestión de pisos y sectores (CU-05)
   - name: operations
     description: Operación en vivo de elementos espaciales (CU-09)
+  - name: templates
+    description: Plantillas de configuración de elementos espaciales (CU-07 / HU-4.02)
 
 paths:
   /auth/login:
@@ -1230,6 +1232,132 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  # ===== ELEMENT TEMPLATES (HU-4.02 / CU-07) =====
+
+  /element-templates:
+    get:
+      tags: [templates]
+      summary: Listar plantillas de elemento
+      description: |
+        Devuelve todas las plantillas activas del tenant autenticado, ordenadas por nombre.
+        El tenant se obtiene del claim `tenant` del JWT.
+      operationId: listElementTemplates
+      responses:
+        "200":
+          description: Lista de plantillas del tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ElementTemplate"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [templates]
+      summary: Crear plantilla de elemento
+      description: |
+        Crea una nueva plantilla con nombre y tipo. El nombre debe ser único dentro del tenant
+        (case-insensitive). Un nombre duplicado devuelve `409`.
+      operationId: createElementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElementTemplateCreateRequest"
+      responses:
+        "201":
+          description: Plantilla creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementTemplate"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /element-templates/{templateId}:
+    parameters:
+      - name: templateId
+        in: path
+        required: true
+        description: Identificador de la plantilla
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [templates]
+      summary: Obtener una plantilla
+      description: Responde 404 si no existe, está dada de baja o es de otro tenant.
+      operationId: getElementTemplate
+      responses:
+        "200":
+          description: Plantilla solicitada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementTemplate"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [templates]
+      summary: Actualizar una plantilla
+      description: |
+        Reemplaza nombre y tipo de la plantilla (PUT completo). Un nombre ya usado por otra
+        plantilla viva del tenant devuelve `409`.
+      operationId: updateElementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElementTemplateUpdateRequest"
+      responses:
+        "200":
+          description: Plantilla actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementTemplate"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [templates]
+      summary: Dar de baja una plantilla
+      description: |
+        Baja lógica: la plantilla deja de aparecer en el listado, pero su histórico
+        se conserva. No se puede deshacer.
+      operationId: deleteElementTemplate
+      responses:
+        "204":
+          description: Plantilla dada de baja
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
 components:
   parameters:
     RequestId:
@@ -1738,17 +1866,17 @@ components:
           readOnly: true
 
     FloorCreateRequest:
+      description: >-
+        Alta/edición de piso. El `level` lo asigna siempre el servidor: los
+        niveles son consecutivos empezando en 0 (siguiente = max actual + 1) y
+        no son editables; el orden lo define el nivel, no el cliente.
       type: object
-      required: [name, level]
+      required: [name]
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 100
-        level:
-          type: integer
-          minimum: 0
-          maximum: 999
 
     Sector:
       type: object
@@ -1986,6 +2114,63 @@ components:
         instance:
           type: string
           format: uri
+
+    ElementTemplate:
+      type: object
+      required: [id, name, type, createdAt, updatedAt]
+      description: Plantilla de configuración de un SpaceElement (HU-4.02)
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          examples: ["Mesa redonda 6 pax"]
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+          examples: ["TABLE"]
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ElementTemplateCreateRequest:
+      type: object
+      required: [name, type]
+      description: Cuerpo para crear una plantilla de elemento
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          examples: ["Mesa redonda 6 pax"]
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+          examples: ["TABLE"]
+
+    ElementTemplateUpdateRequest:
+      type: object
+      required: [name, type]
+      description: Cuerpo para actualizar una plantilla de elemento (PUT completo)
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          examples: ["Mesa redonda 6 pax - actualizado"]
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+          examples: ["BAR"]
 
   responses:
     Unauthorized:

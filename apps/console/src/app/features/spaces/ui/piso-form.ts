@@ -52,19 +52,9 @@ import { SpacesStore } from '../model/spaces-store';
             </span>
           </label>
 
-          <label>
-            {{ store.strings_.floors.form.levelLabel }}
-            <input
-              type="number"
-              [value]="store.floorDraft().level"
-              min="0"
-              max="999"
-              placeholder="0"
-              (input)="onLevelInput($event)"
-              [disabled]="store.saving()"
-            />
-          </label>
-
+          <p class="hint">
+            {{ store.strings_.floors.form.autoLevelHint }}
+          </p>
           @if (store.isEditingFloor()) {
             <p class="hint">
               {{ store.strings_.floors.form.slugHint }}
@@ -224,11 +214,6 @@ export class PisoFormComponent {
   protected onNameInput(event: Event): void {
     const target = event.target as HTMLInputElement;
     this.store.setFloorName(target.value);
-  }
-
-  protected onLevelInput(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.store.setFloorLevel(target.value);
   }
 
   /** Handler del submit nativo: previene la recarga y delega en el store. */

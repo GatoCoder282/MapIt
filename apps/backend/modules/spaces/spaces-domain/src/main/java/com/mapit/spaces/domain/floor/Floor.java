@@ -14,9 +14,8 @@ import com.mapit.spaces.domain.Slug;
  * compacto, de modo que no se puede construir un piso inválido.
  * Modificarlo devuelve una instancia nueva.
  *
- * <p>El level es un entero entre 1 y 999 que indica la posición vertical:
- * valores bajos para sótanos (si se hubiera permitido), valores altos para
- * pisos superiores.
+ * <p>El level es un entero entre 0 y 999 que indica la posición vertical. Es
+ * escalonado: la primera planta es el nivel 0 y cada nueva sube un escalón.
  */
 public record Floor(
     UUID id,
@@ -28,7 +27,7 @@ public record Floor(
     AuditTrail audit) {
 
   private static final int NAME_MAX_LENGTH = 100;
-  private static final int LEVEL_MIN = 1;
+  private static final int LEVEL_MIN = 0;
   private static final int LEVEL_MAX = 999;
 
   public Floor {

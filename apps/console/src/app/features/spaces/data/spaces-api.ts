@@ -21,7 +21,6 @@ import { RuntimeConfigStore } from '../../../core/runtime-config';
 
 export interface FloorDraft {
   name: string;
-  level: number;
 }
 
 export interface SectorDraft {
@@ -104,6 +103,13 @@ export class SpacesApiService {
   createSector(floorId: string, name: string): Observable<Sector> {
     const request: SectorCreateRequest = { name, slug: '' };
     return this.api.createSector({ floorId, sectorCreateRequest: request });
+  }
+
+  /** PUT /api/v1/sectors/{id} */
+  updateSector(id: string, name: string): Observable<Sector> {
+    // Mismo caso que deleteSector: el backend expone PUT /sectors/{id} pero el
+    // contrato aún no lo modela; `slug` y `maxCapacity` no son editables aquí.
+    return this.http.put<Sector>(`${this.runtime.config().apiBaseUrl}/sectors/${id}`, { name });
   }
 
   /** DELETE /api/v1/sectors/{id} */

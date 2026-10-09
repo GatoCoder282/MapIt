@@ -105,7 +105,7 @@ Table floor {
   tenant_id        text        [not null, ref: > tenant.id]
   establishment_id uuid        [not null, ref: > establishment.id]
   name             text        [not null]
-  level            int         [not null, note: 'Orden vertical: 1-999']
+   level            int         [not null, note: 'Orden vertical: 0-999']
   slug             text        [note: 'Opcional; único por establecimiento entre filas vivas']
   created_at       timestamptz [not null]
   created_by       uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
@@ -136,6 +136,25 @@ Table sector {
   Indexes {
     tenant_id
     floor_id
+  }
+}
+
+Table element_template {
+  id         uuid             [pk, note: 'default gen_random_uuid()']
+  tenant_id  text             [not null, ref: > tenant.id]
+  name       text             [not null]
+  type       text             [not null]
+  created_at timestamptz      [not null, default: `now()`]
+  created_by uuid
+  updated_at timestamptz      [not null, default: `now()`]
+  updated_by uuid
+  deleted_at timestamptz
+  deleted_by uuid
+
+  Indexes {
+    (tenant_id, id)                                  [name: 'element_template_tenant_id_id_idx']
+    (tenant_id, name)                                [name: 'element_template_tenant_alive_idx', note: 'WHERE deleted_at IS NULL']
+    (tenant_id, name)                                [name: 'element_template_tenant_name_unique_idx', unique, note: 'WHERE deleted_at IS NULL']
   }
 }
 

@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { FeatureFlagService } from '@mapit/feature-flags';
 import { RouterLink } from '@angular/router';
+import type { Sector } from '@mapit/api-client';
 import { SpacesStore } from '../model/spaces-store';
 import { SectorFormComponent } from './sector-form';
 
@@ -151,7 +152,7 @@ import { SectorFormComponent } from './sector-form';
                     class="action-btn edit"
                     type="button"
                     [disabled]="store.saving()"
-                    (click)="store.editSector(sector); $event.stopPropagation()"
+                    (click)="startEdit(sector); $event.stopPropagation()"
                     [attr.aria-label]="store.strings_.sectors.list.editButton + ' ' + sector.name"
                   >
                     <svg
@@ -482,6 +483,12 @@ export class SectorListComponent {
   }
 
   protected toggleForm(): void {
+    this.store.startNewSector();
+    this.showForm.set(true);
+  }
+
+  protected startEdit(sector: Sector): void {
+    this.store.editSector(sector);
     this.showForm.set(true);
   }
 
@@ -490,6 +497,7 @@ export class SectorListComponent {
   }
 
   protected onFormCancelled(): void {
+    this.store.startNewSector();
     this.showForm.set(false);
   }
 }

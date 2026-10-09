@@ -134,6 +134,14 @@ export const routes: Routes = [
               ),
           },
           {
+            // Plantillas de elementos HU-4.02 (MAP-191).
+            path: 'templates',
+            loadComponent: () =>
+              import('./features/spaces/ui/element-template-list-page').then(
+                (m) => m.ElementTemplateListPageComponent,
+              ),
+          },
+          {
             // CU-06 (MAP-196): editor visual de elementos espaciales (Konva.js).
             path: 'editor/:sectorId',
             loadComponent: () =>

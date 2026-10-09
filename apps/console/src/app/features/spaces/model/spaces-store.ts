@@ -32,7 +32,6 @@ function slugify(name: string): string {
 
 const EMPTY_FLOOR_DRAFT: FloorDraft = {
   name: '',
-  level: 0,
 };
 
 const EMPTY_SECTOR_DRAFT: SectorDraft = {
@@ -219,18 +218,12 @@ export class SpacesStore {
     this.editingFloorIdState.set(floor.id);
     this.floorDraftState.set({
       name: floor.name,
-      level: floor.level,
     });
     this.errorState.set(null);
   }
 
   setFloorName(name: string): void {
     this.floorDraftState.update((draft) => ({ ...draft, name }));
-  }
-
-  setFloorLevel(level: string | number): void {
-    const parsed = typeof level === 'string' ? parseInt(level, 10) : level;
-    this.floorDraftState.update((draft) => ({ ...draft, level: isNaN(parsed) ? 0 : parsed }));
   }
 
   saveFloor(): void {
@@ -246,7 +239,6 @@ export class SpacesStore {
       return;
     }
 
-    const level = draft.level;
     const editingId = this.editingFloorIdState();
     const establishmentId = this.establishmentIdState();
 
@@ -256,19 +248,22 @@ export class SpacesStore {
       return;
     }
 
+    // El nivel lo asigna el servidor: siguiente escalón (0, 1, 2, …). No se envía.
     const request$ =
       editingId === null
-        ? this.api.createFloor({ name, level }, establishmentId as string)
-        : this.api.updateFloor(editingId, { name, level });
+        ? this.api.createFloor({ name }, establishmentId as string)
+        : this.api.updateFloor(editingId, { name });
 
     this.savingState.set(true);
     this.errorState.set(null);
     request$.pipe(finalize(() => this.savingState.set(false))).subscribe({
       next: (saved) => {
+        // Tras crear, reordenar por nivel: el nuevo piso siempre queda al final.
         this.floorsState.update((floors) =>
-          editingId === null
-            ? [saved, ...floors]
-            : floors.map((floor) => (floor.id === saved.id ? saved : floor)),
+          (editingId === null
+            ? [...floors, saved]
+            : floors.map((floor) => (floor.id === saved.id ? saved : floor))
+          ).sort((a, b) => a.level - b.level),
         );
         this.startNewFloor();
       },
@@ -385,7 +380,7 @@ export class SpacesStore {
     this.sectorDraftState.update((draft) => ({ ...draft, name }));
   }
 
-  createSector(floorId: string, name: string): Observable<Sector> {
+  saveSector(floorId: string, name: string): Observable<Sector> {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
@@ -400,13 +395,22 @@ export class SpacesStore {
     this.savingState.set(true);
     this.errorState.set(null);
 
-    return this.api.createSector(floorId, trimmedName).pipe(
+    const editingId = this.editingSectorIdState();
+    const request$ =
+      editingId === null
+        ? this.api.createSector(floorId, trimmedName)
+        : this.api.updateSector(editingId, trimmedName);
+
+    return request$.pipe(
       finalize(() => this.savingState.set(false)),
       tap({
         next: (saved) => {
           this.sectorsByFloorState.update((state) => ({
             ...state,
-            [floorId]: [saved, ...(state[floorId] ?? [])],
+            [floorId]:
+              editingId === null
+                ? [saved, ...(state[floorId] ?? [])]
+                : (state[floorId] ?? []).map((s) => (s.id === saved.id ? saved : s)),
           }));
           this.startNewSector();
         },
