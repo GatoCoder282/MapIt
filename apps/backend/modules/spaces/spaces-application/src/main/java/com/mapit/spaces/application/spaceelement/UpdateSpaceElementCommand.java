@@ -12,4 +12,7 @@ public record UpdateSpaceElementCommand(
     UUID elementId,
     String type,
     Double x,
-    Double y) {}
+    Double y,
+    Double width,
+    Double height,
+    Double rotation) {}

@@ -24,9 +24,9 @@
 
 - [x] **MAP-71 — Integración frontend/backend.** Conectar el ViewModel `spacesState` signal store con el `api-client` generado: efectos que suscriben a `loadFloors()` y `loadSectorsByFloor(floorId)` usando `toSignal(http$)`. Inyectar `SpacesApi` via `inject()`. Verificar flujo end-to-end: crear piso → aparecer en lista; crear sector → aparecer en lista de ese piso. Verificación: tests de Vitest del store en verde, sin renderizar componentes.
 
-- [ ] **MAP-72 — Pruebas de jerarquía espacial.** Implementar tests de integración que verifiquen la relación Piso-Sector: (a) un piso puede tener múltiples sectores, (b) un sector pertenece a exactamente un piso, (c) al filtrar sectores por piso, solo se muestran los asociados. Usar Testcontainers con PostgreSQL y verificar RLS en la jerarquía. Verificación: test de RLS pasando para ambos sentidos (tenant A ve solo sus datos, no los de tenant B).
+- [x] **MAP-72 — Pruebas de jerarquía espacial.** Implementar tests de integración que verifiquen la relación Piso-Sector: (a) un piso puede tener múltiples sectores, (b) un sector pertenece a exactamente un piso, (c) al filtrar sectores por piso, solo se muestran los asociados. Usar Testcontainers con PostgreSQL y verificar RLS en la jerarquía. Verificación: test de RLS pasando para ambos sentidos (tenant A ve solo sus datos, no los de tenant B).
 
-- [ ] **MAP-73 — Pruebas de aislamiento Tenant.** Implementar el test específico de multi-tenant: dado un usuario del tenant A, verificar que no puede ver/listar pisos ni sectores pertenecientes al tenant B. Igual para tenant B. Usar `enable_tenant_isolation()` y verificar que queries sin `app.tenant_id` devuelven 0 filas. Verificación: test pasa en entorno de Testcontainers, cumpliendo la falla cerrada de RLS.
+- [x] **MAP-73 — Pruebas de aislamiento Tenant.** Implementar el test específico de multi-tenant: dado un usuario del tenant A, verificar que no puede ver/listar pisos ni sectores pertenecientes al tenant B. Igual para tenant B. Usar `enable_tenant_isolation()` y verificar que queries sin `app.tenant_id` devuelven 0 filas. Verificación: test pasa en entorno de Testcontainers, cumpliendo la falla cerrada de RLS.
 
 ## Notas de ejecución
 

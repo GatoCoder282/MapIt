@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -54,10 +55,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         var context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
+        String previousTenant = MDC.get("tenant_id");
+        MDC.put("tenant_id", identity.tenantId().value());
+        request.setAttribute("mapit.logging.tenant_id", identity.tenantId().value());
         try {
             chain.doFilter(request, response);
         } finally {
             SecurityContextHolder.clearContext();
+            if (previousTenant == null) MDC.remove("tenant_id");
+            else MDC.put("tenant_id", previousTenant);
         }
     }
 }

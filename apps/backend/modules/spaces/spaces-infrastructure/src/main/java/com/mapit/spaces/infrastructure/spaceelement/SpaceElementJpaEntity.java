@@ -42,6 +42,15 @@ public class SpaceElementJpaEntity {
   @Column(name = "y", nullable = false)
   private Double y;
 
+  @Column(name = "width", nullable = false)
+  private Double width;
+
+  @Column(name = "height", nullable = false)
+  private Double height;
+
+  @Column(name = "rotation", nullable = false)
+  private Double rotation;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -61,6 +70,9 @@ public class SpaceElementJpaEntity {
       String state,
       Double x,
       Double y,
+      Double width,
+      Double height,
+      Double rotation,
       Instant createdAt,
       Instant updatedAt,
       Instant deletedAt) {
@@ -71,6 +83,9 @@ public class SpaceElementJpaEntity {
     this.state = state;
     this.x = x;
     this.y = y;
+    this.width = width;
+    this.height = height;
+    this.rotation = rotation;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
     this.deletedAt = deletedAt;
@@ -86,6 +101,9 @@ public class SpaceElementJpaEntity {
         element.state().name(),
         element.x(),
         element.y(),
+        element.width(),
+        element.height(),
+        element.rotation(),
         audit.createdAt(),
         audit.updatedAt(),
         audit.deletedAt());
@@ -100,6 +118,9 @@ public class SpaceElementJpaEntity {
         SpaceElementType.valueOf(type),
         x,
         y,
+        width,
+        height,
+        rotation,
         SpaceElementState.valueOf(state),
         audit);
   }

@@ -13,4 +13,7 @@ public record CreateSpaceElementCommand(
     String type,
     Double x,
     Double y,
+    Double width,
+    Double height,
+    Double rotation,
     String initialState) {}

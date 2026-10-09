@@ -54,10 +54,10 @@ public class SpaceElementController {
 
   /** Body de POST /sectors/{sectorId}/elements. Tenant y sectorId van por contexto/path. */
   public record CreateSpaceElementRequest(
-      String type, Double x, Double y, String initialState) {}
+      String type, Double x, Double y, Double width, Double height, Double rotation, String initialState) {}
 
   /** Body de PUT …/elements/{elementId}: reemplazo completo de los editables. */
-  public record UpdateSpaceElementRequest(String type, Double x, Double y) {}
+  public record UpdateSpaceElementRequest(String type, Double x, Double y, Double width, Double height, Double rotation) {}
 
   @PostMapping("/sectors/{sectorId}/elements")
   public ResponseEntity<SpaceElementResponse> create(
@@ -65,7 +65,7 @@ public class SpaceElementController {
     SpaceElementResponse response =
         create.create(
             new CreateSpaceElementCommand(
-                sectorId, request.type(), request.x(), request.y(), request.initialState()));
+                sectorId, request.type(), request.x(), request.y(), request.width(), request.height(), request.rotation(), request.initialState()));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -88,7 +88,7 @@ public class SpaceElementController {
     SpaceElementResponse response =
         update.update(
             new UpdateSpaceElementCommand(
-                sectorId, elementId, request.type(), request.x(), request.y()));
+                sectorId, elementId, request.type(), request.x(), request.y(), request.width(), request.height(), request.rotation()));
     return ResponseEntity.ok(response);
   }
 

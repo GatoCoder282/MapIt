@@ -10,6 +10,9 @@ public record SpaceElementResponse(
     String type,
     double x,
     double y,
+    double width,
+    double height,
+    double rotation,
     String state,
     Instant createdAt,
     Instant updatedAt) {
@@ -24,6 +27,9 @@ public record SpaceElementResponse(
         element.type().name(),
         element.x(),
         element.y(),
+        element.width(),
+        element.height(),
+        element.rotation(),
         element.state().name(),
         audit.createdAt(),
         audit.updatedAt());

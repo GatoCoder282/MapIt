@@ -1,3 +1,4 @@
+import { Logger } from '@mapit/logging';
 import { effect, inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
 import { Client, type IMessage, type StompConfig, type StompSubscription } from '@stomp/stompjs';
 import { Observable, Subject, filter } from 'rxjs';
@@ -90,6 +91,9 @@ const TOPIC_PREFIX = '/topic/establishments/';
 @Injectable({ providedIn: 'root' })
 export class RealtimeClient {
   private readonly config = inject(REALTIME_CONFIG);
+  private readonly logger = inject(Logger);
+  private lastFailureLog = -Infinity;
+  private lastInvalidLog = -Infinity;
   private readonly factory = inject(REALTIME_STOMP_CLIENT_FACTORY);
   private readonly estado = signal<RealtimeConnectionState>('idle');
   private readonly errores = new Subject<unknown>();
@@ -179,15 +183,19 @@ export class RealtimeClient {
       client.connectHeaders = { Authorization: `Bearer ${currentToken}` };
     };
     client.onConnect = () => {
+      this.logger.log('INFO', 'realtime.connected');
+      this.lastFailureLog = -Infinity;
       this.retryAttempt = 0;
       this.estado.set('connected');
       for (const topic of this.topics.keys()) this.ensureTopicSubscription(topic);
     };
     client.onStompError = (frame) => {
+      this.logTransportFailure();
       this.errores.next(frame);
       this.estado.set('error');
     };
     client.onWebSocketError = (error) => {
+      this.logTransportFailure();
       this.errores.next(error);
       this.estado.set('error');
     };
@@ -199,6 +207,7 @@ export class RealtimeClient {
         return;
       }
       this.estado.set('disconnected');
+      this.logTransportFailure();
       this.scheduleReconnect();
     };
     client.activate();
@@ -210,6 +219,13 @@ export class RealtimeClient {
     const maximum = this.config.reconnectMaxDelayMs ?? 30_000;
     const delay = Math.min(initial * 2 ** this.retryAttempt, maximum);
     this.retryAttempt += 1;
+    this.logger.log(
+      this.retryAttempt === 1 || (this.retryAttempt & (this.retryAttempt - 1)) === 0
+        ? 'WARN'
+        : 'DEBUG',
+      'realtime.retry',
+      { attempt: this.retryAttempt, retry_delay_ms: delay },
+    );
     this.retryTimer = setTimeout(() => {
       this.retryTimer = undefined;
       if (this.requested) this.startTransport();
@@ -254,10 +270,29 @@ export class RealtimeClient {
     try {
       const parsed: unknown = JSON.parse(message.body);
       if (isRealtimeEventEnvelope(parsed)) this.eventos.next(parsed);
-      else this.errores.next(new Error('Envelope STOMP inválido'));
+      else {
+        this.logInvalidMessage();
+        this.errores.next(new Error('Envelope STOMP inválido'));
+      }
     } catch (error) {
+      this.logTransportFailure();
       this.errores.next(error);
     }
+  }
+
+  private logTransportFailure(): void {
+    const now = Date.now();
+    this.logger.log(now - this.lastFailureLog >= 60_000 ? 'WARN' : 'DEBUG', 'realtime.failed');
+    if (now - this.lastFailureLog >= 60_000) this.lastFailureLog = now;
+  }
+
+  private logInvalidMessage(): void {
+    const now = Date.now();
+    this.logger.log(
+      now - this.lastInvalidLog >= 60_000 ? 'WARN' : 'DEBUG',
+      'realtime.message.invalid',
+    );
+    if (now - this.lastInvalidLog >= 60_000) this.lastInvalidLog = now;
   }
 
   private disposeTopicSubscriptions(): void {
@@ -288,6 +323,7 @@ export class RealtimeClient {
     try {
       await this.client.deactivate();
     } catch (error) {
+      this.logTransportFailure();
       this.errores.next(error);
     }
   }

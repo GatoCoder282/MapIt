@@ -1,3 +1,4 @@
+import { provideLogging, loggingInterceptor, LOGGING_API_URL } from '@mapit/logging';
 import {
   type ApplicationConfig,
   inject,
@@ -12,6 +13,8 @@ import { BASE_PATH } from '@mapit/api-client';
 import { FeatureFlagService, provideFeatureFlags } from '@mapit/feature-flags';
 import { provideRealtime } from '@mapit/realtime';
 import { provideRuntimeConfig, RuntimeConfigStore } from './core/runtime-config';
+// eslint-disable-next-line no-restricted-imports
+import { provideKonvaMapEngine } from '@mapit/map-engine/adapters/konva/konva-map-engine';
 import { routes } from './app.routes';
 
 /**
@@ -24,10 +27,18 @@ import { routes } from './app.routes';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    provideLogging({ service: 'mapit-console' }),
+    {
+      provide: LOGGING_API_URL,
+      useFactory: () => {
+        const runtime = inject(RuntimeConfigStore);
+        return () => runtime.config().apiBaseUrl;
+      },
+    },
     provideCheckNoChangesConfig({ exhaustive: true, interval: 1000 }),
 
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([loggingInterceptor, authInterceptor])),
 
     {
       provide: BASE_PATH,
@@ -64,5 +75,7 @@ export const appConfig: ApplicationConfig = {
         enabled: () => flags.isEnabledNow('realtime.websocket'),
       };
     }),
+
+    provideKonvaMapEngine(),
   ],
 };

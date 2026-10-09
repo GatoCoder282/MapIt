@@ -32,6 +32,9 @@ importers:
       gsap:
         specifier: ^3.15.0
         version: 3.15.0
+      konva:
+        specifier: ^10.7.0
+        version: 10.7.0
       rxjs:
         specifier: ~7.8.2
         version: 7.8.2
@@ -126,6 +129,9 @@ importers:
       '@mapit/feature-flags':
         specifier: workspace:*
         version: link:../../libs/feature-flags
+      '@mapit/logging':
+        specifier: workspace:*
+        version: link:../../libs/logging
       '@mapit/map-engine':
         specifier: workspace:*
         version: link:../../libs/map-engine
@@ -165,6 +171,9 @@ importers:
       '@mapit/feature-flags':
         specifier: workspace:*
         version: link:../../libs/feature-flags
+      '@mapit/logging':
+        specifier: workspace:*
+        version: link:../../libs/logging
       '@mapit/map-engine':
         specifier: workspace:*
         version: link:../../libs/map-engine
@@ -182,12 +191,25 @@ importers:
 
   libs/auth: {}
 
-  libs/feature-flags: {}
+  libs/feature-flags:
+    dependencies:
+      '@mapit/logging':
+        specifier: workspace:*
+        version: link:../logging
 
-  libs/map-engine: {}
+  libs/logging: {}
+
+  libs/map-engine:
+    dependencies:
+      konva:
+        specifier: ^10.7.0
+        version: 10.7.0
 
   libs/realtime:
     dependencies:
+      '@mapit/logging':
+        specifier: workspace:*
+        version: link:../logging
       '@stomp/stompjs':
         specifier: 7.3.0
         version: 7.3.0
@@ -2953,6 +2975,17 @@ packages:
 
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
+
+  konva@10.7.0:
+    resolution: {integrity: sha512-2CwuytBrOlTh7WHCSeXyUeysB2rpwHruUUDD5etYtrzijkCVH+00+CQz5fJUGI0hm7mzxxDLYLw4Wpo+8QGJ4g==}
+    peerDependencies:
+      canvas: ^3.0.0
+      skia-canvas: ^3.0.0
+    peerDependenciesMeta:
+      canvas:
+        optional: true
+      skia-canvas:
+        optional: true
 
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
@@ -6592,6 +6625,8 @@ snapshots:
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
+
+  konva@10.7.0: {}
 
   levn@0.4.1:
     dependencies:

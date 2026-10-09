@@ -116,6 +116,8 @@ jobs:
             -f infra/docker/compose.yml \
             -f infra/docker/compose.full.yml up -d --build --wait
       - run: pnpm e2e
+      - name: Verificar logging real y privacidad (MAP-189)
+        run: pnpm logging:smoke
       - uses: actions/upload-artifact@v4
         if: always()
         with:

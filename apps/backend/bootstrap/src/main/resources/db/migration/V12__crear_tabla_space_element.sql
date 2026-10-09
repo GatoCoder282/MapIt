@@ -17,6 +17,9 @@ CREATE TABLE space_element (
     state            TEXT             NOT NULL,
     x                DOUBLE PRECISION NOT NULL,
     y                DOUBLE PRECISION NOT NULL,
+    width            DOUBLE PRECISION NOT NULL DEFAULT 20.0,
+    height           DOUBLE PRECISION NOT NULL DEFAULT 20.0,
+    rotation         DOUBLE PRECISION NOT NULL DEFAULT 0.0,
 
     -- Auditoría. Las columnas *_by son UUID SIN clave foránea a propósito (hasta CU-23/CU-24).
     created_at       TIMESTAMPTZ      NOT NULL DEFAULT now(),
@@ -29,6 +32,7 @@ CREATE TABLE space_element (
     deleted_by       UUID,
 
     CONSTRAINT space_element_coords_non_negative CHECK (x >= 0 AND y >= 0),
+    CONSTRAINT space_element_size_positive CHECK (width >= 20 AND height >= 20),
     CONSTRAINT space_element_deleted_by_exige_deleted_at
         CHECK (deleted_by IS NULL OR deleted_at IS NOT NULL)
 );

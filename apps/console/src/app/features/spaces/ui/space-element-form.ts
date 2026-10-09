@@ -35,8 +35,8 @@ import { TemplatePaletteComponent } from './template-palette';
             [disabled]="store.saving()"
             [attr.aria-label]="strings.form.typeLabel"
           >
-            @for (t of typeKeys; track t) {
-              <option [value]="t">{{ strings.types[t] }}</option>
+            @for (t of typeKeys(); track t) {
+              <option [value]="t">{{ typeLabel(t) }}</option>
             }
           </select>
         </label>
@@ -292,7 +292,7 @@ export class SpaceElementFormComponent {
 
   protected readonly _draft = computed(() => this.store.elementDraft());
 
-  protected readonly typeKeys = [
+  protected readonly allTypeKeys = [
     'TABLE',
     'BAR',
     'SECTOR_ZONE',
@@ -301,6 +301,23 @@ export class SpaceElementFormComponent {
     'ROOM',
     'DECOR',
   ] as const;
+
+  /** Filtra los tipos según la vertical del establecimiento actual. */
+  protected readonly typeKeys = computed((): string[] => {
+    const vertical = this.store.establishmentType();
+    if (!vertical) return [...this.allTypeKeys];
+
+    // Mapeo de vertical a tipos permitidos (espejo de SpaceElementTypePolicy del backend)
+    const allowedByVertical: Record<string, readonly string[]> = {
+      RESTAURANT: ['TABLE', 'BAR', 'SECTOR_ZONE', 'STAGE', 'DECOR'],
+      NIGHTCLUB: ['TABLE', 'BAR', 'SECTOR_ZONE', 'STAGE', 'DECOR'],
+      EVENT_HALL: ['TABLE', 'BAR', 'SECTOR_ZONE', 'STAGE', 'DECOR', 'SEAT'],
+      HOTEL: ['ROOM', 'DECOR'],
+    };
+
+    const allowed = allowedByVertical[vertical] ?? this.allTypeKeys;
+    return this.allTypeKeys.filter((t) => allowed.includes(t));
+  });
 
   protected readonly stateKeys = [
     'AVAILABLE',
@@ -335,8 +352,8 @@ export class SpaceElementFormComponent {
   }
 
   /**
-   * Aplica la elección de la paleta (HU-4.02, nivel 1): la selección de plantilla ya la
-   * gestiona TemplatesStore; aquí solo se pre-rellena el tipo del borrador. Nunca se
+   * Aplica la elección de la paleta (HU‑4.02, nivel 1): la selección de plantilla ya la
+   * gestiona TemplatesStore; aquí solo se pre‑rellena el tipo del borrador. Nunca se
    * reutilizan ids de plantilla ni de instancia: el alta sigue el flujo normal.
    */
   protected onPalettePick(event: { templateId: string | null; type: string }): void {
@@ -352,5 +369,10 @@ export class SpaceElementFormComponent {
         error: () => window.alert(this.templatesStore.error() ?? 'Error al guardar'),
       });
     }
+  }
+
+  /** Obtiene la etiqueta localizada para un tipo de elemento. */
+  protected typeLabel(type: string): string {
+    return this.strings.types[type as keyof typeof this.strings.types] ?? type;
   }
 }

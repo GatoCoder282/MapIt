@@ -54,6 +54,8 @@ tags:
 paths:
   /auth/login:
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [auth]
       summary: Iniciar sesión
       description: |
@@ -70,6 +72,9 @@ paths:
               $ref: "#/components/schemas/LoginRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Credenciales válidas y token emitido
           content:
             application/json:
@@ -82,6 +87,8 @@ paths:
 
   /health:
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [health]
       summary: Estado del servicio
       description: Endpoint de humo. Sirve para verificar que el contrato de punta a punta funciona.
@@ -89,6 +96,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: El servicio está operativo
           content:
             application/json:
@@ -107,6 +117,7 @@ paths:
         solo el frontend.
       operationId: listTenants
       parameters:
+        - $ref: "#/components/parameters/RequestId"
         - name: search
           in: query
           description: Filtra por nombre o slug (contiene, sin distinguir mayúsculas).
@@ -132,6 +143,9 @@ paths:
             default: 20
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Página de tenants
           content:
             application/json:
@@ -145,6 +159,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
 
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [tenants]
       summary: Registrar un tenant
       description: |
@@ -161,6 +177,9 @@ paths:
               $ref: "#/components/schemas/TenantRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Tenant creado
           content:
             application/json:
@@ -189,12 +208,17 @@ paths:
           maxLength: 63
 
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [tenants]
       summary: Consultar el detalle de un tenant
       description: Solo SUPER_ADMIN. 404 si no existe.
       operationId: getTenant
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Tenant solicitado
           content:
             application/json:
@@ -208,6 +232,8 @@ paths:
           $ref: "#/components/responses/NotFound"
 
     patch:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [tenants]
       summary: Editar un tenant
       description: |
@@ -227,6 +253,9 @@ paths:
               $ref: "#/components/schemas/TenantUpdateRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Tenant actualizado
           content:
             application/json:
@@ -245,6 +274,8 @@ paths:
 
   /auth/activate:
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [auth]
       summary: Activar la cuenta del primer ADMIN de un tenant
       description: |
@@ -270,6 +301,9 @@ paths:
               $ref: "#/components/schemas/ActivationRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Cuenta ADMIN creada y activa
           content:
             application/json:
@@ -282,6 +316,8 @@ paths:
 
   /users:
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [users]
       summary: Crear un usuario de staff
       description: |
@@ -307,6 +343,9 @@ paths:
               $ref: "#/components/schemas/CreateUserRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Usuario creado y activo
           content:
             application/json:
@@ -323,6 +362,8 @@ paths:
 
   /feature-flags:
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [feature-flags]
       summary: Flags evaluadas para el usuario y tenant actuales
       description: |
@@ -336,6 +377,9 @@ paths:
       operationId: getFeatureFlags
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Mapa de flag → habilitada
           content:
             application/json:
@@ -346,6 +390,8 @@ paths:
 
   /demo-items:
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Listar elementos de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -353,6 +399,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elementos del tenant de demostración
           content:
             application/json:
@@ -364,6 +413,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Crear un elemento de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -377,6 +428,9 @@ paths:
               $ref: "#/components/schemas/DemoItemRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento creado
           content:
             application/json:
@@ -398,6 +452,8 @@ paths:
           format: uuid
 
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Obtener un elemento de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -405,6 +461,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento solicitado
           content:
             application/json:
@@ -416,6 +475,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Actualizar un elemento de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -429,6 +490,9 @@ paths:
               $ref: "#/components/schemas/DemoItemRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento actualizado
           content:
             application/json:
@@ -442,6 +506,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     delete:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Eliminar un elemento de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -449,6 +515,9 @@ paths:
       security: []
       responses:
         "204":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento eliminado
         "404":
           $ref: "#/components/responses/NotFound"
@@ -461,6 +530,8 @@ paths:
   # con el adaptador `DemoTenantContext`. El tenant NUNCA viaja en el cuerpo.
   /establishments:
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Listar los establecimientos del tenant
       description: Devuelve solo los establecimientos vivos del tenant del contexto.
@@ -468,6 +539,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimientos del tenant
           content:
             application/json:
@@ -481,6 +555,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Registrar un establecimiento
       description: El identificador lo genera el backend; el tenant sale del contexto.
@@ -494,6 +570,9 @@ paths:
               $ref: "#/components/schemas/EstablishmentCreateRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimiento creado
           content:
             application/json:
@@ -519,6 +598,8 @@ paths:
           format: uuid
 
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Obtener un establecimiento
       description: Responde 404 si no existe o pertenece a otro tenant.
@@ -526,6 +607,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimiento solicitado
           content:
             application/json:
@@ -539,6 +623,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Actualizar un establecimiento
       description: |
@@ -555,6 +641,9 @@ paths:
               $ref: "#/components/schemas/EstablishmentUpdateRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimiento actualizado
           content:
             application/json:
@@ -572,6 +661,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     delete:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Dar de baja un establecimiento
       description: |
@@ -581,6 +672,9 @@ paths:
       security: []
       responses:
         "204":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimiento dado de baja
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -595,6 +689,8 @@ paths:
   # con el adaptador `DemoTenantContext`. El tenant NUNCA viaja en el cuerpo.
   /floors:
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Listar todos los pisos del tenant
       description: Devuelve todos los pisos del tenant actual (resuelto desde el JWT).
@@ -602,6 +698,9 @@ paths:
       security: [] # Temporary
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Lista de pisos del tenant
           content:
             application/json:
@@ -614,6 +713,8 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Crear un piso
       description: Crea un nuevo piso para el tenant actual. El slug se autogenera y se valida su unicidad. Se asocia al establecimiento por defecto del tenant.
@@ -627,6 +728,9 @@ paths:
               $ref: "#/components/schemas/FloorCreateRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Piso creado
           content:
             application/json:
@@ -651,6 +755,8 @@ paths:
           type: string
           format: uuid
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Listar los pisos de un establecimiento
       description: Devuelve todos los pisos asociados a un establecimiento específico.
@@ -658,6 +764,9 @@ paths:
       security: [] # Temporary
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Lista de pisos para el establecimiento
           content:
             application/json:
@@ -672,6 +781,8 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Crear un piso
       description: Crea un nuevo piso para un establecimiento específico. El slug se autogenera y se valida su unicidad.
@@ -685,6 +796,9 @@ paths:
               $ref: "#/components/schemas/FloorCreateRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Piso creado
           content:
             application/json:
@@ -711,6 +825,8 @@ paths:
           type: string
           format: uuid
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Obtener un piso
       description: Devuelve un piso específico por su ID.
@@ -718,6 +834,9 @@ paths:
       security: [] # Temporary
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Piso solicitado
           content:
             application/json:
@@ -730,6 +849,8 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
     put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Actualizar un piso
       description: Actualiza un piso existente. El slug no se puede modificar.
@@ -743,6 +864,9 @@ paths:
               $ref: "#/components/schemas/FloorCreateRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Piso actualizado
           content:
             application/json:
@@ -759,6 +883,8 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
     delete:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Eliminar un piso
       description: Elimina un piso (soft delete).
@@ -766,6 +892,9 @@ paths:
       security: [] # Temporary
       responses:
         "204":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Piso eliminado
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -788,6 +917,8 @@ paths:
           type: string
           format: uuid
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Listar los sectores de un piso
       description: Devuelve todos los sectores asociados a un piso específico.
@@ -795,6 +926,9 @@ paths:
       security: [] # Temporary
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Lista de sectores para el piso
           content:
             application/json:
@@ -809,6 +943,8 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Crear un sector
       description: Crea un nuevo sector para un piso específico. El slug se autogenera y se valida su unicidad.
@@ -822,6 +958,9 @@ paths:
               $ref: "#/components/schemas/SectorCreateRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Sector creado
           content:
             application/json:
@@ -853,6 +992,8 @@ paths:
           type: string
           format: uuid
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Listar los elementos espaciales de un sector
       description: Devuelve solo los elementos vivos del sector, dentro del tenant actual.
@@ -860,6 +1001,9 @@ paths:
       security: [] # Temporary
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Lista de elementos del sector
           content:
             application/json:
@@ -874,6 +1018,8 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Crear un elemento espacial
       description: |
@@ -891,6 +1037,9 @@ paths:
               $ref: "#/components/schemas/SpaceElementCreateRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento creado
           content:
             application/json:
@@ -922,6 +1071,8 @@ paths:
           type: string
           format: uuid
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Obtener un elemento espacial
       description: Responde 404 si no existe, está dado de baja o es de otro sector/tenant.
@@ -929,6 +1080,9 @@ paths:
       security: [] # Temporary
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento solicitado
           content:
             application/json:
@@ -941,6 +1095,8 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
     put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Actualizar un elemento espacial
       description: |
@@ -956,6 +1112,9 @@ paths:
               $ref: "#/components/schemas/SpaceElementUpdateRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento actualizado
           content:
             application/json:
@@ -987,6 +1146,8 @@ paths:
           type: string
           format: uuid
     patch:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [operations]
       summary: Actualizar el estado operativo de un elemento espacial
       description: |
@@ -1003,6 +1164,9 @@ paths:
               $ref: "#/components/schemas/SpaceElementStateUpdateRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Estado actualizado o confirmado de forma idempotente
           content:
             application/json:
@@ -1038,6 +1202,8 @@ paths:
           type: string
           format: uuid
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [operations]
       summary: Consultar el historial de estados de un elemento espacial
       description: |
@@ -1047,6 +1213,9 @@ paths:
       operationId: listSpaceElementStateChanges
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Historial de cambios del elemento
           content:
             application/json:
@@ -1190,6 +1359,32 @@ paths:
           $ref: "#/components/responses/ServerError"
 
 components:
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: |
+        Identificador opcional de correlación de la petición. El servidor acepta
+        UUID de cualquier versión con formato hexadecimal 8-4-4-4-12 y los
+        normaliza a minúsculas; si falta o es inválido, genera otro sin rechazar
+        la petición. El esquema admite texto para permitir esa sustitución.
+        No autentica al cliente ni determina el tenant.
+      schema:
+        type: string
+      example: "c1b3ad60-64d2-4a6b-a94e-7a43251c3fab"
+
+  headers:
+    RequestId:
+      description: |
+        UUID en minúsculas de correlación aceptado o generado por el servidor, también en
+        respuestas de error. Disponible para el navegador mediante CORS.
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: "c1b3ad60-64d2-4a6b-a94e-7a43251c3fab"
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -1727,7 +1922,7 @@ components:
     # ── Elementos espaciales (HU-2.03) ──────────────────────────────────────
     SpaceElement:
       type: object
-      required: [id, sectorId, type, x, y, state, createdAt, updatedAt]
+      required: [id, sectorId, type, x, y, width, height, rotation, state, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1751,6 +1946,21 @@ components:
           format: double
           minimum: 0
           description: Coordenada vertical relativa al sector.
+        width:
+          type: number
+          format: double
+          minimum: 20
+          description: Ancho del elemento.
+        height:
+          type: number
+          format: double
+          minimum: 20
+          description: Alto del elemento.
+        rotation:
+          type: number
+          format: double
+          default: 0
+          description: Rotación en grados.
         state:
           type: string
           enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
@@ -1780,6 +1990,18 @@ components:
           type: number
           format: double
           minimum: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+        height:
+          type: number
+          format: double
+          minimum: 20
+        rotation:
+          type: number
+          format: double
+          default: 0
         initialState:
           type: string
           enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
@@ -1800,6 +2022,18 @@ components:
           type: number
           format: double
           minimum: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+        height:
+          type: number
+          format: double
+          minimum: 20
+        rotation:
+          type: number
+          format: double
+          default: 0
 
     SpaceElementStateUpdateRequest:
       type: object
@@ -1940,42 +2174,63 @@ components:
 
   responses:
     Unauthorized:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: Falta el token o no es válido
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     BadRequest:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: La solicitud no cumple las validaciones
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     Conflict:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: El recurso entra en conflicto con otro existente
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     ServiceUnavailable:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: No se pudo completar una dependencia externa
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     ServerError:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: Error inesperado del servidor
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     Forbidden:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: Autenticado, pero sin permiso para este recurso o tenant
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     NotFound:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: El recurso no existe (o pertenece a otro tenant)
       content:
         application/problem+json:

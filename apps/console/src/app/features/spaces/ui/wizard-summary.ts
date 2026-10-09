@@ -15,6 +15,8 @@ import type { Establishment, Floor, Sector } from '@mapit/api-client';
 
 import { STRINGS } from '../../../core/strings';
 import { SpacesApiService } from '../data/spaces-api';
+import { SpacesStore } from '../model/spaces-store';
+import { FeatureFlagService } from '@mapit/feature-flags';
 
 interface SummaryData {
   establishment: Establishment;
@@ -214,6 +216,25 @@ interface SummaryData {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </button>
+          @if (flags.isEnabled('map-editor.enabled')()) {
+            <button class="btn-accent" type="button" (click)="openEditor()">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+              {{ editorStrings.openEditor }}
+            </button>
+          }
         </div>
       </footer>
     </div>
@@ -502,6 +523,31 @@ interface SummaryData {
       box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
     }
 
+    .btn-accent {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      border-radius: 0.5rem;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      cursor: pointer;
+      border: none;
+      background: var(--mapit-color-primary);
+      color: var(--mapit-color-on-primary);
+      transition: background 150ms ease;
+    }
+
+    .btn-accent:hover {
+      background: color-mix(in srgb, var(--mapit-color-primary) 85%, black);
+    }
+
+    .btn-accent:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
+    }
+
     @media (max-width: 48rem) {
       .cards {
         grid-template-columns: 1fr;
@@ -517,29 +563,26 @@ export class WizardSummaryComponent {
 
   private readonly api = inject(SpacesApiService);
   private readonly router = inject(Router);
+  protected readonly store = inject(SpacesStore);
+  protected readonly flags = inject(FeatureFlagService);
 
   protected readonly strings = STRINGS.spaces.wizard;
+  protected readonly editorStrings = STRINGS.spaces.editor;
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
   protected readonly data = signal<SummaryData | null>(null);
 
   constructor() {
-    // El id viene del router (withComponentInputBinding) y NO existe aÃºn en la
-    // primera ejecuciÃ³n del constructor: leer `input.required` ahÃ­ lanza
-    // NG0950 y la pÃ¡gina quedaba en blanco. El effect corre tras el binding
-    // y se relanza solo si la ruta cambia de establecimiento.
     effect(() => {
       this.loadSummary(this.establishmentId());
     });
   }
 
-  /** Reintento manual de carga (botÃ³n del estado de error). */
   protected reload(): void {
     this.loadSummary(this.establishmentId());
   }
 
   private readonly destroyRef = inject(DestroyRef);
-  /** Consecutivo de peticiÃ³n: solo la Ãºltima respuesta pinta (evita carreras al cambiar de id). */
   private requestSeq = 0;
 
   private loadSummary(id: string): void {
@@ -595,5 +638,57 @@ export class WizardSummaryComponent {
 
   protected finish(): void {
     void this.router.navigate(['/home']);
+  }
+
+  protected openEditor(): void {
+    // Get all sectors across all floors
+    const allSectors = this.store.allSectors();
+
+    if (allSectors.length === 0) {
+      console.warn('[WizardSummary] No sectors found');
+      return;
+    }
+
+    let targetSectorId: string | null = null;
+
+    // First: find sector with elements
+    for (const sector of allSectors) {
+      const elements = this.store.elementsBySectorId(sector.id);
+      if (elements.length > 0) {
+        targetSectorId = sector.id;
+        break;
+      }
+    }
+
+    // Fallback: first sector
+    if (!targetSectorId) {
+      const firstSector = allSectors[0];
+      if (firstSector) {
+        targetSectorId = firstSector.id;
+      }
+    }
+
+    if (targetSectorId) {
+      const targetSector = allSectors.find((s) => s.id === targetSectorId);
+
+      // Find floorId for this sector using the new public method
+      const targetFloorId = this.store.floorIdForSector(targetSectorId);
+
+      // Get establishmentId from the store
+      const establishmentId = this.store.establishmentId();
+
+      console.warn(
+        '[WizardSummary] Navigating to editor with sector:',
+        targetSectorId,
+        targetSector?.name,
+      );
+      void this.router.navigate(['/spaces/editor', targetSectorId], {
+        queryParams: {
+          sectorName: targetSector?.name,
+          floorId: targetFloorId,
+          establishmentId: establishmentId,
+        },
+      });
+    }
   }
 }
