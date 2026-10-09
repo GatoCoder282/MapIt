@@ -8,6 +8,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { ROOT, capture, log, c, die } from './_lib.mjs';
 
@@ -48,50 +49,97 @@ if (soloVerificar) {
 /* ── Generación ──────────────────────────────────────────── */
 log.step('Generando el cliente desde el contrato OpenAPI');
 
-// openapi-generator se ejecuta vía Docker: así no hace falta instalar Java
-// ni el generador en las 5 máquinas. Si Docker no está, se avisa y se sigue
-// (el andamiaje no debe bloquearse por esto).
-const dockerOk = capture('docker', ['info']).ok;
-if (!dockerOk) {
-  log.warn('Docker no está disponible: no se puede generar el cliente ahora.');
-  log.info('Levanta Docker Desktop y repite:  pnpm api:gen');
-  process.exit(0);
+// Versión fija del generador: nada de `:latest`, que rompe reproducibilidad
+// y fuerza pulls extra a Docker Hub (rate limit anónimo en CI).
+const VERSION_GENERADOR = '7.26.0';
+const NOMBRE_JAR = `openapi-generator-cli-${VERSION_GENERADOR}.jar`;
+const DIR_CACHE = join(homedir(), '.cache', 'mapit');
+const RUTA_JAR = join(DIR_CACHE, NOMBRE_JAR);
+const URL_JAR = `https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/${VERSION_GENERADOR}/${NOMBRE_JAR}`;
+
+const ADDITIONAL_PROPERTIES = [
+  'ngVersion=22.0.0',
+  'providedInRoot=true',
+  'withInterfaces=true',
+  'useSingleRequestParameter=true',
+  'fileNaming=kebab-case',
+  'enumPropertyNaming=UPPERCASE',
+  'supportsES6=true',
+].join(',');
+
+/** Argumentos del generador; las rutas cambian según corra en host o en Docker. */
+function argsGenerador(contrato, destino) {
+  return [
+    'generate',
+    '-i',
+    contrato,
+    '-g',
+    'typescript-angular',
+    '-o',
+    destino,
+    `--additional-properties=${ADDITIONAL_PROPERTIES}`,
+  ];
 }
 
 mkdirSync(DESTINO_TS, { recursive: true });
 
-const argsDocker = [
-  'run',
-  '--rm',
-  '-v',
-  `${ROOT}:/local`,
-  'openapitools/openapi-generator-cli:latest',
-  'generate',
-  '-i',
-  '/local/packages/api-contract/openapi.yaml',
-  '-g',
-  'typescript-angular',
-  '-o',
-  '/local/libs/api-client/src/lib/generated',
-  '--additional-properties=' +
-    [
-      'ngVersion=22.0.0',
-      'providedInRoot=true',
-      'withInterfaces=true',
-      'useSingleRequestParameter=true',
-      'fileNaming=kebab-case',
-      'enumPropertyNaming=UPPERCASE',
-      'supportsES6=true',
-    ].join(','),
-];
+// El generador corre como JAR de Maven Central siempre que haya Java
+// (el caso en CI: los runners traen JDK preinstalado). Así la generación
+// no depende de Docker Hub, cuyo rate limit anónimo tumba los pipelines.
+// Sin Java, se cae a Docker como antes.
+const javaOk = capture('java', ['-version']).ok;
 
-const r = capture('docker', argsDocker, { env: { MSYS_NO_PATHCONV: '1' } });
+/** Descarga el JAR oficial una sola vez y lo cachea en ~/.cache/mapit. */
+async function asegurarJar() {
+  if (existsSync(RUTA_JAR)) return true;
+  mkdirSync(DIR_CACHE, { recursive: true });
+  const resp = await fetch(URL_JAR).catch(() => null);
+  if (!resp?.ok || !resp.body) {
+    log.warn(`No se pudo descargar ${NOMBRE_JAR} de Maven Central.`);
+    return false;
+  }
+  writeFileSync(RUTA_JAR, Buffer.from(await resp.arrayBuffer()));
+  log.info(c.gray(`Generador cacheado en ${RUTA_JAR}`));
+  return true;
+}
+
+/** Ejecuta el generador. Prueba JAR local → Docker, en ese orden. */
+async function generar() {
+  if (javaOk && (await asegurarJar())) {
+    return capture('java', ['-jar', RUTA_JAR, ...argsGenerador(CONTRATO, DESTINO_TS)]);
+  }
+
+  const dockerOk = capture('docker', ['info']).ok;
+  if (!dockerOk) {
+    log.warn('Ni Java ni Docker están disponibles: no se puede generar el cliente ahora.');
+    log.info('Instala un JDK o levanta Docker Desktop y repite:  pnpm api:gen');
+    process.exit(0);
+  }
+
+  return capture(
+    'docker',
+    [
+      'run',
+      '--rm',
+      '-v',
+      `${ROOT}:/local`,
+      `openapitools/openapi-generator-cli:v${VERSION_GENERADOR}`,
+      ...argsGenerador(
+        '/local/packages/api-contract/openapi.yaml',
+        '/local/libs/api-client/src/lib/generated',
+      ),
+    ],
+    { env: { MSYS_NO_PATHCONV: '1' } },
+  );
+}
+
+const r = await generar();
 if (!r.ok) {
   log.fail('El generador falló.');
   console.error(r.stderr || r.stdout);
   die(
     'No se pudo generar el cliente de API',
-    `  Valida primero el contrato:  pnpm api:lint\n  Y comprueba que Docker responde:  docker info`,
+    `  Valida primero el contrato:  pnpm api:lint\n  Y comprueba que Java responde:  java -version  (o Docker:  docker info)`,
   );
 }
 
