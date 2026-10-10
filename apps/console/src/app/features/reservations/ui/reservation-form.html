@@ -1,0 +1,124 @@
+<main class="reservation-page">
+  <header class="page-header">
+    <p class="eyebrow">{{ strings.eyebrow }}</p>
+    <h1>{{ strings.title }}</h1>
+    <p>{{ strings.intro }}</p>
+  </header>
+
+  @if (store.created(); as reservation) {
+    <section class="success-card" aria-live="polite">
+      <span class="success-icon" aria-hidden="true">✓</span>
+      <h2>{{ strings.successTitle }}</h2>
+      <p>{{ strings.successBody }}</p>
+      <dl>
+        <div>
+          <dt>{{ strings.reservationCode }}</dt>
+          <dd>{{ reservation.id }}</dd>
+        </div>
+      </dl>
+      <button class="button primary" type="button" (click)="store.startAnother()">
+        {{ strings.createAnother }}
+      </button>
+    </section>
+  } @else {
+    <form class="reservation-form" (submit)="$event.preventDefault(); store.submit()">
+      <mapit-reservation-customer-picker (personSelected)="onCustomerSelected($event)" />
+
+      <section class="form-card" aria-labelledby="reservation-details-title">
+        <header>
+          <h2 id="reservation-details-title">{{ strings.title }}</h2>
+        </header>
+
+        @if (store.error(); as error) {
+          <p class="message error" role="alert">{{ error }}</p>
+        }
+
+        <label class="field">
+          <span>{{ strings.establishmentLabel }}</span>
+          <select
+            #establishment
+            name="establishment"
+            [value]="store.establishmentId()"
+            [disabled]="store.loading() || store.submitting()"
+            (change)="store.selectEstablishment(establishment.value)"
+          >
+            <option value="">{{ strings.establishmentPlaceholder }}</option>
+            @for (option of store.establishments(); track option.id) {
+              <option [value]="option.id">{{ option.name }}</option>
+            }
+          </select>
+        </label>
+
+        @if (store.selectedEstablishment(); as selectedEstablishment) {
+          <p class="timezone">
+            {{ strings.timezonePrefix }} <strong>{{ selectedEstablishment.timezone }}</strong>
+          </p>
+        }
+
+        <div class="interval-grid">
+          <label class="field">
+            <span>{{ strings.startsAtLabel }}</span>
+            <input
+              #startsAt
+              name="startsAt"
+              type="datetime-local"
+              required
+              [value]="store.startsAt()"
+              [disabled]="store.submitting()"
+              (input)="store.setStartsAt(startsAt.value)"
+            />
+          </label>
+          <label class="field">
+            <span>{{ strings.endsAtLabel }}</span>
+            <input
+              #endsAt
+              name="endsAt"
+              type="datetime-local"
+              required
+              [value]="store.endsAt()"
+              [disabled]="store.submitting()"
+              (input)="store.setEndsAt(endsAt.value)"
+            />
+          </label>
+        </div>
+
+        <fieldset class="elements" [disabled]="store.loading() || store.submitting()">
+          <legend>{{ strings.elementsTitle }}</legend>
+          <div class="elements-heading">
+            <p>{{ strings.elementsIntro }}</p>
+            <span>{{ store.selectedElementIds().size }} {{ strings.selectedCount }}</span>
+          </div>
+
+          @if (store.loading()) {
+            <p class="empty">{{ strings.loading }}</p>
+          } @else if (store.establishmentId() && store.elements().length === 0) {
+            <p class="empty">{{ strings.emptyElements }}</p>
+          } @else {
+            <div class="element-grid">
+              @for (element of store.elements(); track element.id) {
+                <label class="element-option" [class.selected]="store.isElementSelected(element.id)">
+                  <input
+                    type="checkbox"
+                    [name]="'element-' + element.id"
+                    [checked]="store.isElementSelected(element.id)"
+                    (change)="store.toggleElement(element.id, $any($event.target).checked)"
+                  />
+                  <span>
+                    <strong>{{ elementTypeLabel(element.type) }}</strong>
+                    <small>{{ element.floorName }} · {{ element.sectorName }}</small>
+                  </span>
+                </label>
+              }
+            </div>
+          }
+        </fieldset>
+
+        <footer class="actions">
+          <button class="button primary" type="submit" [disabled]="!store.canSubmit()">
+            {{ store.submitting() ? strings.submitting : strings.submit }}
+          </button>
+        </footer>
+      </section>
+    </form>
+  }
+</main>

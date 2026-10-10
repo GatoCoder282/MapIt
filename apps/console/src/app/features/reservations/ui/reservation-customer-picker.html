@@ -1,0 +1,119 @@
+<section class="customer-picker" [attr.aria-labelledby]="'reservation-customer-title'">
+  <header>
+    <h2 id="reservation-customer-title">{{ strings.title }}</h2>
+    <p>{{ strings.intro }}</p>
+  </header>
+
+  @if (store.error(); as error) {
+    <p class="message error" role="alert">{{ error }}</p>
+  }
+
+  @if (store.selected(); as selected) {
+    <article class="selected-card" aria-live="polite">
+      <div>
+        <span class="eyebrow">{{ strings.selectedLabel }}</span>
+        <strong>{{ selected.fullName }}</strong>
+        <span>{{ selected.email || selected.phone || strings.optional }}</span>
+      </div>
+      <button type="button" class="button secondary" (click)="store.clearSelection()">
+        {{ strings.changeButton }}
+      </button>
+    </article>
+  } @else {
+    <form class="search" (ngSubmit)="store.search()">
+      <label for="customer-search">{{ strings.searchLabel }}</label>
+      <div class="search-row">
+        <input
+          id="customer-search"
+          name="customerSearch"
+          type="search"
+          autocomplete="off"
+          [placeholder]="strings.searchPlaceholder"
+          [ngModel]="store.query()"
+          (ngModelChange)="store.setQuery($event)"
+          [disabled]="store.searching()"
+        />
+        <button type="submit" class="button primary" [disabled]="store.searching()">
+          {{ store.searching() ? strings.searching : strings.searchButton }}
+        </button>
+      </div>
+    </form>
+
+    @if (store.results().length > 0) {
+      <ul class="results" [attr.aria-label]="strings.resultsLabel">
+        @for (person of store.results(); track person.id) {
+          <li>
+            <div>
+              <strong>{{ person.fullName }}</strong>
+              <span>{{ person.email || person.phone || strings.optional }}</span>
+            </div>
+            <button type="button" class="button secondary" (click)="store.select(person)">
+              {{ strings.selectButton }}
+            </button>
+          </li>
+        }
+      </ul>
+    } @else if (store.query() && !store.searching() && !store.error()) {
+      <p class="empty">{{ strings.empty }}</p>
+    }
+
+    @if (!store.registrationOpen()) {
+      <button type="button" class="button link" (click)="store.openRegistration()">
+        {{ strings.newButton }}
+      </button>
+    }
+  }
+
+  @if (store.registrationOpen()) {
+    <form class="registration" (ngSubmit)="store.register()">
+      <h3>{{ strings.newTitle }}</h3>
+      <label>
+        <span>{{ strings.fullNameLabel }}</span>
+        <input
+          name="fullName"
+          required
+          maxlength="120"
+          autocomplete="name"
+          [placeholder]="strings.fullNamePlaceholder"
+          [ngModel]="store.draft().fullName"
+          (ngModelChange)="store.setFullName($event)"
+          [disabled]="store.saving()"
+        />
+      </label>
+      <label>
+        <span>{{ strings.emailLabel }} · {{ strings.optional }}</span>
+        <input
+          name="email"
+          type="email"
+          maxlength="254"
+          autocomplete="email"
+          [placeholder]="strings.emailPlaceholder"
+          [ngModel]="store.draft().email"
+          (ngModelChange)="store.setEmail($event)"
+          [disabled]="store.saving()"
+        />
+      </label>
+      <label>
+        <span>{{ strings.phoneLabel }} · {{ strings.optional }}</span>
+        <input
+          name="phone"
+          type="tel"
+          maxlength="32"
+          autocomplete="tel"
+          [placeholder]="strings.phonePlaceholder"
+          [ngModel]="store.draft().phone"
+          (ngModelChange)="store.setPhone($event)"
+          [disabled]="store.saving()"
+        />
+      </label>
+      <div class="actions">
+        <button type="button" class="button secondary" [disabled]="store.saving()" (click)="store.cancelRegistration()">
+          {{ strings.cancelButton }}
+        </button>
+        <button type="submit" class="button primary" [disabled]="store.saving()">
+          {{ store.saving() ? strings.saving : strings.saveButton }}
+        </button>
+      </div>
+    </form>
+  }
+</section>
