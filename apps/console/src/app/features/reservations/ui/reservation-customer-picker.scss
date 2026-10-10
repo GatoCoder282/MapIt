@@ -1,0 +1,160 @@
+:host {
+  display: block;
+}
+
+.customer-picker {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  color: var(--mapit-color-text);
+  background: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius);
+}
+
+header h2,
+.registration h3 {
+  margin: 0;
+}
+
+header p,
+.empty {
+  margin: 0.35rem 0 0;
+  color: var(--mapit-color-text-muted);
+}
+
+.search,
+.registration,
+.registration label {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.625rem;
+}
+
+input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  color: inherit;
+  background: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border-input);
+  border-radius: var(--mapit-radius-input);
+}
+
+input:focus-visible {
+  outline: 2px solid var(--mapit-color-primary);
+  outline-offset: 2px;
+}
+
+.results {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.results li,
+.selected-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: var(--mapit-color-surface-low);
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius);
+}
+
+.results li div,
+.selected-card div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.results span,
+.selected-card span {
+  font-size: 0.8125rem;
+  color: var(--mapit-color-text-muted);
+}
+
+.eyebrow {
+  font-weight: 700;
+  color: var(--mapit-color-primary) !important;
+}
+
+.registration {
+  padding-top: 1rem;
+  border-top: 1px solid var(--mapit-color-border);
+}
+
+.registration label span,
+.search label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  margin-top: 0.5rem;
+}
+
+.button {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.875rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--mapit-radius-input);
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.primary {
+  color: var(--mapit-color-on-primary);
+  background: var(--mapit-color-primary);
+}
+
+.secondary {
+  color: var(--mapit-color-text);
+  background: var(--mapit-color-surface);
+  border-color: var(--mapit-color-border);
+}
+
+.link {
+  justify-self: start;
+  padding-inline: 0;
+  color: var(--mapit-color-primary);
+  background: transparent;
+}
+
+.message.error {
+  margin: 0;
+  padding: 0.75rem;
+  color: var(--mapit-color-error);
+  background: rgb(186 26 26 / 0.08);
+  border-radius: var(--mapit-radius);
+}
+
+@media (max-width: 36rem) {
+  .search-row {
+    grid-template-columns: 1fr;
+  }
+
+  .results li,
+  .selected-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
