@@ -9,6 +9,7 @@ import {
   LucideLogOut,
   LucideComponent,
 } from '@lucide/angular';
+
 import { STRINGS } from '../core/strings';
 
 interface StaffNavItem {
