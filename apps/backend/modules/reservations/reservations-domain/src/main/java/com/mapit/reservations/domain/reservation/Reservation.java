@@ -87,4 +87,22 @@ public record Reservation(
     Objects.requireNonNull(elementId, "elementId no puede ser null");
     return spaceElementIds.contains(elementId);
   }
+
+  /** Devuelve una copia con el estado solicitado o falla si la transición no es válida. */
+  public Reservation transitionTo(ReservationStatus nextStatus) {
+    Objects.requireNonNull(nextStatus, "nextStatus no puede ser null");
+    if (!status.canTransitionTo(nextStatus)) {
+      throw new ReservationTransitionNotAllowedException(status, nextStatus);
+    }
+    return new Reservation(
+        id,
+        tenantId,
+        establishmentId,
+        personId,
+        spaceElementIds,
+        timeRange,
+        nextStatus,
+        createdAt,
+        createdBy);
+  }
 }

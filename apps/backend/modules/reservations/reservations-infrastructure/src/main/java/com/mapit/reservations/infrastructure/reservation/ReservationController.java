@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,8 +26,11 @@ import com.mapit.reservations.application.reservation.CreateReservation;
 import com.mapit.reservations.application.reservation.InvalidReservationResourceException;
 import com.mapit.reservations.application.reservation.ReservationOverlapException;
 import com.mapit.reservations.application.reservation.ReservationReferenceNotFoundException;
+import com.mapit.reservations.application.reservation.ReservationStatusUpdateConflictException;
+import com.mapit.reservations.application.reservation.TransitionReservationStatus;
 import com.mapit.reservations.domain.reservation.Reservation;
 import com.mapit.reservations.domain.reservation.ReservationStatus;
+import com.mapit.reservations.domain.reservation.ReservationTransitionNotAllowedException;
 import com.mapit.reservations.infrastructure.ReservationsProblemTypes;
 
 /** Adaptador REST para crear reservas internas dentro de un establecimiento. */
@@ -37,9 +41,13 @@ public class ReservationController {
   private static final int MAX_ELEMENTS_PER_RESERVATION = 100;
 
   private final CreateReservation createReservation;
+  private final TransitionReservationStatus transitionReservationStatus;
 
-  public ReservationController(CreateReservation createReservation) {
+  public ReservationController(
+      CreateReservation createReservation,
+      TransitionReservationStatus transitionReservationStatus) {
     this.createReservation = createReservation;
+    this.transitionReservationStatus = transitionReservationStatus;
   }
 
   @PostMapping
@@ -55,6 +63,18 @@ public class ReservationController {
                 request.spaceElementIds(),
                 request.startsAt(),
                 request.endsAt()));
+    return ReservationResponse.fromDomain(reservation);
+  }
+
+  @PatchMapping("/{reservationId}/status")
+  public ReservationResponse transitionStatus(
+      @PathVariable UUID establishmentId,
+      @PathVariable UUID reservationId,
+      @Valid @RequestBody ReservationStatusTransitionRequest request) {
+    Reservation reservation =
+        transitionReservationStatus.execute(
+            new TransitionReservationStatus.Command(
+                establishmentId, reservationId, request.status()));
     return ReservationResponse.fromDomain(reservation);
   }
 
@@ -86,11 +106,35 @@ public class ReservationController {
     return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 
+  @ExceptionHandler(ReservationTransitionNotAllowedException.class)
+  ResponseEntity<ProblemDetail> handleInvalidTransition(
+      ReservationTransitionNotAllowedException exception) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problem.setTitle("Transición de reserva no permitida");
+    problem.setType(URI.create(ReservationsProblemTypes.RESERVATION_TRANSITION_INVALID));
+    problem.setProperty("currentStatus", exception.currentStatus());
+    problem.setProperty("requestedStatus", exception.requestedStatus());
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+  }
+
+  @ExceptionHandler(ReservationStatusUpdateConflictException.class)
+  ResponseEntity<ProblemDetail> handleStatusUpdateConflict(
+      ReservationStatusUpdateConflictException exception) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problem.setTitle("La reserva cambió durante la transición");
+    problem.setType(URI.create(ReservationsProblemTypes.RESERVATION_TRANSITION_CONFLICT));
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+  }
+
   public record ReservationCreateRequest(
       @NotNull UUID personId,
       @NotEmpty @Size(max = MAX_ELEMENTS_PER_RESERVATION) List<@NotNull UUID> spaceElementIds,
       @NotNull Instant startsAt,
       @NotNull Instant endsAt) {}
+
+  public record ReservationStatusTransitionRequest(@NotNull ReservationStatus status) {}
 
   public record ReservationResponse(
       UUID id,
@@ -100,6 +144,7 @@ public class ReservationController {
       Instant startsAt,
       Instant endsAt,
       ReservationStatus status,
+      List<ReservationStatus> allowedTransitions,
       Instant createdAt,
       UUID createdBy) {
 
@@ -112,6 +157,7 @@ public class ReservationController {
           reservation.timeRange().startsAt(),
           reservation.timeRange().endsAt(),
           reservation.status(),
+          reservation.status().allowedTransitions(),
           reservation.createdAt(),
           reservation.createdBy());
     }

@@ -280,5 +280,23 @@ class CreateReservationTest {
       saved = reservation;
       return reservation;
     }
+
+    @Override
+    public Optional<Reservation> findAliveByTenantAndEstablishmentAndId(
+        TenantId tenantId, UUID establishmentId, com.mapit.reservations.domain.reservation.ReservationId id) {
+      return Optional.empty();
+    }
+
+    @Override
+    public boolean updateStatus(
+        TenantId tenantId,
+        UUID establishmentId,
+        com.mapit.reservations.domain.reservation.ReservationId id,
+        ReservationStatus expectedStatus,
+        ReservationStatus nextStatus,
+        UUID actorId,
+        Instant updatedAt) {
+      return false;
+    }
   }
 }

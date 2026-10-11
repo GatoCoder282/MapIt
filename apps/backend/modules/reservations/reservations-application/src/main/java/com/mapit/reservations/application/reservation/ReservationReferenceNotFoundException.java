@@ -12,7 +12,8 @@ public final class ReservationReferenceNotFoundException extends RuntimeExceptio
   public enum Reference {
     PERSON("Cliente"),
     ESTABLISHMENT("Establecimiento"),
-    ELEMENT("Elemento espacial");
+    ELEMENT("Elemento espacial"),
+    RESERVATION("Reserva");
 
     private final String label;
 

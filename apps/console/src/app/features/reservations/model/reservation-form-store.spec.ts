@@ -35,8 +35,14 @@ const RESERVATION: Reservation = {
   startsAt: '2026-10-04T16:00:00.000Z',
   endsAt: '2026-10-04T17:00:00.000Z',
   status: 'CREATED',
+  allowedTransitions: ['CONFIRMED', 'CANCELLED'],
   createdAt: '2026-10-03T12:00:00Z',
   createdBy: '50000000-0000-4000-8000-000000000001',
+};
+const CONFIRMED_RESERVATION: Reservation = {
+  ...RESERVATION,
+  status: 'CONFIRMED',
+  allowedTransitions: ['ACTIVE', 'CANCELLED'],
 };
 
 describe('ReservationFormStore', () => {
@@ -44,10 +50,12 @@ describe('ReservationFormStore', () => {
   const listEstablishments = vi.fn(() => of([ESTABLISHMENT]));
   const listReservableElements = vi.fn(() => of([ELEMENT]));
   const createReservation = vi.fn(() => of(RESERVATION));
+  const transitionReservation = vi.fn(() => of(CONFIRMED_RESERVATION));
   const api = {
     listEstablishments,
     listReservableElements,
     createReservation,
+    transitionReservation,
   } as unknown as ReservationsApi;
 
   beforeEach(() => {
@@ -55,6 +63,7 @@ describe('ReservationFormStore', () => {
     listEstablishments.mockReturnValue(of([ESTABLISHMENT]));
     listReservableElements.mockReturnValue(of([ELEMENT]));
     createReservation.mockReturnValue(of(RESERVATION));
+    transitionReservation.mockReturnValue(of(CONFIRMED_RESERVATION));
     TestBed.configureTestingModule({
       providers: [ReservationFormStore, { provide: ReservationsApi, useValue: api }],
     });
@@ -115,6 +124,34 @@ describe('ReservationFormStore', () => {
     });
     expect(store.created()).toEqual(RESERVATION);
     expect(store.submitting()).toBe(false);
+  });
+
+  it('actualiza el estado solo con la respuesta confirmada del backend', () => {
+    prepareValidDraft();
+    store.submit();
+    store.transitionStatus('CONFIRMED');
+
+    expect(transitionReservation).toHaveBeenCalledWith(
+      ESTABLISHMENT.id,
+      RESERVATION.id,
+      'CONFIRMED',
+    );
+    expect(store.created()).toEqual(CONFIRMED_RESERVATION);
+    expect(store.transitioning()).toBe(false);
+    expect(store.transitionError()).toBeNull();
+  });
+
+  it('conserva el estado anterior y muestra un conflicto si el backend rechaza la transición', () => {
+    transitionReservation.mockReturnValue(throwError(() => ({ status: 409 })));
+    prepareValidDraft();
+    store.submit();
+    store.transitionStatus('ACTIVE');
+
+    expect(store.created()).toEqual(RESERVATION);
+    expect(store.transitionError()).toBe(
+      'La reserva cambió o esa transición ya no está permitida.',
+    );
+    expect(store.transitioning()).toBe(false);
   });
 
   it.each([

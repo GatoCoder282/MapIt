@@ -10,13 +10,40 @@
       <span class="success-icon" aria-hidden="true">✓</span>
       <h2>{{ strings.successTitle }}</h2>
       <p>{{ strings.successBody }}</p>
+      @if (store.transitionError(); as error) {
+        <p class="message error" role="alert">{{ error }}</p>
+      }
       <dl>
         <div>
           <dt>{{ strings.reservationCode }}</dt>
           <dd>{{ reservation.id }}</dd>
         </div>
       </dl>
-      <button class="button primary" type="button" (click)="store.startAnother()">
+      <section class="reservation-state" aria-live="polite">
+        <div>
+          <span class="status-label">{{ strings.currentStatus }}</span>
+          <span class="status-badge" [attr.data-status]="reservation.status">
+            {{ statusLabel(reservation.status) }}
+          </span>
+        </div>
+        @if (reservation.allowedTransitions.length > 0) {
+          <div class="transition-actions" role="group" [attr.aria-label]="strings.transitionTitle">
+            @for (target of reservation.allowedTransitions; track target) {
+              <button
+                class="button"
+                type="button"
+                [disabled]="store.transitioning()"
+                (click)="store.transitionStatus(target)"
+              >
+                {{ store.transitioning() ? strings.transitioning : transitionLabel(target) }}
+              </button>
+            }
+          </div>
+        } @else {
+          <p class="terminal-status">{{ strings.terminalStatus }}</p>
+        }
+      </section>
+      <button class="button primary" type="button" [disabled]="store.transitioning()" (click)="store.startAnother()">
         {{ strings.createAnother }}
       </button>
     </section>

@@ -122,6 +122,14 @@ public class SecurityConfig {
                                 UserRole.ADMIN.name(),
                                 UserRole.MANAGER.name(),
                                 UserRole.STAFF.name())
+                        // MAP-193: el ciclo de vida de la reserva sigue la autorización de HU-5.01.
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/v1/establishments/*/reservations/*/status")
+                        .hasAnyRole(
+                                UserRole.ADMIN.name(),
+                                UserRole.MANAGER.name(),
+                                UserRole.STAFF.name())
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         // Administración de tenants (CU-01/CU-03): operación exclusiva
                         // del SUPER_ADMIN de plataforma. Cualquier otro rol autenticado

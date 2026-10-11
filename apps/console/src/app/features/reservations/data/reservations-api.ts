@@ -5,6 +5,7 @@ import type {
   PersonCreateRequest,
   Reservation,
   ReservationCreateRequest,
+  ReservationStatus,
   SpaceElement,
 } from '@mapit/api-client';
 import {
@@ -95,6 +96,18 @@ export class ReservationsApi {
     return this.reservations.createReservation({
       establishmentId,
       reservationCreateRequest: serializableRequest,
+    });
+  }
+
+  transitionReservation(
+    establishmentId: string,
+    reservationId: string,
+    status: ReservationStatus,
+  ): Observable<Reservation> {
+    return this.reservations.transitionReservationStatus({
+      establishmentId,
+      reservationId,
+      reservationStatusTransitionRequest: { status },
     });
   }
 }
