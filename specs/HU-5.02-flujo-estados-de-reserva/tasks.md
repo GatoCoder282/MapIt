@@ -11,12 +11,13 @@
 - [x] Añadir pruebas de API/integración para persistencia, permisos, tenant, establecimiento y conflictos concurrentes.
 - [x] Integrar acciones y etiqueta de estado en la consola desde la respuesta de backend; añadir pruebas Vitest.
 - [x] Ejecutar `pnpm check`, completar criterios de aceptación y notas de ejecución.
-- [ ] Publicar PR `HU-5.02 — Flujo de Estados de Reserva`, base `chris799-hub/map-216-concurrencia-reservas`.
+- [x] Publicar [PR #38 — HU-5.02 — Flujo de Estados de Reserva](https://github.com/GatoCoder282/MapIt/pull/38), base `chris799-hub/map-216-concurrencia-reservas`.
 
 ## Notas de ejecución
 
 - Rama de implementación: `feat/gatocoder282/HU-5.02-flujo-estados-de-reserva`.
 - Rama base: HEAD de PR #36 (`chris799-hub/map-216-concurrencia-reservas`).
+- PR: https://github.com/GatoCoder282/MapIt/pull/38.
 - `pnpm api:lint`, generación de contrato, pruebas unitarias de los módulos de reservas, pruebas Vitest de la feature y build de consola completados correctamente.
 - `pnpm check` ejecutado; formato, lint, tipos, pruebas/build de frontend y `api:check` pasan. La fase backend de integración no pudo completar los Testcontainers porque Docker no está disponible en este entorno (`Could not find a valid Docker environment`).
 - La compilación de backend e integración compila; falta ejecutar la suite que requiere Docker en un entorno con Docker activo.
