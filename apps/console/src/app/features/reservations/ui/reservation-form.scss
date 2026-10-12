@@ -216,6 +216,30 @@ input:focus-visible,
   font-family: monospace;
 }
 
+.reservation-state {
+  display: grid;
+  gap: var(--mapit-space-2);
+  width: 100%;
+}
+
+.status-badge {
+  padding: 0.25rem 0.625rem;
+  color: var(--mapit-color-primary);
+  background: var(--mapit-color-primary-container);
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.status-badge[data-status='CANCELLED'] {
+  color: var(--mapit-color-error);
+}
+
+.transition-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mapit-space-1);
+}
+
 @media (max-width: 64rem) {
   .reservation-form {
     grid-template-columns: 1fr;

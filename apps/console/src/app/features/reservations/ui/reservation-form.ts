@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import type { OnInit } from '@angular/core';
-import type { Person, SpaceElement } from '@mapit/api-client';
+import type { Person, ReservationStatus, SpaceElement } from '@mapit/api-client';
 
 import { STRINGS } from '../../../core/strings';
 import { ReservationFormStore } from '../model/reservation-form-store';
@@ -30,5 +30,13 @@ export class ReservationForm implements OnInit {
   protected elementTypeLabel(type: SpaceElement.TypeEnum): string {
     if (type === 'DECOR') return type;
     return this.strings.elementTypes[type];
+  }
+
+  protected statusLabel(status: ReservationStatus): string {
+    return this.strings.statusLabels[status];
+  }
+
+  protected transitionLabel(status: ReservationStatus): string {
+    return this.strings.transitionActions[status];
   }
 }

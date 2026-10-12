@@ -99,6 +99,56 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /establishments/{establishmentId}/reservations/{reservationId}/status:
+    parameters:
+      - name: establishmentId
+        in: path
+        required: true
+        description: Establecimiento del tenant donde existe la reserva.
+        schema:
+          type: string
+          format: uuid
+      - name: reservationId
+        in: path
+        required: true
+        description: Identificador de la reserva cuyo estado se solicita cambiar.
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [reservations]
+      summary: Transicionar el estado de una reserva
+      description: |
+        Solicita una transición de estado. La matriz válida reside en backend. Tenant y actor
+        salen del JWT; una reserva ajena al tenant o establecimiento responde 404. Una
+        transición inválida o que perdió una carrera concurrente responde 409.
+      operationId: transitionReservationStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationStatusTransitionRequest"
+      responses:
+        "200":
+          description: Reserva actualizada y acciones permitidas para su estado vigente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /people:
     get:
       tags: [people]
@@ -1514,6 +1564,7 @@ components:
         - startsAt
         - endsAt
         - status
+        - allowedTransitions
         - createdAt
         - createdBy
       properties:
@@ -1543,6 +1594,11 @@ components:
           format: date-time
         status:
           $ref: "#/components/schemas/ReservationStatus"
+        allowedTransitions:
+          type: array
+          description: Destinos permitidos por la máquina de estados en backend.
+          items:
+            $ref: "#/components/schemas/ReservationStatus"
         createdAt:
           type: string
           format: date-time
@@ -1577,6 +1633,13 @@ components:
     ReservationStatus:
       type: string
       enum: [CREATED, CONFIRMED, ACTIVE, RELEASED, CANCELLED]
+
+    ReservationStatusTransitionRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
 
     Person:
       type: object

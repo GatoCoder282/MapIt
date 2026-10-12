@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import type { Establishment, Person, Reservation } from '@mapit/api-client';
+import type { Establishment, Person, Reservation, ReservationStatus } from '@mapit/api-client';
 import { finalize } from 'rxjs';
 
 import { STRINGS } from '../../../core/strings';
@@ -21,6 +21,8 @@ export class ReservationFormStore {
   private readonly submittingState = signal(false);
   private readonly errorState = signal<string | null>(null);
   private readonly createdState = signal<Reservation | null>(null);
+  private readonly transitioningState = signal(false);
+  private readonly transitionErrorState = signal<string | null>(null);
 
   readonly establishments = this.establishmentsState.asReadonly();
   readonly establishmentId = this.establishmentIdState.asReadonly();
@@ -33,6 +35,8 @@ export class ReservationFormStore {
   readonly submitting = this.submittingState.asReadonly();
   readonly error = this.errorState.asReadonly();
   readonly created = this.createdState.asReadonly();
+  readonly transitioning = this.transitioningState.asReadonly();
+  readonly transitionError = this.transitionErrorState.asReadonly();
   readonly selectedEstablishment = computed(
     () =>
       this.establishmentsState().find(
@@ -150,12 +154,42 @@ export class ReservationFormStore {
   }
 
   startAnother(): void {
+    if (this.transitioningState()) return;
     this.personState.set(null);
     this.startsAtState.set('');
     this.endsAtState.set('');
     this.selectedElementIdsState.set(new Set());
     this.createdState.set(null);
+    this.transitionErrorState.set(null);
     this.errorState.set(null);
+  }
+
+  transitionStatus(status: ReservationStatus): void {
+    const reservation = this.createdState();
+    if (!reservation || this.transitioningState()) return;
+
+    this.transitioningState.set(true);
+    this.transitionErrorState.set(null);
+    this.api
+      .transitionReservation(reservation.establishmentId, reservation.id, status)
+      .pipe(finalize(() => this.transitioningState.set(false)))
+      .subscribe({
+        next: (updated) => this.createdState.set(updated),
+        error: (response: { status?: number }) => {
+          const errors = STRINGS.reservations.form.errors;
+          const message =
+            response.status === 401
+              ? errors.transitionUnauthorized
+              : response.status === 403
+                ? errors.transitionForbidden
+                : response.status === 404
+                  ? errors.transitionNotFound
+                  : response.status === 409
+                    ? errors.transitionConflict
+                    : errors.transition;
+          this.transitionErrorState.set(message);
+        },
+      });
   }
 
   private fail(message: string): void {

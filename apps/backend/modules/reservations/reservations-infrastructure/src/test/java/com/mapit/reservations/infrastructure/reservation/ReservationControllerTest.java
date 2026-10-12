@@ -26,10 +26,14 @@ import com.mapit.reservations.application.reservation.InvalidReservationResource
 import com.mapit.reservations.application.reservation.ReservationOverlapException;
 import com.mapit.reservations.application.reservation.ReservationReferenceNotFoundException;
 import com.mapit.reservations.application.reservation.ReservationReferenceNotFoundException.Reference;
+import com.mapit.reservations.application.reservation.ReservationStatusUpdateConflictException;
+import com.mapit.reservations.application.reservation.TransitionReservationStatus;
 import com.mapit.reservations.domain.person.PersonId;
 import com.mapit.reservations.domain.reservation.Reservation;
 import com.mapit.reservations.domain.reservation.ReservationId;
+import com.mapit.reservations.domain.reservation.ReservationStatus;
 import com.mapit.reservations.domain.reservation.ReservationTimeRange;
+import com.mapit.reservations.domain.reservation.ReservationTransitionNotAllowedException;
 import com.mapit.shared.tenant.TenantId;
 
 class ReservationControllerTest {
@@ -45,6 +49,7 @@ class ReservationControllerTest {
 
   private final LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
   private CreateReservation useCase;
+  private TransitionReservationStatus transitionUseCase;
   private ReservationController controller;
   private RestTestClient client;
 
@@ -52,7 +57,8 @@ class ReservationControllerTest {
   void setUp() {
     validator.afterPropertiesSet();
     useCase = mock(CreateReservation.class);
-    controller = new ReservationController(useCase);
+    transitionUseCase = mock(TransitionReservationStatus.class);
+    controller = new ReservationController(useCase, transitionUseCase);
     client =
         RestTestClient.bindToController(controller)
             .configureServer(builder -> builder.setValidator(validator))
@@ -87,13 +93,47 @@ class ReservationControllerTest {
         .jsonPath("$.personId")
         .isEqualTo(PERSON.toString())
         .jsonPath("$.status")
-        .isEqualTo("CREATED");
+        .isEqualTo("CREATED")
+        .jsonPath("$.allowedTransitions[0]")
+        .isEqualTo("CONFIRMED")
+        .jsonPath("$.allowedTransitions[1]")
+        .isEqualTo("CANCELLED");
 
     ArgumentCaptor<CreateReservation.Command> command =
         ArgumentCaptor.forClass(CreateReservation.Command.class);
     verify(useCase).execute(command.capture());
     assertThat(command.getValue().establishmentId()).isEqualTo(ESTABLISHMENT);
     assertThat(command.getValue().spaceElementIds()).containsExactly(ELEMENT);
+  }
+
+  @Test
+  void devuelveLaReservaYAccionesPermitidasTrasTransicionar() {
+    when(transitionUseCase.execute(any())).thenReturn(reservation().transitionTo(ReservationStatus.CONFIRMED));
+
+    client
+        .patch()
+        .uri(
+            "/api/v1/establishments/{establishmentId}/reservations/{reservationId}/status",
+            ESTABLISHMENT,
+            reservation().id().value())
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("status", "CONFIRMED"))
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("CONFIRMED")
+        .jsonPath("$.allowedTransitions[0]")
+        .isEqualTo("ACTIVE")
+        .jsonPath("$.allowedTransitions[1]")
+        .isEqualTo("CANCELLED");
+
+    ArgumentCaptor<TransitionReservationStatus.Command> command =
+        ArgumentCaptor.forClass(TransitionReservationStatus.Command.class);
+    verify(transitionUseCase).execute(command.capture());
+    assertThat(command.getValue().establishmentId()).isEqualTo(ESTABLISHMENT);
+    assertThat(command.getValue().status()).isEqualTo(ReservationStatus.CONFIRMED);
   }
 
   @Test
@@ -143,6 +183,26 @@ class ReservationControllerTest {
     assertThat(response.getBody().getTitle()).isEqualTo("Elementos no disponibles");
     assertThat(response.getBody().getProperties())
         .containsEntry("conflictingElementIds", Set.of(ELEMENT));
+  }
+
+  @Test
+  void traduceTransicionInvalidaA409ConEstadosAnteriorYSolicitado() {
+    var response =
+        controller.handleInvalidTransition(
+            new ReservationTransitionNotAllowedException(
+                ReservationStatus.CREATED, ReservationStatus.ACTIVE));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getProperties())
+        .containsEntry("currentStatus", ReservationStatus.CREATED)
+        .containsEntry("requestedStatus", ReservationStatus.ACTIVE);
+  }
+
+  @Test
+  void traduceCarreraConcurrenteA409() {
+    assertThat(controller.handleStatusUpdateConflict(new ReservationStatusUpdateConflictException()).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
   }
 
   private static Reservation reservation() {

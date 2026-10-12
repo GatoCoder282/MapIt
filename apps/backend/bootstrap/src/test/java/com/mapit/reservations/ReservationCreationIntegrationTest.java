@@ -169,8 +169,161 @@ class ReservationCreationIntegrationTest {
     assertThat(created.personId()).isEqualTo(PERSON_A);
     assertThat(created.spaceElementIds()).containsExactlyInAnyOrder(ELEMENT_A, ELEMENT_A_SECOND);
     assertThat(created.createdBy()).isEqualTo(ADMIN_A);
+    assertThat(created.allowedTransitions()).containsExactly("CONFIRMED", "CANCELLED");
     assertThat(reservationCount(TENANT_A)).isEqualTo(1);
     assertThat(associationCount(TENANT_A)).isEqualTo(2);
+  }
+
+  @Test
+  void persistsEveryAllowedTransitionAndReturnsBackendDestinations() {
+    String admin = token(ADMIN_A, TENANT_A, UserRole.ADMIN);
+    ReservationView releasePath = createAndRead(ELEMENT_A, "2026-10-20", admin);
+    ReservationView confirmed =
+        transition(ESTABLISHMENT_A, releasePath.id(), "CONFIRMED", admin)
+            .expectStatus()
+            .isOk()
+            .expectBody(ReservationView.class)
+            .returnResult()
+            .getResponseBody();
+    assertThat(confirmed).isNotNull();
+    assertThat(confirmed.status()).isEqualTo("CONFIRMED");
+    assertThat(confirmed.allowedTransitions()).containsExactly("ACTIVE", "CANCELLED");
+
+    ReservationView active =
+        transition(ESTABLISHMENT_A, releasePath.id(), "ACTIVE", admin)
+            .expectStatus()
+            .isOk()
+            .expectBody(ReservationView.class)
+            .returnResult()
+            .getResponseBody();
+    assertThat(active).isNotNull();
+    assertThat(active.status()).isEqualTo("ACTIVE");
+    assertThat(active.allowedTransitions()).containsExactly("RELEASED", "CANCELLED");
+
+    ReservationView released =
+        transition(ESTABLISHMENT_A, releasePath.id(), "RELEASED", admin)
+            .expectStatus()
+            .isOk()
+            .expectBody(ReservationView.class)
+            .returnResult()
+            .getResponseBody();
+    assertThat(released).isNotNull();
+    assertThat(released.status()).isEqualTo("RELEASED");
+    assertThat(released.allowedTransitions()).isEmpty();
+
+    ReservationView createdCancel = createAndRead(ELEMENT_A_SECOND, "2026-10-21", admin);
+    transition(ESTABLISHMENT_A, createdCancel.id(), "CANCELLED", admin)
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("CANCELLED");
+
+    ReservationView confirmedCancel = createAndRead(ELEMENT_A, "2026-10-22", admin);
+    transition(ESTABLISHMENT_A, confirmedCancel.id(), "CONFIRMED", admin)
+        .expectStatus()
+        .isOk();
+    transition(ESTABLISHMENT_A, confirmedCancel.id(), "CANCELLED", admin)
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("CANCELLED");
+
+    ReservationView activeCancel = createAndRead(ELEMENT_A_SECOND, "2026-10-23", admin);
+    transition(ESTABLISHMENT_A, activeCancel.id(), "CONFIRMED", admin)
+        .expectStatus()
+        .isOk();
+    transition(ESTABLISHMENT_A, activeCancel.id(), "ACTIVE", admin).expectStatus().isOk();
+    transition(ESTABLISHMENT_A, activeCancel.id(), "CANCELLED", admin)
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("CANCELLED");
+
+    assertThat(storedStatus(TENANT_A, releasePath.id())).isEqualTo("RELEASED");
+    assertThat(storedUpdatedBy(TENANT_A, releasePath.id())).isEqualTo(ADMIN_A);
+  }
+
+  @Test
+  void invalidRepeatedAndTerminalTransitionsReturn409WithoutChangingState() {
+    String admin = token(ADMIN_A, TENANT_A, UserRole.ADMIN);
+    ReservationView created = createAndRead(ELEMENT_A, "2026-10-24", admin);
+
+    transition(ESTABLISHMENT_A, created.id(), "ACTIVE", admin)
+        .expectStatus()
+        .isEqualTo(409)
+        .expectBody()
+        .jsonPath("$.type")
+        .isEqualTo("https://mapit.local/problems/reservation-transition-invalid");
+    transition(ESTABLISHMENT_A, created.id(), "CREATED", admin).expectStatus().isEqualTo(409);
+    assertThat(storedStatus(TENANT_A, created.id())).isEqualTo("CREATED");
+
+    transition(ESTABLISHMENT_A, created.id(), "CANCELLED", admin).expectStatus().isOk();
+    transition(ESTABLISHMENT_A, created.id(), "CONFIRMED", admin)
+        .expectStatus()
+        .isEqualTo(409);
+    assertThat(storedStatus(TENANT_A, created.id())).isEqualTo("CANCELLED");
+
+    ReservationView released = createAndRead(ELEMENT_A_SECOND, "2026-10-25", admin);
+    transition(ESTABLISHMENT_A, released.id(), "CONFIRMED", admin).expectStatus().isOk();
+    transition(ESTABLISHMENT_A, released.id(), "ACTIVE", admin).expectStatus().isOk();
+    transition(ESTABLISHMENT_A, released.id(), "RELEASED", admin).expectStatus().isOk();
+    transition(ESTABLISHMENT_A, released.id(), "ACTIVE", admin).expectStatus().isEqualTo(409);
+    assertThat(storedStatus(TENANT_A, released.id())).isEqualTo("RELEASED");
+  }
+
+  @Test
+  void transitionRespectsRolesTenantAndEstablishmentBoundary() {
+    List<UserAccess> allowed =
+        List.of(
+            new UserAccess(ADMIN_A, UserRole.ADMIN),
+            new UserAccess(MANAGER_A, UserRole.MANAGER),
+            new UserAccess(STAFF_A, UserRole.STAFF));
+    for (int index = 0; index < allowed.size(); index++) {
+      UserAccess access = allowed.get(index);
+      ReservationView reservation =
+          createAndRead(
+              ELEMENT_A,
+              "2026-10-" + (28 + index),
+              token(ADMIN_A, TENANT_A, UserRole.ADMIN));
+      transition(
+              ESTABLISHMENT_A,
+              reservation.id(),
+              "CONFIRMED",
+              token(access.id(), TENANT_A, access.role()))
+          .expectStatus()
+          .isOk();
+    }
+
+    ReservationView privateReservation =
+        createAndRead(ELEMENT_A, "2026-10-31", token(ADMIN_A, TENANT_A, UserRole.ADMIN));
+    transition(ESTABLISHMENT_A, privateReservation.id(), "CONFIRMED", null)
+        .expectStatus()
+        .isUnauthorized();
+    transition(
+            ESTABLISHMENT_A,
+            privateReservation.id(),
+            "CONFIRMED",
+            token(UUID.randomUUID(), TENANT_A, UserRole.SUPER_ADMIN))
+        .expectStatus()
+        .isForbidden();
+    transition(
+            ESTABLISHMENT_A,
+            privateReservation.id(),
+            "CONFIRMED",
+            token(STAFF_B, TENANT_B, UserRole.STAFF))
+        .expectStatus()
+        .isNotFound();
+    transition(
+            ESTABLISHMENT_A_OTHER,
+            privateReservation.id(),
+            "CONFIRMED",
+            token(STAFF_A, TENANT_A, UserRole.STAFF))
+        .expectStatus()
+        .isNotFound();
+    assertThat(storedStatus(TENANT_A, privateReservation.id())).isEqualTo("CREATED");
   }
 
   @Test
@@ -542,6 +695,40 @@ class ReservationCreationIntegrationTest {
         .exchange();
   }
 
+  private ReservationView createAndRead(UUID elementId, String day, String token) {
+    ReservationView created =
+        create(
+                ESTABLISHMENT_A,
+                PERSON_A,
+                List.of(elementId),
+                day + "T14:00:00Z",
+                day + "T15:00:00Z",
+                token)
+            .expectStatus()
+            .isCreated()
+            .expectBody(ReservationView.class)
+            .returnResult()
+            .getResponseBody();
+    assertThat(created).isNotNull();
+    return created;
+  }
+
+  private RestTestClient.ResponseSpec transition(
+      UUID establishmentId, UUID reservationId, String status, String token) {
+    RestTestClient.RequestBodySpec request =
+        http()
+            .patch()
+            .uri(
+                "/api/v1/establishments/{establishmentId}/reservations/{reservationId}/status",
+                establishmentId,
+                reservationId)
+            .contentType(MediaType.APPLICATION_JSON);
+    if (token != null) {
+      request.header("Authorization", bearer(token));
+    }
+    return request.body(Map.of("status", status)).exchange();
+  }
+
   private RestTestClient http() {
     return RestTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
   }
@@ -569,6 +756,22 @@ class ReservationCreationIntegrationTest {
   private long associationCountFor(UUID elementId) {
     return count(
         "select count(*) from reservation_space_element where space_element_id = ?", elementId);
+  }
+
+  private String storedStatus(String tenantId, UUID reservationId) {
+    return jdbc.queryForObject(
+        "select status from reservation where tenant_id = ? and id = ?",
+        String.class,
+        tenantId,
+        reservationId);
+  }
+
+  private UUID storedUpdatedBy(String tenantId, UUID reservationId) {
+    return jdbc.queryForObject(
+        "select updated_by from reservation where tenant_id = ? and id = ?",
+        UUID.class,
+        tenantId,
+        reservationId);
   }
 
   private long count(String sql, Object argument) {
@@ -664,6 +867,7 @@ class ReservationCreationIntegrationTest {
       Instant startsAt,
       Instant endsAt,
       String status,
+      List<String> allowedTransitions,
       Instant createdAt,
       UUID createdBy) {}
 

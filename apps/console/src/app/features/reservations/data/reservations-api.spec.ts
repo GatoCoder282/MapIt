@@ -58,10 +58,12 @@ describe('ReservationsApi', () => {
     startsAt: '2026-10-04T16:00:00Z',
     endsAt: '2026-10-04T17:00:00Z',
     status: 'CREATED',
+    allowedTransitions: ['CONFIRMED', 'CANCELLED'],
     createdAt: '2026-10-04T13:00:00Z',
     createdBy: 'user-1',
   };
   const createReservation = vi.fn(() => of(created));
+  const transitionReservationStatus = vi.fn(() => of(created));
   let api: ReservationsApi;
 
   beforeEach(() => {
@@ -79,7 +81,10 @@ describe('ReservationsApi', () => {
             listSpaceElementsBySector,
           },
         },
-        { provide: ReservationsService, useValue: { createReservation } },
+        {
+          provide: ReservationsService,
+          useValue: { createReservation, transitionReservationStatus },
+        },
       ],
     });
     api = TestBed.inject(ReservationsApi);
@@ -117,6 +122,18 @@ describe('ReservationsApi', () => {
         startsAt: '2026-10-04T16:00:00Z',
         endsAt: '2026-10-04T17:00:00Z',
       },
+    });
+  });
+
+  it('envía el destino solicitado al endpoint generado de transición', async () => {
+    await firstValueFrom(
+      api.transitionReservation('establishment-1', 'reservation-1', 'CONFIRMED'),
+    );
+
+    expect(transitionReservationStatus).toHaveBeenCalledWith({
+      establishmentId: 'establishment-1',
+      reservationId: 'reservation-1',
+      reservationStatusTransitionRequest: { status: 'CONFIRMED' },
     });
   });
 });
