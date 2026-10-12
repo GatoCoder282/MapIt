@@ -2,14 +2,20 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthSession } from '@mapit/auth';
-import { LucideHouse, LucideLayers, LucideLogOut, LucideComponent } from '@lucide/angular';
+import {
+  LucideCalendarPlus,
+  LucideHouse,
+  LucideLayers,
+  LucideLogOut,
+  LucideComponent,
+} from '@lucide/angular';
 
 import { STRINGS } from '../core/strings';
 
 interface StaffNavItem {
   label: string;
   route: string;
-  icon: 'home' | 'spaces' | 'templates';
+  icon: 'home' | 'spaces' | 'templates' | 'reservations';
   exact?: boolean;
 }
 /**
@@ -28,6 +34,7 @@ interface StaffNavItem {
     LucideLayers,
     LucideLogOut,
     LucideComponent,
+    LucideCalendarPlus,
   ],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
@@ -49,6 +56,11 @@ export class StaffShell {
       label: STRINGS.staffShell.nav.templates,
       route: '/spaces/templates',
       icon: 'templates',
+    },
+    {
+      label: STRINGS.staffShell.nav.reservations,
+      route: '/reservations/new',
+      icon: 'reservations',
     },
   ];
 

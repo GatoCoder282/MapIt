@@ -50,8 +50,116 @@ tags:
     description: Operación en vivo de elementos espaciales (CU-09)
   - name: templates
     description: Plantillas de configuración de elementos espaciales (CU-07 / HU-4.02)
+  - name: people
+    description: Clientes del tenant usados en reservas (CU-11)
+  - name: reservations
+    description: Reservas internas asociadas a clientes y elementos espaciales (CU-12)
 
 paths:
+  /establishments/{establishmentId}/reservations:
+    parameters:
+      - name: establishmentId
+        in: path
+        required: true
+        description: Establecimiento del tenant donde se crea la reserva.
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [reservations]
+      summary: Crear una reserva interna
+      description: |
+        Crea una reserva en estado `CREATED` para uno o más elementos disponibles. El
+        tenant y el actor se obtienen exclusivamente del JWT. Requiere rol ADMIN, MANAGER
+        o STAFF.
+      operationId: createReservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationCreateRequest"
+      responses:
+        "201":
+          description: Reserva creada con todas sus asociaciones
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /people:
+    get:
+      tags: [people]
+      summary: Buscar clientes
+      description: |
+        Busca personas activas del tenant autenticado por nombre, correo o teléfono.
+        El tenant se obtiene exclusivamente del JWT.
+      operationId: searchPeople
+      parameters:
+        - name: query
+          in: query
+          description: Texto opcional para filtrar por nombre, correo o teléfono.
+          schema:
+            type: string
+            maxLength: 120
+      responses:
+        "200":
+          description: Personas activas que coinciden con la búsqueda
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Person"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [people]
+      summary: Registrar cliente
+      description: |
+        Registra una persona dentro del tenant autenticado. El identificador, el tenant y
+        la auditoría los decide el backend.
+      operationId: createPerson
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonCreateRequest"
+      responses:
+        "201":
+          description: Persona registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /auth/login:
     post:
       parameters:
@@ -1396,6 +1504,131 @@ components:
         cliente podría falsificar).
 
   schemas:
+    Reservation:
+      type: object
+      required:
+        - id
+        - establishmentId
+        - personId
+        - spaceElementIds
+        - startsAt
+        - endsAt
+        - status
+        - createdAt
+        - createdBy
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        establishmentId:
+          type: string
+          format: uuid
+        personId:
+          type: string
+          format: uuid
+        spaceElementIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        createdBy:
+          type: string
+          format: uuid
+          readOnly: true
+
+    ReservationCreateRequest:
+      type: object
+      required: [personId, spaceElementIds, startsAt, endsAt]
+      properties:
+        personId:
+          type: string
+          format: uuid
+        spaceElementIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    ReservationStatus:
+      type: string
+      enum: [CREATED, CONFIRMED, ACTIVE, RELEASED, CANCELLED]
+
+    Person:
+      type: object
+      required: [id, fullName, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        fullName:
+          type: string
+          maxLength: 120
+        email:
+          type: [string, "null"]
+          format: email
+          maxLength: 254
+        phone:
+          type: [string, "null"]
+          maxLength: 32
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        createdBy:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedBy:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+
+    PersonCreateRequest:
+      type: object
+      required: [fullName]
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: [string, "null"]
+          format: email
+          maxLength: 254
+        phone:
+          type: [string, "null"]
+          maxLength: 32
+
     LoginRequest:
       type: object
       required: [tenantSlug, email, password]
