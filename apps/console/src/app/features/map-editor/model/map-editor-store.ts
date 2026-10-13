@@ -12,7 +12,14 @@ import {
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { MapEditorApiService } from '../data/map-editor-api';
-import type { SpaceElement, SpaceElementUpdateRequest, Sector, Floor } from '@mapit/api-client';
+import type {
+  SpaceElement,
+  SpaceElementUpdateRequest,
+  Sector,
+  Floor,
+  ElementTemplate,
+  ElementTemplateCreateRequest,
+} from '@mapit/api-client';
 import {
   type MapLayout,
   type SpaceElement as MapSpaceElement,
@@ -21,9 +28,13 @@ import {
   type Point,
   type Size,
   LAYOUT_VACIO,
+  TYPE_DEFAULTS,
 } from '@mapit/map-engine';
 
 import { STRINGS } from '../../../core/strings';
+
+/** Catálogo de defaults por tipo (fuente única: `libs/map-engine`). */
+export { TYPE_DEFAULTS };
 
 export const MAP_EDITOR_DEBOUNCE_MS = new InjectionToken<number>('MAP_EDITOR_DEBOUNCE_MS', {
   providedIn: 'root',
@@ -32,20 +43,7 @@ export const MAP_EDITOR_DEBOUNCE_MS = new InjectionToken<number>('MAP_EDITOR_DEB
 
 const DEFAULT_SECTOR_SIZE: Size = { width: 1200, height: 800 };
 
-const TYPE_DEFAULTS: Record<
-  SpaceElementType,
-  { size: Size; capacity: number | null; reservable: boolean }
-> = {
-  TABLE: { size: { width: 80, height: 80 }, capacity: 4, reservable: true },
-  BAR: { size: { width: 200, height: 60 }, capacity: null, reservable: false },
-  SECTOR_ZONE: { size: { width: 300, height: 200 }, capacity: null, reservable: false },
-  STAGE: { size: { width: 400, height: 200 }, capacity: null, reservable: false },
-  SEAT: { size: { width: 40, height: 40 }, capacity: 1, reservable: true },
-  ROOM: { size: { width: 100, height: 100 }, capacity: 2, reservable: true },
-  DECOR: { size: { width: 60, height: 60 }, capacity: null, reservable: false },
-};
-
-function mapApiElementToLayoutElement(el: SpaceElement): MapSpaceElement {
+export function mapApiElementToLayoutElement(el: SpaceElement): MapSpaceElement {
   const defaults = TYPE_DEFAULTS[el.type] ?? TYPE_DEFAULTS.TABLE;
   return {
     id: el.id,
@@ -125,6 +123,10 @@ export class MapEditorStore {
   readonly saving = this._saving.asReadonly();
   private readonly _error = signal<string | null>(null);
   readonly error = this._error.asReadonly();
+
+  /** HU-4.01: versión observada del sector (para guardados por lotes, RN-7). */
+  private readonly _sectorUpdatedAt = signal<string | null>(null);
+  readonly sectorUpdatedAt = this._sectorUpdatedAt.asReadonly();
 
   private pendingSave: PendingSave | null = null;
 
@@ -220,6 +222,20 @@ export class MapEditorStore {
         next: (sectors: Sector[]) => {
           this._sectors.set(sectors);
           const firstSector = sectors[0];
+          const currentId = this._sectorId();
+          if (currentId) {
+            // HU-4.01 (I-7): si el sector se cargó antes que la lista del piso,
+            // aplica ahora sus dimensiones reales en vez del fallback 1200x800.
+            const meta = sectors.find((s) => s.id === currentId);
+            if (meta && meta.width != null && meta.height != null) {
+              this._sectorUpdatedAt.set(meta.updatedAt ?? null);
+              this._layout.update((l) => ({
+                ...l,
+                size: { width: meta.width, height: meta.height },
+              }));
+            }
+            return;
+          }
           if (firstSector) {
             this.loadSector(firstSector.id, firstSector.name);
           } else {
@@ -246,6 +262,15 @@ export class MapEditorStore {
     this._loading.set(true);
     this._error.set(null);
 
+    // HU-4.01: dimensiones reales del sector (el layout usa el lienzo persistido,
+    // no la constante DEFAULT_SECTOR_SIZE).
+    const sectorMeta = this._sectors().find((s) => s.id === sectorId);
+    const sectorSize: Size = {
+      width: sectorMeta?.width ?? DEFAULT_SECTOR_SIZE.width,
+      height: sectorMeta?.height ?? DEFAULT_SECTOR_SIZE.height,
+    };
+    this._sectorUpdatedAt.set(sectorMeta?.updatedAt ?? null);
+
     this.api
       .listSpaceElementsBySector(sectorId)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -255,9 +280,11 @@ export class MapEditorStore {
           this._layout.set({
             floorId: '',
             name: sectorName || 'Sector',
-            size: DEFAULT_SECTOR_SIZE,
+            size: sectorSize,
             elements: layoutElements,
             schemaVersion: 1,
+            kind: 'sector',
+            sectors: [],
           });
           this._loading.set(false);
         },
@@ -455,5 +482,202 @@ export class MapEditorStore {
 
   clearError(): void {
     this._error.set(null);
+  }
+
+  // ===== PLANTILLAS (HU-4.02) =====
+
+  private readonly _templates = signal<ElementTemplate[]>([]);
+  readonly templates = this._templates.asReadonly();
+  private readonly _templatesLoading = signal(false);
+  readonly templatesLoading = this._templatesLoading.asReadonly();
+
+  loadTemplates(): void {
+    this._templatesLoading.set(true);
+    this._error.set(null);
+    this.api
+      .listTemplates()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (templates) => {
+          this._templates.set(templates);
+          this._templatesLoading.set(false);
+        },
+        error: () => {
+          this._error.set(this.strings.errors.loadFailed);
+          this._templatesLoading.set(false);
+        },
+      });
+  }
+
+  saveAsTemplate(name: string): void {
+    const selected = this.selectedElement();
+    if (!selected) {
+      this._error.set(this.strings.errors.selectElementToSave);
+      return;
+    }
+
+    const templateName = name.trim();
+    if (!templateName) {
+      this._error.set(this.strings.errors.templateNameRequired);
+      return;
+    }
+
+    this._saving.set(true);
+    this._error.set(null);
+
+    const request: ElementTemplateCreateRequest = {
+      name: templateName,
+      type: selected.type,
+    };
+
+    this.api
+      .createTemplate(request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this._saving.set(false);
+          this._error.set(null);
+          this.loadTemplates();
+        },
+        error: (response: { status?: number }) => {
+          this._saving.set(false);
+          this._error.set(
+            response?.status === 409
+              ? this.strings.errors.templateNameConflict
+              : this.strings.errors.saveFailed,
+          );
+        },
+      });
+  }
+
+  // ===== HU-4.01: alta desde la biblioteca (drag & drop) =====
+
+  /**
+   * Crea un elemento soltando una plantilla o estructura base sobre el canvas.
+   * {@code key} es `tpl:<id>` (plantilla guardada) o `base:<TYPE>` (estructura).
+   * El alta es la de siempre (POST /elements) en las coordenadas del drop (CA-11).
+   */
+  createElementFromDrop(key: string, x: number, y: number): void {
+    const sectorId = this._sectorId();
+    if (!sectorId) {
+      this._error.set(this.strings.errors.noSectorLoaded);
+      return;
+    }
+
+    let type: SpaceElementType | null = null;
+    if (key.startsWith('tpl:')) {
+      const template = this._templates().find((t) => t.id === key.slice(4));
+      type = template?.type ?? null;
+    } else if (key.startsWith('base:')) {
+      type = key.slice(5) as SpaceElementType;
+    }
+    if (!type || !TYPE_DEFAULTS[type]) {
+      this._error.set(this.strings.errors.templateNotFound);
+      return;
+    }
+
+    this._saving.set(true);
+    this._error.set(null);
+    const size = TYPE_DEFAULTS[type].size;
+    this.api
+      .createSpaceElement(sectorId, {
+        type,
+        x: Math.max(0, x),
+        y: Math.max(0, y),
+        width: size.width,
+        height: size.height,
+        rotation: 0,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (created) => {
+          this._saving.set(false);
+          this._layout.update((current) => ({
+            ...current,
+            elements: [...current.elements, mapApiElementToLayoutElement(created)],
+          }));
+          this.selectElement(created.id);
+        },
+        error: (response: { status?: number }) => {
+          this._saving.set(false);
+          this._error.set(
+            response?.status === 400
+              ? this.strings.errors.createInvalid
+              : this.strings.errors.createFailed,
+          );
+        },
+      });
+  }
+
+  /** HU-4.01: baja lógica del elemento (409 si tiene reservas activas, RN-1). */
+  deleteElement(elementId: string): void {
+    const sectorId = this._sectorId();
+    if (!sectorId) {
+      this._error.set(this.strings.errors.noSectorLoaded);
+      return;
+    }
+    this._saving.set(true);
+    this._error.set(null);
+    this.api
+      .deleteSpaceElement(sectorId, elementId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this._saving.set(false);
+          this._layout.update((current) => ({
+            ...current,
+            elements: current.elements.filter((el) => el.id !== elementId),
+          }));
+          if (this._selectedId() === elementId) this._selectedId.set(null);
+        },
+        error: (response: { status?: number }) => {
+          this._saving.set(false);
+          this._error.set(
+            response?.status === 409
+              ? this.strings.errors.conflict
+              : response?.status === 404
+                ? this.strings.errors.notFound
+                : this.strings.errors.saveFailed,
+          );
+        },
+      });
+  }
+
+  /** HU-4.01: cambia las dimensiones intrínsecas del sector (vista sector, RN-6).
+   * Va por el guardado por lotes del sector; 409 si alguien editó debajo. */
+  saveSectorDimensions(width: number, height: number): void {
+    const sectorId = this._sectorId();
+    const version = this._sectorUpdatedAt();
+    if (!sectorId || !version) return;
+    if (width < 20 || height < 20) {
+      this._error.set(this.strings.errors.saveInvalid);
+      return;
+    }
+
+    this._saving.set(true);
+    this._error.set(null);
+    this.api
+      .saveSectorLayout(sectorId, {
+        sector: { width, height, updatedAt: version },
+        elements: [],
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this._saving.set(false);
+          this._sectorUpdatedAt.set(response.sector.updatedAt);
+          this._layout.update((l) => ({ ...l, size: { width, height } }));
+        },
+        error: (response: { status?: number }) => {
+          this._saving.set(false);
+          this._error.set(
+            response?.status === 409
+              ? this.strings.errors.conflict
+              : response?.status === 400
+                ? this.strings.errors.saveInvalid
+                : this.strings.errors.saveFailed,
+          );
+        },
+      });
   }
 }

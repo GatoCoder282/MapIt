@@ -24,6 +24,8 @@ public record Floor(
     String name,
     int level,
     Slug slug,
+    double canvasWidth,
+    double canvasHeight,
     AuditTrail audit) {
 
   private static final int NAME_MAX_LENGTH = 100;
@@ -50,6 +52,23 @@ public record Floor(
       throw new IllegalArgumentException(
           "level debe estar entre %d y %d".formatted(LEVEL_MIN, LEVEL_MAX));
     }
+    if (!Double.isFinite(canvasWidth) || !Double.isFinite(canvasHeight)
+        || canvasWidth <= 0 || canvasHeight <= 0) {
+      throw new IllegalArgumentException(
+          "canvasWidth y canvasHeight deben ser finitos y mayores que 0 (HU-4.01)");
+    }
+  }
+
+  /** Compatibilidad con el contrato anterior a HU-4.01: lienzo 1200×800 por defecto. */
+  public Floor(
+      UUID id,
+      TenantId tenantId,
+      UUID establishmentId,
+      String name,
+      int level,
+      Slug slug,
+      AuditTrail audit) {
+    this(id, tenantId, establishmentId, name, level, slug, 1200, 800, audit);
   }
 
   /** Crea un piso nuevo. El id y las fechas las decide el llamador. */
@@ -78,13 +97,18 @@ public record Floor(
       throw new IllegalStateException("No se puede actualizar un piso dado de baja");
     }
     return new Floor(
-        id,
-        tenantId,
-        establishmentId,
-        name,
-        level,
-        slug,
-        audit.touched(now, by));
+        id, tenantId, establishmentId, name, level, slug,
+        canvasWidth, canvasHeight, audit.touched(now, by));
+  }
+
+  /** Cambia las dimensiones del lienzo de la planta (vista de planta, HU-4.01). */
+  public Floor resizeCanvas(double newCanvasWidth, double newCanvasHeight, Instant now, UUID by) {
+    if (audit.isDeleted()) {
+      throw new IllegalStateException("No se puede redimensionar un piso dado de baja");
+    }
+    return new Floor(
+        id, tenantId, establishmentId, name, level, slug,
+        newCanvasWidth, newCanvasHeight, audit.touched(now, by));
   }
 
   /**
@@ -104,7 +128,9 @@ public record Floor(
         establishmentId,
         name,
         level,
-        this.slug,  // Slug liberado
+        slug,
+        canvasWidth,
+        canvasHeight,
         audit.deleted(now, by));
   }
 

@@ -126,14 +126,6 @@ export const routes: Routes = [
               import('./features/spaces/ui/wizard-summary').then((m) => m.WizardSummaryComponent),
           },
           {
-            // Espacios HU-2.03 (MAP-117): elementos de un sector.
-            path: 'sectors/:sectorId/elements',
-            loadComponent: () =>
-              import('./features/spaces/ui/space-elements-page').then(
-                (m) => m.SpaceElementsPageComponent,
-              ),
-          },
-          {
             // Plantillas de elementos HU-4.02 (MAP-191).
             path: 'templates',
             loadComponent: () =>
@@ -147,6 +139,14 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/map-editor/ui/map-editor-page').then(
                 (m) => m.MapEditorPageComponent,
+              ),
+          },
+          {
+            // HU-4.01: vista de planta — composición de sectores sobre el lienzo.
+            path: 'floors/:floorId/editor',
+            loadComponent: () =>
+              import('./features/map-editor/ui/floor-editor-page').then(
+                (m) => m.FloorEditorPageComponent,
               ),
           },
         ],

@@ -120,6 +120,27 @@ class SpaceElementUseCaseTest {
   }
 
   @Test
+  void alta_rechoza_coordenadas_fuera_de_las_dimensiones_reales_del_sector() {
+    // HU-4.01 I-9: el sector tiene dimensiones reales (default 800x600); un
+    // elemento 80x80 en x=790 sobresale (790+80 > 800) y el backend lo rechaza.
+    assertThatThrownBy(() ->
+        create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", 790.0, 20.0, 80.0, 80.0, 0.0, null)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("sector");
+  }
+
+  @Test
+  void actualizar_rechoza_mover_el_elemento_fuera_del_sector() {
+    create.create(new CreateSpaceElementCommand(SECTOR_A, "TABLE", 100.0, 50.0, 80.0, 80.0, 0.0, null));
+    var guardado = elements.guardado();
+    assertThatThrownBy(() ->
+        update.update(new UpdateSpaceElementCommand(SECTOR_A, guardado.id().value(),
+            "TABLE", 790.0, 20.0, 80.0, 80.0, 0.0)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("sector");
+  }
+
+  @Test
   void alta_en_sector_de_otro_tenant_responde_404() {
     assertThatThrownBy(
             () -> create.create(new CreateSpaceElementCommand(SECTOR_B, "TABLE", 10.0, 10.0, 80.0, 80.0, 0.0, null)))
@@ -209,7 +230,9 @@ class SpaceElementUseCaseTest {
             SpaceElementState.OCCUPIED, AHORA, null);
     elements.store(existente);
 
-    var r = update.update(new UpdateSpaceElementCommand(SECTOR_A, existente.id().value(), "BAR", 20.0, 30.0, 100.0, 60.0, 45.0));
+    // HU-4.01: la validación de límites usa la AABB rotada (como el canvas); un
+    // 100x60 rotado 45° exige x >= 42.4 para caber pegado al borde izquierdo.
+    var r = update.update(new UpdateSpaceElementCommand(SECTOR_A, existente.id().value(), "BAR", 50.0, 30.0, 100.0, 60.0, 45.0));
     assertThat(r.type()).isEqualTo("BAR");
     assertThat(r.state()).isEqualTo("OCCUPIED"); // no cambia, eso es HU-3.01
     var saved = elements.guardado();

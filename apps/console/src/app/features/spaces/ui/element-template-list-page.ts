@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ElementTypeIconComponent } from '@mapit/ui-kit';
 import { TemplatesStore } from '../model/templates-store';
 import { ElementTemplateFormComponent } from './element-template-form';
-import { ElementTypeIconComponent } from './element-type-icon';
 import type { ElementTemplate } from '@mapit/api-client';
 import { STRINGS } from '../../../core/strings';
 

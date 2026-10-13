@@ -48,6 +48,28 @@ export interface SpaceElement {
   readonly attributes: Readonly<Record<string, string | number | boolean>>;
 }
 
+/**
+ * Sector colocado en la vista de planta (HU-4.01).
+ *
+ * <p>Es una lente sobre las mismas filas del dominio (RN-3): `position` y `rotation`
+ * son la colocación dentro del lienzo de la planta (se escriben con
+ * `saveFloorLayout`), `size` es la dimensión intrínseca del sector y `children`
+ * sus elementos en solo-lectura (se editan en la vista de sector, D-3).
+ */
+export interface SectorPlacement {
+  readonly id: SpaceElementId;
+  readonly label: string;
+  readonly position: Point;
+  readonly size: Size;
+  /** Rotación en grados, normalizada a [0, 360). */
+  readonly rotation: number;
+  /** Elementos del sector en solo-lectura dentro del marco del sector. */
+  readonly children: readonly SpaceElement[];
+}
+
+/** Contexto de edición del lienzo (HU-4.01): sector (detalle) o planta (composición). */
+export type MapLayoutKind = 'sector' | 'floor';
+
 export interface MapLayout {
   readonly floorId: string;
   readonly name: string;
@@ -55,6 +77,13 @@ export interface MapLayout {
   readonly elements: readonly SpaceElement[];
   /** Versión del esquema del layout, para migrar mapas guardados. */
   readonly schemaVersion: number;
+  /**
+   * HU-4.01: contexto del editor. `sector` (por defecto) = distribución interna;
+   * `floor` = composición de sectores sobre el lienzo de la planta.
+   */
+  readonly kind?: MapLayoutKind;
+  /** Solo en modo `floor`: sectores colocados con sus elementos (solo lectura). */
+  readonly sectors?: readonly SectorPlacement[];
 }
 
 export const LAYOUT_VACIO: MapLayout = {
@@ -63,4 +92,26 @@ export const LAYOUT_VACIO: MapLayout = {
   size: { width: 1200, height: 800 },
   elements: [],
   schemaVersion: 1,
+  kind: 'sector',
+  sectors: [],
+};
+
+/**
+ * Catálogo de defaults por tipo: tamaño inicial, capacidad y reservabilidad.
+ *
+ * Es la fuente única (editor, canvas y reservas leen de aquí). Solo se puede
+ * reservar lo que sirve al cliente (mesa, sillas de barra, butaca numerada,
+ * habitación); zona, escenario y decoración son infraestructura del local.
+ */
+export const TYPE_DEFAULTS: Record<
+  SpaceElementType,
+  { size: Size; capacity: number | null; reservable: boolean }
+> = {
+  TABLE: { size: { width: 80, height: 80 }, capacity: 4, reservable: true },
+  BAR: { size: { width: 200, height: 60 }, capacity: null, reservable: true },
+  SECTOR_ZONE: { size: { width: 300, height: 200 }, capacity: null, reservable: false },
+  STAGE: { size: { width: 400, height: 200 }, capacity: null, reservable: false },
+  SEAT: { size: { width: 40, height: 40 }, capacity: 1, reservable: true },
+  ROOM: { size: { width: 100, height: 100 }, capacity: 2, reservable: true },
+  DECOR: { size: { width: 60, height: 60 }, capacity: null, reservable: false },
 };

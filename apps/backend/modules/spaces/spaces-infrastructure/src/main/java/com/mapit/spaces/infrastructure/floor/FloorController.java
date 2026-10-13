@@ -161,6 +161,9 @@ public class FloorController {
       int level,
       String slug,
       UUID establishmentId,
+      // HU-4.01: lienzo de la planta (se edita vía /floors/{id}/layout).
+      double canvasWidth,
+      double canvasHeight,
       Instant createdAt,
       UUID createdBy,
       Instant updatedAt,
@@ -173,6 +176,8 @@ public class FloorController {
           floor.level(),
           floor.slug() != null ? floor.slug().value() : null, // Get value from Slug VO
           floor.establishmentId(),
+          floor.canvasWidth(),
+          floor.canvasHeight(),
           floor.audit().createdAt(),
           floor.audit().createdBy(),
           floor.audit().updatedAt(),

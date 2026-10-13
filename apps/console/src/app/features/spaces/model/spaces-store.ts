@@ -5,8 +5,6 @@ import type {
   Floor,
   Sector,
   SpaceElement,
-  SpaceElementCreateRequest,
-  SpaceElementOperationalState,
 } from '@mapit/api-client';
 import { type Observable, throwError } from 'rxjs';
 import { catchError, finalize, tap } from 'rxjs/operators';
@@ -38,39 +36,6 @@ const EMPTY_SECTOR_DRAFT: SectorDraft = {
   name: '',
 };
 
-export interface SpaceElementDraft {
-  type: string;
-  x: string;
-  y: string;
-  initialState: string;
-}
-
-export interface SpaceElementStateFeedback {
-  kind: 'success' | 'error';
-  message: string;
-}
-
-/** Dimensiones por defecto según el tipo de elemento (proporcionales y lógicas). */
-const DEFAULT_DIMENSIONS: Record<
-  SpaceElementCreateRequest.TypeEnum,
-  { width: number; height: number }
-> = {
-  TABLE: { width: 60, height: 60 },
-  BAR: { width: 120, height: 40 },
-  SECTOR_ZONE: { width: 200, height: 200 },
-  STAGE: { width: 300, height: 150 },
-  SEAT: { width: 30, height: 30 },
-  ROOM: { width: 200, height: 150 },
-  DECOR: { width: 40, height: 40 },
-};
-
-const EMPTY_ELEMENT_DRAFT: SpaceElementDraft = {
-  type: 'TABLE',
-  x: '',
-  y: '',
-  initialState: 'AVAILABLE',
-};
-
 /**
  * ViewModel con estado y comandos para la gestión de Pisos y Sectores (CU-05 · MAP-69/70).
  *
@@ -100,15 +65,10 @@ export class SpacesStore {
   private readonly sectorDraftState = signal<SectorDraft>({ ...EMPTY_SECTOR_DRAFT });
   private readonly editingSectorIdState = signal<string | null>(null);
 
-  // SpaceElement state (keyed by sectorId)
+  // SpaceElement state (keyed by sectorId): lectura para el resumen del wizard.
+  // El alta/edición/baja vive en el editor visual (MapEditorStore).
   private readonly elementsBySectorState = signal<Record<string, SpaceElement[]>>({});
   private readonly elementsLoadingState = signal<Record<string, boolean>>({});
-  private readonly elementDraftState = signal<SpaceElementDraft>({ ...EMPTY_ELEMENT_DRAFT });
-  private readonly editingElementIdState = signal<string | null>(null);
-  private readonly elementStateSavingState = signal<Record<string, boolean>>({});
-  private readonly elementStateFeedbackState = signal<
-    Record<string, SpaceElementStateFeedback | undefined>
-  >({});
 
   // Shared state
   private readonly loadingState = signal(false);
@@ -127,8 +87,6 @@ export class SpacesStore {
 
   // SpaceElement selectors
   readonly elementsBySector = computed(() => this.elementsBySectorState());
-  readonly elementDraft = this.elementDraftState.asReadonly();
-  readonly isEditingElement = computed(() => this.editingElementIdState() !== null);
 
   // Shared selectors
   readonly loading = this.loadingState.asReadonly();
@@ -442,7 +400,7 @@ export class SpacesStore {
     });
   }
 
-  // ===== SPACE ELEMENT OPERATIONS (HU-2.03 / MAP-117-118) =====
+  // ===== SPACE ELEMENT OPERATIONS (HU-2.03 / MAP-117) =====
 
   elementsBySectorId(sectorId: string): SpaceElement[] {
     return this.elementsBySectorState()[sectorId] ?? [];
@@ -450,14 +408,6 @@ export class SpacesStore {
 
   elementsLoading(sectorId: string): boolean {
     return this.elementsLoadingState()[sectorId] ?? false;
-  }
-
-  elementStateSaving(elementId: string): boolean {
-    return this.elementStateSavingState()[elementId] ?? false;
-  }
-
-  elementStateFeedback(elementId: string): SpaceElementStateFeedback | undefined {
-    return this.elementStateFeedbackState()[elementId];
   }
 
   loadSpaceElementsBySector(sectorId: string): void {
@@ -473,179 +423,13 @@ export class SpacesStore {
       .subscribe({
         next: (elements) =>
           this.elementsBySectorState.update((state) => ({ ...state, [sectorId]: elements })),
-        error: () => this.errorState.set(this.strings_.elements.errors.loadFailed),
-      });
-  }
-
-  startNewElement(): void {
-    this.editingElementIdState.set(null);
-    this.elementDraftState.set({ ...EMPTY_ELEMENT_DRAFT });
-    this.errorState.set(null);
-  }
-
-  editElement(element: SpaceElement): void {
-    this.editingElementIdState.set(element.id);
-    this.elementDraftState.set({
-      type: element.type,
-      x: String(element.x),
-      y: String(element.y),
-      initialState: element.state,
-    });
-    this.errorState.set(null);
-  }
-
-  setElementType(type: string): void {
-    this.elementDraftState.update((draft) => ({ ...draft, type }));
-  }
-
-  setElementX(x: string): void {
-    this.elementDraftState.update((draft) => ({ ...draft, x }));
-  }
-
-  setElementY(y: string): void {
-    this.elementDraftState.update((draft) => ({ ...draft, y }));
-  }
-
-  setElementInitialState(initialState: string): void {
-    this.elementDraftState.update((draft) => ({ ...draft, initialState }));
-  }
-
-  saveElement(sectorId: string): Observable<SpaceElement> | null {
-    const draft = this.elementDraft();
-    const str = this.strings_.elements.form;
-
-    const x = parseFloat(draft.x);
-    const y = parseFloat(draft.y);
-    if (isNaN(x) || x < 0 || isNaN(y) || y < 0) {
-      this.errorState.set(str.coordsInvalid);
-      return null;
-    }
-
-    const editingId = this.editingElementIdState();
-    const existingElement = editingId
-      ? this.elementsBySectorState()[sectorId]?.find((el: SpaceElement) => el.id === editingId)
-      : null;
-
-    // Usa dimensiones por defecto según el tipo si es creación, o mantiene las existentes si es edición
-    const defaultDims = DEFAULT_DIMENSIONS[draft.type as SpaceElementCreateRequest.TypeEnum] ?? {
-      width: 40,
-      height: 40,
-    };
-
-    const request: SpaceElementCreateRequest = {
-      type: draft.type as SpaceElementCreateRequest.TypeEnum,
-      x: parseFloat(draft.x),
-      y: parseFloat(draft.y),
-      width: existingElement?.width ?? defaultDims.width,
-      height: existingElement?.height ?? defaultDims.height,
-      rotation: existingElement?.rotation ?? 0,
-      initialState:
-        (draft.initialState as SpaceElementCreateRequest.InitialStateEnum) ?? 'AVAILABLE',
-    };
-
-    this.savingState.set(true);
-    this.errorState.set(null);
-
-    const request$ =
-      editingId === null
-        ? this.api.createSpaceElement(sectorId, request)
-        : this.api.updateSpaceElement(sectorId, editingId, {
-            type: request.type,
-            x,
-            y,
-            width: request.width ?? 20,
-            height: request.height ?? 20,
-            rotation: request.rotation ?? 0,
-          });
-
-    return request$.pipe(
-      finalize(() => this.savingState.set(false)),
-      tap({
-        next: (saved) => {
-          this.elementsBySectorState.update((state) => ({
-            ...state,
-            [sectorId]:
-              editingId === null
-                ? [saved, ...(state[sectorId] ?? [])]
-                : (state[sectorId] ?? []).map((e) => (e.id === saved.id ? saved : e)),
-          }));
-          this.startNewElement();
-        },
-        error: (response: { status?: number }) => {
-          this.errorState.set(
-            response?.status === 400
-              ? this.strings_.elements.errors.saveInvalid
-              : this.strings_.elements.errors.saveFailed,
-          );
-        },
-      }),
-    );
-  }
-
-  changeElementState(
-    sectorId: string,
-    elementId: string,
-    state: SpaceElementOperationalState,
-  ): void {
-    const messages = this.strings_.elements.stateAction;
-    this.elementStateSavingState.update((current) => ({ ...current, [elementId]: true }));
-    this.elementStateFeedbackState.update((current) => ({
-      ...current,
-      [elementId]: undefined,
-    }));
-
-    this.api
-      .updateSpaceElementState(sectorId, elementId, state)
-      .pipe(
-        finalize(() =>
-          this.elementStateSavingState.update((current) => ({
-            ...current,
-            [elementId]: false,
-          })),
-        ),
-      )
-      .subscribe({
-        next: (updated) => {
-          this.elementsBySectorState.update((current) => ({
-            ...current,
-            [sectorId]: (current[sectorId] ?? []).map((element) =>
-              element.id === elementId
-                ? { ...element, state: updated.state, updatedAt: updated.updatedAt }
-                : element,
-            ),
-          }));
-          this.elementStateFeedbackState.update((current) => ({
-            ...current,
-            [elementId]: { kind: 'success', message: messages.success },
-          }));
-        },
-        error: (response: { status?: number }) => {
-          const message =
-            response?.status === 409
-              ? messages.invalidTransition
-              : response?.status === 403
-                ? messages.forbidden
-                : response?.status === 404
-                  ? messages.notFound
-                  : messages.updateFailed;
-          this.elementStateFeedbackState.update((current) => ({
-            ...current,
-            [elementId]: { kind: 'error', message },
-          }));
-        },
+        error: () => this.errorState.set(this.strings_.elements.loadFailed),
       });
   }
 
   // Baja de elementos: no hay DELETE de elementos en el contrato todavía. Cuando se sume,
   // aquí irá `deleteSpaceElement(sectorId, elementId)` — hoy declarativamente excluido
   // para no esconder un endpoint disfrazado de borrado (ver tasks.md §16).
-
-  /** ¿El sector inicial draft está completo y válido? */
-  /** ¿El draft del elemento está completo y válido? */
-  elementFormValido(): boolean {
-    const draft = this.elementDraft();
-    return !!draft.type && draft.x !== '' && draft.y !== '';
-  }
 
   // ===== SECTOR DELETE =====
 

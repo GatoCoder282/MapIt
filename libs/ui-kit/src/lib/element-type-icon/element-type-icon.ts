@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
- * Miniatura SVG compuesta de un tipo de elemento espacial (HU-4.02, nivel 2).
+ * Miniatura SVG compuesta de un tipo de elemento espacial (mesa, barra, butaca…).
  *
- * Cada tipo de {@code SpaceElementType} tiene un pictograma construido con formas
- * simples (mesas con sillas, filas de asientos, barra con taburetes…), al estilo de
- * las paletas de objetos de los planificadores de espacios. Es puramente
- * presentacional: no conoce stores ni el api-client.
+ * Cada tipo tiene un pictograma construido con formas simples (mesas con sillas,
+ * filas de asientos, barra con taburetes…), al estilo de las paletas de objetos de
+ * los planificadores de espacios. Es puramente presentacional: recibe el tipo como
+ * string y no conoce stores ni el api-client.
  */
 @Component({
   selector: 'mapit-element-type-icon',

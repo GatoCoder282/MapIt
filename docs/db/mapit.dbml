@@ -107,6 +107,8 @@ Table floor {
   name             text        [not null]
    level            int         [not null, note: 'Orden vertical: 0-999']
   slug             text        [note: 'Opcional; único por establecimiento entre filas vivas']
+  canvas_width     double      [not null, default: 1200, note: 'HU-4.01: ancho del lienzo de la planta']
+  canvas_height    double      [not null, default: 800, note: 'HU-4.01: alto del lienzo de la planta']
   created_at       timestamptz [not null]
   created_by       uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
   updated_at       timestamptz [not null]
@@ -121,22 +123,42 @@ Table floor {
   }
   Note: '''
     CU-05. Piso o nivel físico dentro de un establecimiento.
+    HU-4.01: el piso tiene un lienzo rectangular (canvas_width/canvas_height)
+    donde se colocan los sectores; Fase 1 no modela polígono (D-2).
     Baja LÓGICA: sector apuntará aquí, así que un borrado físico dejaría huérfanos.
     El slug se libera (pone a NULL) al dar de baja, permitiendo reutilización.
   '''
 }
 
 Table sector {
-  id        uuid        [pk]
-  tenant_id text        [not null, ref: > tenant.id]
-  floor_id  uuid        [not null, ref: > floor.id]
-  name      text        [not null]
-  color     text
+  id           uuid        [pk]
+  tenant_id    text        [not null, ref: > tenant.id]
+  floor_id     uuid        [not null, ref: > floor.id]
+  name         text        [not null]
+  slug         text        [not null, note: 'Único por piso entre filas vivas']
+  max_capacity int         [not null, note: '> 0']
+  x            double      [not null, default: 0, note: 'HU-4.01: colocación en la planta (saveFloorLayout)']
+  y            double      [not null, default: 0, note: 'HU-4.01: colocación en la planta (saveFloorLayout)']
+  rotation     double      [not null, default: 0, note: 'HU-4.01: grados dentro de la planta']
+  width        double      [not null, default: 800, note: 'HU-4.01: dimensión intrínseca; origen (0,0) de sus elementos']
+  height       double      [not null, default: 600, note: 'HU-4.01: dimensión intrínseca']
+  created_at   timestamptz [not null]
+  created_by   uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
+  updated_at   timestamptz [not null]
+  updated_by   uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
+  deleted_at   timestamptz [note: 'Baja lógica']
+  deleted_by   uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
 
   Indexes {
-    tenant_id
+    (tenant_id, id)
     floor_id
+    (floor_id, slug) [unique, note: 'PARCIAL: WHERE deleted_at IS NULL']
   }
+  Note: '''
+    CU-05/HU-4.01. Zona del establecimiento dentro de un piso (1:1, RN-4:
+    floor_id NOT NULL). La reutilización entre plantas es copia explícita
+    (duplicado con ids nuevos, RN-5), no enlace vivo.
+  '''
 }
 
 Table element_template {

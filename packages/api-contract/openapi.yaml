@@ -1011,6 +1011,134 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  # ── Layout de planta (HU-4.01) ────────────────────────────────────────
+  # Lectura agregada y guardado por lotes de la planta: geometría del lienzo
+  # + colocación de sectores. La composición interna de cada sector viene
+  # en solo-lectura (misma fila; la edición interna es PUT /sectors/{id}/layout).
+  /floors/{floorId}/layout:
+    parameters:
+      - name: floorId
+        in: path
+        required: true
+        description: Identificador del piso cuyo layout se consulta
+        schema:
+          type: string
+          format: uuid
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Obtener el layout completo de una planta
+      description: |
+        Lectura agregada (RN-3): planta con su geometría de lienzo, sus sectores
+        colocados (colocación + dimensiones intrínsecas) y los elementos de cada
+        sector en solo-lectura. Sustituye el fan-out cliente piso→sectores→elementos.
+      operationId: getFloorLayout
+      security: [] # Temporary
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Layout de la planta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FloorLayoutResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # Si el piso no existe o es de otro tenant
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Guardar el layout de una planta (por lotes)
+      description: |
+        Guardado transaccional (RN-7): dimensiones del lienzo + colocaciones de
+        sectores en una sola operación. Cada recurso lleva el `updatedAt` que el
+        cliente observó al cargar; si alguna fila cambió debajo, responde 409 con
+        la lista de recursos en conflicto y no persiste nada.
+      operationId: saveFloorLayout
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloorLayoutUpdateRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Layout guardado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FloorLayoutResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Geometría inválida o sector fuera del lienzo
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict" # updatedAt base obsoleto (concurrencia optimista)
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /floors/{floorId}/sectors:duplicate:
+    parameters:
+      - name: floorId
+        in: path
+        required: true
+        description: Identificador del piso de destino
+        schema:
+          type: string
+          format: uuid
+    post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Duplicar un sector hacia esta planta
+      description: |
+        Reutilización como copia explícita (RN-5): crea un sector nuevo en esta
+        planta clonando nombre (derivado), capacidad y composición interna del
+        sector fuente con **identificadores nuevos** para cada elemento. No queda
+        enlace entre origen y copia. El sector fuente debe pertenecer al mismo
+        tenant; si no, 404 indistinguible.
+      operationId: duplicateSector
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SectorDuplicateRequest"
+      responses:
+        "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Sector duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectorLayoutResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # Piso destino o sector fuente inexistente/ajeno
+        "409":
+          $ref: "#/components/responses/Conflict" # slug derivado ya en uso
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   # ── Sectores (CU-05) ────────────────────────────────────────────────
   # `security: []` es TEMPORAL, igual que en demo-items: la autenticación JWT
   # llega en CU-23/CU-24 y hasta entonces el tenant se resuelve en el servidor
@@ -1234,6 +1362,82 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Eliminar un elemento espacial
+      description: |
+        Baja lógica del elemento (HU-4.01 lo expone; el dominio ya tenía
+        `softDelete`). Responde 409 si el elemento tiene reservas activas: la
+        identidad de una mesa vinculada a reservas es inviolable (RN-1).
+      operationId: deleteSpaceElement
+      security: [] # Temporary
+      responses:
+        "204":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Elemento eliminado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict" # Tiene reservas activas
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Layout de sector (HU-4.01) ─────────────────────────────────────────
+  # Guardado por lotes de la distribución interna: dimensiones del sector +
+  # geometría de sus elementos, transaccional y con concurrencia optimista.
+  /sectors/{sectorId}/layout:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector cuyo layout se guarda
+        schema:
+          type: string
+          format: uuid
+    put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Guardar el layout de un sector (por lotes)
+      description: |
+        Guardado transaccional de la distribución interna (RN-7): dimensiones
+        intrínsecas del sector + geometría de sus elementos. Nunca toca el
+        `state` operativo (RN-9). Cada recurso lleva su `updatedAt` observado;
+        conflicto → 409 con la lista de recursos que cambiaron.
+      operationId: saveSectorLayout
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SectorLayoutUpdateRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Layout del sector guardado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectorLayoutResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Geometría inválida o elemento fuera del sector
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -2065,7 +2269,7 @@ components:
 
     Floor:
       type: object
-      required: [id, name, slug, level, createdAt, updatedAt]
+      required: [id, name, slug, level, createdAt, updatedAt, canvasWidth, canvasHeight]
       properties:
         id:
           type: string
@@ -2097,6 +2301,20 @@ components:
           type: string
           format: date-time
           readOnly: true
+        canvasWidth:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          default: 1200
+          readOnly: true
+          description: Ancho del lienzo rectangular de la planta (HU-4.01). Se escribe vía `saveFloorLayout`.
+        canvasHeight:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          default: 800
+          readOnly: true
+          description: Alto del lienzo rectangular de la planta (HU-4.01). Se escribe vía `saveFloorLayout`.
 
     FloorCreateRequest:
       description: >-
@@ -2113,7 +2331,7 @@ components:
 
     Sector:
       type: object
-      required: [id, name, slug, createdAt, updatedAt]
+      required: [id, name, slug, createdAt, updatedAt, x, y, rotation, width, height]
       properties:
         id:
           type: string
@@ -2137,6 +2355,40 @@ components:
           type: string
           format: date-time
           readOnly: true
+        x:
+          type: number
+          format: double
+          minimum: 0
+          default: 0
+          readOnly: true
+          description: Colocación horizontal del sector dentro del lienzo de la planta (HU-4.01). Se escribe vía `saveFloorLayout`.
+        y:
+          type: number
+          format: double
+          minimum: 0
+          default: 0
+          readOnly: true
+          description: Colocación vertical del sector dentro del lienzo de la planta (HU-4.01). Se escribe vía `saveFloorLayout`.
+        rotation:
+          type: number
+          format: double
+          default: 0
+          readOnly: true
+          description: Rotación del sector en grados dentro de la planta (HU-4.01).
+        width:
+          type: number
+          format: double
+          minimum: 20
+          default: 800
+          readOnly: true
+          description: Dimensión intrínseca del sector (origen de coordenadas de sus elementos). Se escribe vía `saveSectorLayout`.
+        height:
+          type: number
+          format: double
+          minimum: 20
+          default: 600
+          readOnly: true
+          description: Dimensión intrínseca del sector (origen de coordenadas de sus elementos). Se escribe vía `saveSectorLayout`.
 
     SectorCreateRequest:
       type: object
@@ -2207,6 +2459,217 @@ components:
           type: string
           format: date-time
           readOnly: true
+
+    # ── Layouts HU-4.01 (lectura agregada y guardados por lotes) ─────────
+    SectorLayoutSector:
+      description: Sector con su colocación en la planta y sus elementos (solo lectura).
+      type: object
+      required: [id, name, x, y, rotation, width, height, updatedAt, elements]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        x:
+          type: number
+          format: double
+          minimum: 0
+          description: Colocación horizontal dentro del lienzo de la planta.
+        y:
+          type: number
+          format: double
+          minimum: 0
+          description: Colocación vertical dentro del lienzo de la planta.
+        rotation:
+          type: number
+          format: double
+          default: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+          description: Dimensión intrínseca del sector.
+        height:
+          type: number
+          format: double
+          minimum: 20
+          description: Dimensión intrínseca del sector.
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        elements:
+          type: array
+          description: Elementos del sector en solo-lectura (RN-3, misma fila).
+          items:
+            $ref: "#/components/schemas/SpaceElement"
+
+    FloorLayoutResponse:
+      description: Planta con su lienzo, sus sectores colocados y sus elementos.
+      type: object
+      required: [floor, sectors]
+      properties:
+        floor:
+          $ref: "#/components/schemas/Floor"
+        sectors:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorLayoutSector"
+
+    SectorPlacementUpdate:
+      description: Colocación de un sector dentro de la planta (vista de planta, RN-6).
+      type: object
+      additionalProperties: false
+      required: [id, x, y, rotation, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        x:
+          type: number
+          format: double
+          minimum: 0
+        y:
+          type: number
+          format: double
+          minimum: 0
+        rotation:
+          type: number
+          format: double
+        updatedAt:
+          type: string
+          format: date-time
+          description: Marca observada al cargar; conflicto si la fila cambió (RN-7).
+
+    FloorLayoutUpdateRequest:
+      description: >-
+        Guardado transaccional de la planta: dimensiones del lienzo + colocaciones
+        de sectores. Todo o nada; concurrencia optimista por `updatedAt`.
+      type: object
+      additionalProperties: false
+      required: [floor, sectors]
+      properties:
+        floor:
+          type: object
+          additionalProperties: false
+          required: [canvasWidth, canvasHeight, updatedAt]
+          properties:
+            canvasWidth:
+              type: number
+              format: double
+              exclusiveMinimum: 0
+            canvasHeight:
+              type: number
+              format: double
+              exclusiveMinimum: 0
+            updatedAt:
+              type: string
+              format: date-time
+        sectors:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorPlacementUpdate"
+
+    SectorLayoutUpdateRequest:
+      description: >-
+        Guardado transaccional de la distribución interna del sector: dimensiones
+        del sector + geometría de sus elementos. Nunca toca `state` (RN-9).
+      type: object
+      additionalProperties: false
+      required: [sector, elements]
+      properties:
+        sector:
+          type: object
+          additionalProperties: false
+          required: [width, height, updatedAt]
+          properties:
+            width:
+              type: number
+              format: double
+              minimum: 20
+            height:
+              type: number
+              format: double
+              minimum: 20
+            updatedAt:
+              type: string
+              format: date-time
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorLayoutElementUpdate"
+
+    SectorLayoutElementUpdate:
+      description: Geometría de un elemento dentro de su sector (vista de sector, RN-2).
+      type: object
+      additionalProperties: false
+      required: [id, x, y, width, height, rotation, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        x:
+          type: number
+          format: double
+          minimum: 0
+        y:
+          type: number
+          format: double
+          minimum: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+        height:
+          type: number
+          format: double
+          minimum: 20
+        rotation:
+          type: number
+          format: double
+        updatedAt:
+          type: string
+          format: date-time
+
+    SectorLayoutResponse:
+      description: Sector con su geometría actualizada y sus elementos vivos.
+      type: object
+      required: [sector, elements]
+      properties:
+        sector:
+          $ref: "#/components/schemas/Sector"
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpaceElement"
+
+    SectorDuplicateRequest:
+      description: >-
+        Duplicar un sector del mismo tenant hacia el piso del path (RN-5): crea
+        sector y elementos con identificadores nuevos. Sin enlace origen→copia.
+      type: object
+      additionalProperties: false
+      required: [sourceSectorId]
+      properties:
+        sourceSectorId:
+          type: string
+          format: uuid
+          description: Sector a duplicar (mismo tenant; ajeno → 404).
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Si se omite, deriva "<nombre> (copia)".
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+          description: Si se omite, deriva del nombre asegurando unicidad en el piso destino.
 
     SpaceElementCreateRequest:
       type: object

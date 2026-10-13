@@ -39,6 +39,36 @@ describe('ReservationsApi', () => {
         updatedAt: '',
       },
       {
+        id: 'bar-1',
+        sectorId: 'sector-1',
+        type: 'BAR' as const,
+        state: 'AVAILABLE' as const,
+        x: 0,
+        y: 0,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'zone-1',
+        sectorId: 'sector-1',
+        type: 'SECTOR_ZONE' as const,
+        state: 'AVAILABLE' as const,
+        x: 1,
+        y: 1,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'stage-1',
+        sectorId: 'sector-1',
+        type: 'STAGE' as const,
+        state: 'AVAILABLE' as const,
+        x: 1,
+        y: 1,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
         id: 'decor-1',
         sectorId: 'sector-1',
         type: 'DECOR' as const,
@@ -88,10 +118,19 @@ describe('ReservationsApi', () => {
   it('arma las opciones reservables con sus nombres de ubicación', async () => {
     const result = await firstValueFrom(api.listReservableElements('establishment-1'));
 
+    // Mesa y barra (sillas) son reservables; zona, escenario y decoración
+    // (infraestructura del local) quedan excluidas.
     expect(result).toEqual([
       {
         id: 'table-1',
         type: 'TABLE',
+        state: 'AVAILABLE',
+        floorName: 'Planta baja',
+        sectorName: 'Salón',
+      },
+      {
+        id: 'bar-1',
+        type: 'BAR',
         state: 'AVAILABLE',
         floorName: 'Planta baja',
         sectorName: 'Salón',

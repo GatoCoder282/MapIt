@@ -133,4 +133,34 @@ class FloorTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("No se puede actualizar");
   }
+
+  @Test
+  void el_lienzo_nace_con_el_default_1200x800() {
+    assertThat(unPiso().canvasWidth()).isEqualTo(1200);
+    assertThat(unPiso().canvasHeight()).isEqualTo(800);
+  }
+
+  @Test
+  void resizeCanvas_rechaza_lienzos_no_positivos_y_conserva_el_resto() {
+    Floor original = unPiso();
+    assertThatThrownBy(() -> original.resizeCanvas(0, 800, AHORA, USER_ID))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("canvasWidth");
+    assertThatThrownBy(() -> original.resizeCanvas(1200, -5, AHORA, USER_ID))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    Floor resized = original.resizeCanvas(2000, 1500, AHORA.plusSeconds(30), USER_ID);
+    assertThat(resized.canvasWidth()).isEqualTo(2000);
+    assertThat(resized.canvasHeight()).isEqualTo(1500);
+    assertThat(resized.name()).isEqualTo(original.name());
+    assertThat(resized.audit().updatedAt()).isEqualTo(AHORA.plusSeconds(30));
+    assertThat(resized.audit().createdAt()).isEqualTo(AHORA);
+  }
+
+  @Test
+  void no_permite_redimensionar_el_lienzo_de_uno_dado_de_baja() {
+    Floor dadoDeBaja = unPiso().softDelete(AHORA, USER_ID);
+    assertThatThrownBy(() -> dadoDeBaja.resizeCanvas(2000, 1000, AHORA.plusSeconds(60), USER_ID))
+        .isInstanceOf(IllegalStateException.class);
+  }
 }

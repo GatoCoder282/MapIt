@@ -7,6 +7,35 @@
   color-scheme: light dark;
 }
 
+/* ── Scrollbars acordes al diseño ──────────────────────────────────────────
+   La nativa del SO es gruesa y con flechas (y con color-scheme light dark
+   sigue el tema del SO). Forma fina y neutra con los tokens, igual en la
+   ventana que en los paneles con scroll (sidebar del editor, listas…). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mapit-color-border-input) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--mapit-color-border-input);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--mapit-color-text-muted);
+}
+
 html,
 body {
   height: 100%;

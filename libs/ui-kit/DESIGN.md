@@ -204,6 +204,10 @@ El lenguaje de formas equilibra lo "técnico" con la accesibilidad moderna.
 - **Fondo base:** se adopta `#F7F8FA` como lienzo (Level 0), según la sección de
   elevación. Los tonos azulados `#f9f9ff`/`#f0f3ff` quedan como superficies de apoyo
   (`surface-low`), no como fondo de página.
+- **Editor de mapas (HU-4.01 v2):** el acento de interacción del lienzo es `#2563EB`
+  (tokens `--mapit-editor-*`), distinto del índigo de marca y sin conflicto semántico con
+  los estados operativos (`--mapit-state-*` siguen gobernando trazo/badge, no relleno).
+  Spec completa en `apps/console/design/`.
 
 ## Setup Wizard — Light Theme explícito (CU-05)
 

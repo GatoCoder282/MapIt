@@ -50,9 +50,22 @@ export class FeatureFlagService {
    * Estado de una flag como Signal.
    *
    * Uso en plantilla:  `@if (flags.isEnabled('payments.qr')()) { … }`
+   *
+   * HU-4.01: el computed se CACHEA por clave. Devolver uno nuevo por llamada
+   * funciona en la primera evaluación, pero rompe la reactividad zoneless del
+   * template cuando el valor llega después del primer render (el enlace
+   * vista → computed → estado se pierde entre instancias y la rama del @if
+   * no vuelve a evaluarse: la vista de planta quedaba vacía pese a la flag ON).
    */
+  private readonly cache = new Map<FeatureFlagKey, Signal<boolean>>();
+
   isEnabled(flag: FeatureFlagKey): Signal<boolean> {
-    return computed(() => this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false);
+    let sig = this.cache.get(flag);
+    if (!sig) {
+      sig = computed(() => this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false);
+      this.cache.set(flag, sig);
+    }
+    return sig;
   }
 
   /** Lectura puntual, para lógica imperativa (guards, interceptores). */

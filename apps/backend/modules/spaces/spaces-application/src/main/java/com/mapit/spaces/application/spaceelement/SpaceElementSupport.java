@@ -43,10 +43,7 @@ public class SpaceElementSupport {
    *         distingue entre ambos casos para no filtrar existencia ajena.
    */
   public EstablishmentType verticalDelSector(TenantId tenantId, SectorId sectorId) {
-    var sector =
-        sectorRepository
-            .findAliveById(tenantId, sectorId)
-            .orElseThrow(() -> new SectorNotFoundException(sectorId.value()));
+    var sector = sectorVivo(tenantId, sectorId);
     var floor =
         floorRepository
             .findAliveById(tenantId, sector.floorId())
@@ -62,6 +59,29 @@ public class SpaceElementSupport {
                     new IllegalStateException(
                         "Piso " + floor.id() + " apunta a un establecimiento inexistente"));
     return establishment.type();
+  }
+
+  /** Sector vivo del tenant o error indistinguible. */
+  public com.mapit.spaces.domain.sector.Sector sectorVivo(TenantId tenantId, SectorId sectorId) {
+    return sectorRepository
+        .findAliveById(tenantId, sectorId)
+        .orElseThrow(() -> new SectorNotFoundException(sectorId.value()));
+  }
+
+  /**
+   * HU-4.01 (RN-10): un elemento debe caber dentro de las dimensiones reales del sector,
+   * contando su rotación (misma fórmula que el clamping del canvas).
+   */
+  public void validarQueCabeEnElSector(
+      com.mapit.spaces.domain.sector.Sector sector,
+      double x, double y, double width, double height, double rotation) {
+    var posicion = com.mapit.spaces.domain.layout.Placement.of(x, y, rotation);
+    var tamano = com.mapit.spaces.domain.layout.Geometry.of(width, height);
+    if (!posicion.fitsIn(tamano, sector.geometry().width(), sector.geometry().height())) {
+      throw new IllegalArgumentException(
+          "El elemento no cabe en el sector (sector %sx%s, elemento en x=%s y=%s, %sx%s rotado %s°)"
+              .formatted(sector.geometry().width(), sector.geometry().height(), x, y, width, height, rotation));
+    }
   }
 
   /** Lanza 400 si el tipo no es válido para la vertical (RN-4). Solo se toca aquí. */

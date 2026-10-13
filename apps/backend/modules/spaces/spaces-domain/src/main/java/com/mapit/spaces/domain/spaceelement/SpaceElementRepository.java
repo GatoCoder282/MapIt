@@ -31,4 +31,9 @@ public interface SpaceElementRepository {
 
   /** Inserta o actualiza. La baja lógica también pasa por aquí. */
   SpaceElement save(SpaceElement element);
+
+  /** Guardado por lotes (HU-4.01): una sola transacción, todo o nada. */
+  default List<SpaceElement> saveAll(List<SpaceElement> elements) {
+    return elements.stream().map(this::save).toList();
+  }
 }

@@ -73,6 +73,22 @@
   --mapit-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --mapit-duration-fast: 150ms;
   --mapit-duration: 250ms;
+
+  /* ── Editor de mapas (HU-4.01 v2; spec: apps/console/design/) ──
+     Acento de interacción del lienzo (selección, manejadores, pill).
+     NO es el accent de marca (--mapit-color-accent): roles separados. */
+  --mapit-editor-selection: #2563eb;
+  --mapit-editor-selection-fill: #93c5fd; /* relleno del elemento solo mientras está seleccionado */
+  --mapit-editor-selection-soft: #dbeafe; /* chips/avatar del panel */
+  --mapit-editor-selection-y-bg: #dcfce7;
+  --mapit-editor-selection-y-text: #166534;
+  --mapit-editor-canvas: #f8fafc;
+  --mapit-editor-grid: #e5e7eb;
+  --mapit-editor-furniture: #ffffff;
+  --mapit-editor-furniture-stroke: #94a3b8;
+  --mapit-editor-panel-text: #0f172a;
+  --mapit-editor-panel-muted: #64748b;
+  --mapit-editor-chip-bg: #f1f5f9;
 }
 
 /* Modo oscuro: removido hasta que DESIGN.md defina la paleta dark.

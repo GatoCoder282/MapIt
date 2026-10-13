@@ -30,12 +30,6 @@ public class GetSectorByIdUseCase {
         repository
             .findAliveById(tenantId, SectorId.of(id))
             .orElseThrow(() -> new SectorNotFoundException(id));
-    return new SectorResponse(
-        sector.id().value(),
-        sector.name(),
-        sector.slug().value(),
-        sector.maxCapacity(),
-        sector.audit().createdAt(),
-        sector.audit().updatedAt());
+    return SectorResponse.fromDomain(sector);
   }
 }

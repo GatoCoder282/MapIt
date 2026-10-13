@@ -26,4 +26,9 @@ public interface SectorRepository {
 
   /** Inserta o actualiza. La baja lógica también pasa por aquí. */
   Sector save(Sector sector);
+
+  /** Guardado por lotes (HU-4.01): una sola transacción, todo o nada. */
+  default List<Sector> saveAll(List<Sector> sectors) {
+    return sectors.stream().map(this::save).toList();
+  }
 }

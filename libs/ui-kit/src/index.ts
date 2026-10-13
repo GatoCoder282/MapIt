@@ -9,6 +9,7 @@
  */
 export const UI_KIT_VERSION = '0.1.0';
 
+export { ElementTypeIconComponent } from './lib/element-type-icon/element-type-icon';
 export { SiteNav } from './lib/site-nav/site-nav';
 export { SiteFooter } from './lib/site-footer/site-footer';
 export { RevealOnScroll } from './lib/reveal-on-scroll/reveal-on-scroll';
