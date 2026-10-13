@@ -65,7 +65,7 @@ spring:
 
 # ── Servidor ────────────────────────────────────────────────
 server:
-  port: ${BACKEND_PORT:8080}
+  port: ${PORT:${BACKEND_PORT:8080}}
   error:
     include-message: always
     include-binding-errors: always
