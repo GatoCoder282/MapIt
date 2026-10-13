@@ -128,10 +128,9 @@ import { SectorFormComponent } from './sector-form';
                 <div class="sector-actions">
                   <a
                     class="action-btn elements"
-                    [routerLink]="['/spaces/sectors', sector.id, 'elements']"
-                    [attr.aria-label]="
-                      store.strings_.sectors.list.elementsButton + ' ' + sector.name
-                    "
+                    [routerLink]="['/spaces/editor', sector.id]"
+                    [queryParams]="{ sectorName: sector.name, floorId: floorId() }"
+                    [attr.aria-label]="store.strings_.sectors.list.editorButton + ' ' + sector.name"
                   >
                     <svg
                       width="16"

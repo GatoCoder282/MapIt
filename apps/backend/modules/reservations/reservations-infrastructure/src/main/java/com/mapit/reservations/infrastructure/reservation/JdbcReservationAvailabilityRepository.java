@@ -63,4 +63,26 @@ public class JdbcReservationAvailabilityRepository
   private void setTenant(TenantId tenantId) {
     jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, tenantId.value());
   }
+
+  @Override
+  public boolean existsActiveForSpaceElement(TenantId tenantId, UUID spaceElementId) {
+    setTenant(tenantId);
+    Boolean exists =
+        jdbc.queryForObject(
+            """
+            select exists (
+              select 1
+              from reservation_space_element rse
+              join reservation r
+                on r.id = rse.reservation_id and r.tenant_id = rse.tenant_id
+              where r.tenant_id = ?
+                and rse.space_element_id = ?
+                and r.status in ('CREATED', 'CONFIRMED', 'ACTIVE')
+            )
+            """,
+            Boolean.class,
+            tenantId.value(),
+            spaceElementId);
+    return Boolean.TRUE.equals(exists);
+  }
 }

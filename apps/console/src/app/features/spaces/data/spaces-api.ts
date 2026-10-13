@@ -9,12 +9,8 @@ import type {
   FloorCreateRequest,
   SectorCreateRequest,
   SpaceElement,
-  SpaceElementCreateRequest,
-  SpaceElementOperationalState,
-  SpaceElementStateResponse,
-  SpaceElementUpdateRequest,
 } from '@mapit/api-client';
-import { EstablishmentsService, OperationsService, SpacesService } from '@mapit/api-client';
+import { EstablishmentsService, SpacesService } from '@mapit/api-client';
 import type { Observable } from 'rxjs';
 
 import { RuntimeConfigStore } from '../../../core/runtime-config';
@@ -38,7 +34,6 @@ export interface EstablishmentDraft {
 export class SpacesApiService {
   private readonly api = inject(SpacesService);
   private readonly establishmentsApi = inject(EstablishmentsService);
-  private readonly operationsApi = inject(OperationsService);
   private readonly http = inject(HttpClient);
   private readonly runtime = inject(RuntimeConfigStore);
 
@@ -126,37 +121,5 @@ export class SpacesApiService {
     return this.api.listSpaceElementsBySector({ sectorId });
   }
 
-  /** POST /api/v1/sectors/{sectorId}/elements */
-  createSpaceElement(
-    sectorId: string,
-    request: SpaceElementCreateRequest,
-  ): Observable<SpaceElement> {
-    return this.api.createSpaceElement({ sectorId, spaceElementCreateRequest: request });
-  }
-
-  /** PUT /api/v1/sectors/{sectorId}/elements/{elementId} */
-  updateSpaceElement(
-    sectorId: string,
-    elementId: string,
-    request: SpaceElementUpdateRequest,
-  ): Observable<SpaceElement> {
-    return this.api.updateSpaceElement({
-      sectorId,
-      elementId,
-      spaceElementUpdateRequest: request,
-    });
-  }
-
-  /** PATCH /api/v1/sectors/{sectorId}/elements/{elementId}/state */
-  updateSpaceElementState(
-    sectorId: string,
-    elementId: string,
-    state: SpaceElementOperationalState,
-  ): Observable<SpaceElementStateResponse> {
-    return this.operationsApi.updateSpaceElementState({
-      sectorId,
-      elementId,
-      spaceElementStateUpdateRequest: { state },
-    });
-  }
+  // El alta/edición/baja de elementos vive en el editor visual (MapEditorApiService).
 }

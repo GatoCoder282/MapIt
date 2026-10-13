@@ -71,7 +71,13 @@ Para lograr una transición fluida desde la creación lógica hacia la distribuc
 
 - **RN-1 (Coordenadas relativas):** Las coordenadas `x`, `y` son **relativas al sector** (origen esquina superior izquierda), igual que en la BD y el contrato. El canvas del editor usa el mismo sistema de referencia.
 - **RN-2 (No escapar del sector):** Un elemento no puede tener coordenadas negativas ni superar `sectorWidth - elementWidth` / `sectorHeight - elementHeight`. El frontend hace clamping; el backend valida `x >= 0, y >= 0` (la validación de límite superior se añadirá cuando el sector tenga dimensiones — ver incertidumbre en `SpaceElement.java:24`).
-- **RN-3 (Rotación en grados):** La rotación se almacena en grados (0–360) en el modelo `MapLayout` del puerto. El backend **no persiste rotación ni size hoy** (solo `x`, `y`, `type`); estos campos viven solo en el `MapLayout` del frontend y se usarán en CU-07/CU-08. **El editor los maneja visualmente pero no los envía al backend en esta entrega.**
+- **RN-3 (Rotación en grados):** La rotación se almacena en grados (0–360) en el modelo `MapLayout` del puerto.
+
+  > **Corrección (2026-10-12, HU-4.01):** esta regla decía que el backend no persistía
+  > `rotation` ni `size` — era cierto en la fecha de la spec, pero V12 ya los creó y el
+  > PUT los acepta. Hoy se persisten. Queda corregido para que ningún agente "aumente"
+  > campos que ya existen; trazado en la C-1 de `specs/HU-4.01-rediseno-editor-plantas-sectores/spec.md`.
+
 - **RN-4 (Tipo inmutable en editor):** El editor **no permite cambiar el `type`** (TABLE, BAR, etc.). Eso se hace en el formulario de creación (HU-2.03). El editor solo manipula geometría: posición, rotación, tamaño.
 - **RN-5 (Estado operativo no editable):** El `state` (AVAILABLE, OCCUPIED, etc.) se gestiona en operación (CU-09/HU-3.01), no en el editor.
 - **RN-6 (Multi-tenant):** Todo acceso a elementos pasa por `tenant_id` del JWT. El editor hereda el contexto del resumen; no hay selección de tenant.

@@ -44,10 +44,20 @@ public class UpdateSpaceElementUseCase {
 
     // El elemento solo se toca si el sector es del tenant activo; con el sector verificado,
     // cualquier elemento no-vivo o ajeno cae en el 404 sin distinguir existencia.
-    var vertical = support.verticalDelSector(tenantId, new SectorId(command.sectorId()));
+    var sectorId = new SectorId(command.sectorId());
+    var vertical = support.verticalDelSector(tenantId, sectorId);
 
     SpaceElementType type = support.parseType(command.type());
     support.validarTipoPermitido(vertical, type);
+
+    // HU-4.01 (RN-10): la nueva geometría debe caber en las dimensiones reales del sector.
+    if (command.x() != null && command.y() != null
+        && command.width() != null && command.height() != null) {
+      support.validarQueCabeEnElSector(
+          support.sectorVivo(tenantId, sectorId),
+          command.x(), command.y(), command.width(), command.height(),
+          command.rotation() != null ? command.rotation() : 0);
+    }
 
     SpaceElement existing =
         repository

@@ -28,13 +28,7 @@ public class GetSectorsByFloorUseCase {
     return repository
         .findAliveByFloorId(tenantId, floorId)
         .stream()
-        .map(sector -> new SectorResponse(
-            sector.id().value(),
-            sector.name(),
-            sector.slug().value(),
-            sector.maxCapacity(),
-            sector.audit().createdAt(),
-            sector.audit().updatedAt()))
+        .map(SectorResponse::fromDomain)
         .toList();
   }
 }

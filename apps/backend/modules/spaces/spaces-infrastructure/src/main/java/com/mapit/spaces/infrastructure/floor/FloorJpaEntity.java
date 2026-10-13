@@ -39,6 +39,13 @@ public class FloorJpaEntity {
   @Column(length = 64)
   private String slug;
 
+  // HU-4.01: lienzo rectangular de la planta donde se colocan los sectores.
+  @Column(name = "canvas_width", nullable = false)
+  private double canvasWidth;
+
+  @Column(name = "canvas_height", nullable = false)
+  private double canvasHeight;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -67,6 +74,8 @@ public class FloorJpaEntity {
       String name,
       Integer level,
       String slug,
+      double canvasWidth,
+      double canvasHeight,
       Instant createdAt,
       UUID createdBy,
       Instant updatedAt,
@@ -79,6 +88,8 @@ public class FloorJpaEntity {
     this.name = name;
     this.level = level;
     this.slug = slug;
+    this.canvasWidth = canvasWidth;
+    this.canvasHeight = canvasHeight;
     this.createdAt = createdAt;
     this.createdBy = createdBy;
     this.updatedAt = updatedAt;
@@ -96,6 +107,8 @@ public class FloorJpaEntity {
         floor.name(),
         floor.level(),
         floor.slug() != null ? floor.slug().value() : null, // Convert Slug value
+        floor.canvasWidth(),
+        floor.canvasHeight(),
         audit.createdAt(),
         audit.createdBy(),
         audit.updatedAt(),
@@ -112,6 +125,8 @@ public class FloorJpaEntity {
         name,
         level,
         slug != null ? Slug.of(slug) : null, // Convert String back to Slug
+        canvasWidth,
+        canvasHeight,
         new AuditTrail(createdAt, createdBy, updatedAt, updatedBy, deletedAt, deletedBy));
   }
 
@@ -122,6 +137,8 @@ public class FloorJpaEntity {
   public String getName() { return name; }
   public Integer getLevel() { return level; }
   public String getSlug() { return slug; }
+  public double getCanvasWidth() { return canvasWidth; }
+  public double getCanvasHeight() { return canvasHeight; }
   public Instant getCreatedAt() { return createdAt; }
   public UUID getCreatedBy() { return createdBy; }
   public Instant getUpdatedAt() { return updatedAt; }
@@ -139,6 +156,8 @@ public class FloorJpaEntity {
   public void setName(String name) { this.name = name; }
   public void setLevel(Integer level) { this.level = level; }
   public void setSlug(String slug) { this.slug = slug; }
+  public void setCanvasWidth(double canvasWidth) { this.canvasWidth = canvasWidth; }
+  public void setCanvasHeight(double canvasHeight) { this.canvasHeight = canvasHeight; }
   public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
   public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
   public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }

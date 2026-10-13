@@ -1,4 +1,4 @@
-import {
+﻿import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
@@ -17,12 +17,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { type MapEnginePort, MAP_ENGINE } from '@mapit/map-engine';
+import { ElementLibraryComponent } from './element-library';
+import { ElementPropertiesCardComponent } from './element-properties-card';
 import { MapEditorStore } from '../model/map-editor-store';
 import { STRINGS } from '../../../core/strings';
 
 @Component({
   selector: 'mapit-map-editor-page',
-  imports: [],
+  imports: [ElementLibraryComponent, ElementPropertiesCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="editor-page">
@@ -82,6 +84,26 @@ import { STRINGS } from '../../../core/strings';
           }
         </div>
         <div class="header-right">
+          @if (store.selectedId()) {
+            <button
+              class="btn-save-template"
+              (click)="openSaveTemplateDialog()"
+              [attr.aria-label]="strings.saveAsTemplate"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+              {{ strings.saveAsTemplate }}
+            </button>
+          }
           @if (store.saving()) {
             <span class="saving-indicator" aria-live="polite">{{ strings.saving }}</span>
           }
@@ -138,47 +160,50 @@ import { STRINGS } from '../../../core/strings';
           </div>
 
           <div class="sidebar-section">
-            <h3>{{ strings.properties }}</h3>
-            @if (selectedElement(); as el) {
-              <dl class="properties">
-                <div class="prop-row">
-                  <dt>{{ strings.type }}</dt>
-                  <dd>{{ el.type }}</dd>
-                </div>
-                <div class="prop-row">
-                  <dt>{{ strings.position }}</dt>
-                  <dd>
-                    {{ Math.round(store.selectedElementPosition()?.x ?? el.position.x) }},
-                    {{ Math.round(store.selectedElementPosition()?.y ?? el.position.y) }}
-                  </dd>
-                </div>
-                <div class="prop-row">
-                  <dt>{{ strings.rotation }}</dt>
-                  <dd>{{ el.rotation }}°</dd>
-                </div>
-                <div class="prop-row">
-                  <dt>{{ strings.size }}</dt>
-                  <dd>{{ Math.round(el.size.width) }} × {{ Math.round(el.size.height) }}</dd>
-                </div>
-                <div class="prop-row">
-                  <dt>{{ strings.state }}</dt>
-                  <dd>
-                    <span class="state-badge" [attr.data-state]="el.state">{{ el.state }}</span>
-                  </dd>
-                </div>
-                <div class="prop-row">
-                  <dt>{{ strings.capacity }}</dt>
-                  <dd>{{ el.capacity ?? strings.notReservable }}</dd>
-                </div>
-              </dl>
-            } @else {
-              <p class="no-selection">{{ strings.selectElement }}</p>
-            }
+            <h3>{{ strings.sectorSizeTitle }}</h3>
+            <div class="size-form">
+              <label>
+                {{ strings.sectorWidth }}
+                <input
+                  type="number"
+                  min="20"
+                  #sectorWidthInput
+                  [value]="store.sectorSize().width"
+                  class="size-input"
+                />
+              </label>
+              <label>
+                {{ strings.sectorHeight }}
+                <input
+                  type="number"
+                  min="20"
+                  #sectorHeightInput
+                  [value]="store.sectorSize().height"
+                  class="size-input"
+                />
+              </label>
+              <button
+                class="btn-secondary"
+                (click)="
+                  onApplySectorSize(sectorWidthInput.valueAsNumber, sectorHeightInput.valueAsNumber)
+                "
+              >
+                {{ strings.applySize }}
+              </button>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <mapit-element-library />
           </div>
         </aside>
 
         <div class="canvas-container" #canvasContainer>
           <div #canvasHost class="canvas-host"></div>
+
+          @if (selectedElement(); as el) {
+            <mapit-element-card [element]="el" />
+          }
         </div>
       </main>
     </div>
@@ -251,12 +276,13 @@ import { STRINGS } from '../../../core/strings';
       text-overflow: ellipsis;
     }
 
-    .sector-id {
-      font-size: 0.75rem;
+    .sector-id,
+    .element-pos {
+      font: var(--mapit-text-metadata);
       color: var(--mapit-color-text-muted);
-      font-family: ui-monospace, monospace;
     }
 
+    .header-center,
     .header-right {
       display: flex;
       align-items: center;
@@ -294,25 +320,10 @@ import { STRINGS } from '../../../core/strings';
       border-radius: 0.5rem;
       font-size: 0.8125rem;
       max-width: 20rem;
-      animation: slideIn 200ms ease-out;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
     }
 
     @media (prefers-reduced-motion: reduce) {
       .saving-indicator {
-        animation: none;
-      }
-      .error-toast {
         animation: none;
       }
     }
@@ -332,16 +343,6 @@ import { STRINGS } from '../../../core/strings';
       gap: 0.5rem;
     }
 
-    .floor-select label,
-    .sector-select label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--mapit-color-text-muted);
-      white-space: nowrap;
-    }
-
     .floor-select,
     .sector-select {
       min-width: 180px;
@@ -353,31 +354,15 @@ import { STRINGS } from '../../../core/strings';
       font: inherit;
       font-size: 0.875rem;
       cursor: pointer;
-      transition:
-        border-color 150ms ease,
-        box-shadow 150ms ease;
     }
 
     .floor-select:hover,
-    .sector-select:hover {
-      border-color: var(--mapit-color-primary);
-    }
-
+    .sector-select:hover,
     .floor-select:focus-visible,
     .sector-select:focus-visible {
       outline: none;
+      border-color: var(--mapit-color-primary);
       box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
     }
 
     .editor-main {
@@ -424,7 +409,9 @@ import { STRINGS } from '../../../core/strings';
       border: 1px solid transparent;
       border-radius: 0.375rem;
       cursor: pointer;
-      transition: all 150ms ease;
+      transition:
+        border-color var(--mapit-duration-fast) var(--mapit-ease-out),
+        background-color var(--mapit-duration-fast) var(--mapit-ease-out);
     }
 
     .element-item:hover {
@@ -440,7 +427,7 @@ import { STRINGS } from '../../../core/strings';
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 1.5rem;
+      min-width: 1.5rem;
       height: 1.5rem;
       border-radius: 0.25rem;
       font-size: 0.625rem;
@@ -459,35 +446,20 @@ import { STRINGS } from '../../../core/strings';
       text-overflow: ellipsis;
     }
 
-    .element-pos {
-      font-size: 0.6875rem;
+    .empty-state,
+    .no-selection {
       color: var(--mapit-color-text-muted);
-      font-family: ui-monospace, monospace;
+      font-size: 0.8125rem;
     }
 
     .empty-state {
       padding: 1rem;
       text-align: center;
-      color: var(--mapit-color-text-muted);
-      font-size: 0.8125rem;
     }
 
-    .properties {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 0.375rem 0.75rem;
+    .no-selection {
       margin: 0;
-      font-size: 0.8125rem;
-    }
-
-    .prop-row dt {
-      color: var(--mapit-color-text-muted);
-      font-weight: 500;
-    }
-
-    .prop-row dd {
-      margin: 0;
-      font-weight: 600;
+      font-style: italic;
     }
 
     .state-badge {
@@ -528,10 +500,76 @@ import { STRINGS } from '../../../core/strings';
       font-style: italic;
     }
 
+    .btn-save-template,
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--mapit-color-border);
+      border-radius: var(--mapit-radius-input);
+      background: var(--mapit-color-surface);
+      color: var(--mapit-color-text);
+      font: inherit;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition:
+        border-color var(--mapit-duration-fast) var(--mapit-ease-out),
+        background-color var(--mapit-duration-fast) var(--mapit-ease-out);
+    }
+
+    .btn-save-template:hover:not(:disabled),
+    .btn-secondary:hover:not(:disabled) {
+      border-color: var(--mapit-color-primary);
+      background: var(--mapit-color-surface-low);
+    }
+
+    .btn-save-template:focus-visible,
+    .btn-secondary:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
+    }
+
+    .btn-save-template:disabled,
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     .canvas-container {
       position: relative;
       overflow: hidden;
-      background: var(--mapit-color-canvas);
+      background: var(--mapit-editor-canvas, var(--mapit-color-canvas));
+    }
+
+    /* HU-4.01 v2: formulario "Tamaño del sector" — sin estilos cae al tema oscuro
+       del navegador (styles.scss define color-scheme: light dark). */
+    .size-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .size-form label {
+      font: var(--mapit-text-metadata);
+      color: var(--mapit-color-text-muted);
+    }
+
+    .size-input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--mapit-color-border-input);
+      border-radius: 8px;
+      background: var(--mapit-color-surface);
+      color: var(--mapit-color-text);
+      font: inherit;
+    }
+
+    .size-input:focus-visible {
+      outline: none;
+      border-color: var(--mapit-editor-selection);
+      box-shadow: 0 0 0 2px var(--mapit-color-focus-ring);
     }
 
     .canvas-host {
@@ -682,6 +720,14 @@ export class MapEditorPageComponent implements OnDestroy {
         this.port.onElementClick((payload) => {
           this.store.selectElement(payload.id);
         });
+
+        // HU-4.01: drop de plantillas/estructuras desde la biblioteca lateral (F4).
+        this.port.onExternalDrop?.(({ key, x, y }) => {
+          this.ngZone.run(() => {
+            this.store.createElementFromDrop(key, x, y);
+            this.cdr.markForCheck();
+          });
+        });
       });
     }),
   );
@@ -720,5 +766,19 @@ export class MapEditorPageComponent implements OnDestroy {
 
   protected isSelected(id: string): boolean {
     return this.store.selectedId() === id;
+  }
+
+  /** HU-4.01: dimensiones del sector (RN-6: las edita la vista de sector). */
+  protected onApplySectorSize(width: number, height: number): void {
+    if (Number.isFinite(width) && Number.isFinite(height)) {
+      this.store.saveSectorDimensions(width, height);
+    }
+  }
+
+  protected openSaveTemplateDialog(): void {
+    const name = window.prompt(this.strings.templateNameLabel, '');
+    if (name !== null) {
+      this.store.saveAsTemplate(name);
+    }
   }
 }

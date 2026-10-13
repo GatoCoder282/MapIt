@@ -60,12 +60,6 @@ public class UpdateSectorUseCase {
   }
 
   private SectorResponse toResponse(Sector sector, Instant now) {
-    return new SectorResponse(
-        sector.id().value(),
-        sector.name(),
-        sector.slug().value(),
-        sector.maxCapacity(),
-        sector.audit().createdAt(),
-        sector.audit().updatedAt());
+    return SectorResponse.fromDomain(sector);
   }
 }

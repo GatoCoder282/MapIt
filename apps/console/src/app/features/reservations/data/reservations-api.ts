@@ -14,6 +14,7 @@ import {
   SpacesService,
 } from '@mapit/api-client';
 import { forkJoin, map, of, switchMap, type Observable } from 'rxjs';
+import { TYPE_DEFAULTS } from '@mapit/map-engine';
 
 export interface ReservationElementOption {
   id: string;
@@ -57,9 +58,12 @@ export class ReservationsApi {
                             this.spaces.listSpaceElementsBySector({ sectorId: sector.id }).pipe(
                               map((elements) =>
                                 elements
+                                  // Reservable = lo que sirve al cliente (mesa,
+                                  // barra, butaca, habitación). Zona, escenario y
+                                  // decoración son infraestructura del local.
                                   .filter(
                                     (element) =>
-                                      element.type !== 'DECOR' &&
+                                      TYPE_DEFAULTS[element.type].reservable &&
                                       element.state !== 'OUT_OF_SERVICE',
                                   )
                                   .map((element) => ({

@@ -45,17 +45,18 @@
   display: grid;
   grid-template-columns: minmax(18rem, 0.8fr) minmax(24rem, 1.2fr);
   align-items: start;
-  gap: var(--mapit-space-5);
+  gap: var(--mapit-space-6);
 }
 
 .form-card,
 .success-card {
   display: grid;
-  gap: var(--mapit-space-5);
-  padding: var(--mapit-space-5);
+  gap: var(--mapit-space-4);
+  padding: var(--mapit-space-6);
   background: var(--mapit-color-surface);
   border: 1px solid var(--mapit-color-border);
   border-radius: var(--mapit-radius);
+  box-shadow: var(--mapit-shadow);
 }
 
 .field {
@@ -73,6 +74,14 @@ input[type='datetime-local'] {
   background: var(--mapit-color-surface);
   border: 1px solid var(--mapit-color-border-input);
   border-radius: var(--mapit-radius-input);
+  transition:
+    border-color var(--mapit-duration-fast) var(--mapit-ease-out),
+    box-shadow var(--mapit-duration-fast) var(--mapit-ease-out);
+}
+
+select:hover:not(:disabled),
+input[type='datetime-local']:hover:not(:disabled) {
+  border-color: var(--mapit-color-text-muted);
 }
 
 select:focus-visible,
@@ -90,8 +99,8 @@ input:focus-visible,
 }
 
 .timezone {
-  margin-top: calc(var(--mapit-space-3) * -1) !important;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 400;
 }
 
 .elements {
@@ -123,6 +132,7 @@ input:focus-visible,
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--mapit-space-3);
+  animation: elements-in 200ms var(--mapit-ease-out);
 }
 
 .element-option {
@@ -134,11 +144,14 @@ input:focus-visible,
   background: var(--mapit-color-surface-low);
   border: 1px solid var(--mapit-color-border);
   border-radius: var(--mapit-radius);
+  transition:
+    background-color var(--mapit-duration-fast) var(--mapit-ease-out),
+    border-color var(--mapit-duration-fast) var(--mapit-ease-out),
+    box-shadow var(--mapit-duration-fast) var(--mapit-ease-out);
 }
 
-.element-option.selected {
-  background: var(--mapit-color-primary-container);
-  border-color: var(--mapit-color-primary);
+.element-option input[type='checkbox'] {
+  accent-color: var(--mapit-color-accent);
 }
 
 .element-option span {
@@ -148,6 +161,28 @@ input:focus-visible,
 
 .element-option small {
   color: var(--mapit-color-text-muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .element-option:hover {
+    background: var(--mapit-color-surface);
+    border-color: var(--mapit-color-border-input);
+  }
+}
+
+.element-option.selected {
+  background: var(--mapit-color-primary-container);
+  border-color: var(--mapit-color-primary);
+  box-shadow: 0 0 0 1px var(--mapit-color-primary);
+}
+
+@keyframes elements-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .actions {
@@ -165,6 +200,13 @@ input:focus-visible,
   cursor: pointer;
   border: 1px solid transparent;
   border-radius: var(--mapit-radius-input);
+  transition:
+    transform var(--mapit-duration-fast) var(--mapit-ease-out),
+    background-color var(--mapit-duration-fast) var(--mapit-ease-out);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .button:disabled {
@@ -177,6 +219,10 @@ input:focus-visible,
   background: var(--mapit-color-primary);
 }
 
+.primary:hover:not(:disabled) {
+  background: var(--mapit-color-accent);
+}
+
 .message.error {
   padding: var(--mapit-space-3);
   color: var(--mapit-color-error);
@@ -184,10 +230,12 @@ input:focus-visible,
   border-radius: var(--mapit-radius);
 }
 
+/* Entrada de la confirmación: aparece tras una acción, orienta el resultado. */
 .success-card {
   justify-items: start;
   width: min(36rem, 100%);
   margin-inline: auto;
+  animation: success-in var(--mapit-duration) var(--mapit-ease-out);
 }
 
 .success-icon {
@@ -199,6 +247,7 @@ input:focus-visible,
   background: var(--mapit-color-primary);
   border-radius: 999px;
   font-size: 1.5rem;
+  animation: success-pop 300ms var(--mapit-ease-out) 120ms backwards;
 }
 
 .success-card dl,
@@ -214,6 +263,48 @@ input:focus-visible,
 .success-card dd {
   overflow-wrap: anywhere;
   font-family: monospace;
+}
+
+@keyframes success-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes success-pop {
+  from {
+    transform: scale(0.5);
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .success-card,
+  .success-icon,
+  .element-grid {
+    animation-duration: 1ms;
+  }
+
+  .success-card {
+    animation-name: elements-in;
+  }
+
+  .element-option,
+  .button,
+  select,
+  input[type='datetime-local'] {
+    transition: none;
+  }
 }
 
 @media (max-width: 64rem) {

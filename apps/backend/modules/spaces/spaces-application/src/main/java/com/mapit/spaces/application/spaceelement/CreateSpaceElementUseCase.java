@@ -44,7 +44,16 @@ public class CreateSpaceElementUseCase {
     TenantId tenantId = tenantContext.require();
 
     // Sector debe existir y ser del tenant actual; la vertical se toma de su establecimiento.
-    var vertical = support.verticalDelSector(tenantId, new SectorId(command.sectorId()));
+    var sectorId = new SectorId(command.sectorId());
+    var vertical = support.verticalDelSector(tenantId, sectorId);
+    // HU-4.01 (RN-10): el elemento debe caber en las dimensiones reales del sector.
+    if (command.x() != null && command.y() != null
+        && command.width() != null && command.height() != null) {
+      support.validarQueCabeEnElSector(
+          support.sectorVivo(tenantId, sectorId),
+          command.x(), command.y(), command.width(), command.height(),
+          command.rotation() != null ? command.rotation() : 0.0);
+    }
 
     SpaceElementType type = support.parseType(command.type());
     support.validarTipoPermitido(vertical, type);

@@ -65,3 +65,12 @@ reescribir features. El backend, la base de datos y el contrato OpenAPI no se en
 
 Al empezar CU-06. Entonces pasa a _Aceptado_ nombrando el motor elegido, o se sustituye
 por un ADR-00XX que documente la elección definitiva.
+
+## Nota de progreso (2026-10-12, HU-4.01)
+
+El adaptador Konva cubrió también la vista de planta del editor (sectores como nodos
+compuestos, drop externo desde la biblioteca, transformer de solo-rotación). Todo tras
+`MapEnginePort`: el `MapLayout` propio ganó `kind: 'floor' | 'sector'` y
+`SectorPlacement`, de modo que un cambio de motor sigue siendo un cambio de adaptador.
+La decisión del motor sigue abierta de nombre, pero el coste de cambiarlo se reduce con
+cada fase.

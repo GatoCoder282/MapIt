@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mapit.spaces.application.sector.SectorNotFoundException;
 import com.mapit.spaces.application.spaceelement.CreateSpaceElementCommand;
 import com.mapit.spaces.application.spaceelement.CreateSpaceElementUseCase;
+import com.mapit.spaces.application.spaceelement.DeleteSpaceElementUseCase;
 import com.mapit.spaces.application.spaceelement.InvalidElementTypeForVerticalException;
+import com.mapit.spaces.application.spaceelement.SpaceElementHasActiveReservationsException;
 import com.mapit.spaces.application.spaceelement.SpaceElementNotFoundException;
 import com.mapit.spaces.application.spaceelement.SpaceElementQueryService;
 import com.mapit.spaces.application.spaceelement.SpaceElementResponse;
@@ -42,14 +45,17 @@ public class SpaceElementController {
   private final CreateSpaceElementUseCase create;
   private final UpdateSpaceElementUseCase update;
   private final SpaceElementQueryService query;
+  private final DeleteSpaceElementUseCase deleteElement;
 
   public SpaceElementController(
       CreateSpaceElementUseCase create,
       UpdateSpaceElementUseCase update,
-      SpaceElementQueryService query) {
+      SpaceElementQueryService query,
+      DeleteSpaceElementUseCase deleteElement) {
     this.create = create;
     this.update = update;
     this.query = query;
+    this.deleteElement = deleteElement;
   }
 
   /** Body de POST /sectors/{sectorId}/elements. Tenant y sectorId van por contexto/path. */
@@ -90,6 +96,24 @@ public class SpaceElementController {
             new UpdateSpaceElementCommand(
                 sectorId, elementId, request.type(), request.x(), request.y(), request.width(), request.height(), request.rotation()));
     return ResponseEntity.ok(response);
+  }
+
+  /** HU-4.01: baja lógica del elemento; 409 si tiene reservas activas (RN-1). */
+  @DeleteMapping("/sectors/{sectorId}/elements/{elementId}")
+  public ResponseEntity<Void> delete(
+      @PathVariable UUID sectorId, @PathVariable UUID elementId) {
+    deleteElement.delete(sectorId, elementId);
+    return ResponseEntity.noContent().build();
+  }
+
+  @ExceptionHandler(SpaceElementHasActiveReservationsException.class)
+  ResponseEntity<ProblemDetail> handleHasReservations(
+      SpaceElementHasActiveReservationsException ex) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    problem.setTitle("El elemento tiene reservas activas");
+    problem.setType(URI.create(SpacesProblemTypes.ELEMENT_HAS_ACTIVE_RESERVATIONS));
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 
   @ExceptionHandler(SpaceElementNotFoundException.class)

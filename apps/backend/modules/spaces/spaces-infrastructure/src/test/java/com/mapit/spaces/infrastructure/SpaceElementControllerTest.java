@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.spaces.application.spaceelement.CreateSpaceElementUseCase;
+import com.mapit.spaces.application.spaceelement.DeleteSpaceElementUseCase;
 import com.mapit.spaces.application.spaceelement.SpaceElementQueryService;
 import com.mapit.spaces.application.spaceelement.UpdateSpaceElementUseCase;
 import com.mapit.spaces.domain.AuditTrail;
@@ -53,7 +54,6 @@ class SpaceElementControllerTest {
 
   private InMemorySpaceElements elements;
   private RestTestClient client;
-
   @BeforeEach
   void setUp() {
     elements = new InMemorySpaceElements();
@@ -78,7 +78,9 @@ class SpaceElementControllerTest {
         new SpaceElementController(
             new CreateSpaceElementUseCase(elements, support, tenantContext, clock),
             new UpdateSpaceElementUseCase(elements, support, tenantContext, clock),
-            new SpaceElementQueryService(elements, support, tenantContext));
+            new SpaceElementQueryService(elements, support, tenantContext),
+            new DeleteSpaceElementUseCase(
+                elements, (tenant, element) -> false, tenantContext, clock));
     client = RestTestClient.bindToController(controller).build();
   }
 

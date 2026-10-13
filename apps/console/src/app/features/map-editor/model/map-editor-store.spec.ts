@@ -5,7 +5,7 @@ import { MapEditorStore } from './map-editor-store';
 import { MapEditorApiService } from '../data/map-editor-api';
 import { MAP_EDITOR_DEBOUNCE_MS } from './map-editor-store';
 import { of, throwError } from 'rxjs';
-import type { SpaceElement } from '@mapit/api-client';
+import type { SpaceElement, ElementTemplate } from '@mapit/api-client';
 
 const MOCK_ELEMENTS: SpaceElement[] = [
   {
@@ -36,9 +36,30 @@ const MOCK_ELEMENTS: SpaceElement[] = [
   },
 ];
 
+const MOCK_TEMPLATES: ElementTemplate[] = [
+  {
+    id: 'tpl-1',
+    name: 'Mesa redonda 6 pax',
+    type: 'TABLE',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'tpl-2',
+    name: 'Barra alta',
+    type: 'BAR',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 const createMockApi = () => ({
   listSpaceElementsBySector: vi.fn(() => of(MOCK_ELEMENTS)),
+  createSpaceElement: vi.fn(() => of(MOCK_ELEMENTS[0])),
   updateSpaceElement: vi.fn(() => of(MOCK_ELEMENTS[0])),
+  deleteSpaceElement: vi.fn(() => of(undefined)),
+  listTemplates: vi.fn(() => of(MOCK_TEMPLATES)),
+  createTemplate: vi.fn(() => of(MOCK_TEMPLATES[0])),
 });
 
 describe('MapEditorStore', () => {
@@ -269,5 +290,147 @@ describe('MapEditorStore', () => {
 
     store.clearError();
     expect(store.error()).toBeNull();
+  });
+
+  describe('Plantillas (HU-4.02)', () => {
+    it('should load templates', () => {
+      store.loadTemplates();
+      vi.runAllTicks();
+
+      expect(mockApi.listTemplates).toHaveBeenCalled();
+      expect(store.templates()).toEqual(MOCK_TEMPLATES);
+      expect(store.templatesLoading()).toBe(false);
+    });
+
+    it('should select element and save it as template', () => {
+      store.loadSector('sector-1');
+      vi.runAllTicks();
+      store.selectElement('elem-1');
+      vi.runAllTicks();
+
+      store.saveAsTemplate('Mesa redonda');
+      vi.runAllTicks();
+
+      expect(mockApi.createTemplate).toHaveBeenCalledWith({
+        name: 'Mesa redonda',
+        type: 'TABLE',
+      });
+    });
+
+    it('should show error when saving template without selection', () => {
+      store.loadSector('sector-1');
+      vi.runAllTicks();
+
+      store.saveAsTemplate('Sin selección');
+      vi.runAllTicks();
+
+      expect(store.error()).toContain('Selecciona un elemento');
+      expect(mockApi.createTemplate).not.toHaveBeenCalled();
+    });
+
+    it('should show error when template name is empty', () => {
+      store.loadSector('sector-1');
+      vi.runAllTicks();
+      store.selectElement('elem-1');
+      vi.runAllTicks();
+
+      store.saveAsTemplate('   ');
+      vi.runAllTicks();
+
+      expect(store.error()).toContain('nombre');
+      expect(mockApi.createTemplate).not.toHaveBeenCalled();
+    });
+
+    it('should handle conflict when template name already exists', () => {
+      mockApi.createTemplate.mockReturnValueOnce(throwError(() => ({ status: 409 })));
+
+      store.loadSector('sector-1');
+      vi.runAllTicks();
+      store.selectElement('elem-1');
+      vi.runAllTicks();
+
+      store.saveAsTemplate('Mesa existente');
+      vi.runAllTicks();
+
+      expect(store.error()).toContain('Ya existe');
+    });
+  });
+
+  describe('HU-4.01: drop desde biblioteca y borrado', () => {
+    it('creates element at drop coordinates from a base structure key', () => {
+      store.loadSector('sector-1');
+      vi.runAllTicks();
+
+      store.createElementFromDrop('base:BAR', 250, 120);
+      vi.runAllTicks();
+
+      expect(mockApi.createSpaceElement).toHaveBeenCalledWith('sector-1', {
+        type: 'BAR',
+        x: 250,
+        y: 120,
+        width: 200,
+        height: 60,
+        rotation: 0,
+      });
+    });
+
+    it('creates element from a saved template key `tpl:<id>`', () => {
+      const created: SpaceElement = {
+        ...MOCK_ELEMENTS[0],
+        id: 'elem-new',
+      } as SpaceElement;
+      mockApi.createSpaceElement.mockReturnValueOnce(of(created));
+      store.loadSector('sector-1');
+      vi.runAllTicks();
+      store.loadTemplates();
+      vi.runAllTicks();
+
+      store.createElementFromDrop('tpl:tpl-1', 10, 20);
+      vi.runAllTicks();
+
+      expect(mockApi.createSpaceElement).toHaveBeenCalledWith(
+        'sector-1',
+        expect.objectContaining({ type: 'TABLE', x: 10, y: 20 }),
+      );
+      expect(store.elements().some((e) => e.id === 'elem-new')).toBe(true);
+    });
+
+    it('does nothing for an unknown key and without sector loaded', () => {
+      store.loadTemplates();
+      vi.runAllTicks();
+      store.createElementFromDrop('base:TABLE', 10, 10);
+      expect(mockApi.createSpaceElement).not.toHaveBeenCalled();
+
+      store.loadSector('sector-1');
+      vi.runAllTicks();
+      store.createElementFromDrop('tpl:missing', 10, 10);
+      expect(mockApi.createSpaceElement).not.toHaveBeenCalled();
+      expect(store.error()).toContain('no existe');
+    });
+
+    it('removes the element on successful delete and clears the selection', () => {
+      store.loadSector('sector-1');
+      vi.runAllTicks();
+      store.selectElement('elem-1');
+
+      store.deleteElement('elem-1');
+      vi.runAllTicks();
+
+      expect(mockApi.deleteSpaceElement).toHaveBeenCalledWith('sector-1', 'elem-1');
+      expect(store.elements().some((e) => e.id === 'elem-1')).toBe(false);
+      expect(store.selectedId()).toBeNull();
+    });
+
+    it('keeps the element and shows conflict on 409 (active reservations)', () => {
+      mockApi.deleteSpaceElement.mockReturnValueOnce(throwError(() => ({ status: 409 })));
+      store.loadSector('sector-1');
+      vi.runAllTicks();
+
+      store.deleteElement('elem-1');
+      vi.runAllTicks();
+
+      expect(store.elements().some((e) => e.id === 'elem-1')).toBe(true);
+      expect(store.error()).toContain('modificado');
+    });
   });
 });
