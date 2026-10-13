@@ -74,6 +74,11 @@ export class FeatureFlagService {
   }
 
   private async refrescar(): Promise<void> {
+    if (!this.config.proxyUrl || !this.config.clientKey) {
+      this.sincronizado.set(true);
+      return;
+    }
+
     try {
       const respuesta = await fetch(this.config.proxyUrl, {
         headers: { Authorization: this.config.clientKey },
