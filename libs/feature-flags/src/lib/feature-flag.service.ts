@@ -41,6 +41,8 @@ export class FeatureFlagService {
     // al navegador sin que el usuario recargue. El intervalo es un compromiso
     // entre latencia de propagación y tráfico.
     effect((onCleanup) => {
+      if (!this.config.proxyUrl || !this.config.clientKey) return;
+
       const id = setInterval(() => void this.refrescar(), this.config.intervaloRefrescoMs);
       onCleanup(() => clearInterval(id));
     });
