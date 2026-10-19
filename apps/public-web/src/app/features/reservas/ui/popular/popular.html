@@ -100,8 +100,11 @@
               }
             </ul>
 
-            <!-- TODO(CU-15): enlace al detalle del establecimiento cuando exista la ruta -->
-            <a class="cta" href="#{{ venue.id }}">
+            <a
+              class="cta"
+              [routerLink]="['/disponibilidad', venue.tenantSlug, venue.id]"
+              [attr.aria-label]="strings.reservas.popular.viewVenue + ': ' + venue.name"
+            >
               {{ strings.reservas.popular.viewVenue }}
               <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
                 <path
