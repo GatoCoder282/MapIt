@@ -60,6 +60,24 @@ export const STRINGS = {
     loadError: 'No se pudo cargar el resumen. Inténtalo de nuevo.',
     retry: 'Reintentar',
   },
+  /** Dashboard de administrador en la pantalla de inicio/home. */
+  adminDashboardHome: {
+    title: 'Dashboard',
+    welcome: 'Bienvenido de nuevo,',
+    intro: 'Resumen de la plataforma: tenants, establecimientos y accesos rápidos.',
+    loading: 'Cargando resumen…',
+    loadError: 'No se pudo cargar el resumen. Inténtalo de nuevo.',
+    retry: 'Reintentar',
+    tenantsTotal: 'tenants registrados',
+    tenantsActive: 'activos',
+    tenantsSuspended: 'suspendidos',
+    establishmentsTotal: 'establecimientos',
+    byTypeTitle: 'Establecimientos por tipo',
+    noEstablishments: 'No hay establecimientos registrados.',
+    quickActionsTitle: 'Accesos rápidos',
+    goToTenants: 'Ir a Tenants',
+    goToSettings: 'Ir a Configuración',
+  },
   /** Traducciones de las verticales de negocio: una sola fuente para toda la app. */
   verticals: VERTICAL_LABELS,
   tenants: {

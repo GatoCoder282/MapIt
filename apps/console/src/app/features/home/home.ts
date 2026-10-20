@@ -1,73 +1,262 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject, signal, type OnInit } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
 
+import { EstablishmentsService, TenantsService } from '@mapit/api-client';
+import type { EstablishmentType } from '@mapit/api-client';
 import { AuthSession } from '@mapit/auth';
-import { FeatureFlagService, FeatureFlagDirective } from '@mapit/feature-flags';
 import { STRINGS } from '../../core/strings';
 
-/**
- * Pantalla de arranque de la consola.
- *
- * Existe para verificar el andamiaje de punta a punta; se sustituirá por el
- * dashboard real en CU-10. El banner de abajo es la prueba visible de que los
- * feature toggles funcionan: apágalo en http://localhost:4242 y desaparece
- * SIN recompilar ni recargar la app.
- */
+const TYPE_ORDER: EstablishmentType[] = ['RESTAURANT', 'NIGHTCLUB', 'EVENT_HALL', 'HOTEL'];
+
+const EMPTY_COUNTS: Record<EstablishmentType, number> = {
+  RESTAURANT: 0,
+  NIGHTCLUB: 0,
+  EVENT_HALL: 0,
+  HOTEL: 0,
+};
+
 @Component({
   selector: 'mapit-home',
-  imports: [FeatureFlagDirective],
+  imports: [RouterLink, DecimalPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="home">
-      <h1>{{ strings.home.title }}</h1>
-      <p class="sub">{{ strings.home.sub }}</p>
+    <section class="page">
+      <header class="page-header">
+        @if (session.user(); as user) {
+          <p class="eyebrow">{{ strings.adminDashboardHome.welcome }} {{ user.fullName }}</p>
+        }
+        <h1>{{ strings.adminDashboardHome.title }}</h1>
+        <p class="intro">{{ strings.adminDashboardHome.intro }}</p>
+      </header>
 
-      @if (session.user(); as user) {
-        <p>{{ strings.home.welcome }} {{ user.fullName }}.</p>
-        <p>
-          {{ user.email }} · {{ strings.home.tenantLabel }} {{ user.tenantId }} ·
-          {{ strings.home.roleLabel }} {{ user.role }}
-        </p>
-        <button type="button" (click)="session.logout()">{{ strings.home.logout }}</button>
-      }
-      @if (session.warning()) {
-        <p role="status">{{ session.warning() }}</p>
-      }
+      @if (loading()) {
+        <p class="hint" role="status">{{ strings.adminDashboardHome.loading }}</p>
+      } @else if (failed()) {
+        <div class="message error" role="alert">
+          <p>{{ strings.adminDashboardHome.loadError }}</p>
+          <button class="btn secondary" type="button" (click)="reload()">
+            {{ strings.adminDashboardHome.retry }}
+          </button>
+        </div>
+      } @else {
+        <div class="kpis">
+          <article class="card">
+            <span class="value">{{ totalTenants() | number }}</span>
+            <span class="label">{{ strings.adminDashboardHome.tenantsTotal }}</span>
+          </article>
+          <article class="card">
+            <span class="value">{{ activeTenants() | number }}</span>
+            <span class="label">{{ strings.adminDashboardHome.tenantsActive }}</span>
+          </article>
+          <article class="card">
+            <span class="value">{{ suspendedTenants() | number }}</span>
+            <span class="label">{{ strings.adminDashboardHome.tenantsSuspended }}</span>
+          </article>
+          <article class="card">
+            <span class="value">{{ totalEstablishments() | number }}</span>
+            <span class="label">{{ strings.adminDashboardHome.establishmentsTotal }}</span>
+          </article>
+        </div>
 
-      @if (flags.isEnabled('demo.hello')()) {
-        <aside class="banner" role="status">
-          <strong>{{ strings.home.flagBannerTitle }}</strong>
-          {{ strings.home.flagBannerBody }}
-        </aside>
-      }
+        <section class="by-type">
+          <h2>{{ strings.adminDashboardHome.byTypeTitle }}</h2>
+          <div class="list">
+            @for (type of typeOrder; track type) {
+              <article class="item">
+                <span class="label">{{ typeLabels[type] }}</span>
+                <span class="value">{{ countsByType()[type] | number }}</span>
+              </article>
+            } @empty {
+              <p class="empty">{{ strings.adminDashboardHome.noEstablishments }}</p>
+            }
+          </div>
+        </section>
 
-      <!-- Misma flag con la directiva, que es lo habitual en plantillas grandes -->
-      <p *featureFlag="'payments.qr'">{{ strings.home.paymentsQrEnabled }}</p>
+        <section class="quick">
+          <h2>{{ strings.adminDashboardHome.quickActionsTitle }}</h2>
+          <div class="actions">
+            <a class="btn primary" routerLink="/admin/tenants">{{
+              strings.adminDashboardHome.goToTenants
+            }}</a>
+            <a class="btn secondary" routerLink="/admin/settings">{{
+              strings.adminDashboardHome.goToSettings
+            }}</a>
+          </div>
+        </section>
+      }
     </section>
   `,
   styles: `
-    .home {
-      padding: 3rem 2rem;
-      max-width: 48rem;
+    .page {
+      display: grid;
+      gap: var(--mapit-space-6);
+      max-width: 72rem;
       margin-inline: auto;
+      padding: var(--mapit-space-4);
     }
-    h1 {
-      margin: 0 0 0.25rem;
+    .page-header .eyebrow {
+      margin: 0 0 var(--mapit-space-1);
+      font: var(--mapit-text-caps);
+      color: var(--mapit-color-primary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .page-header h1 {
+      margin: 0;
+      font: var(--mapit-text-display);
+    }
+    .page-header .intro {
+      margin: var(--mapit-space-2) 0 0;
+      font: var(--mapit-text-body);
+      color: var(--mapit-color-text-muted);
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+      gap: var(--mapit-space-4);
+    }
+    .card {
+      background: var(--mapit-color-surface);
+      border: 1px solid var(--mapit-color-border);
+      border-radius: var(--mapit-radius-lg);
+      box-shadow: var(--mapit-shadow);
+      padding: var(--mapit-space-6);
+      display: grid;
+      gap: var(--mapit-space-1);
+    }
+    .value {
+      font-family: var(--mapit-font-display);
       font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
     }
-    .sub {
-      margin: 0 0 2rem;
-      opacity: 0.7;
+    .label {
+      font: var(--mapit-text-metadata);
+      color: var(--mapit-color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
-    .banner {
-      padding: 1rem 1.25rem;
-      border-radius: 0.5rem;
-      border: 1px solid var(--mapit-color-accent, #3b82f6);
-      background: color-mix(in srgb, var(--mapit-color-accent, #3b82f6) 8%, transparent);
+    .by-type h2,
+    .quick h2 {
+      margin: var(--mapit-space-8) 0 var(--mapit-space-3);
+      font: var(--mapit-text-section);
+    }
+    .list {
+      display: grid;
+      gap: var(--mapit-space-2);
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--mapit-space-2) var(--mapit-space-3);
+      background: var(--mapit-color-surface);
+      border: 1px solid var(--mapit-color-border);
+      border-radius: var(--mapit-radius);
+    }
+    .quick {
+      display: grid;
+      gap: var(--mapit-space-3);
+    }
+    .actions {
+      display: flex;
+      gap: var(--mapit-space-2);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.55rem 1rem;
+      border: 1px solid transparent;
+      border-radius: var(--mapit-radius-lg);
+      font: var(--mapit-text-body-bold);
+      cursor: pointer;
+      text-decoration: none;
+      touch-action: manipulation;
+    }
+    .btn.primary {
+      background: var(--mapit-color-accent);
+      color: var(--mapit-color-on-primary);
+    }
+    .btn.primary:hover {
+      background: var(--mapit-color-primary);
+    }
+    .btn.secondary {
+      background: var(--mapit-color-surface);
+      border-color: var(--mapit-color-border);
+      color: var(--mapit-color-text);
+    }
+    .btn.secondary:hover {
+      background: var(--mapit-color-surface-low);
+    }
+    .message.error {
+      margin: 0;
+      padding: var(--mapit-space-4);
+      border-radius: var(--mapit-radius);
+      color: var(--mapit-color-error);
+      background: #fee2e2;
+      display: grid;
+      gap: var(--mapit-space-3);
+      justify-items: start;
+      font: var(--mapit-text-body);
+    }
+    .hint,
+    .empty {
+      color: var(--mapit-color-text-muted);
+      font: var(--mapit-text-body);
     }
   `,
 })
-export class Home {
+export class Home implements OnInit {
   protected readonly session = inject(AuthSession);
-  protected readonly flags = inject(FeatureFlagService);
   protected readonly strings = STRINGS;
+  protected readonly typeOrder = TYPE_ORDER;
+  protected readonly typeLabels = {
+    RESTAURANT: STRINGS.verticals.RESTAURANT,
+    NIGHTCLUB: STRINGS.verticals.NIGHTCLUB,
+    EVENT_HALL: STRINGS.verticals.EVENT_HALL,
+    HOTEL: STRINGS.verticals.HOTEL,
+  };
+
+  private readonly tenantsService = inject(TenantsService);
+  private readonly establishmentsService = inject(EstablishmentsService);
+
+  protected readonly loading = signal(true);
+  protected readonly failed = signal(false);
+  protected readonly totalTenants = signal(0);
+  protected readonly activeTenants = signal(0);
+  protected readonly suspendedTenants = signal(0);
+  protected readonly totalEstablishments = signal(0);
+  protected readonly countsByType = signal<Record<EstablishmentType, number>>({ ...EMPTY_COUNTS });
+
+  ngOnInit(): void {
+    this.reload();
+  }
+
+  protected reload(): void {
+    this.loading.set(true);
+    this.failed.set(false);
+    forkJoin({
+      tenants: this.tenantsService.listTenants({ size: 1 }),
+      establishments: this.establishmentsService.listEstablishments(),
+    }).subscribe({
+      next: ({ tenants, establishments }) => {
+        this.totalTenants.set(tenants.totalElements);
+        this.activeTenants.set(tenants.content.filter((t) => t.status === 'ACTIVE').length);
+        this.suspendedTenants.set(tenants.content.filter((t) => t.status === 'SUSPENDED').length);
+        this.totalEstablishments.set(establishments.length);
+        const counts = { ...EMPTY_COUNTS };
+        for (const establishment of establishments) {
+          counts[establishment.type] = (counts[establishment.type] ?? 0) + 1;
+        }
+        this.countsByType.set(counts);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.failed.set(true);
+      },
+      complete: () => this.loading.set(false),
+    });
+  }
 }
