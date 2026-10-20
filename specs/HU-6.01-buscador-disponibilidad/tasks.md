@@ -23,8 +23,8 @@
 ## Cierre
 
 - [x] Ejecutar `pnpm check` y las pruebas E2E públicas de HU-6.01 en desktop/móvil; corregir fallos y dejar las verificaciones aplicables en verde.
-- [ ] Adjuntar al PR una captura con todos los checks de pruebas requeridos en verde.
-- [ ] Enlazar el PR a MAP-227.
+- [x] Adjuntar al PR #40 una captura de Checks con todos los checks de pruebas requeridos en verde; evidencia en la descripción del [PR #40](https://github.com/GatoCoder282/MapIt/pull/40).
+- [x] Enlazar el [PR #40](https://github.com/GatoCoder282/MapIt/pull/40) a MAP-227.
 
 ## Notas de ejecución
 
@@ -49,5 +49,5 @@
 - `pnpm check`: correcto (frontend, backend, ArchUnit, contrato y builds).
 - `node tools/scripts/gradle.mjs :bootstrap:integrationTest --tests com.mapit.reservations.PublicAvailabilityIntegrationTest`: correcto, 4/4 tests.
 - `PUBLIC_WEB_URL=http://127.0.0.1:4300 pnpm --filter @mapit/e2e exec playwright test tests/public-web/availability.spec.ts --project=public-web --project=public-web-mobile`: correcto, 4/4 tests.
-- `pnpm e2e` completo no se ejecutó porque este checkout no tiene `.env` ni el stack de backend/Mailpit. La suite completa `pnpm be:it` se intentó, pero quedó esperando la pausa de un contexto Spring anterior; el test de integración de esta historia se ejecutó y aprobó por separado.
-- No existe PR ni ejecución remota de CI en esta rama local. Adjuntar la captura de Checks cuando se abra el PR y todos sus workflows estén verdes; enlazar entonces MAP-227.
+- `pnpm e2e` completo no se ejecutó localmente porque este checkout no tiene `.env` ni el stack de backend/Mailpit. Tras el rebase, el workflow remoto de E2E sí ejecutó la suite completa: 28 pruebas pasaron; integración, frontend, backend y contrato también quedaron verdes.
+- PR #40 abierto contra `main`, enlazado a MAP-227 y con la captura de Checks adjunta en su descripción. La evidencia apunta a la vista de Checks del PR para conservar una referencia estable al run vigente.
