@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { STRINGS } from '../../../core/strings';
-import { CONSOLE_BASE_URL } from '../../../core/config';
+import { PublicRuntimeConfig } from '../../../core/runtime-config';
 import { ActivationStore } from '../model/activation-store';
 
 /**
@@ -187,11 +187,12 @@ import { ActivationStore } from '../model/activation-store';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Activation {
+  private readonly runtime = inject(PublicRuntimeConfig);
   protected readonly store = inject(ActivationStore);
   protected readonly strings = STRINGS;
 
   protected loginUrl(slug: string): string {
-    return `${CONSOLE_BASE_URL}/empresa/${slug}/login`;
+    return `${this.runtime.config().consoleBaseUrl}/empresa/${slug}/login`;
   }
 
   protected submit(event: Event): void {

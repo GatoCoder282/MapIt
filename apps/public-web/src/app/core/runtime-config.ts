@@ -2,10 +2,13 @@ import { Injectable, inject, provideAppInitializer, signal } from '@angular/core
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { Logger, type LogLevel } from '@mapit/logging';
-import { API_BASE_URL } from './config';
+import { API_BASE_URL, CONSOLE_BASE_URL } from './config';
 
 interface PublicConfig {
   readonly apiBaseUrl: string;
+  readonly consoleBaseUrl: string;
+  readonly unleashProxyUrl: string;
+  readonly unleashClientKey: string;
   readonly environment: string;
   readonly logLevel: LogLevel;
 }
@@ -16,6 +19,9 @@ export class PublicRuntimeConfig {
   private readonly logger = inject(Logger);
   private readonly state = signal<PublicConfig>({
     apiBaseUrl: API_BASE_URL,
+    consoleBaseUrl: CONSOLE_BASE_URL,
+    unleashProxyUrl: 'http://localhost:3063/proxy',
+    unleashClientKey: 'dev-proxy-key-change-me',
     environment: 'development',
     logLevel: 'INFO',
   });
