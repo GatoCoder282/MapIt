@@ -16,6 +16,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -99,6 +100,7 @@ class LoggingHttpIntegrationTest {
   @TestConfiguration(proxyBeanMethods = false)
   static class Probe {
     @Bean
+    @Primary
     FeatureFlagPort testFlags() {
       return new FeatureFlagPort() {
         @Override public boolean isEnabled(FeatureFlag flag) { return false; }
