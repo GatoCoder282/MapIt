@@ -32,7 +32,10 @@ export const appConfig: ApplicationConfig = {
     // de la View Transitions API, ~180ms. Sin JS extra. Ver styles.scss.
     provideRouter(routes, withComponentInputBinding(), withViewTransitions()),
     provideHttpClient(withFetch(), withInterceptors([loggingInterceptor])),
-    provideFeatureFlags(),
+    provideFeatureFlags(() => {
+      const config = inject(PublicRuntimeConfig).config();
+      return { proxyUrl: config.unleashProxyUrl, clientKey: config.unleashClientKey };
+    }),
     { provide: BASE_PATH, useFactory: () => inject(PublicRuntimeConfig).config().apiBaseUrl },
   ],
 };

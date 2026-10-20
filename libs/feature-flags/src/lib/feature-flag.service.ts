@@ -35,6 +35,8 @@ export class FeatureFlagService {
   readonly listo = this.sincronizado.asReadonly();
 
   constructor() {
+    // Sin proxy configurado se conservan los valores del catálogo, sin sondeo.
+    if (!this.config.proxyUrl) return;
     void this.refrescar();
 
     // Sondeo periódico: es así como una flag apagada en la UI de Unleash llega
