@@ -13,6 +13,7 @@ export type VenueCategory = 'restaurante' | 'discoteca' | 'eventos' | 'hotel';
 
 export interface Establishment {
   readonly id: string;
+  readonly tenantSlug: string;
   readonly name: string;
   readonly city: string;
   readonly category: VenueCategory;
@@ -29,6 +30,7 @@ export interface Establishment {
 export const ESTABLISHMENTS: readonly Establishment[] = [
   {
     id: 'la-bahia',
+    tenantSlug: 'demo',
     name: 'Restaurante La Bahía',
     city: 'Cochabamba',
     category: 'restaurante',
@@ -40,6 +42,7 @@ export const ESTABLISHMENTS: readonly Establishment[] = [
   },
   {
     id: 'club-eclipse',
+    tenantSlug: 'demo',
     name: 'Club Eclipse',
     city: 'Cochabamba',
     category: 'discoteca',
@@ -51,6 +54,7 @@ export const ESTABLISHMENTS: readonly Establishment[] = [
   },
   {
     id: 'los-tajibos',
+    tenantSlug: 'demo',
     name: 'Hotel Los Tajibos',
     city: 'Santa Cruz',
     category: 'hotel',
@@ -62,6 +66,7 @@ export const ESTABLISHMENTS: readonly Establishment[] = [
   },
   {
     id: 'salon-real',
+    tenantSlug: 'demo',
     name: 'Salón Real',
     city: 'Cochabamba',
     category: 'eventos',
@@ -73,6 +78,7 @@ export const ESTABLISHMENTS: readonly Establishment[] = [
   },
   {
     id: 'sky-lounge',
+    tenantSlug: 'demo',
     name: 'Sky Lounge',
     city: 'Cochabamba',
     category: 'restaurante',
@@ -84,6 +90,7 @@ export const ESTABLISHMENTS: readonly Establishment[] = [
   },
   {
     id: 'gran-amazona',
+    tenantSlug: 'demo',
     name: 'Hotel Gran Amazona',
     city: 'Santa Cruz',
     category: 'hotel',

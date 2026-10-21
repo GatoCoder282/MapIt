@@ -146,7 +146,7 @@ docs/
 ## Spec‑Driven Flow
 
 ```bash
-git switch -c feat/CU-12-crear-reserva
+git switch -c feat/<github-handle>/CU-12-crear-reserva
 pnpm new:spec CU-12-crear-reserva   # creates specs/CU-12-crear-reserva/{spec,plan,tasks}.md
 ```
 
@@ -155,8 +155,9 @@ pnpm new:spec CU-12-crear-reserva   # creates specs/CU-12-crear-reserva/{spec,pl
 ## Branch / PR Workflow
 
 - `main` protected; PRs require 1 approval.
-- Branch naming: `feat/…`, `fix/…`, `docs/…`, `chore/…`.
-- PR description must link Jira story and reference base branch.
+- Ticket branch naming: `feat/<github-handle>/<ticket-id>-<ticket-slug>`; use the authenticated GitHub handle and lowercase kebab case containing every word in the ticket name after the ID.
+- PR title uses the exact ticket name; keep its description to one or two sentences, link the Jira ticket, and reference the base branch.
+- Every applicable test and required CI workflow must pass before review. Attach a screenshot of the current PR's Checks view showing every required test check green; this evidence is mandatory.
 
 ## Testing
 
@@ -186,4 +187,5 @@ CI runs the same steps split across jobs (`.github/workflows/ci.yml`): frontend,
 
 ## Available Skills
 
-(see `available_skills` list in repository)
+- Ticket delivery workflow: `.agents/skills/ticket-delivery/SKILL.md` (mirrored to `agent/skills` and `.claude/skills`).
+- Other repository skills are under `.agents/skills/`, `agent/skills/` and `.claude/skills/`.
