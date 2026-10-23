@@ -63,7 +63,7 @@ export class EstablishmentsStore {
       .pipe(finalize(() => this.loadingState.set(false)))
       .subscribe({
         next: (items) => this.itemsState.set(items),
-error: () => this.errorState.set(STRINGS.establishments.errors.load),
+        error: () => this.errorState.set(STRINGS.establishments.errors.load),
       });
   }
 
@@ -158,7 +158,7 @@ error: () => this.errorState.set(STRINGS.establishments.errors.load),
             this.startNew();
           }
         },
-error: () => this.errorState.set(STRINGS.establishments.errors.remove),
+        error: () => this.errorState.set(STRINGS.establishments.errors.remove),
       });
   }
 }
