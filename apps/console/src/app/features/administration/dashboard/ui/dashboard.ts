@@ -1,180 +1,173 @@
-import { ChangeDetectionStrategy, Component, type OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { TenantsService } from '@mapit/api-client';
-import { finalize, forkJoin } from 'rxjs';
+import { ChangeDetectionStrategy, Component, computed, inject, type OnInit } from '@angular/core';
+import {
+  LucideChartColumn,
+  LucidePieChart,
+  LucideTrendingDown,
+  LucideTrendingUp,
+} from '@lucide/angular';
 
+import { GrowthChart } from '../../../../core/charts/growth-chart/growth-chart';
 import { STRINGS } from '../../../../core/strings';
+import { mapitVerticalVar } from '../../../../core/theme/echarts-theme';
+import { DashboardStore } from '../model/dashboard-store';
+import { PlatformKpiCard } from './kpi-card/kpi-card';
+import { PlatformTenantsTable } from './tenants-table/tenants-table';
+import { VerticalDonut } from './vertical-donut/vertical-donut';
+
+/** Cifras en español: separador de miles con punto y decimal con coma. */
+const NUMERO_FORMAT = new Intl.NumberFormat('es');
+
+/** Porcentajes con signo explícito ("+20 %", "−20 %") y coma decimal. */
+const PORCENTAJE_FORMAT = new Intl.NumberFormat('es', {
+  maximumFractionDigits: 1,
+  signDisplay: 'exceptZero',
+});
 
 /**
- * Dashboard inicial de la consola de plataforma. Solo muestra métricas reales
- * que la API ya soporta (conteo total/activos/suspendidos) y accesos rápidos.
- * Consume el cliente generado directamente: una feature no importa de otra feature.
+ * Panel de control de la plataforma (SUPER_ADMIN).
+ *
+ * El shell es el dueño de la pantalla: reparte los datos del store entre los
+ * componentes presentacionales (tarjetas de KPI, gráficos y tabla) y conecta
+ * los comandos con el store. Los componentes no conocen el store.
+ *
+ * Sin animación de entrada: es un dashboard de consulta recurrente.
  */
 @Component({
   selector: 'mapit-admin-dashboard',
-  imports: [RouterLink],
+  imports: [
+    GrowthChart,
+    PlatformKpiCard,
+    PlatformTenantsTable,
+    VerticalDonut,
+    LucideChartColumn,
+    LucidePieChart,
+    LucideTrendingDown,
+    LucideTrendingUp,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <section class="page">
-      <header class="page-header">
-        <p class="eyebrow">{{ strings.adminDashboard.eyebrow }}</p>
-        <h1>{{ strings.adminDashboard.greeting }}</h1>
-        <p class="intro">{{ strings.adminDashboard.intro }}</p>
-      </header>
-
-      @if (loading()) {
-        <p class="cards-hint" role="status">{{ strings.adminDashboard.loading }}</p>
-      } @else if (failed()) {
-        <div class="message error" role="alert">
-          <p>{{ strings.adminDashboard.loadError }}</p>
-          <button class="btn secondary" type="button" (click)="reload()">
-            {{ strings.adminDashboard.retry }}
-          </button>
-        </div>
-      } @else {
-        <div class="cards">
-          <article class="card">
-            <span class="value">{{ total() }}</span>
-            <span class="label">{{ strings.adminDashboard.tenantsWithData }}</span>
-          </article>
-          <article class="card">
-            <span class="value">{{ active() }}</span>
-            <span class="label">{{ strings.adminDashboard.tenantsActive }}</span>
-          </article>
-          <article class="card">
-            <span class="value">{{ suspended() }}</span>
-            <span class="label">{{ strings.adminDashboard.tenantsSuspended }}</span>
-          </article>
-        </div>
-      }
-
-      <section class="quick">
-        <h2>{{ strings.adminDashboard.quickActionsTitle }}</h2>
-        <a class="btn primary" routerLink="/admin/tenants">{{
-          strings.adminDashboard.goToTenants
-        }}</a>
-      </section>
-    </section>
-  `,
-  styles: `
-    .page {
-      display: grid;
-      gap: var(--mapit-space-6);
-    }
-    .page-header .eyebrow {
-      margin: 0 0 var(--mapit-space-1);
-      font: var(--mapit-text-caps);
-      color: var(--mapit-color-primary);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    .page-header h1 {
-      margin: 0;
-      font: var(--mapit-text-display);
-    }
-    .page-header .intro {
-      margin: var(--mapit-space-2) 0 0;
-      font: var(--mapit-text-body);
-      color: var(--mapit-color-text-muted);
-    }
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-      gap: var(--mapit-space-4);
-    }
-    .card {
-      background: var(--mapit-color-surface);
-      border-radius: var(--mapit-radius-lg);
-      box-shadow: var(--mapit-shadow);
-      padding: var(--mapit-space-6);
-      display: grid;
-      gap: var(--mapit-space-1);
-    }
-    .value {
-      font-family: var(--mapit-font-display);
-      font-size: 2.25rem;
-      font-weight: 700;
-      line-height: 1;
-    }
-    .label {
-      font: var(--mapit-text-metadata);
-      color: var(--mapit-color-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .cards-hint {
-      color: var(--mapit-color-text-muted);
-      font: var(--mapit-text-body);
-    }
-    .message.error {
-      margin: 0;
-      padding: var(--mapit-space-4);
-      border-radius: var(--mapit-radius);
-      color: var(--mapit-color-error);
-      background: #fee2e2;
-      display: grid;
-      gap: var(--mapit-space-3);
-      justify-items: start;
-      font: var(--mapit-text-body);
-    }
-    .quick h2 {
-      margin: 0 0 var(--mapit-space-3);
-      font: var(--mapit-text-section);
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.55rem 1rem;
-      border: 1px solid transparent;
-      border-radius: var(--mapit-radius-lg);
-      font: var(--mapit-text-body-bold);
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .btn.primary {
-      background: var(--mapit-color-accent);
-      color: var(--mapit-color-on-primary);
-    }
-    .btn.primary:hover {
-      background: var(--mapit-color-primary);
-    }
-    .btn.secondary {
-      background: var(--mapit-color-surface);
-      border-color: var(--mapit-color-border);
-      color: var(--mapit-color-text);
-    }
-  `,
+  templateUrl: './dashboard.html',
+  styleUrl: './dashboard.scss',
 })
 export class AdminDashboard implements OnInit {
-  protected readonly strings = STRINGS;
-  private readonly api = inject(TenantsService);
+  protected readonly strings = STRINGS.platformPanel;
+  protected readonly store = inject(DashboardStore);
 
-  protected readonly loading = signal(true);
-  protected readonly failed = signal(false);
-  protected readonly total = signal(0);
-  protected readonly active = signal(0);
-  protected readonly suspended = signal(0);
+  /** Traducciones de las verticales: el texto vive en `STRINGS`. */
+  protected readonly verticales = STRINGS.verticals;
 
-  ngOnInit(): void {
-    this.reload();
+  /** El punto de la vertical se pinta con su token CSS. */
+  protected readonly mapitVerticalVar = mapitVerticalVar;
+
+  /** Destino real de los chevron de las tarjetas: el listado de tenants. */
+  protected readonly rutaTenants = '/admin/tenants';
+
+  /* ── Cifras de las tarjetas ──────────────────────────────── */
+
+  /**
+   * Cifra de una tarjeta.
+   *
+   * Un 0 solo si se midió: si la fuente falló se muestra "—", no un cero
+   * que aparente un dato medido.
+   */
+  private readonly cifra = (valor: number): string =>
+    this.store.fallandoResumen() ? this.strings.noValue : NUMERO_FORMAT.format(valor);
+
+  /** Pie de una tarjeta: "Sin datos" si la fuente falló. */
+  private readonly pie = (texto: string): string =>
+    this.store.fallandoResumen() ? this.strings.noData : texto;
+
+  protected readonly totalTenants = computed(() => this.cifra(this.store.totalTenants()));
+  protected readonly activos = computed(() => this.cifra(this.store.tenantsActivos()));
+  protected readonly suspendidos = computed(() => this.cifra(this.store.tenantsSuspendidos()));
+  protected readonly altasSemana = computed(() => this.cifra(this.store.altasSemana()));
+  protected readonly requierenAtencion = computed(() => this.cifra(this.store.requierenAtencion()));
+  protected readonly suspendidosEnAtencion = computed(() =>
+    this.cifra(this.store.suspendidosEnAtencion()),
+  );
+  protected readonly sinCambios = computed(() => this.cifra(this.store.sinCambios()));
+
+  /** Pie de la tarjeta 1: "{n} activos". */
+  protected readonly pieActivos = computed(() =>
+    this.pie(this.strings.kpiTotalActive.replace('{n}', this.activos())),
+  );
+
+  /** Pie de la tarjeta 1: "{n} suspendidos". */
+  protected readonly pieSuspendidos = computed(() =>
+    this.pie(this.strings.kpiTotalSuspended.replace('{n}', this.suspendidos())),
+  );
+
+  /** Pie de la tarjeta 4: "{n} suspendidos". */
+  protected readonly pieAtencionSuspendidos = computed(() =>
+    this.pie(this.strings.kpiAttentionSuspended.replace('{n}', this.suspendidosEnAtencion())),
+  );
+
+  /** Pie de la tarjeta 4: "{n} sin cambios en 30+ días". */
+  protected readonly pieAtencionSinCambios = computed(() =>
+    this.pie(this.strings.kpiAttentionNoChanges.replace('{n}', this.sinCambios())),
+  );
+
+  /** Variación real frente a la semana anterior; `null` = no hay base. */
+  protected readonly variacion = computed(() => this.store.variacionSemana());
+
+  /**
+   * Texto del pie de la tarjeta 2.
+   *
+   * Con base real, un porcentaje; sin ella (la semana previa fue 0), un conteo
+   * absoluto: nunca un porcentaje inventado.
+   */
+  protected readonly variacionTexto = computed(() => {
+    const valor = this.variacion();
+    if (valor === null) {
+      return this.pie(this.strings.kpiNewNoBase.replace('{n}', this.altasSemana()));
+    }
+    return this.pie(this.strings.kpiNewVsLastWeek.replace('{n}', PORCENTAJE_FORMAT.format(valor)));
+  });
+
+  /** ¿La variación es positiva? (el 0 no es una variación) */
+  protected readonly variacionPositiva = computed(() => (this.variacion() ?? 0) > 0);
+
+  /** ¿La variación es negativa? */
+  protected readonly variacionNegativa = computed(() => (this.variacion() ?? 0) < 0);
+
+  /* ── Gráfico de altas ────────────────────────────────────── */
+
+  /** Total de altas del periodo visible: la suma de la serie. */
+  protected readonly totalAltas = computed(() =>
+    this.cifra(this.store.serieAltas().reduce((suma, punto) => suma + punto.value, 0)),
+  );
+
+  /** El gráfico no pinta una línea plana: si no hay altas, lo dice. */
+  protected readonly serieVacia = computed(() =>
+    this.store.serieAltas().every((punto) => punto.value === 0),
+  );
+
+  /** Nombre accesible del gráfico: nombra el periodo que se está mirando. */
+  protected readonly growthAria = computed(() =>
+    this.strings.growthAria.replace('{weeks}', String(this.store.semanas())),
+  );
+
+  /* ── Comandos ────────────────────────────────────────────── */
+
+  /** Cambia el periodo del gráfico (semanas). */
+  protected setSemanas(valor: number): void {
+    this.store.setSemanas(valor);
   }
 
-  protected reload(): void {
-    this.loading.set(true);
-    this.failed.set(false);
-    forkJoin({
-      all: this.api.listTenants({ size: 1 }),
-      active: this.api.listTenants({ size: 1, status: 'ACTIVE' }),
-      suspended: this.api.listTenants({ size: 1, status: 'SUSPENDED' }),
-    })
-      .pipe(finalize(() => this.loading.set(false)))
-      .subscribe({
-        next: ({ all, active, suspended }) => {
-          this.total.set(all.totalElements);
-          this.active.set(active.totalElements);
-          this.suspended.set(suspended.totalElements);
-        },
-        error: () => this.failed.set(true),
-      });
+  /** El selector es un `<select>` nativo: su valor llega como texto. */
+  protected setSemanasDesde(valor: string): void {
+    this.store.setSemanas(Number(valor));
+  }
+
+  /** Vacía los filtros: deja el listado como estaba al entrar. */
+  protected limpiarFiltros(): void {
+    this.store.setBusqueda('');
+    this.store.setFiltroEstado('TODOS');
+    this.store.irAPagina(0);
+  }
+
+  ngOnInit(): void {
+    // La carga la dispara el comando público del store (el mismo del botón
+    // "Reintentar"); aquí solo se le pide.
+    this.store.recargar();
   }
 }

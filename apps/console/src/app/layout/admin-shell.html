@@ -16,6 +16,12 @@
 
     @if (session.user(); as user) {
       <div class="user-block">
+        <!-- Campana decorativa: no hay endpoint de notificaciones. El punto
+             azul es `aria-hidden` y el botón lleva su nombre accesible. -->
+        <button class="notification" type="button" [attr.aria-label]="strings.shell.notifications">
+          <svg lucideBell aria-hidden="true"></svg>
+          <span class="notification-dot" aria-hidden="true"></span>
+        </button>
         <span class="avatar" aria-hidden="true">{{ initials() }}</span>
         <span class="user-meta">
           <span class="user-name">{{ user.fullName }}</span>
@@ -30,36 +36,14 @@
   </header>
 
   <div class="body">
-    @if (menuOpen()) {
-      <div class="scrim" (click)="closeMenu()" aria-hidden="true"></div>
-    }
-    <nav class="sidebar" [class.open]="menuOpen()" [attr.aria-label]="strings.shell.brandArea">
-      @for (item of navItems; track item.route) {
-        <a
-          class="nav-item"
-          [routerLink]="item.route"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: item.route === '/admin/dashboard' }"
-          (click)="closeMenu()"
-        >
-          @switch (item.icon) {
-            @case ('dashboard') {
-              <svg lucideLayoutDashboard aria-hidden="true"></svg>
-            }
-            @case ('tenants') {
-              <svg lucideBuilding2 aria-hidden="true"></svg>
-            }
-            @case ('settings') {
-              <svg lucideSettings aria-hidden="true"></svg>
-            }
-            @case ('profile') {
-              <svg lucideUser aria-hidden="true"></svg>
-            }
-          }
-          <span>{{ item.label }}</span>
-        </a>
-      }
-    </nav>
+    <mapit-sidebar
+      [nav]="navItems"
+      [navLabel]="strings.shell.brandArea"
+      [navAriaLabel]="strings.shell.navLandmarkLabel"
+      [drawerOpen]="menuOpen()"
+      [closeLabel]="strings.shell.closeMenu"
+      (drawerClose)="closeMenu()"
+    />
 
     <main class="content">
       <router-outlet />

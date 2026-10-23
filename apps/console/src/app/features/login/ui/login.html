@@ -1,218 +1,194 @@
-<main class="login-layout">
-  <!-- ── Panel Izquierdo: Showcase visual con fondo blanco, curvas y eslogan ── -->
-  <aside class="showcase" [attr.aria-label]="strings.login.showcaseAriaLabel">
-    <div class="showcase-gradient" aria-hidden="true"></div>
+<main class="auth-page" aria-label="{{ strings.login.pageAriaLabel }}">
+  <!-- Decoraciones de fondo: anillos concéntricos tenues -->
+  <div class="bg-decorations" aria-hidden="true">
+    <svg class="bg-shape bg-shape-tr" viewBox="0 0 800 800" fill="none">
+      <circle cx="800" cy="0" r="740" fill="#eef4ff" fill-opacity="0.8" />
+      <circle cx="800" cy="0" r="580" fill="#dce8fd" fill-opacity="0.85" />
+      <circle cx="800" cy="0" r="420" fill="#e9f1fe" fill-opacity="0.9" />
+      <circle cx="800" cy="0" r="280" fill="#f4f8ff" fill-opacity="0.95" />
+      <circle cx="800" cy="0" r="780" stroke="#3d4ef2" stroke-opacity="0.08" stroke-width="1.5" />
+      <circle
+        cx="800"
+        cy="0"
+        r="660"
+        stroke="#3d4ef2"
+        stroke-opacity="0.12"
+        stroke-width="1.5"
+        stroke-dasharray="6 6"
+      />
+      <circle cx="800" cy="0" r="580" stroke="#3d4ef2" stroke-opacity="0.15" stroke-width="1.5" />
+      <circle cx="800" cy="0" r="490" stroke="#3d4ef2" stroke-opacity="0.10" stroke-width="1.5" />
+      <circle cx="800" cy="0" r="420" stroke="#3d4ef2" stroke-opacity="0.18" stroke-width="1.5" />
+      <circle cx="800" cy="0" r="350" stroke="#3d4ef2" stroke-opacity="0.10" stroke-width="1.5" />
+      <circle cx="800" cy="0" r="280" stroke="#3d4ef2" stroke-opacity="0.14" stroke-width="1.5" />
+      <circle
+        cx="800"
+        cy="0"
+        r="200"
+        stroke="#3d4ef2"
+        stroke-opacity="0.12"
+        stroke-width="1.5"
+        stroke-dasharray="4 4"
+      />
+    </svg>
 
-    <!-- Mensaje de bienvenida y eslogan corporativo en español -->
-    <div class="showcase-message">
-      <h2>
-        {{ strings.login.showcaseHeadlineA }} <span>{{ strings.login.showcaseHighlight }}</span>
-      </h2>
-      <p>{{ strings.login.showcaseIntro }}</p>
-    </div>
+    <svg class="bg-shape bg-shape-bl" viewBox="0 0 700 700" fill="none">
+      <circle cx="0" cy="700" r="620" fill="#f0f5ff" fill-opacity="0.75" />
+      <circle cx="0" cy="700" r="470" fill="#dde9fd" fill-opacity="0.8" />
+      <circle cx="0" cy="700" r="330" fill="#edf4fe" fill-opacity="0.85" />
+      <circle cx="0" cy="700" r="200" fill="#f7faff" />
+      <circle cx="0" cy="700" r="660" stroke="#3d4ef2" stroke-opacity="0.07" stroke-width="1.5" />
+      <circle
+        cx="0"
+        cy="700"
+        r="540"
+        stroke="#3d4ef2"
+        stroke-opacity="0.11"
+        stroke-width="1.5"
+        stroke-dasharray="5 5"
+      />
+      <circle cx="0" cy="700" r="470" stroke="#3d4ef2" stroke-opacity="0.15" stroke-width="1.5" />
+      <circle cx="0" cy="700" r="390" stroke="#3d4ef2" stroke-opacity="0.09" stroke-width="1.5" />
+      <circle cx="0" cy="700" r="330" stroke="#3d4ef2" stroke-opacity="0.16" stroke-width="1.5" />
+      <circle
+        cx="0"
+        cy="700"
+        r="250"
+        stroke="#3d4ef2"
+        stroke-opacity="0.12"
+        stroke-width="1.5"
+        stroke-dasharray="4 4"
+      />
+    </svg>
 
-    <!-- Testimonio en español -->
-    <div class="showcase-quote-wrapper">
-      <blockquote class="quote">
-        <p class="quote-text">{{ strings.login.showcaseQuote }}</p>
-      </blockquote>
-    </div>
+    <svg class="bg-shape bg-shape-side" viewBox="0 0 320 320" fill="none">
+      <circle cx="160" cy="160" r="140" stroke="#3d4ef2" stroke-opacity="0.08" stroke-width="1.5" />
+      <circle
+        cx="160"
+        cy="160"
+        r="100"
+        stroke="#3d4ef2"
+        stroke-opacity="0.12"
+        stroke-width="1.5"
+        stroke-dasharray="4 6"
+      />
+      <circle cx="160" cy="160" r="60" stroke="#3d4ef2" stroke-opacity="0.14" stroke-width="1.5" />
+      <circle cx="160" cy="160" r="24" fill="#3d4ef2" fill-opacity="0.06" />
+    </svg>
+  </div>
 
-    <!-- Curvas dinámicas fluidas (FloatingPaths) -->
-    <div class="floating-paths-container" aria-hidden="true">
-      <svg class="floating-paths-svg" viewBox="0 0 696 316" fill="none">
-        <title>{{ strings.login.decorativePaths }}</title>
-        @for (path of pathsTop; track path.id) {
-          <path
-            [attr.d]="path.d"
-            stroke="currentColor"
-            [attr.stroke-width]="path.width"
-            [style.animation-duration.s]="path.duration"
-            [style.animation-delay.s]="path.delay"
-            [style.opacity]="path.opacity"
-            class="floating-path"
-          />
-        }
-        @for (path of pathsBottom; track path.id) {
-          <path
-            [attr.d]="path.d"
-            stroke="currentColor"
-            [attr.stroke-width]="path.width"
-            [style.animation-duration.s]="path.duration"
-            [style.animation-delay.s]="path.delay"
-            [style.opacity]="path.opacity"
-            class="floating-path"
-          />
-        }
-      </svg>
-    </div>
-  </aside>
+  <!-- Marca / wordmark -->
+  <a href="#" class="brand" role="img" aria-label="MapIt">
+    Map<span class="brand-i"
+      >ı<svg viewBox="0 0 24 32" aria-hidden="true">
+        <path d="M12 0C5.4 0 0 5.3 0 12c0 8.2 12 20 12 20s12-11.8 12-20C24 5.3 18.6 0 12 0Z" />
+        <circle cx="12" cy="11" r="4" /></svg></span
+    >t
+  </a>
 
-  <!-- ── Panel Derecho: Inicio de sesión con correo y contraseña ── -->
-  <section class="login-panel" aria-labelledby="login-title">
-    <!-- Resplandor ambiental de fondo -->
-    <div class="ambient-glow" aria-hidden="true">
-      <div class="glow-orb"></div>
-    </div>
-
-    <div class="login-content">
-      <!-- Logo de MapIt justo arriba del inicio de sesión -->
-      <div class="login-brand">
-        <img
-          ngSrc="assets/img/logo_mapit_white.png"
-          priority
-          [alt]="strings.login.logoAlt"
-          class="brand-logo"
-          width="132"
-          height="60"
-        />
+  <section class="auth-card" aria-label="Inicio de sesión">
+    <!-- Panel de bienvenida (estático, sin registro) -->
+    <aside class="overlay" aria-label="Bienvenida">
+      <div class="overlay-content">
+        <h2>{{ strings.login.panelTitle }}</h2>
+        <p>{{ strings.login.panelIntro }}</p>
+        <button type="button" class="ghost-button" (click)="store.showHelp('access')">
+          {{ strings.login.panelCta }}
+        </button>
       </div>
+    </aside>
 
-      <!-- Título de sección en español -->
+    <!-- Formulario de acceso -->
+    <form class="form-half login-half" (ngSubmit)="store.submit()" [attr.aria-busy]="store.pending()" novalidate>
       <div class="welcome">
-        <br />
         <h1 id="login-title">{{ strings.login.title }}</h1>
         <p>{{ strings.login.subtitle }}</p>
       </div>
 
-      <!-- Formulario de acceso -->
-      <form (ngSubmit)="store.submit()" [attr.aria-busy]="store.pending()" novalidate class="login-form">
-        <div class="field">
-          <label for="email">{{ strings.login.emailLabel }}</label>
-          <div class="input-container">
-            <svg
-              class="input-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.75"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="4" />
-              <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />
-            </svg>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autocomplete="username"
-              [placeholder]="strings.login.emailPlaceholder"
-              [ngModel]="store.email()"
-              (ngModelChange)="store.setEmail($event)"
-              [attr.aria-invalid]="store.emailError() ? 'true' : null"
-              [attr.aria-describedby]="store.emailError() ? 'email-error' : null"
-              [disabled]="store.pending()"
-              required
-            />
-          </div>
-          @if (store.emailError()) {
-            <p class="field-error" id="email-error">{{ store.emailError() }}</p>
-          }
-        </div>
-
-        <div class="field">
-          <label for="password">{{ strings.login.passwordLabel }}</label>
-          <div class="input-container password-container">
-            <svg
-              class="input-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.75"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <input
-              id="password"
-              name="password"
-              [type]="store.passwordVisible() ? 'text' : 'password'"
-              autocomplete="current-password"
-              placeholder="••••••••"
-              [ngModel]="store.password()"
-              (ngModelChange)="store.setPassword($event)"
-              [attr.aria-invalid]="store.passwordError() ? 'true' : null"
-              [attr.aria-describedby]="store.passwordError() ? 'password-error' : null"
-              [disabled]="store.pending()"
-              required
-            />
-            <button
-              class="password-toggle"
-              type="button"
-              (click)="store.togglePassword()"
-              [attr.aria-label]="
-                store.passwordVisible() ? strings.login.passwordToggleHide : strings.login.passwordToggleShow
-              "
-              [attr.aria-pressed]="store.passwordVisible()"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                @if (store.passwordVisible()) {
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-                  <circle cx="12" cy="12" r="3" />
-                } @else {
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="m3 3 18 18" />
-                }
-              </svg>
-            </button>
-          </div>
-          @if (store.passwordError()) {
-            <p class="field-error" id="password-error">{{ store.passwordError() }}</p>
-          }
-        </div>
-
-        <div class="form-options">
-          <label class="remember">
-            <input
-              type="checkbox"
-              name="remember"
-              [disabled]="store.pending()"
-              [checked]="store.remember()"
-              (change)="store.toggleRemember()"
-            />
-            <span>{{ strings.login.rememberMe }}</span>
-          </label>
-          <button type="button" class="text-button" (click)="store.showHelp('password')">
-            {{ strings.login.forgotPassword }}
-          </button>
-        </div>
-
-        <button type="submit" class="submit-button" [disabled]="store.pending()">
-          {{ store.pending() ? strings.login.submitting : strings.login.submit }}
-        </button>
-
-        @if (store.message()) {
-          <p class="form-message" role="status">{{ store.message() }}</p>
+      <div class="field">
+        <label for="email">{{ strings.login.emailLabel }}</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="username"
+          [placeholder]="strings.login.emailPlaceholder"
+          [ngModel]="store.email()"
+          (ngModelChange)="store.setEmail($event)"
+          [attr.aria-invalid]="store.emailError() ? 'true' : null"
+          [attr.aria-describedby]="store.emailError() ? 'email-error' : null"
+          [disabled]="store.pending()"
+          required
+        />
+        @if (store.emailError()) {
+          <p class="field-error" id="email-error">{{ store.emailError() }}</p>
         }
-      </form>
+      </div>
 
-      <p class="request-access">
-        {{ strings.login.newBusiness }}
-        <button type="button" class="text-button" (click)="store.showHelp('access')">
-          {{ strings.login.requestAccess }}
+      <div class="field password-field">
+        <label for="password">{{ strings.login.passwordLabel }}</label>
+        <input
+          id="password"
+          name="password"
+          [type]="store.passwordVisible() ? 'text' : 'password'"
+          autocomplete="current-password"
+          placeholder="••••••••"
+          [ngModel]="store.password()"
+          (ngModelChange)="store.setPassword($event)"
+          [attr.aria-invalid]="store.passwordError() ? 'true' : null"
+          [attr.aria-describedby]="store.passwordError() ? 'password-error' : null"
+          [disabled]="store.pending()"
+          required
+        />
+        <button
+          type="button"
+          class="password-toggle"
+          (click)="store.togglePassword()"
+          [attr.aria-label]="
+            store.passwordVisible() ? strings.login.passwordToggleHide : strings.login.passwordToggleShow
+          "
+          [attr.aria-pressed]="store.passwordVisible()"
+          [disabled]="store.pending()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            @if (!store.passwordVisible()) {
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+              <circle cx="12" cy="12" r="3" />
+              <path d="m3 3 18 18" />
+            } @else {
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+              <circle cx="12" cy="12" r="3" />
+            }
+          </svg>
         </button>
-      </p>
+        @if (store.passwordError()) {
+          <p class="field-error" id="password-error">{{ store.passwordError() }}</p>
+        }
+      </div>
 
-      <p class="terms-disclaimer">
-        {{ strings.login.termsPrefix }}
-        <a href="#" class="legal-link">{{ strings.login.termsLink }}</a> y
-        <a href="#" class="legal-link">{{ strings.login.privacyLink }}</a
-        >.
-      </p>
-    </div>
+      <div class="form-options">
+        <label class="remember">
+          <input
+            type="checkbox"
+            name="remember"
+            [checked]="store.remember()"
+            (change)="store.toggleRemember()"
+            [disabled]="store.pending()"
+          />
+          <span>{{ strings.login.rememberMe }}</span>
+        </label>
+        <button type="button" class="text-button" (click)="store.showHelp('password')">
+          {{ strings.login.forgotPassword }}
+        </button>
+      </div>
+
+      <button type="submit" class="submit-button" [disabled]="store.pending()" [attr.aria-busy]="store.pending()">
+        {{ store.pending() ? strings.login.submitting : strings.login.submit }}
+      </button>
+
+      @if (store.message()) {
+        <p class="form-message" role="status">{{ store.message() }}</p>
+      }
+    </form>
   </section>
 </main>

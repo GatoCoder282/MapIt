@@ -1,0 +1,176 @@
+<section class="page">
+  <header class="page-head">
+    <p class="eyebrow">{{ strings.eyebrow }}</p>
+    <h1>{{ strings.title }}</h1>
+    <p class="sub">{{ strings.subtitle }}</p>
+  </header>
+
+  <!-- Fila de KPIs: 4 tarjetas, 2 por fila a ≤ 1100 px y 1 a ≤ 700 px. -->
+  <section class="kpis" [attr.aria-label]="strings.title">
+    <!-- Tarjeta 1: tenants totales -->
+    <mapit-platform-kpi
+      data-testid="platform-kpi-total"
+      [label]="strings.kpiTotalTitle"
+      [value]="totalTenants()"
+      icon="tenants"
+      [link]="rutaTenants"
+      [linkAria]="strings.kpiTotalLink"
+      [loading]="store.cargandoResumen()"
+    >
+      <span class="counters">
+        <span class="counter">
+          <span class="dot available" aria-hidden="true"></span>
+          {{ pieActivos() }}
+        </span>
+        <span class="counter">
+          <span class="dot occupied" aria-hidden="true"></span>
+          {{ pieSuspendidos() }}
+        </span>
+      </span>
+    </mapit-platform-kpi>
+
+    <!-- Tarjeta 2: nuevos esta semana -->
+    <mapit-platform-kpi
+      data-testid="platform-kpi-nuevos"
+      [label]="strings.kpiNewTitle"
+      [value]="altasSemana()"
+      icon="new"
+      [link]="rutaTenants"
+      [linkAria]="strings.kpiNewLink"
+      [loading]="store.cargandoResumen()"
+    >
+      <span class="trend" [class.negative]="variacionNegativa()">
+        @if (variacionPositiva()) {
+          <svg class="trend-icon" lucideTrendingUp aria-hidden="true"></svg>
+        } @else if (variacionNegativa()) {
+          <svg class="trend-icon negative" lucideTrendingDown aria-hidden="true"></svg>
+        }
+        {{ variacionTexto() }}
+      </span>
+    </mapit-platform-kpi>
+
+    <!-- Tarjeta 3: distribución por vertical -->
+    <mapit-platform-kpi
+      data-testid="platform-kpi-verticales"
+      [label]="strings.kpiVerticalTitle"
+      [value]="strings.noValue"
+      icon="vertical"
+      [link]="rutaTenants"
+      [linkAria]="strings.kpiVerticalLink"
+      [loading]="store.cargandoResumen()"
+    >
+      <span class="verticales">
+        @for (item of store.repartoVertical(); track item.vertical) {
+          <span class="counter">
+            <span class="dot" [style.background]="mapitVerticalVar(item.vertical)" aria-hidden="true"></span>
+            {{ verticales[item.vertical] }}
+            <strong>{{ item.count }}</strong>
+          </span>
+        }
+      </span>
+    </mapit-platform-kpi>
+
+    <!-- Tarjeta 4: requieren atención -->
+    <mapit-platform-kpi
+      data-testid="platform-kpi-atencion"
+      [label]="strings.kpiAttentionTitle"
+      [value]="requierenAtencion()"
+      icon="attention"
+      [link]="rutaTenants"
+      [linkAria]="strings.kpiAttentionLink"
+      [loading]="store.cargandoResumen()"
+    >
+      <span class="counters">
+        <span class="counter">
+          <span class="dot reserved" aria-hidden="true"></span>
+          {{ pieAtencionSuspendidos() }}
+        </span>
+        <span class="counter">
+          <span class="dot out-of-service" aria-hidden="true"></span>
+          {{ pieAtencionSinCambios() }}
+        </span>
+      </span>
+    </mapit-platform-kpi>
+  </section>
+
+  <!-- Los dos gráficos -->
+  <div class="charts">
+    <section class="panel" data-testid="platform-panel-altas">
+      <header class="panel-head">
+        <span class="panel-icon" aria-hidden="true"><svg lucideChartColumn></svg></span>
+        <div class="panel-title">
+          <h2>{{ strings.growthTitle }}</h2>
+          <p class="muted">{{ strings.growthSubtitle }}</p>
+        </div>
+        <p class="panel-total">
+          <strong>{{ totalAltas() }}</strong>
+          <span class="muted">{{ strings.growthTotalUnit }}</span>
+        </p>
+        <select
+          #rango
+          class="range-select"
+          [attr.aria-label]="strings.growthRangeLabel"
+          (change)="setSemanasDesde(rango.value)"
+        >
+          @for (option of strings.rangeOptions; track option.weeks) {
+            <option [value]="'' + option.weeks" [selected]="option.weeks === store.semanas()">
+              {{ option.label }}
+            </option>
+          }
+        </select>
+      </header>
+      @if (store.fallandoResumen()) {
+        <!-- El fallo se vende como fallo: mensaje y reintento, no un "vacío" medido. -->
+        <div class="state error" role="alert">
+          <p>{{ strings.loadError }}</p>
+          <button type="button" (click)="store.recargar()">{{ strings.retry }}</button>
+        </div>
+      } @else {
+        <mapit-growth-chart
+          [series]="store.serieAltas()"
+          [ariaLabel]="growthAria()"
+          [periodLabel]="strings.growthPeriod"
+          [empty]="serieVacia()"
+          [rangeWeeks]="store.semanas()"
+        />
+      }
+    </section>
+
+    <section class="panel" data-testid="platform-panel-verticales">
+      <header class="panel-head">
+        <span class="panel-icon" aria-hidden="true"><svg lucidePieChart></svg></span>
+        <div class="panel-title">
+          <h2>{{ strings.donutTitle }}</h2>
+          <p class="muted">{{ strings.donutSubtitle }}</p>
+        </div>
+      </header>
+      <mapit-platform-donut
+        [reparto]="store.repartoVertical()"
+        [loading]="store.cargandoResumen()"
+        [failed]="store.fallandoResumen()"
+        (reintentar)="store.recargar()"
+      />
+    </section>
+  </div>
+
+  <!-- Tabla de tenants -->
+  <section class="panel table-panel" data-testid="platform-panel-tenants">
+    <mapit-platform-tenants
+      [tenants]="store.tenants()"
+      [pagina]="store.pagina()"
+      [totalPaginas]="store.totalPaginas()"
+      [totalElementos]="store.totalElementos()"
+      [busqueda]="store.busqueda()"
+      [filtroEstado]="store.filtroEstado()"
+      [hayFiltros]="store.hayFiltros()"
+      [loading]="store.cargandoLista()"
+      [failed]="store.fallandoLista()"
+      (busquedaCambiada)="store.setBusqueda($event)"
+      (filtroCambiado)="store.setFiltroEstado($event)"
+      (cambioPagina)="store.irAPagina($event)"
+      (exportar)="store.exportarCsv()"
+      (reintentar)="store.recargar()"
+      (limpiarFiltros)="limpiarFiltros()"
+    />
+  </section>
+</section>

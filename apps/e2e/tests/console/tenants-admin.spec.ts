@@ -89,5 +89,25 @@ test.describe('Consola — administración de tenants', () => {
       .getByRole('button', { name: /confirmar/i })
       .click();
     await expect(page.getByText('Activo')).toBeVisible();
+
+    // Panel de control de la plataforma: el SUPER_ADMIN supervisa la red.
+    await page.goto('/admin/dashboard');
+    await expect(
+      page.getByRole('heading', { level: 1, name: /panel de control de la plataforma/i }),
+    ).toBeVisible();
+
+    // Las cuatro tarjetas de KPI.
+    await expect(page.getByTestId('platform-kpi-total')).toBeVisible();
+    await expect(page.getByTestId('platform-kpi-nuevos')).toBeVisible();
+    await expect(page.getByTestId('platform-kpi-verticales')).toBeVisible();
+    await expect(page.getByTestId('platform-kpi-atencion')).toBeVisible();
+
+    // Los dos gráficos y la tabla de tenants.
+    await expect(page.getByTestId('platform-panel-altas')).toBeVisible();
+    await expect(page.getByTestId('platform-panel-verticales')).toBeVisible();
+    await expect(page.getByTestId('platform-panel-tenants')).toBeVisible();
+
+    // El pie de la tabla dice qué filas se ven y cuántas hay en total.
+    await expect(page.getByText(/mostrando \d+–\d+ de \d+ tenants/i)).toBeVisible();
   });
 });

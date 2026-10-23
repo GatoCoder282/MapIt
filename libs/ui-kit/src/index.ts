@@ -16,3 +16,4 @@ export { RevealOnScroll } from './lib/reveal-on-scroll/reveal-on-scroll';
 export { TimezonePicker } from './lib/timezone-picker/timezone-picker';
 export { SITE_STRINGS } from './lib/site-strings';
 export { PICKER_STRINGS } from './lib/picker-strings';
+export { PageTransitionService, PageWipeOverlay } from './lib/page-transition';

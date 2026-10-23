@@ -71,6 +71,23 @@ public class JdbcSpaceElementStateChangeRepository
         elementId);
   }
 
+  @Override
+  public long countByElement(TenantId tenantId, UUID sectorId, UUID elementId) {
+    setTenant(tenantId);
+    Long count =
+        jdbc.queryForObject(
+            """
+            select count(*)
+            from space_element_state_change
+            where tenant_id = ? and sector_id = ? and space_element_id = ?
+            """,
+            Long.class,
+            tenantId.value(),
+            sectorId,
+            elementId);
+    return count == null ? 0 : count;
+  }
+
   private void setTenant(TenantId tenantId) {
     jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, tenantId.value());
   }

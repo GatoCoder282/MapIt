@@ -1,0 +1,307 @@
+/* Panel "Ocupación en vivo". Cinco estados, un conteo cada uno y el color que
+   ya usa el mapa (`--mapit-state-*`). Sin hex: todo sale de los tokens de
+   `ui-kit/styles/_tokens`. */
+
+:host {
+  display: grid;
+  gap: var(--mapit-space-4);
+  min-width: 0;
+  padding: var(--mapit-space-4);
+  background: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius-lg);
+  box-shadow: var(--mapit-shadow);
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.panel-header {
+  display: flex;
+  gap: var(--mapit-space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.panel-title-group {
+  min-width: 8rem;
+  flex: 1 1 8rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font: var(--mapit-text-section);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--mapit-color-text);
+  text-wrap: balance;
+}
+
+.panel-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--mapit-color-primary-container);
+  color: var(--mapit-color-primary);
+}
+
+.panel-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  stroke-width: 2;
+}
+
+.muted {
+  margin: 0;
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+}
+
+/* Total del panel: la cifra manda, la unidad acompaña (patrón 2 del kit). */
+.panel-total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.panel-total strong {
+  font-family: var(--mapit-font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--mapit-color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Chip de conexión ──────────────────────────────────── */
+/* Solo dice "En vivo" con el socket conectado. Con la flag apagada dice
+   "Instantánea": el panel es una foto, y tiene que decirlo. */
+.live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mapit-space-2);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--mapit-radius);
+  background: var(--mapit-color-surface-low);
+  font: var(--mapit-text-metadata);
+  font-weight: 600;
+  color: var(--mapit-color-text-muted);
+  white-space: nowrap;
+}
+
+.live-chip.is-live {
+  color: var(--mapit-color-text);
+}
+
+.live-dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--mapit-color-text-muted);
+}
+
+.live-chip.is-live .live-dot {
+  background: var(--mapit-state-available);
+}
+
+.live-chip.is-error .live-dot {
+  background: var(--mapit-color-error);
+}
+
+/* ── Estados ────────────────────────────────────────────── */
+/* Esqueleto de carga: el mismo shimmer del dashboard, con el alto del cuerpo
+   real para que el panel no salte al cargar. */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  min-height: 6rem;
+  border-radius: var(--mapit-radius);
+  background: linear-gradient(
+    90deg,
+    var(--mapit-color-border) 25%,
+    var(--mapit-color-canvas) 50%,
+    var(--mapit-color-border) 75%
+  );
+  background-size: 200%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.empty-state {
+  margin: 0;
+  font: var(--mapit-text-body);
+  font-weight: 600;
+  color: var(--mapit-color-text);
+}
+
+.panel-error {
+  margin: 0;
+  padding: var(--mapit-space-4);
+  border: 1px solid var(--mapit-color-error);
+  border-radius: var(--mapit-radius-lg);
+  color: var(--mapit-color-error);
+  display: grid;
+  gap: var(--mapit-space-3);
+  justify-items: start;
+  font: var(--mapit-text-body);
+}
+
+.panel-error p {
+  margin: 0;
+}
+
+.btn {
+  display: inline-flex;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius-lg);
+  background: var(--mapit-color-surface);
+  color: var(--mapit-color-text);
+  font: var(--mapit-text-body-bold);
+  cursor: pointer;
+  /* Mismo tratamiento táctil que el resto de la consola: sin retardo de
+     zoom de doble toque y con el realce del sistema en el color de marca. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: var(--mapit-color-primary-container);
+}
+
+.btn:hover {
+  background: var(--mapit-color-surface-low);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--mapit-color-primary);
+  outline-offset: 2px;
+}
+
+/* ── Los cinco estados ──────────────────────────────────── */
+.state-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--mapit-space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.state-cell {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: start;
+  align-content: start;
+  min-width: 0;
+}
+
+/* El punto es el color del mapa: verde disponible, rojo ocupada, ámbar
+   reservada, azul en limpieza y gris fuera de servicio. */
+.state-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-bottom: var(--mapit-space-1);
+  border-radius: 50%;
+  background: var(--mapit-color-text-muted);
+}
+
+.state-dot[data-state='AVAILABLE'] {
+  background: var(--mapit-state-available);
+}
+
+.state-dot[data-state='OCCUPIED'] {
+  background: var(--mapit-state-occupied);
+}
+
+.state-dot[data-state='RESERVED'] {
+  background: var(--mapit-state-reserved);
+}
+
+.state-dot[data-state='CLEANING'] {
+  background: var(--mapit-state-cleaning);
+}
+
+.state-dot[data-state='OUT_OF_SERVICE'] {
+  background: var(--mapit-state-out-of-service);
+}
+
+.state-label {
+  font: var(--mapit-text-metadata);
+  font-weight: 500;
+  color: var(--mapit-color-text-muted);
+}
+
+.state-count {
+  font-family: var(--mapit-font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--mapit-color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Notas al pie ───────────────────────────────────────── */
+.notes {
+  display: grid;
+  gap: var(--mapit-space-2);
+  padding-top: var(--mapit-space-3);
+  border-top: 1px solid var(--mapit-color-border);
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mapit-space-2);
+  margin: 0;
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+}
+
+.note-icon {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-top: 0.1rem;
+  stroke-width: 2;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+/* En una columna las celdas giran a fila: punto · estado · conteo. */
+@media (max-width: 899px) {
+  .state-grid {
+    grid-template-columns: 1fr;
+    gap: var(--mapit-space-3);
+  }
+
+  .state-cell {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--mapit-space-3);
+    justify-items: stretch;
+  }
+
+  .state-dot {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  :host {
+    padding: var(--mapit-space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--mapit-color-border);
+  }
+}

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { PageWipeOverlay } from '@mapit/ui-kit';
 
 /**
  * Raíz de la aplicación.
@@ -9,10 +10,11 @@ import { RouterOutlet } from '@angular/router';
  */
 @Component({
   selector: 'mapit-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, PageWipeOverlay],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="shell">
+      <mapit-page-wipe-overlay />
       <router-outlet />
     </main>
   `,
