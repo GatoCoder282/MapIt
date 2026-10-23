@@ -54,8 +54,60 @@ tags:
     description: Clientes del tenant usados en reservas (CU-11)
   - name: reservations
     description: Reservas internas asociadas a clientes y elementos espaciales (CU-12)
+  - name: public-availability
+    description: Consulta anónima de disponibilidad para el portal público (HU-6.01)
 
 paths:
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/availability:
+    get:
+      tags: [public-availability]
+      summary: Consultar disponibilidad pública
+      description: |
+        Devuelve los elementos activos, reservables y operativamente disponibles que no
+        tienen una reserva vigente durante la fecha local del establecimiento. El día se
+        interpreta con la zona horaria configurada en el establecimiento. No requiere JWT.
+      operationId: findPublicAvailability
+      security: []
+      parameters:
+        - name: tenantSlug
+          in: path
+          required: true
+          description: Slug público del tenant.
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 63
+            pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+        - name: establishmentSlug
+          in: path
+          required: true
+          description: Slug del establecimiento dentro del tenant.
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 63
+            pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+        - name: date
+          in: query
+          required: true
+          description: Día local del establecimiento en formato ISO 8601 (YYYY-MM-DD).
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Disponibilidad del día solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAvailability"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /establishments/{establishmentId}/reservations:
     parameters:
       - name: establishmentId
@@ -1772,6 +1824,39 @@ components:
         cliente podría falsificar).
 
   schemas:
+    PublicAvailability:
+      type: object
+      required: [establishmentId, date, elements]
+      additionalProperties: false
+      description: Disponibilidad pública mínima para un establecimiento y día local.
+      properties:
+        establishmentId:
+          type: string
+          format: uuid
+          readOnly: true
+        date:
+          type: string
+          format: date
+          readOnly: true
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicAvailabilityElement"
+
+    PublicAvailabilityElement:
+      type: object
+      required: [id, type]
+      additionalProperties: false
+      description: Proyección pública de un elemento espacial reservable.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM]
+
     Reservation:
       type: object
       required:

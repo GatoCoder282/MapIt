@@ -2,7 +2,7 @@
 
 ## Dónde estás
 
-Una carpeta por caso de uso (CU-01…CU-24). Es el corazón del **Spec-Driven Development**:
+Una carpeta por caso de uso o historia de usuario (`CU-01…CU-24`, `HU-X.XX`). Es el corazón del **Spec-Driven Development**:
 como el código lo escribe mayormente un agente, el entregable valioso es la
 especificación, y el código es su consecuencia.
 
@@ -11,6 +11,10 @@ especificación, y el código es su consecuencia.
 ```bash
 pnpm new:spec CU-12-crear-reserva
 ```
+
+Las historias Jira con código `HU-X.XX` siguen el mismo orden de archivos y se guardan como
+`specs/HU-X.XX-<slug>/`. Si `pnpm new:spec` no acepta el identificador HU o no hay una plantilla
+disponible en el checkout, crea los tres archivos manualmente y conserva el formato descrito aquí.
 
 Tres archivos, llenados **en orden**:
 

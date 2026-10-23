@@ -1,5 +1,6 @@
 ﻿import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
+import { RouterLink } from '@angular/router';
 
 import { RevealOnScroll } from '@mapit/ui-kit';
 
@@ -10,7 +11,7 @@ import { STRINGS } from '../../../../core/strings';
 @Component({
   selector: 'mp-reservas-popular',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgOptimizedImage, RevealOnScroll],
+  imports: [NgOptimizedImage, RevealOnScroll, RouterLink],
   templateUrl: './popular.html',
   styleUrl: './popular.scss',
 })

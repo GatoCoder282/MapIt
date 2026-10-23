@@ -7,6 +7,7 @@ public final class ReservationsProblemTypes {
   public static final String REFERENCE_NOT_FOUND = BASE + "reservation-reference-not-found";
   public static final String INVALID_RESERVATION = BASE + "invalid-reservation";
   public static final String RESERVATION_OVERLAP = BASE + "reservation-overlap";
+  public static final String PUBLIC_AVAILABILITY_NOT_FOUND = BASE + "public-availability-not-found";
 
   private ReservationsProblemTypes() {}
 }

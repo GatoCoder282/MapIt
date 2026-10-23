@@ -9,3 +9,6 @@ Cada sección del monorepo tiene además su propio `AGENTS.md` con las reglas de
 
 **Empieza por [`AGENTS.md`](AGENTS.md).** Tiene una tabla de ruteo: busca tu tarea y te
 dice qué leer y qué agente o skill usar.
+
+Para cualquier ticket Jira, sigue también la skill de entrega:
+`.claude/skills/ticket-delivery/SKILL.md`.
