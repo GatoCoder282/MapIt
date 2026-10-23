@@ -3,6 +3,7 @@ package com.mapit.spaces.domain;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 import com.mapit.shared.tenant.TenantId;
 
 /** Puerto de persistencia de sectores.
