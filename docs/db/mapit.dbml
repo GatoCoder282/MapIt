@@ -10,7 +10,8 @@
 //
 //  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
 //  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5),
-//  `realtime_event_outbox` (V11, MAP-103/HUT-01) y el rol de runtime `mapit_app`
+//  `realtime_event_outbox` (V11, MAP-103/HUT-01), `audit_log` (V19, MAP-222)
+//  y el rol de runtime `mapit_app`
 //  (V9, MAP-175: NOSUPERUSER + NOBYPASSRLS;
 //  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
 //  El resto es el diseño previsto; cada tabla llega con su caso de uso.
@@ -215,7 +216,30 @@ Table space_element_state_change {
     (tenant_id, id)                               [name: 'space_element_state_change_tenant_id_id_idx']
     (tenant_id, space_element_id, changed_at, id) [name: 'space_element_state_change_history_idx', type: btree]
   }
-  Note: 'MAP-125 / HU-3.01. Auditoría inmutable con RLS; previous_state y new_state deben ser distintos.'
+  Note: 'MAP-125 / HU-3.01. Fuente histórica preservada en audit_log por V19; permanece durante la transición del escritor en MAP-223.'
+}
+
+Table audit_log {
+  id            uuid        [pk, note: 'default gen_random_uuid()']
+  tenant_id     text        [not null, ref: > tenant.id]
+  actor_id      uuid        [not null, note: 'FK compuesta (tenant_id, actor_id) > app_user(tenant_id, id)']
+  occurred_at   timestamptz [not null]
+  resource_type text        [not null, note: 'RESERVATION | SPACE_ELEMENT']
+  resource_id   uuid        [not null, note: 'Referencia polimórfica al recurso auditado']
+  event_type    text        [not null, note: 'RESERVATION_CREATED | RESERVATION_STATUS_CHANGED | SPACE_ELEMENT_STATE_CHANGED']
+  details       jsonb       [not null, default: `{}`]
+
+  Indexes {
+    (tenant_id, id)                                          [name: 'audit_log_tenant_id_id_idx']
+    (tenant_id, occurred_at, id)                             [name: 'audit_log_history_idx', type: btree]
+    (tenant_id, resource_type, resource_id, occurred_at, id) [name: 'audit_log_resource_history_idx', type: btree]
+    (tenant_id, event_type, occurred_at, id)                 [name: 'audit_log_event_history_idx', type: btree]
+  }
+  Note: '''
+    MAP-222 / HU-5.03. Bitácora general append-only con RLS forzada.
+    El rol runtime solo puede insertar y consultar; UPDATE y DELETE también
+    se bloquean mediante trigger. V19 migra el histórico de HU-3.01.
+  '''
 }
 
 Table realtime_event_outbox {
