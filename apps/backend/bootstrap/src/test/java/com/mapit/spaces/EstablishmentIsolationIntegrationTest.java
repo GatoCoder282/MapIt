@@ -19,6 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Verifica que {@code establishment} queda aislada por tenant mediante PostgreSQL RLS (CA-9).
  *
  * <p>Las consultas se ejecutan bajo el rol {@code mapit_rls_test}, sin privilegios, porque el
+<<<<<<< HEAD
  * usuario de la aplicación es superusuario y los superusuarios <strong>ignoran la RLS</strong>.
  * Probar con el usuario normal daría un falso verde: se verían todas las filas y el test no
  * demostraría nada.
@@ -44,6 +45,10 @@ class EstablishmentIsolationIntegrationTest {
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
+    registry.add("spring.flyway.url", POSTGRES::getJdbcUrl);
+    registry.add("spring.flyway.user", POSTGRES::getUsername);
+    registry.add("spring.flyway.password", POSTGRES::getPassword);
+    registry.add("spring.flyway.placeholders.mapitAppDbPassword", () -> "test_app_password");
   }
 
   @BeforeEach
@@ -57,11 +62,12 @@ class EstablishmentIsolationIntegrationTest {
     jdbcTemplate.execute("grant select on establishment to mapit_rls_test");
 
     jdbcTemplate.update(
-        "insert into tenant (id, name, slug, status) values (?, ?, ?, ?) on conflict (id) do nothing",
+        "insert into tenant (id, name, slug, status, vertical) values (?, ?, ?, ?, ?) on conflict (id) do nothing",
         "other",
         "Otra empresa",
         "other",
-        "ACTIVE");
+        "ACTIVE",
+        "RESTAURANT");
 
     jdbcTemplate.update("delete from establishment");
     jdbcTemplate.update(

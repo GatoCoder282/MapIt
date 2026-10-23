@@ -4,7 +4,7 @@
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import net from 'node:net';
 
@@ -174,6 +174,25 @@ export function loadEnv() {
     if (process.env[k] === undefined) process.env[k] = v;
   }
   return vars;
+}
+
+/**
+ * Elige el JDK: JAVA_HOME del .env (si la ruta existe) y si no, el del sistema.
+ * Lo deja en process.env y antepone su bin/ al PATH, para que `java` y Gradle usen
+ * el mismo JDK aunque la terminal no tenga java en el PATH. Devuelve la ruta o null.
+ */
+export function applyJavaHome() {
+  const fromEnvFile = readEnv().JAVA_HOME;
+  const javaBin = (home) => join(home, 'bin', IS_WINDOWS ? 'java.exe' : 'java');
+  const home = [fromEnvFile, process.env.JAVA_HOME].find((p) => p && existsSync(javaBin(p)));
+  if (fromEnvFile && home !== fromEnvFile) {
+    log.warn(`JAVA_HOME del .env apunta a una ruta sin JDK: ${fromEnvFile}`);
+    log.info(home ? `  usando el del sistema: ${home}` : '  corrígelo en .env');
+  }
+  if (!home) return null;
+  process.env.JAVA_HOME = home;
+  process.env.PATH = join(home, 'bin') + delimiter + (process.env.PATH ?? '');
+  return home;
 }
 
 /* ── Red ────────────────────────────────────────────────── */

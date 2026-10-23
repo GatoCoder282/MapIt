@@ -1,4 +1,7 @@
+import { authGuard, roleGuard } from '@mapit/auth';
 import { type Routes } from '@angular/router';
+
+import { STRINGS } from './core/strings';
 
 /**
  * Rutas de la consola de staff.
@@ -7,32 +10,169 @@ import { type Routes } from '@angular/router';
  * agrupar por feature, no por tipo de archivo). Cada feature se carga perezosamente
  * para que el editor de mapas —que es el bundle pesado— no penalice al resto.
  *
- * Las features llegan en sus casos de uso:
- *   map-editor      CU-06..CU-08   (Integrante C)
- *   operations      CU-09, CU-10   (Integrante D)
- *   reservations    CU-11..CU-14   (Integrante D)
- *   administration  CU-01..CU-05   (Integrante A/E)
+ * Estructura:
+ *   /login, /empresa/:tenantSlug/login   públicas
+ *   /admin/**                            SUPER_ADMIN (plataforma): auditoría CU-01/CU-03
+ *   /administration/*                    sección operativa de staff (futuros CU)
+ *   /home, /demo-items, /establishments  staff autenticado de cualquier rol
+ *
+ * El guard de rol es UX: la autorización real la aplica el backend (403).
  */
 export const routes: Routes = [
   {
+    path: 'login',
+    loadComponent: () => import('./features/login/ui/login').then((m) => m.Login),
+  },
+  {
+    path: 'empresa/:tenantSlug/login',
+    loadComponent: () => import('./features/login/ui/login').then((m) => m.Login),
+  },
+  {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'home',
+    redirectTo: 'login',
   },
   {
-    path: 'demo-items',
-    loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
+    // Shell de plataforma: exclusivo del SUPER_ADMIN (CU-01/CU-03).
+    path: 'admin',
+    canActivate: [roleGuard('SUPER_ADMIN')],
+    loadComponent: () => import('./layout/admin-shell').then((m) => m.AdminShell),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/administration/dashboard/ui/dashboard').then((m) => m.AdminDashboard),
+      },
+      {
+        path: 'tenants',
+        loadComponent: () =>
+          import('./features/administration/tenants/ui/tenant-list').then((m) => m.TenantList),
+      },
+      {
+        path: 'tenants/new',
+        loadComponent: () =>
+          import('./features/administration/tenant-registration/ui/tenant-registration').then(
+            (m) => m.TenantRegistration,
+          ),
+      },
+      {
+        path: 'tenants/:tenantId',
+        loadComponent: () =>
+          import('./features/administration/tenants/ui/tenant-detail').then((m) => m.TenantDetail),
+      },
+      {
+        path: 'settings',
+        data: { title: STRINGS.shell.nav.settings },
+        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+      },
+      {
+        path: 'profile',
+        data: { title: STRINGS.shell.nav.profile },
+        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+      },
+    ],
   },
   {
-    path: 'establishments',
-    loadComponent: () =>
-      import('./features/administration/establishments/ui/establishments').then(
-        (m) => m.Establishments,
-      ),
-  },
-  {
-    path: 'home',
-    loadComponent: () => import('./features/home/home').then((m) => m.Home),
+    // Shell de staff: topbar + sidebar para las secciones operativas del tenant
+    // (Inicio, Establecimientos, Pisos/sectores, Demo). Todo bajo authGuard.
+    path: '',
+    canActivate: [authGuard],
+    loadComponent: () => import('./layout/staff-shell').then((m) => m.StaffShell),
+    children: [
+      {
+        path: 'home',
+        loadComponent: () => import('./features/home/ui/home').then((m) => m.Home),
+      },
+      {
+        // Secciones del roadmap sin caso de uso todavía: placeholder honesto
+        // hasta que exista la feature real (mismo patrón que /admin/settings).
+        path: 'users',
+        data: { title: STRINGS.staffShell.nav.users },
+        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+      },
+      {
+        path: 'reports',
+        data: { title: STRINGS.staffShell.nav.reports },
+        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+      },
+      {
+        // Establecimientos (CU-04): staff de un tenant (ADMIN+, con contexto tenant).
+        path: 'establishments',
+        loadComponent: () =>
+          import('./features/administration/establishments/ui/establishments').then(
+            (m) => m.Establishments,
+          ),
+      },
+      {
+        // CU-05 (MAP-67/MAP-68) + HU-2.03: asistente de configuración del espacio.
+        // Paso 1 (establecimiento) y paso 2 (pisos/sectores) comparten el store
+        // de la ruta; el establishmentId viaja en la URL del paso 2.
+        path: 'spaces',
+        children: [
+          {
+            path: 'setup',
+            loadComponent: () =>
+              import('./features/spaces/ui/wizard-establishment').then(
+                (m) => m.WizardEstablishmentComponent,
+              ),
+          },
+          {
+            path: 'floors',
+            pathMatch: 'full',
+            redirectTo: 'setup',
+          },
+          {
+            path: 'floors/:establishmentId',
+            loadComponent: () =>
+              import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
+          },
+          {
+            path: 'floors/:floorId/sectors',
+            loadComponent: () =>
+              import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
+          },
+          {
+            path: 'summary/:establishmentId',
+            loadComponent: () =>
+              import('./features/spaces/ui/wizard-summary').then((m) => m.WizardSummaryComponent),
+          },
+          {
+            // Plantillas de elementos HU-4.02 (MAP-191).
+            path: 'templates',
+            loadComponent: () =>
+              import('./features/spaces/ui/element-template-list-page').then(
+                (m) => m.ElementTemplateListPageComponent,
+              ),
+          },
+          {
+            // CU-06 (MAP-196): editor visual de elementos espaciales (Konva.js).
+            path: 'editor/:sectorId',
+            loadComponent: () =>
+              import('./features/map-editor/ui/map-editor-page').then(
+                (m) => m.MapEditorPageComponent,
+              ),
+          },
+          {
+            // HU-4.01: vista de planta — composición de sectores sobre el lienzo.
+            path: 'floors/:floorId/editor',
+            loadComponent: () =>
+              import('./features/map-editor/ui/floor-editor-page').then(
+                (m) => m.FloorEditorPageComponent,
+              ),
+          },
+        ],
+      },
+      {
+        path: 'reservations/new',
+        loadComponent: () =>
+          import('./features/reservations/ui/reservation-form').then((m) => m.ReservationForm),
+      },
+      {
+        path: 'demo-items',
+        loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
+      },
+    ],
   },
   {
     path: '**',

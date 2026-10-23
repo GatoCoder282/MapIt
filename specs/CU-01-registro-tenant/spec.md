@@ -53,25 +53,31 @@ define su vertical inicial y notifica al administrador indicado.
 
 ## 7. Criterios de aceptación
 
-- [ ] **CA-1:** Dado un formulario válido, cuando se envía, entonces se crea un tenant
+- [x] **CA-1:** Dado un formulario válido, cuando se envía, entonces se crea un tenant
       con un `TenantId` generado por el backend.
-- [ ] **CA-2:** Dado un tenant creado, cuando se consulta la base de datos, entonces sus
+- [x] **CA-2:** Dado un tenant creado, cuando se consulta la base de datos, entonces sus
       nombre, slug, vertical, estado y fechas están almacenados correctamente.
-- [ ] **CA-3:** Dado un registro exitoso, cuando el servicio de correo está disponible,
+- [x] **CA-3:** Dado un registro exitoso, cuando el servicio de correo está disponible,
       entonces el administrador recibe un correo de confirmación.
-- [ ] **CA-4:** Dado un slug existente, cuando se intenta registrar otro tenant con el
+- [x] **CA-4:** Dado un slug existente, cuando se intenta registrar otro tenant con el
       mismo slug, entonces la API responde `409` y conserva un solo registro.
-- [ ] **CA-5:** Dado un usuario del Tenant A, cuando consulta datos tenant-scoped del
+- [x] **CA-5:** Dado un usuario del Tenant A, cuando consulta datos tenant-scoped del
       Tenant B, entonces no recibe información del Tenant B.
 
 ## 8. Fuera de alcance
 
 - Autenticación JWT y autorización completa por rol; corresponde a CU-23/CU-24.
-- Creación del `app_user` administrador; corresponde a CU-23/CU-24.
+- Creación del `app_user` administrador; corresponde a CU-23/CU-24 y CU-25.
 - Listado, suspensión o reactivación de tenants; corresponde a CU-03.
 - Creación de establecimientos; corresponde a CU-04.
 - Reintentos, tokens de verificación u outbox de correo.
 - Pruebas manuales y pruebas de aceptación, que corresponden a QA.
+
+> **Actualización (2026-09-14):** el listado, detalle, edición del nombre y la
+> transición ACTIVE ↔ SUSPENDED se implementaron por adelantado junto con el
+> acceso SUPER_ADMIN (`roleGuard`, shell `/admin`, `GET/GET{id}/PATCH /tenants`).
+> Su especificación formal corresponde a CU-03, que queda pendiente de redacción;
+> las decisiones quedan registradas en las notas de ejecución de `tasks.md`.
 
 ## 9. Impacto multi-tenant
 

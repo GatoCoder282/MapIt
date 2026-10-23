@@ -37,6 +37,10 @@ class DemoItemIsolationIntegrationTest {
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
+    registry.add("spring.flyway.url", POSTGRES::getJdbcUrl);
+    registry.add("spring.flyway.user", POSTGRES::getUsername);
+    registry.add("spring.flyway.password", POSTGRES::getPassword);
+    registry.add("spring.flyway.placeholders.mapitAppDbPassword", () -> "test_app_password");
   }
 
   @BeforeEach
@@ -49,10 +53,12 @@ class DemoItemIsolationIntegrationTest {
     jdbcTemplate.execute("grant usage on schema public to mapit_rls_test");
     jdbcTemplate.execute("grant select on demo_item to mapit_rls_test");
     jdbcTemplate.update(
-        "insert into tenant (id, name, slug, status) values (?, ?, ?, ?) on conflict (id) do nothing",
+        "insert into tenant (id, name, slug, vertical, status) values (?, ?, ?, ?, ?)"
+            + " on conflict (id) do nothing",
         "other",
         "Otra empresa",
         "other",
+        "RESTAURANT",
         "ACTIVE");
     jdbcTemplate.update("delete from demo_item");
     jdbcTemplate.update(

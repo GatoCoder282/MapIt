@@ -30,6 +30,18 @@
       "expiresAt": "2026-12-31"
     },
     {
+      "name": "spaces.floors",
+      "description": "Gestión de pisos (CU-05 · MAP-69). Kill switch visible en la consola de staff.",
+      "type": "release",
+      "enabled": true
+    },
+    {
+      "name": "spaces.sectors",
+      "description": "Gestión de sectores dentro de pisos (CU-05 · MAP-70). Kill switch visible en la consola de staff.",
+      "type": "release",
+      "enabled": true
+    },
+    {
       "name": "vertical.hotel",
       "description": "Vertical Hotel: reservas por rango de fechas (CU-22). Permission toggle por tenant.",
       "type": "permission",

@@ -51,7 +51,8 @@ Todo esto lo verifica `bootstrap/src/test/java/com/mapit/architecture/Architectu
 El tenant sale del **claim `tenant` del JWT**, no de un header (falsificable).
 Doble capa de aislamiento:
 
-1. Hibernate `@TenantId` filtra automáticamente — ninguna query menciona `tenant_id`.
+1. Filtro explícito por `tenant_id` en todas las queries (las entidades antiguas
+   además llevan `@TenantId` de Hibernate; las nuevas solo la query explícita).
 2. PostgreSQL RLS filtra en la BD, incluso ante SQL nativo.
 
 Sin tenant en la sesión, las consultas devuelven **0 filas**. Falla cerrado, a propósito.

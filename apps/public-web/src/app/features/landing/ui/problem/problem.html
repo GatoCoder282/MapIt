@@ -1,0 +1,25 @@
+<section class="problem" id="como-funciona" aria-labelledby="problem-title">
+  <div class="problem-inner">
+    <!-- Cabecera de sección -->
+    <div class="section-header">
+      <div class="section-badge">
+        {{ strings.landing.problem.badge }}
+      </div>
+      <h2 id="problem-title" class="section-title">
+        {{ strings.landing.problem.titleA }}<br />
+        <span class="title-accent">{{ strings.landing.problem.titleB }}</span>
+      </h2>
+      <p class="section-description">{{ strings.landing.problem.description }}</p>
+    </div>
+
+    <!-- Comparativa de herramientas en grid adaptable -->
+    <div class="problem-cards" role="list">
+      @for (card of strings.landing.problem.cards; track card.title) {
+        <article class="problem-card" role="listitem">
+          <h3 class="card-title">{{ card.title }}</h3>
+          <p class="card-description">{{ card.description }}</p>
+        </article>
+      }
+    </div>
+  </div>
+</section>

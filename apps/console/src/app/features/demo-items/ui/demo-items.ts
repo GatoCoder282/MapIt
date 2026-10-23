@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { STRINGS } from '../../../core/strings';
 import { DemoItemsStore } from '../model/demo-items-store';
 
 /** Pantalla de demostración con alta, consulta, edición y eliminación. */
@@ -12,11 +13,13 @@ import { DemoItemsStore } from '../model/demo-items-store';
     <main class="page">
       <header class="page-header">
         <div>
-          <p class="eyebrow">MapIt · prueba de integración</p>
-          <h1>Elementos de demostración</h1>
-          <p class="intro">CRUD completo conectado a Angular, Spring Boot y PostgreSQL.</p>
+          <p class="eyebrow">{{ strings.demoItems.eyebrow }}</p>
+          <h1>{{ strings.demoItems.title }}</h1>
+          <p class="intro">{{ strings.demoItems.intro }}</p>
         </div>
-        <button class="secondary" type="button" (click)="store.startNew()">Nuevo elemento</button>
+        <button class="secondary" type="button" (click)="store.startNew()">
+          {{ strings.demoItems.newItem }}
+        </button>
       </header>
 
       @if (store.error(); as error) {
@@ -27,29 +30,41 @@ import { DemoItemsStore } from '../model/demo-items-store';
         <article class="card form-card">
           <div class="card-heading">
             <div>
-              <p class="eyebrow">{{ store.isEditing() ? 'Edición' : 'Alta' }}</p>
-              <h2>{{ store.isEditing() ? 'Editar elemento' : 'Crear elemento' }}</h2>
+              <p class="eyebrow">
+                {{
+                  store.isEditing()
+                    ? strings.demoItems.form.eyebrowEdit
+                    : strings.demoItems.form.eyebrowNew
+                }}
+              </p>
+              <h2>
+                {{
+                  store.isEditing()
+                    ? strings.demoItems.form.titleEdit
+                    : strings.demoItems.form.titleNew
+                }}
+              </h2>
             </div>
           </div>
 
           <label>
-            Nombre
+            {{ strings.demoItems.form.nameLabel }}
             <input
               #name
               [value]="store.draft().name"
               maxlength="120"
-              placeholder="Ej. Mesa terraza"
+              [placeholder]="strings.demoItems.form.namePlaceholder"
               (input)="store.setName(name.value)"
             />
           </label>
 
           <label>
-            Descripción
+            {{ strings.demoItems.form.descriptionLabel }}
             <textarea
               #description
               [value]="store.draft().description"
               maxlength="500"
-              placeholder="Describe el elemento"
+              [placeholder]="strings.demoItems.form.descriptionPlaceholder"
               rows="4"
               (input)="store.setDescription(description.value)"
             ></textarea>
@@ -62,7 +77,7 @@ import { DemoItemsStore } from '../model/demo-items-store';
               [checked]="store.draft().active"
               (change)="store.setActive(active.checked)"
             />
-            Elemento activo
+            {{ strings.demoItems.form.activeLabel }}
           </label>
 
           <div class="actions">
@@ -74,10 +89,10 @@ import { DemoItemsStore } from '../model/demo-items-store';
             >
               {{
                 store.saving()
-                  ? 'Guardando…'
+                  ? strings.demoItems.form.submitting
                   : store.isEditing()
-                    ? 'Guardar cambios'
-                    : 'Crear elemento aaaaaa'
+                    ? strings.demoItems.form.submitEdit
+                    : strings.demoItems.form.submit
               }}
             </button>
             @if (store.isEditing()) {
@@ -87,7 +102,7 @@ import { DemoItemsStore } from '../model/demo-items-store';
                 [disabled]="store.saving()"
                 (click)="store.startNew()"
               >
-                Cancelar
+                {{ strings.demoItems.form.cancel }}
               </button>
             }
           </div>
@@ -96,16 +111,16 @@ import { DemoItemsStore } from '../model/demo-items-store';
         <article class="card list-card">
           <div class="card-heading">
             <div>
-              <p class="eyebrow">Consulta</p>
-              <h2>Elementos guardados</h2>
+              <p class="eyebrow">{{ strings.demoItems.list.eyebrow }}</p>
+              <h2>{{ strings.demoItems.list.title }}</h2>
             </div>
             <span class="count">{{ store.items().length }}</span>
           </div>
 
           @if (store.loading()) {
-            <p class="empty">Cargando elementos…</p>
+            <p class="empty">{{ strings.demoItems.list.loading }}</p>
           } @else if (store.items().length === 0) {
-            <p class="empty">Todavía no hay elementos. Crea el primero.</p>
+            <p class="empty">{{ strings.demoItems.list.empty }}</p>
           } @else {
             <div class="items">
               @for (item of store.items(); track item.id) {
@@ -114,11 +129,16 @@ import { DemoItemsStore } from '../model/demo-items-store';
                     <div class="item-title">
                       <strong>{{ item.name }}</strong>
                       <span [class.inactive]="!item.active">{{
-                        item.active ? 'Activo' : 'Inactivo'
+                        item.active
+                          ? strings.demoItems.list.activeBadge
+                          : strings.demoItems.list.inactiveBadge
                       }}</span>
                     </div>
-                    <p>{{ item.description || 'Sin descripción' }}</p>
-                    <small>Actualizado {{ item.updatedAt | date: 'short' }}</small>
+                    <p>{{ item.description || strings.demoItems.list.noDescription }}</p>
+                    <small
+                      >{{ strings.demoItems.list.updatedPrefix }}
+                      {{ item.updatedAt | date: 'short' }}</small
+                    >
                   </div>
                   <div class="row-actions">
                     <button
@@ -127,7 +147,7 @@ import { DemoItemsStore } from '../model/demo-items-store';
                       [disabled]="store.saving()"
                       (click)="store.edit(item)"
                     >
-                      Editar
+                      {{ strings.demoItems.list.edit }}
                     </button>
                     <button
                       class="danger"
@@ -135,7 +155,7 @@ import { DemoItemsStore } from '../model/demo-items-store';
                       [disabled]="store.saving()"
                       (click)="store.remove(item.id)"
                     >
-                      Eliminar
+                      {{ strings.demoItems.list.remove }}
                     </button>
                   </div>
                 </div>
@@ -358,4 +378,5 @@ import { DemoItemsStore } from '../model/demo-items-store';
 })
 export class DemoItems {
   protected readonly store = inject(DemoItemsStore);
+  protected readonly strings = STRINGS;
 }

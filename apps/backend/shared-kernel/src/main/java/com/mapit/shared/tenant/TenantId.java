@@ -1,10 +1,13 @@
 package com.mapit.shared.tenant;
 
 import java.util.Objects;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
  * Identificador de un tenant (empresa) de la plataforma.
+ *
+ * <p>Mantiene el contexto del tenant tipado en todas las capas.
  *
  * <p>Es un value object en vez de un {@code String} para que el compilador impida
  * confundirlo con cualquier otro identificador de texto. Ver plan §12 (multi-tenant).
@@ -24,6 +27,11 @@ public record TenantId(String value) {
 
   public static TenantId of(String value) {
     return new TenantId(value);
+  }
+
+  /** Genera un identificador opaco que no depende de los datos proporcionados por el cliente. */
+  public static TenantId generate() {
+    return new TenantId(UUID.randomUUID().toString());
   }
 
   @Override

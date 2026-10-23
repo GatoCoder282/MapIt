@@ -1,3 +1,4 @@
+import { Logger, type LogLevel } from '@mapit/logging';
 import {
   inject,
   Injectable,
@@ -25,6 +26,7 @@ export interface RuntimeConfig {
   readonly unleashProxyUrl: string;
   readonly unleashClientKey: string;
   readonly environment: string;
+  readonly logLevel?: LogLevel;
 }
 
 const CONFIG_POR_DEFECTO: RuntimeConfig = {
@@ -40,6 +42,7 @@ export const RUNTIME_CONFIG = new InjectionToken<RuntimeConfig>('mapit.runtime-c
 @Injectable({ providedIn: 'root' })
 export class RuntimeConfigStore {
   private readonly http = inject(HttpClient);
+  private readonly logger = inject(Logger);
   private readonly estado = signal<RuntimeConfig>(CONFIG_POR_DEFECTO);
 
   readonly config = this.estado.asReadonly();
@@ -50,12 +53,12 @@ export class RuntimeConfigStore {
         this.http.get<Partial<RuntimeConfig>>('/assets/config.json'),
       );
       this.estado.set({ ...CONFIG_POR_DEFECTO, ...cargada });
+      this.logger.configure(this.config());
     } catch {
       // Sin config.json la app sigue arrancando con los valores por defecto.
       // Es lo correcto en desarrollo: un archivo ausente no debe romper el arranque.
-      console.warn(
-        '[MapIt] No se encontró /assets/config.json; usando la configuración por defecto.',
-      );
+      this.logger.configure(this.config());
+      this.logger.log('WARN', 'config.fallback');
     }
   }
 }

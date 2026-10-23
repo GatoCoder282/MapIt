@@ -1,6 +1,7 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+﻿import { Injectable, computed, inject, signal } from '@angular/core';
 import type { DemoItem, DemoItemRequest } from '@mapit/api-client';
 import { finalize } from 'rxjs';
+import { STRINGS } from '../../../core/strings';
 import { DemoItemsApi } from '../data/demo-items-api';
 
 export interface DemoItemDraft {
@@ -45,7 +46,7 @@ export class DemoItemsStore {
       .pipe(finalize(() => this.loadingState.set(false)))
       .subscribe({
         next: (items) => this.itemsState.set(items),
-        error: () => this.errorState.set('No se pudieron cargar los elementos.'),
+        error: () => this.errorState.set(STRINGS.demoItems.errors.load),
       });
   }
 
@@ -81,7 +82,7 @@ export class DemoItemsStore {
     const draft = this.draft();
     const name = draft.name.trim();
     if (!name) {
-      this.errorState.set('El nombre es obligatorio.');
+      this.errorState.set(STRINGS.demoItems.errors.nameRequired);
       return;
     }
 
@@ -105,7 +106,7 @@ export class DemoItemsStore {
         );
         this.startNew();
       },
-      error: () => this.errorState.set('No se pudo guardar el elemento.'),
+      error: () => this.errorState.set(STRINGS.demoItems.errors.save),
     });
   }
 
@@ -122,7 +123,7 @@ export class DemoItemsStore {
             this.startNew();
           }
         },
-        error: () => this.errorState.set('No se pudo eliminar el elemento.'),
+        error: () => this.errorState.set(STRINGS.demoItems.errors.remove),
       });
   }
 }

@@ -1,0 +1,78 @@
+<section class="realtime-section" id="tiempo-real" aria-labelledby="realtime-title">
+  <div class="realtime-inner">
+    <div class="realtime-header">
+      <div class="section-badge">
+        {{ strings.landing.realtime.badge }}
+      </div>
+      <h2 id="realtime-title" class="section-title">{{ strings.landing.realtime.title }}</h2>
+      <p class="section-subtitle">{{ strings.landing.realtime.subtitle }}</p>
+    </div>
+
+    <div class="devices-showcase">
+      <!-- Tablet (Recepción) -->
+      <div class="device-mockup device-tablet">
+        <div class="device-screen">
+          <div class="mock-ui">
+            <div class="mock-header"></div>
+            <div class="mock-sidebar"></div>
+            <div class="mock-content">
+              <div class="mock-table mt-available"></div>
+              <div class="mock-table mt-occupied"></div>
+              <div class="mock-table mt-reserved"></div>
+            </div>
+          </div>
+        </div>
+        <div class="device-label">{{ devices[0] }}</div>
+      </div>
+
+      <!-- Arrow -->
+      <div class="sync-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </div>
+
+      <!-- Desktop (Administrador) -->
+      <div class="device-mockup device-desktop">
+        <div class="device-screen">
+          <div class="mock-ui">
+            <div class="mock-header"></div>
+            <div class="mock-sidebar"></div>
+            <div class="mock-content">
+              <div class="mock-table mt-available"></div>
+              <div class="mock-table mt-occupied"></div>
+              <div class="mock-table mt-reserved"></div>
+              <div class="mock-table mt-available"></div>
+            </div>
+          </div>
+        </div>
+        <div class="device-label">{{ devices[1] }}</div>
+      </div>
+
+      <!-- Arrow -->
+      <div class="sync-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </div>
+
+      <!-- Mobile (Operador) -->
+      <div class="device-mockup device-mobile">
+        <div class="device-screen">
+          <div class="mock-ui">
+            <div class="mock-header"></div>
+            <div class="mock-content">
+              <div class="mock-table mt-available"></div>
+              <div class="mock-table mt-occupied"></div>
+            </div>
+          </div>
+        </div>
+        <div class="device-label">{{ devices[2] }}</div>
+      </div>
+    </div>
+
+    <div class="realtime-footer">
+      <p class="realtime-notice">{{ strings.landing.realtime.footer }}</p>
+    </div>
+  </div>
+</section>

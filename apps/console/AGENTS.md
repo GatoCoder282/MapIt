@@ -43,11 +43,27 @@ El ViewModel usa `signal`, `computed` y `linkedSignal`. **No** `BehaviorSubject`
 
 Las reglas 2-8 las aplica ESLint: si las rompes, `pnpm check` se pone rojo.
 
+## Wizard de spaces (estado entre pasos)
+
+El asistente de configuración (alta de establecimiento → pisos/sectores) es
+**multi-ruta**: `spaces/setup` (paso 1) y `spaces/floors/:establishmentId` (paso 2).
+El `establishmentId` viaja en la URL (activo el `withComponentInputBinding()` del
+router), no en un store efímero: así sobrevive a refresco y atrás/adelante.
+`SpacesStore` es `providedIn: 'root'` y lo comparten ambos pasos; el paso 2 sin id
+redirige al paso 1. No añadas parámetros a mano ni defaults ocultos.
+
 ## Librerías disponibles
 
 `@mapit/ui-kit` (design system) · `@mapit/api-client` (generado del contrato) ·
 `@mapit/auth` (JWT) · `@mapit/feature-flags` · `@mapit/realtime` (STOMP) ·
 `@mapit/map-engine` (puerto del mapa)
+
+## Patrones de dashboard
+
+`apps/console/design/dashboard-patterns.md` — kit reutilizable de patrones para
+pantallas de datos (KPI con sparkline, total del header, pie con delta, selector de
+rango, leyenda multi-serie, donut, barras agrupadas, quick actions). Se aplica en
+`features/home/` y es la referencia al construir otro dashboard de la consola.
 
 ## Configuración
 

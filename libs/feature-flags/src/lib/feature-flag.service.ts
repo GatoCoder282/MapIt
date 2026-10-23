@@ -1,3 +1,4 @@
+import { Logger } from '@mapit/logging';
 import { computed, effect, inject, Injectable, signal, type Signal } from '@angular/core';
 
 import { FEATURE_FLAG_CONFIG } from './feature-flag.config';
@@ -23,6 +24,8 @@ export class FeatureFlagService {
   // arranque, antes de que los interceptores de auth estén configurados, y no
   // debe arrastrar el token de sesión hacia el proxy de flags.
   private readonly config = inject(FEATURE_FLAG_CONFIG);
+  private readonly logger = inject(Logger);
+  private degraded = false;
 
   /** Estado actual. Arranca con los valores por defecto del catálogo. */
   private readonly estado = signal<Readonly<Record<string, boolean>>>({ ...FLAGS_POR_DEFECTO });
@@ -32,6 +35,8 @@ export class FeatureFlagService {
   readonly listo = this.sincronizado.asReadonly();
 
   constructor() {
+    // Sin proxy configurado se conservan los valores del catálogo, sin sondeo.
+    if (!this.config.proxyUrl) return;
     void this.refrescar();
 
     // Sondeo periódico: es así como una flag apagada en la UI de Unleash llega
@@ -47,9 +52,22 @@ export class FeatureFlagService {
    * Estado de una flag como Signal.
    *
    * Uso en plantilla:  `@if (flags.isEnabled('payments.qr')()) { … }`
+   *
+   * HU-4.01: el computed se CACHEA por clave. Devolver uno nuevo por llamada
+   * funciona en la primera evaluación, pero rompe la reactividad zoneless del
+   * template cuando el valor llega después del primer render (el enlace
+   * vista → computed → estado se pierde entre instancias y la rama del @if
+   * no vuelve a evaluarse: la vista de planta quedaba vacía pese a la flag ON).
    */
+  private readonly cache = new Map<FeatureFlagKey, Signal<boolean>>();
+
   isEnabled(flag: FeatureFlagKey): Signal<boolean> {
-    return computed(() => this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false);
+    let sig = this.cache.get(flag);
+    if (!sig) {
+      sig = computed(() => this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false);
+      this.cache.set(flag, sig);
+    }
+    return sig;
   }
 
   /** Lectura puntual, para lógica imperativa (guards, interceptores). */
@@ -70,18 +88,15 @@ export class FeatureFlagService {
 
       this.estado.set(mapa);
       this.sincronizado.set(true);
-    } catch (error) {
+      if (this.degraded) this.logger.log('INFO', 'flags.recovered');
+      this.degraded = false;
+    } catch {
       // FALLA ABIERTO hacia los valores por defecto, deliberadamente.
       // Que el servidor de flags esté caído no puede tumbar la aplicación:
       // sería convertir una herramienta de mitigación de incidentes en la
       // causa de uno. Ver plan §9.
-      if (!this.sincronizado()) {
-        console.warn(
-          '[MapIt] No se pudo contactar al servidor de feature flags; ' +
-            'se usan los valores por defecto del catálogo.',
-          error,
-        );
-      }
+      if (!this.degraded) this.logger.log('WARN', 'flags.degraded');
+      this.degraded = true;
     }
   }
 }

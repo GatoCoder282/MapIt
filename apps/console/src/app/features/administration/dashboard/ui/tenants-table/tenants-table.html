@@ -1,0 +1,189 @@
+<header class="panel-head">
+  <span class="panel-icon" aria-hidden="true"><svg lucideUsers></svg></span>
+  <div class="panel-title">
+    <h2>{{ strings.tableTitle }}</h2>
+    <p class="muted">{{ strings.tableSubtitle }}</p>
+  </div>
+
+  <div class="toolbar">
+    <label class="search">
+      <span class="sr-only">{{ strings.searchLabel }}</span>
+      <svg class="search-icon" lucideSearch aria-hidden="true"></svg>
+      <input
+        type="search"
+        name="busqueda"
+        autocomplete="off"
+        [placeholder]="strings.searchPlaceholder"
+        [attr.aria-label]="strings.searchLabel"
+        [value]="busqueda()"
+        (input)="busquedaCambiada.emit($any($event.target).value)"
+      />
+    </label>
+
+    <label class="filter">
+      <span class="sr-only">{{ strings.filterStatus }}</span>
+      <select [attr.aria-label]="strings.filterStatus" (change)="filtroCambiado.emit($any($event.target).value)">
+        @for (option of estadoFiltros; track option.value) {
+          <option [value]="option.value" [selected]="option.value === filtroEstado()">
+            {{ option.label }}
+          </option>
+        }
+      </select>
+    </label>
+
+    <button class="btn secondary" type="button" (click)="exportar.emit()">
+      <svg lucideDownload aria-hidden="true"></svg>
+      {{ strings.export }}
+    </button>
+
+    <a class="btn primary" routerLink="/admin/tenants/new">
+      <svg lucidePlus aria-hidden="true"></svg>
+      {{ strings.newTenant }}
+    </a>
+  </div>
+</header>
+
+@if (failed()) {
+  <!-- El error va en el bloque que falló: el resto del panel sigue visible. -->
+  <div class="state error" role="alert">
+    <p>{{ strings.tableError }}</p>
+    <button class="btn secondary" type="button" (click)="reintentar.emit()">
+      {{ strings.retry }}
+    </button>
+  </div>
+} @else if (loading()) {
+  <div class="skeleton-rows" role="status" aria-busy="true" [attr.aria-label]="strings.loading">
+    @for (fila of filasEsqueleto; track fila) {
+      <div class="skeleton-row"></div>
+    }
+  </div>
+} @else {
+  <div class="table-wrap">
+    <table>
+      <caption class="sr-only">
+        {{
+          strings.tableCaption
+        }}
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">{{ strings.columns.tenant }}</th>
+          <th scope="col">{{ strings.columns.vertical }}</th>
+          <th scope="col">{{ strings.columns.status }}</th>
+          <th scope="col">{{ strings.columns.createdAt }}</th>
+          <th scope="col">{{ strings.columns.updatedAt }}</th>
+          <th scope="col">
+            <span class="sr-only">{{ strings.columns.actions }}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (tenant of tenants(); track tenant.id) {
+          <tr>
+            <th scope="row" class="tenant-cell">
+              <span class="tenant-inner">
+                <span class="avatar" aria-hidden="true">
+                  @switch (tenant.vertical) {
+                    @case ('RESTAURANT') {
+                      <svg lucideUtensils></svg>
+                    }
+                    @case ('NIGHTCLUB') {
+                      <svg lucideMusic></svg>
+                    }
+                    @case ('EVENT_HALL') {
+                      <svg lucideCalendarDays></svg>
+                    }
+                    @case ('HOTEL') {
+                      <svg lucideBedDouble></svg>
+                    }
+                  }
+                </span>
+                <span class="tenant-text">
+                  <span class="tenant-name">{{ tenant.name }}</span>
+                  <span class="tenant-slug">{{ tenant.slug }}</span>
+                </span>
+              </span>
+            </th>
+            <td class="vertical-cell">
+              <span class="vertical-inner">
+                <span class="dot" [style.background]="mapitVerticalVar(tenant.vertical)" aria-hidden="true"></span>
+                {{ verticalLabel(tenant.vertical) }}
+              </span>
+            </td>
+            <td class="status-cell">
+              <span class="chip" [class.suspended]="tenant.status === 'SUSPENDED'">
+                {{ tenant.status === 'ACTIVE' ? strings.statusActive : strings.statusSuspended }}
+              </span>
+              @if (requiereCambio(tenant)) {
+                <span class="badge">
+                  <span class="badge-dot" aria-hidden="true"></span>
+                  {{ strings.badgeNoChanges }}
+                </span>
+              }
+            </td>
+            <td class="fecha">{{ alta(tenant) }}</td>
+            <td class="fecha">{{ ultimoCambio(tenant) }}</td>
+            <td class="actions">
+              <a
+                class="row-action"
+                [routerLink]="['/admin/tenants', tenant.id]"
+                [attr.aria-label]="detalleAria(tenant)"
+              >
+                <svg lucideEllipsis aria-hidden="true"></svg>
+              </a>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6" class="empty-cell">
+              <p class="empty-title">{{ strings.emptyTitle }}</p>
+              <p class="muted">{{ strings.empty }}</p>
+              @if (hayFiltros()) {
+                <button class="btn secondary" type="button" (click)="limpiarFiltros.emit()">
+                  {{ strings.clearFilters }}
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (tenants().length > 0) {
+    <nav class="pagination" [attr.aria-label]="strings.paginationLabel">
+      <span class="count">{{ rango() }}</span>
+      <div class="pager">
+        <button
+          class="page-btn arrow"
+          type="button"
+          [disabled]="!hayAnterior()"
+          [attr.aria-label]="strings.previous"
+          (click)="cambioPagina.emit(pagina() - 1)"
+        >
+          <svg lucideChevronLeft aria-hidden="true"></svg>
+        </button>
+        @for (num of paginas(); track num) {
+          <button
+            class="page-btn"
+            type="button"
+            [class.current]="num === pagina()"
+            [attr.aria-current]="num === pagina() ? 'page' : null"
+            (click)="cambioPagina.emit(num)"
+          >
+            {{ num + 1 }}
+          </button>
+        }
+        <button
+          class="page-btn arrow"
+          type="button"
+          [disabled]="!haySiguiente()"
+          [attr.aria-label]="strings.next"
+          (click)="cambioPagina.emit(pagina() + 1)"
+        >
+          <svg lucideChevronRight aria-hidden="true"></svg>
+        </button>
+      </div>
+    </nav>
+  }
+}

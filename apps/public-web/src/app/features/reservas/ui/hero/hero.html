@@ -1,0 +1,33 @@
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-inner">
+    <div class="hero-content" mapitReveal>
+      <h1 id="hero-title">
+        {{ strings.reservas.hero.titleA }} <span class="accent">{{ strings.reservas.hero.titleB }}</span>
+      </h1>
+      <p class="hero-subtitle">{{ strings.reservas.hero.subtitle }}</p>
+
+      <form class="search" role="search" (submit)="$event.preventDefault()">
+        <svg class="search-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path d="m10.8 10.8 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+        <input
+          type="search"
+          class="search-input"
+          placeholder="{{ strings.reservas.hero.searchPlaceholder }}"
+          [attr.aria-label]="strings.reservas.hero.searchAria"
+        />
+        <button type="submit" class="search-btn" [attr.aria-label]="strings.reservas.hero.searchSubmitAria">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <circle cx="7" cy="7" r="4.4" fill="none" stroke="currentColor" stroke-width="1.6" />
+            <path d="m10.4 10.4 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <div class="hero-visual" aria-hidden="true" mapitReveal [mapitRevealDelay]="120">
+      <img ngSrc="assets/img/imagen_inicio_reservas.png" width="612" height="385" priority alt="" class="hero-image" />
+    </div>
+  </div>
+</section>

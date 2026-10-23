@@ -5,9 +5,10 @@
  */
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { ROOT, IS_WINDOWS, run, capture, die, loadEnv } from './_lib.mjs';
+import { ROOT, IS_WINDOWS, run, capture, die, loadEnv, applyJavaHome } from './_lib.mjs';
 
 loadEnv();
+applyJavaHome();
 
 const BACKEND = join(ROOT, 'apps', 'backend');
 const wrapper = join(BACKEND, IS_WINDOWS ? 'gradlew.bat' : 'gradlew');

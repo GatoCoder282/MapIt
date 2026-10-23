@@ -8,3 +8,17 @@
  * Se implementa en CU-09.
  */
 export const REALTIME_VERSION = '0.1.0';
+
+export {
+  REALTIME_CONFIG,
+  REALTIME_STOMP_CLIENT_FACTORY,
+  RealtimeClient,
+  provideRealtime,
+  type RealtimeConfig,
+  type RealtimeConnectionState,
+  type RealtimeEventEnvelope,
+  type SpaceElementState,
+  type SpaceElementStatePayload,
+  type StompClientFactory,
+  type StompClientLike,
+} from './realtime';

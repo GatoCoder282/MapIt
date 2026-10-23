@@ -1,0 +1,64 @@
+:host {
+  display: block;
+}
+
+.business-types {
+  padding: 80px 24px;
+  background: var(--mapit-color-surface);
+}
+
+.section-inner {
+  max-width: 1200px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 600px;
+}
+
+.section-badge {
+  display: block;
+  font-family: var(--mapit-font-sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mapit-color-accent);
+}
+
+.section-title {
+  margin: 0;
+  font-family: var(--mapit-font-display);
+  font-size: clamp(26px, 3.2vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--mapit-color-text);
+}
+
+.section-subtitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--mapit-color-text-muted);
+}
+
+/* Visual de Tenants */
+.tenants-visual {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.tenants-img {
+  width: 100%;
+  max-width: 1100px;
+  height: auto;
+  border-radius: var(--mapit-radius-lg);
+  display: block;
+}

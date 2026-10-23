@@ -30,6 +30,10 @@ servers:
     description: Relativo (contenedor)
 
 tags:
+  - name: auth
+    description: Autenticación del staff de cada tenant
+  - name: users
+    description: Alta de usuarios de staff (CU-25)
   - name: health
     description: Estado del servicio
   - name: tenants
@@ -42,10 +46,242 @@ tags:
     description: Establecimientos de un tenant (CU-04)
   - name: spaces
     description: Gestión de pisos y sectores (CU-05)
+  - name: operations
+    description: Operación en vivo de elementos espaciales (CU-09)
+  - name: templates
+    description: Plantillas de configuración de elementos espaciales (CU-07 / HU-4.02)
+  - name: people
+    description: Clientes del tenant usados en reservas (CU-11)
+  - name: reservations
+    description: Reservas internas asociadas a clientes y elementos espaciales (CU-12)
+  - name: public-availability
+    description: Consulta anónima de disponibilidad para el portal público (HU-6.01)
 
 paths:
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/availability:
+    get:
+      tags: [public-availability]
+      summary: Consultar disponibilidad pública
+      description: |
+        Devuelve los elementos activos, reservables y operativamente disponibles que no
+        tienen una reserva vigente durante la fecha local del establecimiento. El día se
+        interpreta con la zona horaria configurada en el establecimiento. No requiere JWT.
+      operationId: findPublicAvailability
+      security: []
+      parameters:
+        - name: tenantSlug
+          in: path
+          required: true
+          description: Slug público del tenant.
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 63
+            pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+        - name: establishmentSlug
+          in: path
+          required: true
+          description: Slug del establecimiento dentro del tenant.
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 63
+            pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+        - name: date
+          in: query
+          required: true
+          description: Día local del establecimiento en formato ISO 8601 (YYYY-MM-DD).
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Disponibilidad del día solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAvailability"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /establishments/{establishmentId}/reservations:
+    parameters:
+      - name: establishmentId
+        in: path
+        required: true
+        description: Establecimiento del tenant donde se crea la reserva.
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [reservations]
+      summary: Crear una reserva interna
+      description: |
+        Crea una reserva en estado `CREATED` para uno o más elementos disponibles. El
+        tenant y el actor se obtienen exclusivamente del JWT. Requiere rol ADMIN, MANAGER
+        o STAFF.
+      operationId: createReservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationCreateRequest"
+      responses:
+        "201":
+          description: Reserva creada con todas sus asociaciones
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /reservations:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [reservations]
+      summary: Listar las reservas del tenant
+      description: |
+        Devuelve todas las reservas del tenant autenticado, de la más reciente a la más
+        antigua. El tenant se obtiene exclusivamente del JWT: nunca viaja en la petición.
+
+        **Techo conocido:** la respuesta es un array plano, sin paginación. Está pensada
+        para métricas agregadas (totales, crecimiento semanal, reparto por estado). Si un
+        tenant llega a acumular cientos de reservas, hará falta una variante paginada.
+      operationId: listReservations
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Reservas del tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reservation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /people:
+    get:
+      tags: [people]
+      summary: Buscar clientes
+      description: |
+        Busca personas activas del tenant autenticado por nombre, correo o teléfono.
+        El tenant se obtiene exclusivamente del JWT.
+      operationId: searchPeople
+      parameters:
+        - name: query
+          in: query
+          description: Texto opcional para filtrar por nombre, correo o teléfono.
+          schema:
+            type: string
+            maxLength: 120
+      responses:
+        "200":
+          description: Personas activas que coinciden con la búsqueda
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Person"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [people]
+      summary: Registrar cliente
+      description: |
+        Registra una persona dentro del tenant autenticado. El identificador, el tenant y
+        la auditoría los decide el backend.
+      operationId: createPerson
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonCreateRequest"
+      responses:
+        "201":
+          description: Persona registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /auth/login:
+    post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [auth]
+      summary: Iniciar sesión
+      description: |
+        Verifica las credenciales del usuario dentro del tenant indicado y emite
+        un token de acceso JWT. Todos los rechazos de credenciales usan el mismo
+        mensaje para no revelar si existen el tenant o la cuenta.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Credenciales válidas y token emitido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /health:
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [health]
       summary: Estado del servicio
       description: Endpoint de humo. Sirve para verificar que el contrato de punta a punta funciona.
@@ -53,6 +289,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: El servicio está operativo
           content:
             application/json:
@@ -60,7 +299,61 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 
   /tenants:
+    get:
+      tags: [tenants]
+      summary: Listar tenants de la plataforma
+      description: |
+        Operación exclusiva de SUPER_ADMIN. La tabla `tenant` es global de la
+        plataforma (sin `tenant_id` ni RLS, por diseño — ver ADR-0004): el
+        aislamiento multi-tenant NO aplica aquí y esta es la única sección de
+        la API que ve todos los tenants. El backend la protege con el rol, no
+        solo el frontend.
+      operationId: listTenants
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: search
+          in: query
+          description: Filtra por nombre o slug (contiene, sin distinguir mayúsculas).
+          schema:
+            type: string
+            maxLength: 120
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/TenantStatus"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Página de tenants
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [tenants]
       summary: Registrar un tenant
       description: |
@@ -77,6 +370,9 @@ paths:
               $ref: "#/components/schemas/TenantRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Tenant creado
           content:
             application/json:
@@ -93,8 +389,174 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /tenants/{tenantId}:
+    parameters:
+      - name: tenantId
+        in: path
+        required: true
+        description: Identificador del tenant (cadena generada por el backend).
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 63
+
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [tenants]
+      summary: Consultar el detalle de un tenant
+      description: Solo SUPER_ADMIN. 404 si no existe.
+      operationId: getTenant
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Tenant solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [tenants]
+      summary: Editar un tenant
+      description: |
+        Edición parcial: solo `name` y `status`. `slug` y `vertical` no están
+        en el esquema a propósito: son inmutables por dominio (el slug vive en
+        URLs públicas de login y reserva; la vertical se asigna al crear y
+        condiciona el onboarding). Enviarlos queda fuera del esquema.
+
+        `status` implementa el ciclo de vida de CU-03: ACTIVE ↔ SUSPENDED.
+        NO existe DELETE: el negocio suspende, no elimina.
+      operationId: updateTenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantUpdateRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Tenant actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /auth/activate:
+    post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [auth]
+      summary: Activar la cuenta del primer ADMIN de un tenant
+      description: |
+        Onboarding de CU-25: el invitado abre el enlace que recibió por correo y
+        define su contraseña. Público (aún no existe sesión). Jamás viaja una
+        contraseña temporal ni un JWT: el enlace lleva un token opaco aleatorio
+        de un solo uso con caducidad de 24 h; en el servidor solo se guarda su
+        hash SHA-256.
+
+        Errores específicos (todos `application/problem+json`):
+        - `invitation-invalid`   — el token no existe o está mal formado
+        - `invitation-expired`   — el token existe pero caducó
+        - `invitation-used`      — el token ya se consumió
+        - `password-mismatch`    — password y su confirmación difieren
+        - `password-weak`        — no cumple las reglas de contraseña
+      operationId: activateAdmin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivationRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Cuenta ADMIN creada y activa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /users:
+    post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [users]
+      summary: Crear un usuario de staff
+      description: |
+        Creación de cuentas de staff (CU-25 / MAP-185). Autorización exacta:
+
+        - **SUPER_ADMIN**: puede crear `ADMIN`, `MANAGER` o `STAFF`, y debe indicar
+          el tenant destino con `tenantSlug` (su sesión pertenece al tenant técnico
+          `platform`, no a un negocio).
+        - **ADMIN**: solo puede crear `STAFF` y siempre dentro de su propio tenant;
+          si envía `tenantSlug` distinto del suyo, recibe 403.
+        - **MANAGER** y **STAFF**: 403.
+
+        El `tenant_id` nunca se acepta como dato del cliente: sale del JWT (o del
+        slug indicado por el SUPER_ADMIN, que sí puede operar cross-tenant).
+        El correo es único por tenant; un duplicado responde 409. Nunca se devuelve
+        ni persiste una contraseña temporal en claro, ni se genera un JWT aquí.
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Usuario creado y activo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /feature-flags:
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [feature-flags]
       summary: Flags evaluadas para el usuario y tenant actuales
       description: |
@@ -108,6 +570,9 @@ paths:
       operationId: getFeatureFlags
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Mapa de flag → habilitada
           content:
             application/json:
@@ -118,6 +583,8 @@ paths:
 
   /demo-items:
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Listar elementos de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -125,6 +592,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elementos del tenant de demostración
           content:
             application/json:
@@ -136,6 +606,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Crear un elemento de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -149,6 +621,9 @@ paths:
               $ref: "#/components/schemas/DemoItemRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento creado
           content:
             application/json:
@@ -170,6 +645,8 @@ paths:
           format: uuid
 
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Obtener un elemento de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -177,6 +654,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento solicitado
           content:
             application/json:
@@ -188,6 +668,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Actualizar un elemento de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -201,6 +683,9 @@ paths:
               $ref: "#/components/schemas/DemoItemRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento actualizado
           content:
             application/json:
@@ -214,6 +699,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     delete:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [demo-items]
       summary: Eliminar un elemento de demostración
       description: Endpoint temporal para probar el flujo CRUD completo sin autenticación JWT.
@@ -221,6 +708,9 @@ paths:
       security: []
       responses:
         "204":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Elemento eliminado
         "404":
           $ref: "#/components/responses/NotFound"
@@ -233,6 +723,8 @@ paths:
   # con el adaptador `DemoTenantContext`. El tenant NUNCA viaja en el cuerpo.
   /establishments:
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Listar los establecimientos del tenant
       description: Devuelve solo los establecimientos vivos del tenant del contexto.
@@ -240,6 +732,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimientos del tenant
           content:
             application/json:
@@ -253,6 +748,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Registrar un establecimiento
       description: El identificador lo genera el backend; el tenant sale del contexto.
@@ -266,6 +763,9 @@ paths:
               $ref: "#/components/schemas/EstablishmentCreateRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimiento creado
           content:
             application/json:
@@ -291,6 +791,8 @@ paths:
           format: uuid
 
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Obtener un establecimiento
       description: Responde 404 si no existe o pertenece a otro tenant.
@@ -298,6 +800,9 @@ paths:
       security: []
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimiento solicitado
           content:
             application/json:
@@ -311,6 +816,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Actualizar un establecimiento
       description: |
@@ -327,6 +834,9 @@ paths:
               $ref: "#/components/schemas/EstablishmentUpdateRequest"
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimiento actualizado
           content:
             application/json:
@@ -344,6 +854,8 @@ paths:
           $ref: "#/components/responses/ServerError"
 
     delete:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [establishments]
       summary: Dar de baja un establecimiento
       description: |
@@ -353,11 +865,362 @@ paths:
       security: []
       responses:
         "204":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Establecimiento dado de baja
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Pisos (CU-05) ────────────────────────────────────────────────
+  # `security: []` es TEMPORAL, igual que en demo-items: la autenticación JWT
+  # llega en CU-23/CU-24 y hasta entonces el tenant se resuelve en el servidor
+  # con el adaptador `DemoTenantContext`. El tenant NUNCA viaja en el cuerpo.
+  /floors:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Listar todos los pisos del tenant
+      description: Devuelve todos los pisos del tenant actual (resuelto desde el JWT).
+      operationId: listFloors
+      security: [] # Temporary
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Lista de pisos del tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Floor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Crear un piso
+      description: Crea un nuevo piso para el tenant actual. El slug se autogenera y se valida su unicidad. Se asocia al establecimiento por defecto del tenant.
+      operationId: createFloorForTenant
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloorCreateRequest"
+      responses:
+        "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Piso creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Floor"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /establishments/{establishmentId}/floors:
+    parameters:
+      - name: establishmentId
+        in: path
+        required: true
+        description: Identificador del establecimiento
+        schema:
+          type: string
+          format: uuid
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Listar los pisos de un establecimiento
+      description: Devuelve todos los pisos asociados a un establecimiento específico.
+      operationId: listFloorsByEstablishment
+      security: [] # Temporary
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Lista de pisos para el establecimiento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Floor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Crear un piso
+      description: Crea un nuevo piso para un establecimiento específico. El slug se autogenera y se valida su unicidad.
+      operationId: createFloor
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloorCreateRequest"
+      responses:
+        "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Piso creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Floor"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /floors/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador del piso
+        schema:
+          type: string
+          format: uuid
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Obtener un piso
+      description: Devuelve un piso específico por su ID.
+      operationId: getFloor
+      security: [] # Temporary
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Piso solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Floor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Actualizar un piso
+      description: Actualiza un piso existente. El slug no se puede modificar.
+      operationId: updateFloor
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloorCreateRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Piso actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Floor"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Eliminar un piso
+      description: Elimina un piso (soft delete).
+      operationId: deleteFloor
+      security: [] # Temporary
+      responses:
+        "204":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Piso eliminado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Layout de planta (HU-4.01) ────────────────────────────────────────
+  # Lectura agregada y guardado por lotes de la planta: geometría del lienzo
+  # + colocación de sectores. La composición interna de cada sector viene
+  # en solo-lectura (misma fila; la edición interna es PUT /sectors/{id}/layout).
+  /floors/{floorId}/layout:
+    parameters:
+      - name: floorId
+        in: path
+        required: true
+        description: Identificador del piso cuyo layout se consulta
+        schema:
+          type: string
+          format: uuid
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Obtener el layout completo de una planta
+      description: |
+        Lectura agregada (RN-3): planta con su geometría de lienzo, sus sectores
+        colocados (colocación + dimensiones intrínsecas) y los elementos de cada
+        sector en solo-lectura. Sustituye el fan-out cliente piso→sectores→elementos.
+      operationId: getFloorLayout
+      security: [] # Temporary
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Layout de la planta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FloorLayoutResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # Si el piso no existe o es de otro tenant
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Guardar el layout de una planta (por lotes)
+      description: |
+        Guardado transaccional (RN-7): dimensiones del lienzo + colocaciones de
+        sectores en una sola operación. Cada recurso lleva el `updatedAt` que el
+        cliente observó al cargar; si alguna fila cambió debajo, responde 409 con
+        la lista de recursos en conflicto y no persiste nada.
+      operationId: saveFloorLayout
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloorLayoutUpdateRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Layout guardado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FloorLayoutResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Geometría inválida o sector fuera del lienzo
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict" # updatedAt base obsoleto (concurrencia optimista)
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /floors/{floorId}/sectors:duplicate:
+    parameters:
+      - name: floorId
+        in: path
+        required: true
+        description: Identificador del piso de destino
+        schema:
+          type: string
+          format: uuid
+    post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Duplicar un sector hacia esta planta
+      description: |
+        Reutilización como copia explícita (RN-5): crea un sector nuevo en esta
+        planta clonando nombre (derivado), capacidad y composición interna del
+        sector fuente con **identificadores nuevos** para cada elemento. No queda
+        enlace entre origen y copia. El sector fuente debe pertenecer al mismo
+        tenant; si no, 404 indistinguible.
+      operationId: duplicateSector
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SectorDuplicateRequest"
+      responses:
+        "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Sector duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectorLayoutResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # Piso destino o sector fuente inexistente/ajeno
+        "409":
+          $ref: "#/components/responses/Conflict" # slug derivado ya en uso
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -375,6 +1238,8 @@ paths:
           type: string
           format: uuid
     get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Listar los sectores de un piso
       description: Devuelve todos los sectores asociados a un piso específico.
@@ -382,6 +1247,9 @@ paths:
       security: [] # Temporary
       responses:
         "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Lista de sectores para el piso
           content:
             application/json:
@@ -396,6 +1264,8 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
     post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       tags: [spaces]
       summary: Crear un sector
       description: Crea un nuevo sector para un piso específico. El slug se autogenera y se valida su unicidad.
@@ -409,6 +1279,9 @@ paths:
               $ref: "#/components/schemas/SectorCreateRequest"
       responses:
         "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           description: Sector creado
           content:
             application/json:
@@ -425,7 +1298,521 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  # ── Elementos espaciales (HU-2.03 / CU-08) ────────────────────────────────
+  # `security: []` es TEMPORAL, igual que en establishments/floors/sectors: la
+  # autenticación JWT llega en CU-23/CU-24 y hasta entonces el tenant se resuelve con
+  # `DemoTenantContext`. El tenant NUNCA viaja en el cuerpo y el sector del path se
+  # re-verifica contra el tenant de la petición.
+  /sectors/{sectorId}/elements:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector al que pertenecen los elementos
+        schema:
+          type: string
+          format: uuid
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Listar los elementos espaciales de un sector
+      description: Devuelve solo los elementos vivos del sector, dentro del tenant actual.
+      operationId: listSpaceElementsBySector
+      security: [] # Temporary
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Lista de elementos del sector
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpaceElement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # If sectorId doesn't exist or is another tenant's
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Crear un elemento espacial
+      description: |
+        Registra un elemento dentro de un sector del tenant actual. El tipo debe ser
+        coherente con la vertical del establecimiento (`ROOM` solo en hotel, `SEAT` solo en
+        salón de eventos, el resto en cualquiera). Las coordenadas son relativas al sector
+        y no pueden ser negativas.
+      operationId: createSpaceElement
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceElementCreateRequest"
+      responses:
+        "201":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Elemento creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceElement"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Tipo/estado inválido, coords negativas, vertical incompatible
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound" # Si el sector no existe o es de otro tenant
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /sectors/{sectorId}/elements/{elementId}:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector al que pertenece el elemento
+        schema:
+          type: string
+          format: uuid
+      - name: elementId
+        in: path
+        required: true
+        description: Identificador del elemento espacial
+        schema:
+          type: string
+          format: uuid
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Obtener un elemento espacial
+      description: Responde 404 si no existe, está dado de baja o es de otro sector/tenant.
+      operationId: getSpaceElement
+      security: [] # Temporary
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Elemento solicitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceElement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Actualizar un elemento espacial
+      description: |
+        Reemplaza tipo y coordenadas (semántica PUT de reemplazo completo, como el resto
+        del proyecto). El estado no viaja aquí: su transición auditada es de HU-3.01.
+      operationId: updateSpaceElement
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceElementUpdateRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Elemento actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceElement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Eliminar un elemento espacial
+      description: |
+        Baja lógica del elemento (HU-4.01 lo expone; el dominio ya tenía
+        `softDelete`). Responde 409 si el elemento tiene reservas activas: la
+        identidad de una mesa vinculada a reservas es inviolable (RN-1).
+      operationId: deleteSpaceElement
+      security: [] # Temporary
+      responses:
+        "204":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Elemento eliminado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict" # Tiene reservas activas
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ── Layout de sector (HU-4.01) ─────────────────────────────────────────
+  # Guardado por lotes de la distribución interna: dimensiones del sector +
+  # geometría de sus elementos, transaccional y con concurrencia optimista.
+  /sectors/{sectorId}/layout:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector cuyo layout se guarda
+        schema:
+          type: string
+          format: uuid
+    put:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [spaces]
+      summary: Guardar el layout de un sector (por lotes)
+      description: |
+        Guardado transaccional de la distribución interna (RN-7): dimensiones
+        intrínsecas del sector + geometría de sus elementos. Nunca toca el
+        `state` operativo (RN-9). Cada recurso lleva su `updatedAt` observado;
+        conflicto → 409 con la lista de recursos que cambiaron.
+      operationId: saveSectorLayout
+      security: [] # Temporary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SectorLayoutUpdateRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Layout del sector guardado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectorLayoutResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest" # Geometría inválida o elemento fuera del sector
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /sectors/{sectorId}/elements/{elementId}/state:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector al que pertenece el elemento
+        schema:
+          type: string
+          format: uuid
+      - name: elementId
+        in: path
+        required: true
+        description: Identificador del elemento espacial cuyo estado se actualiza
+        schema:
+          type: string
+          format: uuid
+    patch:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [operations]
+      summary: Actualizar el estado operativo de un elemento espacial
+      description: |
+        Cambia el estado de un elemento vivo del tenant autenticado. El tenant se obtiene
+        exclusivamente del claim `tenant` del JWT. Un elemento inexistente, dado de baja,
+        de otro sector o de otro tenant responde siempre `404`. Una transición fuera de la
+        máquina de estados operativa responde `409` sin modificar ni auditar el elemento.
+      operationId: updateSpaceElementState
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceElementStateUpdateRequest"
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Estado actualizado o confirmado de forma idempotente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceElementStateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /sectors/{sectorId}/elements/{elementId}/state-history:
+    parameters:
+      - name: sectorId
+        in: path
+        required: true
+        description: Identificador del sector al que pertenece el elemento
+        schema:
+          type: string
+          format: uuid
+      - name: elementId
+        in: path
+        required: true
+        description: Identificador del elemento espacial cuyo historial se consulta
+        schema:
+          type: string
+          format: uuid
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [operations]
+      summary: Consultar el historial de estados de un elemento espacial
+      description: |
+        Devuelve la trazabilidad persistente del elemento, de la más reciente a la más
+        antigua. El tenant se obtiene exclusivamente del JWT y un elemento ajeno responde
+        `404`, igual que uno inexistente.
+      operationId: listSpaceElementStateChanges
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Historial de cambios del elemento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpaceElementStateChange"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /element-states/summary:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [operations]
+      summary: Resumen de los estados operativos de los elementos del tenant
+      description: |
+        Recuento agregado de los elementos espaciales vivos del tenant autenticado,
+        agrupados por su estado operativo, más el total. El tenant se obtiene
+        exclusivamente del claim `tenant` del JWT; los elementos dados de baja no se
+        cuentan. Las cinco claves de estado están siempre presentes (con 0 cuando no
+        hay elementos en ese estado) para que el cliente no trate claves ausentes.
+      operationId: summarizeSpaceElementStates
+      security: []
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Recuento de elementos por estado operativo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementStateSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ===== ELEMENT TEMPLATES (HU-4.02 / CU-07) =====
+
+  /element-templates:
+    get:
+      tags: [templates]
+      summary: Listar plantillas de elemento
+      description: |
+        Devuelve todas las plantillas activas del tenant autenticado, ordenadas por nombre.
+        El tenant se obtiene del claim `tenant` del JWT.
+      operationId: listElementTemplates
+      responses:
+        "200":
+          description: Lista de plantillas del tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ElementTemplate"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [templates]
+      summary: Crear plantilla de elemento
+      description: |
+        Crea una nueva plantilla con nombre y tipo. El nombre debe ser único dentro del tenant
+        (case-insensitive). Un nombre duplicado devuelve `409`.
+      operationId: createElementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElementTemplateCreateRequest"
+      responses:
+        "201":
+          description: Plantilla creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementTemplate"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /element-templates/{templateId}:
+    parameters:
+      - name: templateId
+        in: path
+        required: true
+        description: Identificador de la plantilla
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [templates]
+      summary: Obtener una plantilla
+      description: Responde 404 si no existe, está dada de baja o es de otro tenant.
+      operationId: getElementTemplate
+      responses:
+        "200":
+          description: Plantilla solicitada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementTemplate"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [templates]
+      summary: Actualizar una plantilla
+      description: |
+        Reemplaza nombre y tipo de la plantilla (PUT completo). Un nombre ya usado por otra
+        plantilla viva del tenant devuelve `409`.
+      operationId: updateElementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElementTemplateUpdateRequest"
+      responses:
+        "200":
+          description: Plantilla actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementTemplate"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [templates]
+      summary: Dar de baja una plantilla
+      description: |
+        Baja lógica: la plantilla deja de aparecer en el listado, pero su histórico
+        se conserva. No se puede deshacer.
+      operationId: deleteElementTemplate
+      responses:
+        "204":
+          description: Plantilla dada de baja
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
 components:
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: |
+        Identificador opcional de correlación de la petición. El servidor acepta
+        UUID de cualquier versión con formato hexadecimal 8-4-4-4-12 y los
+        normaliza a minúsculas; si falta o es inválido, genera otro sin rechazar
+        la petición. El esquema admite texto para permitir esa sustitución.
+        No autentica al cliente ni determina el tenant.
+      schema:
+        type: string
+      example: "c1b3ad60-64d2-4a6b-a94e-7a43251c3fab"
+
+  headers:
+    RequestId:
+      description: |
+        UUID en minúsculas de correlación aceptado o generado por el servidor, también en
+        respuestas de error. Disponible para el navegador mediante CORS.
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: "c1b3ad60-64d2-4a6b-a94e-7a43251c3fab"
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -437,6 +1824,329 @@ components:
         cliente podría falsificar).
 
   schemas:
+    PublicAvailability:
+      type: object
+      required: [establishmentId, date, elements]
+      additionalProperties: false
+      description: Disponibilidad pública mínima para un establecimiento y día local.
+      properties:
+        establishmentId:
+          type: string
+          format: uuid
+          readOnly: true
+        date:
+          type: string
+          format: date
+          readOnly: true
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicAvailabilityElement"
+
+    PublicAvailabilityElement:
+      type: object
+      required: [id, type]
+      additionalProperties: false
+      description: Proyección pública de un elemento espacial reservable.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM]
+
+    Reservation:
+      type: object
+      required:
+        - id
+        - establishmentId
+        - personId
+        - spaceElementIds
+        - startsAt
+        - endsAt
+        - status
+        - createdAt
+        - createdBy
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        establishmentId:
+          type: string
+          format: uuid
+        personId:
+          type: string
+          format: uuid
+        spaceElementIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        createdBy:
+          type: string
+          format: uuid
+          readOnly: true
+
+    ReservationCreateRequest:
+      type: object
+      required: [personId, spaceElementIds, startsAt, endsAt]
+      properties:
+        personId:
+          type: string
+          format: uuid
+        spaceElementIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    ReservationStatus:
+      type: string
+      enum: [CREATED, CONFIRMED, ACTIVE, RELEASED, CANCELLED]
+
+    Person:
+      type: object
+      required: [id, fullName, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        fullName:
+          type: string
+          maxLength: 120
+        email:
+          type: [string, "null"]
+          format: email
+          maxLength: 254
+        phone:
+          type: [string, "null"]
+          maxLength: 32
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        createdBy:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedBy:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+
+    PersonCreateRequest:
+      type: object
+      required: [fullName]
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: [string, "null"]
+          format: email
+          maxLength: 254
+        phone:
+          type: [string, "null"]
+          maxLength: 32
+
+    LoginRequest:
+      type: object
+      required: [tenantSlug, email, password]
+      properties:
+        tenantSlug:
+          type: string
+          pattern: "^[a-zA-Z0-9][a-zA-Z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+
+    LoginResponse:
+      type: object
+      required: [accessToken, tokenType, expiresAt, user]
+      properties:
+        accessToken:
+          type: string
+          readOnly: true
+        tokenType:
+          type: string
+          const: Bearer
+          readOnly: true
+        expiresAt:
+          type: string
+          format: date-time
+          readOnly: true
+        user:
+          $ref: "#/components/schemas/AuthenticatedUser"
+
+    AuthenticatedUser:
+      type: object
+      required: [id, tenantId, email, fullName, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenantId:
+          type: string
+          minLength: 2
+          maxLength: 63
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        fullName:
+          type: string
+          readOnly: true
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    CreateUserRequest:
+      type: object
+      required: [email, fullName, password, role]
+      properties:
+        tenantSlug:
+          type: string
+          description: |
+            Solo para SUPER_ADMIN: tenant destino. Para ADMIN/MANAGER/STAFF el
+            tenant sale del JWT y este campo se rechaza si no coincide.
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+        role:
+          type: string
+          description: Rol a crear. SUPER_ADMIN nunca puede crearse por API.
+          enum: [ADMIN, MANAGER, STAFF]
+
+    CreatedUser:
+      type: object
+      required: [id, tenantId, email, fullName, role, active, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenantId:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        fullName:
+          type: string
+          readOnly: true
+        role:
+          $ref: "#/components/schemas/UserRole"
+        active:
+          type: boolean
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ActivationRequest:
+      type: object
+      required: [tenantSlug, token, password, passwordConfirm]
+      properties:
+        tenantSlug:
+          type: string
+          description: |
+            Slug del tenant, incluido en el enlace del correo. Permite acotar la
+            búsqueda a un tenant bajo RLS real: un slug manipulado con un token
+            válido simplemente no encuentra la invitación (no hay bypass).
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+        token:
+          type: string
+          description: Token opaco del enlace de invitación; nunca se persiste en claro.
+          minLength: 32
+          maxLength: 200
+          writeOnly: true
+        password:
+          type: string
+          description: Contraseña elegida por el invitado. Reglas de CU-25.
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+        passwordConfirm:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+
+    ActivationResponse:
+      type: object
+      required: [tenantSlug, email]
+      properties:
+        tenantSlug:
+          type: string
+          readOnly: true
+          description: Slug del tenant activado, para redirigir a `/empresa/{slug}/login`.
+        email:
+          type: string
+          format: email
+          readOnly: true
+
+    UserRole:
+      type: string
+      enum: [SUPER_ADMIN, ADMIN, MANAGER, STAFF]
+
     HealthStatus:
       type: object
       required: [status, version]
@@ -489,9 +2199,7 @@ components:
         vertical:
           $ref: "#/components/schemas/BusinessVertical"
         status:
-          type: string
-          enum: [ACTIVE, SUSPENDED]
-          readOnly: true
+          $ref: "#/components/schemas/TenantStatus"
         createdAt:
           type: string
           format: date-time
@@ -520,6 +2228,43 @@ components:
           type: string
           format: email
           maxLength: 254
+
+    TenantStatus:
+      type: string
+      description: Ciclo de vida del tenant (CU-03). El negocio suspende; no hay borrado físico.
+      enum: [ACTIVE, SUSPENDED]
+
+    TenantPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tenant"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    TenantUpdateRequest:
+      type: object
+      description: |
+        Edición parcial (PATCH). Solo `name` y `status` son editables.
+        `slug` y `vertical` están ausentes deliberadamente: son inmutables
+        por dominio. Al menos un campo debe venir informado.
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        status:
+          $ref: "#/components/schemas/TenantStatus"
 
     DemoItem:
       type: object
@@ -593,6 +2338,10 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+        address:
+          type: string
+          description: Dirección física del establecimiento (opcional).
+          maxLength: 200
         timezone:
           type: string
           description: Identificador IANA de zona horaria.
@@ -632,6 +2381,10 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+        address:
+          type: string
+          description: Dirección física del establecimiento (opcional).
+          maxLength: 200
         timezone:
           type: string
           description: Si se omite, el backend aplica America/La_Paz.
@@ -654,14 +2407,80 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+        address:
+          type: [string, "null"]
+          description: Dirección física (null la borra).
+          maxLength: 200
         timezone:
           type: string
           maxLength: 64
           examples: ["America/La_Paz"]
 
+    Floor:
+      type: object
+      required: [id, name, slug, level, createdAt, updatedAt, canvasWidth, canvasHeight]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+          readOnly: true
+        level:
+          type: integer
+          minimum: 0
+          maximum: 999
+        establishmentId:
+          type: string
+          format: uuid
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        canvasWidth:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          default: 1200
+          readOnly: true
+          description: Ancho del lienzo rectangular de la planta (HU-4.01). Se escribe vía `saveFloorLayout`.
+        canvasHeight:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          default: 800
+          readOnly: true
+          description: Alto del lienzo rectangular de la planta (HU-4.01). Se escribe vía `saveFloorLayout`.
+
+    FloorCreateRequest:
+      description: >-
+        Alta/edición de piso. El `level` lo asigna siempre el servidor: los
+        niveles son consecutivos empezando en 0 (siguiente = max actual + 1) y
+        no son editables; el orden lo define el nivel, no el cliente.
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+
     Sector:
       type: object
-      required: [id, name, slug, createdAt, updatedAt]
+      required: [id, name, slug, createdAt, updatedAt, x, y, rotation, width, height]
       properties:
         id:
           type: string
@@ -685,6 +2504,40 @@ components:
           type: string
           format: date-time
           readOnly: true
+        x:
+          type: number
+          format: double
+          minimum: 0
+          default: 0
+          readOnly: true
+          description: Colocación horizontal del sector dentro del lienzo de la planta (HU-4.01). Se escribe vía `saveFloorLayout`.
+        y:
+          type: number
+          format: double
+          minimum: 0
+          default: 0
+          readOnly: true
+          description: Colocación vertical del sector dentro del lienzo de la planta (HU-4.01). Se escribe vía `saveFloorLayout`.
+        rotation:
+          type: number
+          format: double
+          default: 0
+          readOnly: true
+          description: Rotación del sector en grados dentro de la planta (HU-4.01).
+        width:
+          type: number
+          format: double
+          minimum: 20
+          default: 800
+          readOnly: true
+          description: Dimensión intrínseca del sector (origen de coordenadas de sus elementos). Se escribe vía `saveSectorLayout`.
+        height:
+          type: number
+          format: double
+          minimum: 20
+          default: 600
+          readOnly: true
+          description: Dimensión intrínseca del sector (origen de coordenadas de sus elementos). Se escribe vía `saveSectorLayout`.
 
     SectorCreateRequest:
       type: object
@@ -699,6 +2552,415 @@ components:
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
           minLength: 2
           maxLength: 63
+
+    # ── Elementos espaciales (HU-2.03) ──────────────────────────────────────
+    SpaceElement:
+      type: object
+      required: [id, sectorId, type, x, y, width, height, rotation, state, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sectorId:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+          description: Catálogo cerrado del modelo propio (ADR-0006). La validez por vertical la verifica el servidor.
+        x:
+          type: number
+          format: double
+          minimum: 0
+          description: Coordenada horizontal relativa al sector.
+        y:
+          type: number
+          format: double
+          minimum: 0
+          description: Coordenada vertical relativa al sector.
+        width:
+          type: number
+          format: double
+          minimum: 20
+          description: Ancho del elemento.
+        height:
+          type: number
+          format: double
+          minimum: 20
+          description: Alto del elemento.
+        rotation:
+          type: number
+          format: double
+          default: 0
+          description: Rotación en grados.
+        state:
+          type: string
+          enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
+          readOnly: true
+          description: Estado operativo actual (las transiciones auditadas son de HU-3.01).
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    # ── Layouts HU-4.01 (lectura agregada y guardados por lotes) ─────────
+    SectorLayoutSector:
+      description: Sector con su colocación en la planta y sus elementos (solo lectura).
+      type: object
+      required: [id, name, x, y, rotation, width, height, updatedAt, elements]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        x:
+          type: number
+          format: double
+          minimum: 0
+          description: Colocación horizontal dentro del lienzo de la planta.
+        y:
+          type: number
+          format: double
+          minimum: 0
+          description: Colocación vertical dentro del lienzo de la planta.
+        rotation:
+          type: number
+          format: double
+          default: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+          description: Dimensión intrínseca del sector.
+        height:
+          type: number
+          format: double
+          minimum: 20
+          description: Dimensión intrínseca del sector.
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        elements:
+          type: array
+          description: Elementos del sector en solo-lectura (RN-3, misma fila).
+          items:
+            $ref: "#/components/schemas/SpaceElement"
+
+    FloorLayoutResponse:
+      description: Planta con su lienzo, sus sectores colocados y sus elementos.
+      type: object
+      required: [floor, sectors]
+      properties:
+        floor:
+          $ref: "#/components/schemas/Floor"
+        sectors:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorLayoutSector"
+
+    SectorPlacementUpdate:
+      description: Colocación de un sector dentro de la planta (vista de planta, RN-6).
+      type: object
+      additionalProperties: false
+      required: [id, x, y, rotation, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        x:
+          type: number
+          format: double
+          minimum: 0
+        y:
+          type: number
+          format: double
+          minimum: 0
+        rotation:
+          type: number
+          format: double
+        updatedAt:
+          type: string
+          format: date-time
+          description: Marca observada al cargar; conflicto si la fila cambió (RN-7).
+
+    FloorLayoutUpdateRequest:
+      description: >-
+        Guardado transaccional de la planta: dimensiones del lienzo + colocaciones
+        de sectores. Todo o nada; concurrencia optimista por `updatedAt`.
+      type: object
+      additionalProperties: false
+      required: [floor, sectors]
+      properties:
+        floor:
+          type: object
+          additionalProperties: false
+          required: [canvasWidth, canvasHeight, updatedAt]
+          properties:
+            canvasWidth:
+              type: number
+              format: double
+              exclusiveMinimum: 0
+            canvasHeight:
+              type: number
+              format: double
+              exclusiveMinimum: 0
+            updatedAt:
+              type: string
+              format: date-time
+        sectors:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorPlacementUpdate"
+
+    SectorLayoutUpdateRequest:
+      description: >-
+        Guardado transaccional de la distribución interna del sector: dimensiones
+        del sector + geometría de sus elementos. Nunca toca `state` (RN-9).
+      type: object
+      additionalProperties: false
+      required: [sector, elements]
+      properties:
+        sector:
+          type: object
+          additionalProperties: false
+          required: [width, height, updatedAt]
+          properties:
+            width:
+              type: number
+              format: double
+              minimum: 20
+            height:
+              type: number
+              format: double
+              minimum: 20
+            updatedAt:
+              type: string
+              format: date-time
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorLayoutElementUpdate"
+
+    SectorLayoutElementUpdate:
+      description: Geometría de un elemento dentro de su sector (vista de sector, RN-2).
+      type: object
+      additionalProperties: false
+      required: [id, x, y, width, height, rotation, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        x:
+          type: number
+          format: double
+          minimum: 0
+        y:
+          type: number
+          format: double
+          minimum: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+        height:
+          type: number
+          format: double
+          minimum: 20
+        rotation:
+          type: number
+          format: double
+        updatedAt:
+          type: string
+          format: date-time
+
+    SectorLayoutResponse:
+      description: Sector con su geometría actualizada y sus elementos vivos.
+      type: object
+      required: [sector, elements]
+      properties:
+        sector:
+          $ref: "#/components/schemas/Sector"
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpaceElement"
+
+    SectorDuplicateRequest:
+      description: >-
+        Duplicar un sector del mismo tenant hacia el piso del path (RN-5): crea
+        sector y elementos con identificadores nuevos. Sin enlace origen→copia.
+      type: object
+      additionalProperties: false
+      required: [sourceSectorId]
+      properties:
+        sourceSectorId:
+          type: string
+          format: uuid
+          description: Sector a duplicar (mismo tenant; ajeno → 404).
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Si se omite, deriva "<nombre> (copia)".
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+          description: Si se omite, deriva del nombre asegurando unicidad en el piso destino.
+
+    SpaceElementCreateRequest:
+      type: object
+      required: [type, x, y]
+      properties:
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+        x:
+          type: number
+          format: double
+          minimum: 0
+        y:
+          type: number
+          format: double
+          minimum: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+        height:
+          type: number
+          format: double
+          minimum: 20
+        rotation:
+          type: number
+          format: double
+          default: 0
+        initialState:
+          type: string
+          enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
+          default: AVAILABLE
+
+    SpaceElementUpdateRequest:
+      type: object
+      required: [type, x, y]
+      properties:
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+        x:
+          type: number
+          format: double
+          minimum: 0
+        y:
+          type: number
+          format: double
+          minimum: 0
+        width:
+          type: number
+          format: double
+          minimum: 20
+        height:
+          type: number
+          format: double
+          minimum: 20
+        rotation:
+          type: number
+          format: double
+          default: 0
+
+    SpaceElementStateUpdateRequest:
+      type: object
+      required: [state]
+      additionalProperties: false
+      properties:
+        state:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+
+    SpaceElementStateResponse:
+      type: object
+      required: [id, sectorId, state, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sectorId:
+          type: string
+          format: uuid
+          readOnly: true
+        state:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    SpaceElementOperationalState:
+      type: string
+      enum: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
+      description: Estado operativo actual de un elemento espacial.
+
+    SpaceElementStateChange:
+      type: object
+      required: [id, elementId, previousState, newState, changedBy, changedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        elementId:
+          type: string
+          format: uuid
+          readOnly: true
+        previousState:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+        newState:
+          $ref: "#/components/schemas/SpaceElementOperationalState"
+        changedBy:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Usuario autenticado que realizó el cambio.
+        changedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ElementStateSummary:
+      type: object
+      required: [total, byState]
+      description: |
+        Recuento agregado de los elementos espaciales vivos del tenant por estado
+        operativo (sin los dados de baja). Las cinco claves están siempre presentes.
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: |
+            Elementos vivos del tenant: la suma de los cinco estados, incluidos los
+            fuera de servicio. Solo se excluyen los elementos dados de baja
+            lógicamente (`deleted_at`).
+        byState:
+          type: object
+          required: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
+          properties:
+            AVAILABLE: { type: integer, minimum: 0 }
+            OCCUPIED: { type: integer, minimum: 0 }
+            RESERVED: { type: integer, minimum: 0 }
+            CLEANING: { type: integer, minimum: 0 }
+            OUT_OF_SERVICE: { type: integer, minimum: 0 }
 
     # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
     # así que todos los errores de la API usan este formato.
@@ -722,44 +2984,122 @@ components:
           type: string
           format: uri
 
+    ElementTemplate:
+      type: object
+      required: [id, name, type, createdAt, updatedAt]
+      description: Plantilla de configuración de un SpaceElement (HU-4.02)
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          examples: ["Mesa redonda 6 pax"]
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+          examples: ["TABLE"]
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ElementTemplateCreateRequest:
+      type: object
+      required: [name, type]
+      description: Cuerpo para crear una plantilla de elemento
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          examples: ["Mesa redonda 6 pax"]
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+          examples: ["TABLE"]
+
+    ElementTemplateUpdateRequest:
+      type: object
+      required: [name, type]
+      description: Cuerpo para actualizar una plantilla de elemento (PUT completo)
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          examples: ["Mesa redonda 6 pax - actualizado"]
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+          examples: ["BAR"]
+
   responses:
     Unauthorized:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: Falta el token o no es válido
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     BadRequest:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: La solicitud no cumple las validaciones
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     Conflict:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: El recurso entra en conflicto con otro existente
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     ServiceUnavailable:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: No se pudo completar una dependencia externa
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     ServerError:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: Error inesperado del servidor
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     Forbidden:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: Autenticado, pero sin permiso para este recurso o tenant
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     NotFound:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
       description: El recurso no existe (o pertenece a otro tenant)
       content:
         application/problem+json:

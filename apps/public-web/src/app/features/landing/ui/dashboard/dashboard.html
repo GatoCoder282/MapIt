@@ -1,0 +1,22 @@
+<section class="dashboard-section" id="dashboard" aria-labelledby="dashboard-title">
+  <div class="dashboard-inner">
+    <header class="section-header">
+      <div class="section-badge">
+        {{ strings.landing.dashboard.badge }}
+      </div>
+      <h2 id="dashboard-title" class="section-title">{{ strings.landing.dashboard.title }}</h2>
+      <p class="section-subtitle">{{ strings.landing.dashboard.subtitle }}</p>
+    </header>
+
+    <!-- Visual del dashboard (imagen real) -->
+    <div class="dashboard-visual">
+      <img
+        ngSrc="assets/img/dashboards.png"
+        [alt]="strings.landing.dashboard.visualAlt"
+        class="dashboard-img"
+        width="1024"
+        height="163"
+      />
+    </div>
+  </div>
+</section>

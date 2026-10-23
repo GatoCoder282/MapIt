@@ -1,9 +1,12 @@
 export { MAP_ENGINE, type MapEnginePort } from './lib/map-engine.port';
 export {
   LAYOUT_VACIO,
+  TYPE_DEFAULTS,
   type ElementState,
   type MapLayout,
+  type MapLayoutKind,
   type Point,
+  type SectorPlacement,
   type Size,
   type SpaceElement,
   type SpaceElementId,

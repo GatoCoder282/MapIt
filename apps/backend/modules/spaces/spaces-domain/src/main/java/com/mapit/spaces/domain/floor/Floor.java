@@ -1,0 +1,140 @@
+package com.mapit.spaces.domain.floor;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.UUID;
+
+import com.mapit.shared.tenant.TenantId;
+import com.mapit.spaces.domain.AuditTrail;
+import com.mapit.spaces.domain.Slug;
+/**
+ * Piso o nivel físico dentro de un establecimiento (CU-05).
+ *
+ * <p>Es un record inmutable sin setters: las reglas viven en el constructor
+ * compacto, de modo que no se puede construir un piso inválido.
+ * Modificarlo devuelve una instancia nueva.
+ *
+ * <p>El level es un entero entre 0 y 999 que indica la posición vertical. Es
+ * escalonado: la primera planta es el nivel 0 y cada nueva sube un escalón.
+ */
+public record Floor(
+    UUID id,
+    TenantId tenantId,
+    UUID establishmentId,
+    String name,
+    int level,
+    Slug slug,
+    double canvasWidth,
+    double canvasHeight,
+    AuditTrail audit) {
+
+  private static final int NAME_MAX_LENGTH = 100;
+  private static final int LEVEL_MIN = 0;
+  private static final int LEVEL_MAX = 999;
+
+  public Floor {
+    Objects.requireNonNull(id, "id no puede ser null");
+    Objects.requireNonNull(tenantId, "tenantId no puede ser null");
+    Objects.requireNonNull(establishmentId, "establishmentId no puede ser null");
+    Objects.requireNonNull(name, "name no puede ser null");
+    Objects.requireNonNull(slug, "slug no puede ser null");
+    Objects.requireNonNull(audit, "audit no puede ser null");
+
+    name = name.trim();
+    if (name.isEmpty()) {
+      throw new IllegalArgumentException("name no puede estar vacío");
+    }
+    if (name.length() > NAME_MAX_LENGTH) {
+      throw new IllegalArgumentException(
+          "name debe tener entre 1 y %d caracteres".formatted(NAME_MAX_LENGTH));
+    }
+    if (level < LEVEL_MIN || level > LEVEL_MAX) {
+      throw new IllegalArgumentException(
+          "level debe estar entre %d y %d".formatted(LEVEL_MIN, LEVEL_MAX));
+    }
+    if (!Double.isFinite(canvasWidth) || !Double.isFinite(canvasHeight)
+        || canvasWidth <= 0 || canvasHeight <= 0) {
+      throw new IllegalArgumentException(
+          "canvasWidth y canvasHeight deben ser finitos y mayores que 0 (HU-4.01)");
+    }
+  }
+
+  /** Compatibilidad con el contrato anterior a HU-4.01: lienzo 1200×800 por defecto. */
+  public Floor(
+      UUID id,
+      TenantId tenantId,
+      UUID establishmentId,
+      String name,
+      int level,
+      Slug slug,
+      AuditTrail audit) {
+    this(id, tenantId, establishmentId, name, level, slug, 1200, 800, audit);
+  }
+
+  /** Crea un piso nuevo. El id y las fechas las decide el llamador. */
+  public static Floor register(
+      UUID id,
+      TenantId tenantId,
+      UUID establishmentId,
+      String name,
+      int level,
+      Slug slug,
+      Instant now,
+      UUID by) {
+    return new Floor(
+        id,
+        tenantId,
+        establishmentId,
+        name,
+        level,
+        slug,
+        AuditTrail.created(now, by));
+  }
+
+  /** Devuelve una copia con los datos editables actualizados. */
+  public Floor update(String name, int level, Slug slug, Instant now, UUID by) {
+    if (audit.isDeleted()) {
+      throw new IllegalStateException("No se puede actualizar un piso dado de baja");
+    }
+    return new Floor(
+        id, tenantId, establishmentId, name, level, slug,
+        canvasWidth, canvasHeight, audit.touched(now, by));
+  }
+
+  /** Cambia las dimensiones del lienzo de la planta (vista de planta, HU-4.01). */
+  public Floor resizeCanvas(double newCanvasWidth, double newCanvasHeight, Instant now, UUID by) {
+    if (audit.isDeleted()) {
+      throw new IllegalStateException("No se puede redimensionar un piso dado de baja");
+    }
+    return new Floor(
+        id, tenantId, establishmentId, name, level, slug,
+        newCanvasWidth, newCanvasHeight, audit.touched(now, by));
+  }
+
+  /**
+   * Devuelve una copia marcada como dada de baja.
+   *
+   * <p>La baja es lógica: la fila se conserva porque sector apuntará a ella.
+   * El slug se establece a null para liberarlo y permitir su reutilización.
+   */
+  public Floor softDelete(Instant now, UUID by) {
+    if (audit.isDeleted()) {
+      throw new IllegalStateException("El piso ya estaba dado de baja");
+    }
+    // Slug se pone a null para liberarlo
+    return new Floor(
+        id,
+        tenantId,
+        establishmentId,
+        name,
+        level,
+        slug,
+        canvasWidth,
+        canvasHeight,
+        audit.deleted(now, by));
+  }
+
+  public boolean isDeleted() {
+    return audit.isDeleted();
+  }
+}

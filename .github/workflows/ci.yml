@@ -1,10 +1,15 @@
 name: CI
 
+# Los PR se validan antes del merge; main se valida para habilitar el deploy.
+# Vercel limita las ramas en vercel.json y Render espera los checks de main.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
 
 # Un push nuevo cancela el CI anterior de la misma rama: ahorra minutos
 # y evita que 5 personas se hagan cola entre sí.
@@ -116,6 +121,8 @@ jobs:
             -f infra/docker/compose.yml \
             -f infra/docker/compose.full.yml up -d --build --wait
       - run: pnpm e2e
+      - name: Verificar logging real y privacidad (MAP-189)
+        run: pnpm logging:smoke
       - uses: actions/upload-artifact@v4
         if: always()
         with:

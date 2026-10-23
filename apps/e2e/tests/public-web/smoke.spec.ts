@@ -7,7 +7,9 @@ test.describe('Vista pública — humo', () => {
   test('carga la portada', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/MapIt/);
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('MapIt');
+    // El texto de la portada es copy de marketing y cambia con cada rediseño;
+    // lo estructural que debe mantenerse es que exista un <h1> visible.
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
   test('no exige autenticación', async ({ page }) => {

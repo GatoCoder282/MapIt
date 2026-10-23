@@ -8,4 +8,5 @@ dependencies {
     implementation(project(":modules:operations:operations-domain"))
     implementation(project(":modules:operations:operations-application"))
     implementation(project(":shared-kernel"))
+    implementation(libs.spring.boot.starter.websocket)
 }

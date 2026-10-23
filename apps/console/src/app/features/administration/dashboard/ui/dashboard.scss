@@ -1,0 +1,296 @@
+/* Panel de control de la plataforma (SUPER_ADMIN).
+   Rejillas y tarjetas: sin hex, todo sale de los tokens de `ui-kit/styles`. */
+
+:host {
+  display: block;
+}
+
+.page {
+  display: grid;
+  /* Columna única con ancho 0 mínimo: sin esto, un hijo con contenido ancho
+     (la tabla, el canvas del gráfico) ensancha la página y desborda. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mapit-space-4);
+}
+
+/* ── Encabezado ───────────────────────────────────────────── */
+.page-head {
+  display: grid;
+  gap: var(--mapit-space-1);
+}
+
+.eyebrow {
+  margin: 0;
+  font: var(--mapit-text-caps);
+  color: var(--mapit-color-accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-family: var(--mapit-font-display);
+  font-size: 1.875rem;
+  font-weight: 600;
+  line-height: 2.25rem;
+  color: var(--mapit-color-text);
+  text-wrap: balance;
+}
+
+.sub {
+  margin: 0;
+  font: var(--mapit-text-body);
+  color: var(--mapit-color-text-muted);
+  max-width: 60ch;
+}
+
+/* ── Fila de KPIs ───────────────────────────────────────────
+   4 columnas en escritorio, 2 a ≤ 1100 px y 1 a ≤ 700 px. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--mapit-space-4);
+}
+
+@media (max-width: 1100px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Pies de las tarjetas ───────────────────────────────────
+   El contenido de los pies se proyecta en la tarjeta, así que lo estiliza
+   este shell (el componente que lo proyecta es quien lo declara). */
+.counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mapit-space-2) var(--mapit-space-4);
+}
+
+.verticales {
+  display: grid;
+  gap: var(--mapit-space-1);
+}
+
+.counter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mapit-space-2);
+  white-space: nowrap;
+}
+
+.counter strong {
+  font-weight: 700;
+  color: var(--mapit-color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* El punto de estado es la pista visual; el texto, el dato. */
+.dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--mapit-color-text-muted);
+}
+
+.dot.available {
+  background: var(--mapit-state-available);
+}
+
+.dot.occupied {
+  background: var(--mapit-state-occupied);
+}
+
+.dot.reserved {
+  background: var(--mapit-state-reserved);
+}
+
+.dot.out-of-service {
+  background: var(--mapit-state-out-of-service);
+}
+
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mapit-space-2);
+  color: var(--mapit-color-primary);
+  font-weight: 600;
+}
+
+.trend.negative {
+  color: var(--mapit-color-error);
+}
+
+.trend-icon {
+  flex: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--mapit-state-available);
+}
+
+.trend-icon.negative {
+  color: var(--mapit-color-error);
+}
+
+/* ── Paneles ──────────────────────────────────────────────── */
+.charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mapit-space-4);
+  align-items: start;
+}
+
+@media (max-width: 1240px) {
+  .charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  display: grid;
+  /* Mismo motivo que en `.page`: la columna no se deja ensanchar por el
+     contenido (el canvas de ECharts fija su tamaño en píxeles). */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mapit-space-4);
+  align-content: start;
+  min-width: 0;
+  padding: var(--mapit-space-4);
+  background: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius-lg);
+  box-shadow: var(--mapit-shadow);
+  /* Contenedor: el donut decide su disposición según el ancho de su panel,
+     no según el del viewport (el sidebar se come 280px). */
+  container-type: inline-size;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--mapit-space-3);
+  flex-wrap: wrap;
+}
+
+.panel-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--mapit-radius);
+  background: var(--mapit-color-primary-container);
+  color: var(--mapit-color-accent);
+}
+
+.panel-icon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  stroke-width: 2;
+}
+
+.panel-title {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.panel-title h2 {
+  margin: 0;
+  font: var(--mapit-text-section);
+  color: var(--mapit-color-text);
+  text-wrap: balance;
+}
+
+.muted {
+  margin: 0;
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+}
+
+/* Total del periodo en el header del panel (patrón 2 del kit de dashboards). */
+.panel-total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.panel-total strong {
+  font-family: var(--mapit-font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--mapit-color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selector de rango: `<select>` nativo con los tokens del sistema. */
+.range-select {
+  flex: none;
+  font: var(--mapit-text-metadata);
+  font-weight: 600;
+  color: var(--mapit-color-text);
+  background-color: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border-input);
+  border-radius: var(--mapit-radius-input);
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.range-select:hover {
+  border-color: var(--mapit-color-accent);
+}
+
+.range-select:focus-visible {
+  outline: 2px solid var(--mapit-color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Error de una fuente (el gráfico de altas) ──────────────
+   El fallo se vende como fallo: mensaje + reintento, no un "vacío" medido.
+   Misma gramática que el error de la tabla y el del donut. */
+.state.error {
+  display: grid;
+  gap: var(--mapit-space-3);
+  justify-items: center;
+  padding: var(--mapit-space-6);
+  border: 1px solid var(--mapit-color-error);
+  border-radius: var(--mapit-radius-lg);
+  color: var(--mapit-color-error);
+  font: var(--mapit-text-body);
+  text-align: center;
+}
+
+.state.error p {
+  margin: 0;
+}
+
+.state.error button {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius-lg);
+  background: var(--mapit-color-surface);
+  color: var(--mapit-color-text);
+  font: var(--mapit-text-body-bold);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background var(--mapit-duration-fast) var(--mapit-ease-out);
+}
+
+.state.error button:hover {
+  background: var(--mapit-color-surface-low);
+}
+
+.state.error button:focus-visible {
+  outline: 2px solid var(--mapit-color-focus-ring);
+  outline-offset: 2px;
+}

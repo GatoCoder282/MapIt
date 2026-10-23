@@ -8,10 +8,17 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./adapters/konva/konva-map-engine": {
+      "types": "./src/lib/adapters/konva/konva-map-engine.ts",
+      "default": "./src/lib/adapters/konva/konva-map-engine.ts"
     }
   },
   "scripts": {
     "test": "echo \"(sin tests todavía en @mapit/map-engine)\"",
     "typecheck": "tsc -p tsconfig.lib.json --noEmit"
+  },
+  "dependencies": {
+    "konva": "^10.7.0"
   }
 }

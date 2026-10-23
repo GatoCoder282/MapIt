@@ -1,0 +1,54 @@
+<div class="tz-picker" (focusout)="onFocusOut($event)">
+  <input
+    #tzInput
+    class="tz-input"
+    type="text"
+    role="combobox"
+    [id]="inputId() || null"
+    [attr.aria-expanded]="open()"
+    aria-controls="tz-listbox"
+    aria-autocomplete="list"
+    [attr.aria-activedescendant]="activeOptionId()"
+    [attr.aria-label]="strings.timezoneAria"
+    [disabled]="disabled()"
+    [placeholder]="placeholder() || strings.timezonePlaceholder"
+    [value]="query()"
+    autocomplete="off"
+    spellcheck="false"
+    (focus)="onFocus()"
+    (input)="onInput(tzInput.value)"
+    (keydown)="onKeydown($event)"
+  />
+  <svg
+    class="tz-chevron"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    aria-hidden="true"
+  >
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+
+  @if (open()) {
+    <ul id="tz-listbox" class="tz-listbox" role="listbox">
+      @for (zone of filtered(); track zone; let i = $index) {
+        <li
+          [id]="'tz-option-' + i"
+          class="tz-option"
+          role="option"
+          [class.active]="i === activeIndex()"
+          [attr.aria-selected]="zone === timezone()"
+          (mousedown)="pick(zone)"
+          (mouseenter)="activeIndex.set(i)"
+        >
+          {{ zone }}
+        </li>
+      } @empty {
+        <li class="tz-empty">{{ strings.timezoneNoResults }}</li>
+      }
+    </ul>
+  }
+</div>

@@ -1,0 +1,48 @@
+<div class="shell">
+  <mapit-sidebar
+    [nav]="navItems"
+    [navLabel]="strings.shell.brandArea"
+    [navAriaLabel]="strings.shell.navLandmarkLabel"
+    [drawerOpen]="menuOpen()"
+    [closeLabel]="strings.shell.closeMenu"
+    (drawerClose)="closeMenu()"
+  />
+
+  <div class="shell-main">
+    <header class="topbar">
+      <button
+        class="menu-toggle"
+        type="button"
+        (click)="toggleMenu()"
+        [attr.aria-expanded]="menuOpen()"
+        [attr.aria-label]="menuOpen() ? strings.shell.closeMenu : strings.shell.openMenu"
+      >
+        ☰
+      </button>
+
+      @if (session.user(); as user) {
+        <div class="user-block">
+          <!-- Campana decorativa: no hay endpoint de notificaciones. El punto
+               azul es `aria-hidden` y el botón lleva su nombre accesible. -->
+          <button class="notification" type="button" [attr.aria-label]="strings.shell.notifications">
+            <svg lucideBell aria-hidden="true"></svg>
+            <span class="notification-dot" aria-hidden="true"></span>
+          </button>
+          <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+          <span class="user-meta">
+            <span class="user-name">{{ user.fullName }}</span>
+            <span class="user-role">{{ roleLabel() }}</span>
+          </span>
+          <button class="logout" type="button" (click)="logout()" [attr.aria-label]="strings.shell.logout">
+            <svg lucideLogOut aria-hidden="true"></svg>
+            <span class="logout-label">{{ strings.shell.logout }}</span>
+          </button>
+        </div>
+      }
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

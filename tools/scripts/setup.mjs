@@ -6,7 +6,18 @@
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { ROOT, run, capture, log, c, die, waitForPort, readEnv, loadEnv } from './_lib.mjs';
+import {
+  ROOT,
+  run,
+  capture,
+  log,
+  c,
+  die,
+  waitForPort,
+  readEnv,
+  loadEnv,
+  applyJavaHome,
+} from './_lib.mjs';
 
 const ENV = join(ROOT, '.env');
 const ENV_EXAMPLE = join(ROOT, '.env.example');
@@ -57,6 +68,7 @@ if (!existsSync(ENV)) {
   }
 }
 loadEnv();
+applyJavaHome();
 
 /* ── 3. Dependencias ─────────────────────────────────────── */
 log.step('3/6  Dependencias de Node');

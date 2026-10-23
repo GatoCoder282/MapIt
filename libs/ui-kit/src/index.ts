@@ -8,3 +8,12 @@
  * Los componentes se añaden conforme las features los necesiten, no antes.
  */
 export const UI_KIT_VERSION = '0.1.0';
+
+export { ElementTypeIconComponent } from './lib/element-type-icon/element-type-icon';
+export { SiteNav } from './lib/site-nav/site-nav';
+export { SiteFooter } from './lib/site-footer/site-footer';
+export { RevealOnScroll } from './lib/reveal-on-scroll/reveal-on-scroll';
+export { TimezonePicker } from './lib/timezone-picker/timezone-picker';
+export { SITE_STRINGS } from './lib/site-strings';
+export { PICKER_STRINGS } from './lib/picker-strings';
+export { PageTransitionService, PageWipeOverlay } from './lib/page-transition';

@@ -1,34 +1,102 @@
+// =============================================================
+//  MapIt — modelo de datos
+//
+//  FUENTE DE VERDAD CONCEPTUAL del esquema. Se mantiene en sincronía
+//  con las migraciones de Flyway: toda migración actualiza este archivo
+//  en el MISMO commit.
+//
+//  Visualizar:  https://dbdiagram.io  (pegar este archivo)
+//  Exportar:    pnpm db:erd
+//
+//  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
+//  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5),
+//  `realtime_event_outbox` (V11, MAP-103/HUT-01) y el rol de runtime `mapit_app`
+//  (V9, MAP-175: NOSUPERUSER + NOBYPASSRLS;
+//  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
+//  El resto es el diseño previsto; cada tabla llega con su caso de uso.
+//
+//  CONVENCIÓN (ADR-0004): toda tabla de negocio lleva
+//    tenant_id  +  índice (tenant_id, id)  +  RLS
+//  Las tablas globales de plataforma son la excepción y van marcadas.
+// =============================================================
+
+Project MapIt {
+  database_type: 'PostgreSQL'
+  Note: 'Motor de gestión espacial multi-tenant'
+}
+
+// ── PLATAFORMA (global, sin tenant_id) ───────────────────────
+
 Table tenant {
-  id          text [pk]
-  name        text [not null]
-  slug        text [not null, unique]
-  status      text [not null, default: "active"]
-  created_at  timestamptz [not null]
-  updated_at  timestamptz [not null]
+  id         text        [pk, note: 'Identificador estable de la empresa']
+  name       text        [not null]
+  slug       text        [not null, unique, note: 'Usado en URLs públicas de reserva (CU-15)']
+  vertical   text        [not null, note: 'RESTAURANT | NIGHTCLUB | EVENT_HALL | HOTEL']
+  status     text        [not null, default: 'ACTIVE', note: 'ACTIVE | SUSPENDED']
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: 'CU-01, CU-03. Tabla GLOBAL: no lleva tenant_id ni RLS. Base en V1; vertical añadida en V3.'
+}
+
+// ── IDENTIDAD (CU-23, CU-24) ─────────────────────────────────
+
+Table app_user {
+  id            uuid        [pk]
+  tenant_id     text        [not null, ref: > tenant.id]
+  email         text        [not null, note: 'Minúsculas, sin espacios externos, 1-254 caracteres']
+  password_hash text        [not null, note: 'BCrypt (RNF09)']
+  full_name     text        [not null]
+  role          text        [not null, note: 'SUPER_ADMIN | ADMIN | MANAGER | STAFF']
+  active        boolean     [not null, default: true]
+  created_at    timestamptz [not null]
+
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, email) [unique]
+  }
+  Note: 'IMPLEMENTADA en V3 con RLS forzada. El claim `tenant` del JWT saldrá de aquí. Los privilegios transversales de SUPER_ADMIN se implementarán en CU-24.'
+}
+
+// ── ESPACIO (CU-04 … CU-08) ──────────────────────────────────
+
+Table demo_item {
+  id          uuid         [pk]
+  tenant_id   text         [not null, ref: > tenant.id]
+  name        varchar(120) [not null]
+  description varchar(500) [not null, default: ""]
+  active      boolean      [not null, default: true]
+  created_at  timestamptz  [not null]
+  updated_at  timestamptz  [not null]
+
+  Indexes { (tenant_id, id) }
+  Note: 'CRUD de demostración Angular + Spring Boot. IMPLEMENTADA en V2; se eliminará o sustituirá al implementar las entidades definitivas.'
 }
 
 Table establishment {
-  id               uuid        [pk]
-  tenant_id        text        [not null, ref: > tenant.id]
-  name             text        [not null]
-  type             text
-  slug             text        [unique]
-  timezone         text
-  created_at       timestamptz [not null]
-  created_by       uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
-  updated_at       timestamptz [not null]
-  updated_by       uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
-  deleted_at       timestamptz [note: 'Baja l�gica']
-  deleted_by       uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
+  id         uuid        [pk]
+  tenant_id  text        [not null, ref: > tenant.id]
+  name       text        [not null]
+  type       text        [not null, note: 'RESTAURANT | NIGHTCLUB | EVENT_HALL | HOTEL']
+  slug       text        [not null, note: 'URL pública de reserva']
+  address    text        [note: 'Dirección física opcional (máx. 200)']
+  timezone   text        [not null, default: 'America/La_Paz']
+  created_at timestamptz [not null]
+  created_by uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
+  updated_at timestamptz [not null]
+  updated_by uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
+  deleted_at timestamptz [note: 'Baja lógica: si no es NULL, la fila no aparece en consultas']
+  deleted_by uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
 
   Indexes {
-    tenant_id
-    slug [unique]
+    (tenant_id, id) [unique]
+    (tenant_id, slug) [unique, note: 'PARCIAL: WHERE deleted_at IS NULL, para poder reutilizar el slug de una baja']
   }
-
   Note: '''
-    CU-04. Establecimiento f�sico o virtual que contiene espacios y elementos.
-    Aislamiento multi-tenant v�a tenant_id y RLS.
+    CU-04. El type selecciona qué plantillas de elemento aplican (CU-07).
+    Baja LÓGICA: floor y sector apuntarán aquí (CU-05), así que un borrado
+    físico dejaría huérfanos. Las columnas *_by van sin FK hasta que exista
+    app_user en CU-23/CU-24.
   '''
 }
 
@@ -37,13 +105,15 @@ Table floor {
   tenant_id        text        [not null, ref: > tenant.id]
   establishment_id uuid        [not null, ref: > establishment.id]
   name             text        [not null]
-  level            int         [not null, note: 'Orden vertical: 1-999']
-  slug             text        [note: 'Opcional; �nico por establecimiento entre filas vivas']
+   level            int         [not null, note: 'Orden vertical: 0-999']
+  slug             text        [note: 'Opcional; único por establecimiento entre filas vivas']
+  canvas_width     double      [not null, default: 1200, note: 'HU-4.01: ancho del lienzo de la planta']
+  canvas_height    double      [not null, default: 800, note: 'HU-4.01: alto del lienzo de la planta']
   created_at       timestamptz [not null]
   created_by       uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
   updated_at       timestamptz [not null]
   updated_by       uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
-  deleted_at       timestamptz [note: 'Baja l�gica']
+  deleted_at       timestamptz [note: 'Baja lógica']
   deleted_by       uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
 
   Indexes {
@@ -52,30 +122,186 @@ Table floor {
     (establishment_id, level) [unique, note: 'PARCIAL: WHERE deleted_at IS NULL']
   }
   Note: '''
-    CU-05. Piso o nivel f�sico dentro de un establecimiento.
-    Baja L�GICA: sector apuntar� aqu�, as� que un borrado f�sico dejar�a hu�rfanos.
-    El slug se libera (pone a NULL) al dar de baja, permitiendo reutilizaci�n.
+    CU-05. Piso o nivel físico dentro de un establecimiento.
+    HU-4.01: el piso tiene un lienzo rectangular (canvas_width/canvas_height)
+    donde se colocan los sectores; Fase 1 no modela polígono (D-2).
+    Baja LÓGICA: sector apuntará aquí, así que un borrado físico dejaría huérfanos.
+    El slug se libera (pone a NULL) al dar de baja, permitiendo reutilización.
   '''
 }
 
 Table sector {
-  id         uuid        [pk]
-  tenant_id  text        [not null, ref: > tenant.id]
-  floor_id   uuid        [not null, ref: > floor.id]
-  name       text        [not null]
-  color      text
+  id           uuid        [pk]
+  tenant_id    text        [not null, ref: > tenant.id]
+  floor_id     uuid        [not null, ref: > floor.id]
+  name         text        [not null]
+  slug         text        [not null, note: 'Único por piso entre filas vivas']
+  max_capacity int         [not null, note: '> 0']
+  x            double      [not null, default: 0, note: 'HU-4.01: colocación en la planta (saveFloorLayout)']
+  y            double      [not null, default: 0, note: 'HU-4.01: colocación en la planta (saveFloorLayout)']
+  rotation     double      [not null, default: 0, note: 'HU-4.01: grados dentro de la planta']
+  width        double      [not null, default: 800, note: 'HU-4.01: dimensión intrínseca; origen (0,0) de sus elementos']
+  height       double      [not null, default: 600, note: 'HU-4.01: dimensión intrínseca']
+  created_at   timestamptz [not null]
+  created_by   uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
+  updated_at   timestamptz [not null]
+  updated_by   uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
+  deleted_at   timestamptz [note: 'Baja lógica']
+  deleted_by   uuid        [note: 'FK futura a app_user.id (CU-23/CU-24)']
 
   Indexes {
-    tenant_id
+    (tenant_id, id)
     floor_id
+    (floor_id, slug) [unique, note: 'PARCIAL: WHERE deleted_at IS NULL']
+  }
+  Note: '''
+    CU-05/HU-4.01. Zona del establecimiento dentro de un piso (1:1, RN-4:
+    floor_id NOT NULL). La reutilización entre plantas es copia explícita
+    (duplicado con ids nuevos, RN-5), no enlace vivo.
+  '''
+}
+
+Table element_template {
+  id         uuid             [pk, note: 'default gen_random_uuid()']
+  tenant_id  text             [not null, ref: > tenant.id]
+  name       text             [not null]
+  type       text             [not null]
+  created_at timestamptz      [not null, default: `now()`]
+  created_by uuid
+  updated_at timestamptz      [not null, default: `now()`]
+  updated_by uuid
+  deleted_at timestamptz
+  deleted_by uuid
+
+  Indexes {
+    (tenant_id, id)                                  [name: 'element_template_tenant_id_id_idx']
+    (tenant_id, name)                                [name: 'element_template_tenant_alive_idx', note: 'WHERE deleted_at IS NULL']
+    (tenant_id, name)                                [name: 'element_template_tenant_name_unique_idx', unique, note: 'WHERE deleted_at IS NULL']
   }
 }
 
 Table space_element {
-  id         uuid        [pk]
-  tenant_id  text        [not null, ref: > tenant.id]
-  sector_id  uuid        [not null, ref: > sector.id]
-  name       text        [not null]
-  type       text
-  config     jsonb
+  id         uuid             [pk, note: 'default gen_random_uuid()']
+  tenant_id  text             [not null, ref: > tenant.id]
+  sector_id  uuid             [not null, ref: > sector.id, note: 'ON DELETE RESTRICT — sin orfandad']
+  type       text             [not null, note: 'TABLE | BAR | SECTOR_ZONE | STAGE | SEAT | ROOM | DECOR']
+  state      text             [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
+  x          double_precision [not null, note: 'relativa al sector, >= 0']
+  y          double_precision [not null, note: 'relativa al sector, >= 0']
+  created_at timestamptz      [not null, default: `now()`]
+  created_by uuid
+  updated_at timestamptz      [not null, default: `now()`]
+  updated_by uuid
+  deleted_at timestamptz
+  deleted_by uuid
+
+  Indexes {
+    (tenant_id, id)                                  [unique, name: 'space_element_tenant_id_id_unique']
+    (tenant_id, sector_id, created_at)               [name: 'space_element_tenant_sector_vivos_idx', type: btree, note: 'PARCIAL: WHERE deleted_at IS NULL']
+  }
+}
+
+Table space_element_state_change {
+  id               uuid        [pk, note: 'default gen_random_uuid()']
+  tenant_id        text        [not null, ref: > tenant.id]
+  sector_id        uuid        [not null, ref: > sector.id]
+  space_element_id uuid        [not null, ref: > space_element.id]
+  previous_state   text        [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
+  new_state        text        [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
+  changed_by       uuid        [not null, ref: > app_user.id]
+  changed_at       timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (tenant_id, id)                               [name: 'space_element_state_change_tenant_id_id_idx']
+    (tenant_id, space_element_id, changed_at, id) [name: 'space_element_state_change_history_idx', type: btree]
+  }
+  Note: 'MAP-125 / HU-3.01. Auditoría inmutable con RLS; previous_state y new_state deben ser distintos.'
+}
+
+Table realtime_event_outbox {
+  event_id          uuid        [pk]
+  tenant_id         text        [not null, ref: > tenant.id]
+  event_type        text        [not null]
+  schema_version    int         [not null]
+  occurred_at       timestamptz [not null]
+  establishment_id  uuid        [not null]
+  sector_id         uuid
+  aggregate_version bigint      [not null]
+  payload           jsonb       [not null]
+  attempts          int         [not null, default: 0]
+  available_at      timestamptz [not null]
+  claimed_at        timestamptz
+  last_error        text
+  published_at      timestamptz
+  created_at        timestamptz [not null]
+  updated_at        timestamptz [not null]
+
+  Indexes {
+    (tenant_id, event_id)
+    (tenant_id, available_at, occurred_at, event_id) [note: 'Parcial: published_at IS NULL']
+    published_at [note: 'Parcial: published_at IS NOT NULL; retención']
+  }
+  Note: '''
+    MAP-103/HUT-01. Outbox durable multi-tenant para publicar eventos STOMP.
+    Tiene RLS forzada; el tenant no se duplica en el envelope público.
+    At-least-once: published_at se marca después del envío y event_id permite deduplicar.
+  '''
+}
+
+// ── PERSONAS Y RESERVAS (CU-11 … CU-13) ─────────────────────
+
+Table person {
+  id         uuid         [pk, note: 'default gen_random_uuid()']
+  tenant_id  text         [not null, ref: > tenant.id]
+  full_name  varchar(120) [not null]
+  email      varchar(254) [note: 'Minúsculas; único por tenant entre filas vivas cuando existe']
+  phone      varchar(32)
+  created_at timestamptz  [not null, default: `now()`]
+  created_by uuid
+  updated_at timestamptz  [not null, default: `now()`]
+  updated_by uuid
+  deleted_at timestamptz
+  deleted_by uuid
+
+  Indexes {
+    (tenant_id, id) [unique, name: 'person_tenant_id_id_unique']
+    (tenant_id, email) [unique, name: 'person_tenant_email_live_uidx', note: 'PARCIAL: email IS NOT NULL AND deleted_at IS NULL']
+    (tenant_id, full_name, id) [name: 'person_tenant_name_live_idx', note: 'Índice real sobre lower(full_name), parcial para filas vivas']
+  }
+  Note: 'MAP-209/MAP-210. Clientes aislados mediante RLS forzada.'
+}
+
+Table reservation {
+  id               uuid        [pk, note: 'default gen_random_uuid()']
+  tenant_id        text        [not null, ref: > tenant.id]
+  establishment_id uuid        [not null, ref: > establishment.id]
+  person_id        uuid        [not null, ref: > person.id]
+  starts_at        timestamptz [not null, note: 'Inicio inclusivo de [starts_at, ends_at)']
+  ends_at          timestamptz [not null, note: 'Fin exclusivo de [starts_at, ends_at)']
+  status           text        [not null, default: 'CREATED', note: 'CREATED | CONFIRMED | ACTIVE | RELEASED | CANCELLED']
+  created_at       timestamptz [not null, default: `now()`]
+  created_by       uuid        [not null, ref: > app_user.id]
+  updated_at       timestamptz [not null, default: `now()`]
+  updated_by       uuid        [ref: > app_user.id]
+
+  Indexes {
+    (tenant_id, id) [unique, name: 'reservation_tenant_id_id_unique']
+    (tenant_id, establishment_id, starts_at, id) [name: 'reservation_tenant_establishment_starts_idx']
+    (tenant_id, person_id, starts_at, id) [name: 'reservation_tenant_person_starts_idx']
+  }
+  Note: 'MAP-209 / HU-5.01. Reserva interna con intervalo semiabierto y RLS forzada.'
+}
+
+Table reservation_space_element {
+  id               uuid [pk, note: 'default gen_random_uuid()']
+  tenant_id        text [not null, ref: > tenant.id]
+  reservation_id   uuid [not null, ref: > reservation.id]
+  space_element_id uuid [not null, ref: > space_element.id]
+
+  Indexes {
+    (tenant_id, id) [unique, name: 'reservation_space_element_tenant_id_id_unique']
+    (tenant_id, reservation_id, space_element_id) [unique, name: 'reservation_space_element_pair_unique']
+    (tenant_id, space_element_id, reservation_id) [name: 'reservation_space_element_resource_idx']
+  }
+  Note: 'MAP-209. Asociación de uno o más elementos por reserva con FKs multi-tenant y RLS forzada.'
 }

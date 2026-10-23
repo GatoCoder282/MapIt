@@ -1,21 +1,59 @@
 /**
  * Tokens de diseño de MapIt.
  * Fuente única de colores, tipografía y espaciado para AMBAS apps.
+ * Especificación en libs/ui-kit/DESIGN.md — si cambias un valor aquí,
+ * actualiza también ese documento.
  */
 
 :root {
-  /* ── Tipografía ─────────────────────────────────────────── */
+  /* ── Tipografía (Inter para UI, Manrope para titulares) ── */
   --mapit-font-sans:
-    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --mapit-font-display: 'Manrope Variable', var(--mapit-font-sans);
   --mapit-font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
 
-  /* ── Color ──────────────────────────────────────────────── */
+  /* Escala compacta (herramienta B2B densa) */
+  --mapit-text-display: 600 1.25rem / 1.75rem var(--mapit-font-display);
+  --mapit-text-section: 600 1.125rem / 1.5rem var(--mapit-font-display);
+  --mapit-text-body: 400 0.875rem / 1.25rem var(--mapit-font-sans);
+  --mapit-text-body-bold: 600 0.875rem / 1.25rem var(--mapit-font-sans);
+  --mapit-text-metadata: 400 0.75rem / 1rem var(--mapit-font-sans);
+  --mapit-text-caps: 700 0.6875rem / 0.75rem var(--mapit-font-sans);
+
+  /* ── Color: marca Royal Blue (Fidelidad con imagen y editor de mapas) ── */
+  --mapit-color-primary: #2563eb;
+  --mapit-color-primary-hover: #1d4ed8;
+  --mapit-color-accent: #2563eb; /* relleno de botones y CTAs */
+  --mapit-color-on-primary: #ffffff;
+  --mapit-color-primary-container: #dbeafe;
+  --mapit-color-nav-active-bg: #dbeafe;
+
+  /* ── Color: superficies por nivel (lienzo → panel → tarjeta) */
+  --mapit-color-canvas: #f8fafc;
   --mapit-color-surface: #ffffff;
-  --mapit-color-surface-raised: #f6f7f9;
-  --mapit-color-text: #16181d;
-  --mapit-color-text-muted: #5b616e;
-  --mapit-color-border: #dfe3e8;
-  --mapit-color-accent: #3b82f6;
+  --mapit-color-surface-low: #f1f5f9;
+  --mapit-color-surface-raised: #e2e8f0;
+
+  /* ── Color: sidebar oscuro de alta gama (Midnight Navy) ─── */
+  --mapit-sidebar-bg: #0b132b;
+  --mapit-sidebar-text: #8e9aa8;
+  --mapit-sidebar-text-hover: #ffffff;
+  --mapit-sidebar-active-bg: #2563eb;
+  --mapit-sidebar-active-text: #ffffff;
+  --mapit-sidebar-border: #1e293b;
+
+  /* ── Color: texto y bordes ──────────────────────────────── */
+  --mapit-color-text: #0f172a;
+  --mapit-color-text-variant: #334155;
+  --mapit-color-text-muted: #64748b;
+  --mapit-color-border: #e2e8f0;
+  --mapit-color-border-input: #cbd5e1;
+  --mapit-color-error: #dc2626;
+  /* Fondo de los mensajes de error. Valor ya documentado en libs/ui-kit/DESIGN.md
+     (`error-container`); antes se usaba un hex suelto (#fee2e2) en un template. */
+  --mapit-color-error-container: #ffdad6;
+  --mapit-color-focus-ring: rgb(37 99 235 / 0.2);
 
   /* Estados de los elementos del mapa (RF06).
      Definidos como tokens para que el mapa, la leyenda y el dashboard
@@ -26,24 +64,57 @@
   --mapit-state-cleaning: #3b82f6;
   --mapit-state-out-of-service: #9ca3af;
 
-  /* ── Espaciado ──────────────────────────────────────────── */
+  /* — Color: vertical de negocio (panel de plataforma) ————— */
+  /* Un matiz por vertical, distinguibles entre sí: se usan como punto o
+     segmento (donut, lista de distribución), nunca como color de texto. */
+  --mapit-vertical-restaurant: #2563eb;
+  --mapit-vertical-nightclub: #7c3aed;
+  --mapit-vertical-event-hall: #10b981;
+  --mapit-vertical-hotel: #f59e0b;
+
+  /* ── Espaciado (rejilla base de 4px) ────────────────────── */
   --mapit-space-1: 0.25rem;
   --mapit-space-2: 0.5rem;
   --mapit-space-3: 0.75rem;
   --mapit-space-4: 1rem;
   --mapit-space-6: 1.5rem;
   --mapit-space-8: 2rem;
+  --mapit-sidebar-width: 17.5rem;
+  --mapit-sidebar-width-collapsed: 3.75rem;
+  --mapit-topbar-height: 4rem;
 
-  --mapit-radius: 0.5rem;
-  --mapit-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+  /* ── Formas y elevación ─────────────────────────────────── */
+  --mapit-radius-input: 0.25rem; /* inputs: 4px, esquina afilada */
+  --mapit-radius: 0.5rem; /* default: 8px */
+  --mapit-radius-lg: 0.75rem; /* tarjetas/botones: 12px */
+  --mapit-radius-xl: 1.5rem; /* paneles destacados: 24px */
+  --mapit-shadow: 0 4px 12px rgb(0 0 0 / 0.05);
+
+  /* ── Motion ─────────────────────────────────────────────── */
+  --mapit-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --mapit-duration-fast: 150ms;
+  --mapit-duration: 250ms;
+
+  /* ── Editor de mapas (HU-4.01 v2; spec: apps/console/design/) ──
+     Acento de interacción del lienzo (selección, manejadores, pill).
+     NO es el accent de marca (--mapit-color-accent): roles separados. */
+  --mapit-editor-selection: #2563eb;
+  --mapit-editor-selection-fill: #93c5fd; /* relleno del elemento solo mientras está seleccionado */
+  --mapit-editor-selection-soft: #dbeafe; /* chips/avatar del panel */
+  --mapit-editor-selection-y-bg: #dcfce7;
+  --mapit-editor-selection-y-text: #166534;
+  --mapit-editor-canvas: #f8fafc;
+  --mapit-editor-grid: #e5e7eb;
+  --mapit-editor-furniture: #ffffff;
+  --mapit-editor-furniture-stroke: #94a3b8;
+  --mapit-editor-panel-text: #0f172a;
+  --mapit-editor-panel-muted: #64748b;
+  --mapit-editor-chip-bg: #f1f5f9;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --mapit-color-surface: #101216;
-    --mapit-color-surface-raised: #191c22;
-    --mapit-color-text: #e8eaed;
-    --mapit-color-text-muted: #9aa1ad;
-    --mapit-color-border: #2a2e37;
-  }
-}
+/* Modo oscuro: removido hasta que DESIGN.md defina la paleta dark.
+   Un set provisional de textos claros sobre fondos de la interfaz clara
+   era exactamente por lo que "Reservas" se veía lavado y "Producto" raro:
+   el usuario con SO en dark-mode recibía una paleta heterogénea que ningún
+   diseñador aprobó. Cuando el equipo publique la paleta oscura, se reactiva
+   aquí el bloque @media (prefers-color-scheme: dark). */

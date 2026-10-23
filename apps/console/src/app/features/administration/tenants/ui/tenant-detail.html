@@ -1,0 +1,154 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <a class="back" routerLink="/admin/tenants">← {{ strings.tenantForm.backToList }}</a>
+      <h1>{{ strings.tenantDetail.title }}</h1>
+    </div>
+  </header>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p class="state" role="status">{{ strings.tenantDetail.loading }}</p>
+    }
+    @case ('not-found') {
+      <p class="state" role="alert">{{ strings.tenantDetail.notFound }}</p>
+    }
+    @case ('error') {
+      <div class="state error" role="alert">
+        <p>{{ strings.tenantDetail.loadError }}</p>
+        <a class="btn secondary" routerLink="/admin/tenants">{{ strings.tenantForm.backToList }}</a>
+      </div>
+    }
+    @default {
+      @if (store.tenant(); as tenant) {
+        @if (store.feedback(); as feedback) {
+          <p
+            class="message"
+            [class.success]="feedback.kind === 'success'"
+            [class.error]="feedback.kind === 'error'"
+            [attr.role]="feedback.kind === 'error' ? 'alert' : 'status'"
+          >
+            {{ feedback.message }}
+          </p>
+        }
+
+        <article class="card">
+          <dl class="fields">
+            <div class="field">
+              <dt>{{ strings.tenantDetail.fieldName }}</dt>
+              <dd>
+                @if (!editing) {
+                  {{ tenant.name }}
+                } @else {
+                  <input
+                    class="inline-input"
+                    type="text"
+                    maxlength="120"
+                    [value]="nameDraft"
+                    (input)="nameDraft = $any($event.target).value"
+                    [attr.aria-label]="strings.tenantForm.nameLabel"
+                  />
+                }
+              </dd>
+            </div>
+            <div class="field">
+              <dt>{{ strings.tenantDetail.fieldSlug }}</dt>
+              <dd class="mono">{{ tenant.slug }}</dd>
+            </div>
+            <div class="field">
+              <dt>{{ strings.tenantDetail.fieldVertical }}</dt>
+              <dd>{{ strings.tenants.verticalLabels[tenant.vertical] }}</dd>
+            </div>
+            <div class="field">
+              <dt>{{ strings.tenantDetail.fieldStatus }}</dt>
+              <dd>
+                <span class="chip" [class.active]="tenant.status === 'ACTIVE'">
+                  {{ strings.tenants.statusLabels[tenant.status] }}
+                </span>
+              </dd>
+            </div>
+            <div class="field">
+              <dt>{{ strings.tenantDetail.fieldCreatedAt }}</dt>
+              <dd>{{ tenant.createdAt | date: 'medium' }}</dd>
+            </div>
+            <div class="field">
+              <dt>{{ strings.tenantDetail.fieldUpdatedAt }}</dt>
+              <dd>{{ tenant.updatedAt | date: 'medium' }}</dd>
+            </div>
+          </dl>
+
+          <footer class="actions">
+            @if (!editing) {
+              <button class="btn secondary" type="button" (click)="startEdit()">
+                {{ strings.tenantDetail.editAction }}
+              </button>
+            } @else {
+              <button
+                class="btn primary"
+                type="button"
+                [disabled]="store.saving() || !nameDraft.trim()"
+                (click)="saveEdit()"
+              >
+                {{ store.saving() ? strings.tenantForm.submitEditing : strings.tenantForm.submitEdit }}
+              </button>
+              <button class="btn secondary" type="button" (click)="cancelEdit()">
+                {{ strings.tenantForm.cancel }}
+              </button>
+            }
+            @if (tenant.status === 'ACTIVE') {
+              <button class="btn danger" type="button" (click)="store.askStatusChange()">
+                {{ strings.tenantDetail.suspendAction }}
+              </button>
+            } @else {
+              <button class="btn primary" type="button" (click)="store.askStatusChange()">
+                {{ strings.tenantDetail.reactivateAction }}
+              </button>
+            }
+          </footer>
+        </article>
+
+        @if (store.confirming(); as target) {
+          <div class="overlay" role="presentation" (click)="store.cancelStatusChange()"></div>
+          <div
+            class="dialog"
+            role="alertdialog"
+            aria-modal="true"
+            [attr.aria-label]="
+              target === 'SUSPENDED'
+                ? strings.tenantDetail.confirmSuspendTitle
+                : strings.tenantDetail.confirmReactivateTitle
+            "
+          >
+            <h2>
+              {{
+                target === 'SUSPENDED'
+                  ? strings.tenantDetail.confirmSuspendTitle
+                  : strings.tenantDetail.confirmReactivateTitle
+              }}
+            </h2>
+            <p>
+              {{
+                target === 'SUSPENDED'
+                  ? strings.tenantDetail.confirmSuspendMessage
+                  : strings.tenantDetail.confirmReactivateMessage
+              }}
+            </p>
+            <div class="dialog-actions">
+              <button class="btn secondary" type="button" (click)="store.cancelStatusChange()">
+                {{ strings.tenantDetail.cancel }}
+              </button>
+              <button
+                class="btn primary"
+                type="button"
+                [disabled]="store.saving()"
+                (click)="store.confirmStatusChange()"
+              >
+                {{ strings.tenantDetail.confirm }}
+              </button>
+            </div>
+          </div>
+        }
+      }
+    }
+  }
+</section>

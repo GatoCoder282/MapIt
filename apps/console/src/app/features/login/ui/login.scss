@@ -1,0 +1,465 @@
+@use 'ui-kit/styles/tokens';
+
+:host {
+  display: block;
+  color-scheme: light;
+  color: #151c27;
+}
+
+/* Página blanca centrada */
+.auth-page {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 40px 20px;
+  background: #ffffff;
+  overflow: hidden;
+
+  > *:not(.bg-decorations) {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/* ── Elementos de fondo: anillos concéntricos tenues ── */
+.bg-decorations {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-shape {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+}
+
+.bg-shape-tr {
+  top: -120px;
+  right: -120px;
+  width: min(840px, 64vw);
+  height: min(840px, 64vw);
+  min-width: 480px;
+  min-height: 480px;
+}
+
+.bg-shape-bl {
+  bottom: -140px;
+  left: -140px;
+  width: min(720px, 54vw);
+  height: min(720px, 54vw);
+  min-width: 420px;
+  min-height: 420px;
+}
+
+.bg-shape-side {
+  top: 18%;
+  left: 4%;
+  width: 220px;
+  height: 220px;
+  opacity: 0.85;
+
+  @media (max-width: 1100px) {
+    display: none;
+  }
+}
+
+/* Marca */
+.brand {
+  width: fit-content;
+  font-family: var(--mapit-font-display);
+  color: #151c27;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -2px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.brand-i {
+  position: relative;
+
+  svg {
+    position: absolute;
+    width: 12px;
+    height: 16px;
+    left: 0.5px;
+    top: 2px;
+    fill: #3d4ef2;
+  }
+
+  circle {
+    fill: #ffffff;
+  }
+}
+
+/* Tarjeta central */
+.auth-card {
+  position: relative;
+  width: min(960px, 90vw);
+  min-height: 560px;
+  zoom: 0.92; /* escala compacta constante (aspecto idéntico al zoom 90%) */
+  border-radius: var(--mapit-radius-xl, 28px);
+  background: #151c27;
+  border: 1px solid #2a313d;
+  box-shadow: 0 20px 48px rgb(0 0 0 / 0.35);
+  overflow: hidden;
+  color: #e8eaed;
+}
+
+/* Panel de bienvenida (estático, sin registro) */
+.overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 58%;
+  padding: 48px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+  background: linear-gradient(
+    160deg,
+    var(--mapit-color-accent, #3d4ef2),
+    var(--mapit-color-primary, #1c2edb)
+  );
+  color: #fff;
+  border-radius: 0 50% 50% 0 / 0 34% 34% 0;
+}
+
+.overlay-content {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  animation: cta-in 300ms var(--mapit-ease-out, ease-out) 220ms backwards;
+
+  h2 {
+    margin: 0;
+    font-family: var(--mapit-font-display);
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  p {
+    margin: 0;
+    max-width: 30ch;
+    font: var(--mapit-text-body);
+    line-height: 1.5;
+    opacity: 0.85;
+  }
+}
+
+@keyframes cta-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.ghost-button {
+  margin-top: 12px;
+  padding: 12px 32px;
+  border: 1.5px solid #fff;
+  border-radius: 9999px;
+  background: transparent;
+  color: #fff;
+  font: var(--mapit-text-body-bold);
+  cursor: pointer;
+  transition:
+    background-color var(--mapit-duration-fast, 150ms) var(--mapit-ease-out, ease-out),
+    transform var(--mapit-duration-fast, 150ms) var(--mapit-ease-out, ease-out);
+
+  &:hover {
+    background: rgb(255 255 255 / 0.12);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Mitad derecha: formulario */
+.form-half {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 42%;
+  right: 0;
+  padding: 38px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  overflow-y: auto;
+}
+
+.login-half {
+  right: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  /* Entrada del formulario: aparece tras cubrir el panel (150ms). */
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 300ms var(--mapit-ease-out) 150ms,
+    transform 300ms var(--mapit-ease-out) 150ms,
+    visibility 0s;
+}
+
+/* Welcome */
+.welcome {
+  margin-bottom: 20px;
+
+  h1 {
+    margin: 0 0 8px;
+    font: var(--mapit-text-display);
+    font-family: var(--mapit-font-display);
+    color: #e8eaed;
+  }
+
+  p {
+    margin: 0;
+    font: var(--mapit-text-body);
+    color: #9aa1ad;
+  }
+}
+
+/* Campos */
+.field {
+  margin-bottom: 14px;
+
+  > label {
+    display: block;
+    margin-bottom: 6px;
+    font: var(--mapit-text-body-bold);
+    font-weight: 500;
+    color: #b9bdcf;
+  }
+
+  input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid #3a3f4d;
+    border-radius: var(--mapit-radius-input, 10px);
+    background: #1e2230;
+    color: #e8eaed;
+    font: inherit;
+
+    &::placeholder {
+      color: #6b7280;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--mapit-color-accent, #3d4ef2);
+      box-shadow: 0 0 0 2px var(--mapit-color-focus-ring, rgba(61, 78, 242, 0.25));
+      background: #1e2230;
+      color: #e8eaed;
+    }
+
+    &[aria-invalid='true'],
+    &.input-invalid {
+      border-color: var(--mapit-color-error, #bc1a1a);
+
+      &:focus {
+        border-color: var(--mapit-color-error, #bc1a1a);
+        box-shadow: 0 0 0 2px rgb(186 26 26 / 0.2);
+        background: #1e2230;
+        color: #e8eaed;
+      }
+    }
+  }
+}
+
+.password-field {
+  position: relative;
+
+  input {
+    padding-right: 44px;
+  }
+}
+
+.password-toggle {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  top: auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--mapit-radius-input, 10px);
+  background: transparent;
+  color: var(--mapit-color-text-muted, #9aa1ad);
+  cursor: pointer;
+  transition: color var(--mapit-duration-fast, 150ms) var(--mapit-ease-out, ease-out);
+
+  &:hover:not(:disabled) {
+    color: var(--mapit-color-text, #e8eaed);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: default;
+  }
+
+  svg {
+    width: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+  }
+}
+
+/* Opciones */
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0 20px;
+  font: var(--mapit-text-body);
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9aa1ad;
+  cursor: pointer;
+
+  input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--mapit-color-primary, #1c2edb);
+  }
+}
+
+.text-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--mapit-color-primary, #1c2edb);
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Botón de enviar */
+.submit-button {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--mapit-radius-lg, 14px);
+  background: var(--mapit-color-accent, #3d4ef2);
+  color: var(--mapit-color-on-primary, #fff);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--mapit-duration-fast, 150ms) var(--mapit-ease-out, ease-out),
+    transform var(--mapit-duration-fast, 150ms) var(--mapit-ease-out, ease-out);
+
+  &:hover {
+    background: var(--mapit-color-primary, #1c2edb);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: wait;
+  }
+}
+
+/* Mensajes de error / estado */
+.field-error,
+.field-success,
+.form-message {
+  margin: 8px 0 0;
+  font: var(--mapit-text-metadata);
+}
+
+.field-error {
+  color: var(--mapit-color-error, #bc1a1a);
+}
+
+.field-success {
+  color: var(--mapit-state-available, #22c55e);
+}
+
+.form-message {
+  padding: 12px;
+  border-radius: var(--mapit-radius-input, 10px);
+  background: #232838;
+  color: #9aa1ad;
+}
+
+/* Focus visible */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Motion reducido */
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .form-half,
+  .ghost-button,
+  .submit-button,
+  .overlay-content {
+    transition:
+      opacity 200ms ease-out,
+      visibility 0s !important;
+    transition-duration: 0ms !important;
+  }
+
+  .overlay-content {
+    animation: none;
+  }
+
+  .match-badge {
+    animation: none !important;
+  }
+}
+
+/* Móvil: sin panel, tarjeta compacta */
+@media (max-width: 860px) {
+  .auth-card {
+    width: min(430px, 100%);
+    min-height: 0;
+  }
+
+  .overlay {
+    display: none;
+  }
+
+  .form-half {
+    position: static;
+    width: 100%;
+    padding: 36px 24px;
+    display: flex;
+    overflow: visible;
+  }
+}

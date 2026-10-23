@@ -1,0 +1,47 @@
+<section class="product" aria-labelledby="product-title">
+  <div class="product-inner">
+    <!-- Contenido izquierdo -->
+    <div class="product-content">
+      <div class="section-badge">
+        {{ strings.landing.product.badge }}
+      </div>
+
+      <h2 id="product-title" class="product-title">
+        {{ strings.landing.product.titleA }}<br />
+        {{ strings.landing.product.titleB }}
+      </h2>
+
+      <p class="product-tagline">{{ strings.landing.product.tagline }}</p>
+
+      <p class="product-description">{{ strings.landing.product.description }}</p>
+
+      <a href="#como-funciona" class="btn-primary">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+          class="play-icon"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <polygon points="10 8 16 12 10 16 10 8" />
+        </svg>
+        {{ strings.landing.product.cta }}
+      </a>
+    </div>
+
+    <!-- Mockup del mapa interactivo (Imagen real) -->
+    <div class="product-visual">
+      <img
+        ngSrc="assets/img/product_map.png"
+        [alt]="strings.landing.product.visualAlt"
+        class="app-mockup-img"
+        width="1200"
+        height="682"
+      />
+    </div>
+  </div>
+</section>

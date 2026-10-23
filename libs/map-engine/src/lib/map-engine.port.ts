@@ -40,6 +40,56 @@ export interface MapEnginePort {
 
   /** Libera recursos. Obligatorio: el canvas retiene memoria si no se llama. */
   destroy(): void;
+
+  /** Suscribe a eventos de fin de arrastre de un elemento. */
+  onDragEnd(cb: (payload: { id: SpaceElementId; x: number; y: number }) => void): void;
+
+  /** Suscribe a eventos de fin de rotación de un elemento. */
+  onRotateEnd(cb: (payload: { id: SpaceElementId; rotation: number }) => void): void;
+
+  /** Suscribe a eventos de fin de redimensionamiento de un elemento. */
+  onResizeEnd(
+    cb: (payload: {
+      id: SpaceElementId;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => void,
+  ): void;
+
+  /** Suscribe a eventos de clic en elemento (o fondo para deseleccionar). */
+  onElementClick(cb: (payload: { id: SpaceElementId | null }) => void): void;
+
+  /** Suscribe a eventos de arrastre en tiempo real (dragmove). */
+  onDragMove(cb: (payload: { id: SpaceElementId; x: number; y: number }) => void): void;
+
+  /** Suscribe a eventos de inicio de arrastre. */
+  onDragStart(cb: (id: SpaceElementId) => void): void;
+
+  /**
+   * HU-4.01 (modo `floor`): fin de arrastre de un sector sobre el lienzo de la
+   * planta. La colocación se persiste aparte (saveFloorLayout); nunca toca las
+   * coordenadas internas de los elementos del sector (RN-2).
+   */
+  onSectorDragEnd?(cb: (payload: { id: SpaceElementId; x: number; y: number }) => void): void;
+
+  /**
+   * HU-4.01 (modo `floor`): fin de rotación de un sector. El resize de un sector
+   * NO existe en la vista de planta (sus dimensiones se editan en la vista de
+   * sector, D-3).
+   */
+  onSectorRotateEnd?(cb: (payload: { id: SpaceElementId; rotation: number }) => void): void;
+
+  /** HU-4.01 (modo `floor`): clic en un sector (o fondo para deseleccionar). */
+  onSectorClick?(cb: (payload: { id: SpaceElementId | null }) => void): void;
+
+  /**
+   * HU-4.01: drop externo desde la biblioteca HTML (plantillas o sectores
+   * duplicables). `key` es el dato del `dragstart` (dataTransfer `text/plain`);
+   * `x`/`y` son coordenadas del lienzo ya convertidas por el adaptador.
+   */
+  onExternalDrop?(cb: (payload: { key: string; x: number; y: number }) => void): void;
 }
 
 export const MAP_ENGINE = new InjectionToken<MapEnginePort>('mapit.map-engine');

@@ -23,8 +23,16 @@ const POR_DEFECTO: FeatureFlagConfig = {
  * En despliegue, los valores llegan de `/assets/config.json` (config de runtime),
  * no de un `environment.ts` incrustado en el bundle.
  */
-export function provideFeatureFlags(config: Partial<FeatureFlagConfig> = {}): EnvironmentProviders {
+export function provideFeatureFlags(
+  config: Partial<FeatureFlagConfig> | (() => Partial<FeatureFlagConfig>) = {},
+): EnvironmentProviders {
+  const resolver = typeof config === 'function' ? config : () => config;
+  // useFactory (no useValue): la config de runtime llega vía APP_INITIALIZER y solo
+  // está disponible cuando el primer inyector resuelve el token, no al registrarse.
   return makeEnvironmentProviders([
-    { provide: FEATURE_FLAG_CONFIG, useValue: { ...POR_DEFECTO, ...config } },
+    {
+      provide: FEATURE_FLAG_CONFIG,
+      useFactory: () => ({ ...POR_DEFECTO, ...resolver() }),
+    },
   ]);
 }

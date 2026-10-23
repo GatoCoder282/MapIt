@@ -1,0 +1,50 @@
+<div class="staff-shell">
+  <mapit-sidebar
+    [nav]="navItems"
+    [navLabel]="strings.staffShell.brandArea"
+    [navAriaLabel]="strings.staffShell.navLandmarkLabel"
+    [drawerOpen]="menuOpen()"
+    [closeLabel]="strings.shell.closeMenu"
+    (drawerClose)="closeMenu()"
+  />
+
+  <div class="shell-main">
+    <header class="topbar">
+      <button
+        class="menu-toggle"
+        type="button"
+        (click)="toggleMenu()"
+        [attr.aria-expanded]="menuOpen()"
+        [attr.aria-label]="menuOpen() ? strings.shell.closeMenu : strings.shell.openMenu"
+      >
+        ☰
+      </button>
+
+      @if (session.user(); as user) {
+        <div class="user-block">
+          <button class="notification-btn" type="button" aria-label="Notificaciones">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <span class="notification-dot"></span>
+          </button>
+          <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+          <span class="user-meta">
+            <span class="user-name">{{ user.fullName }}</span>
+            <span class="user-role">{{ roleLabel() }}</span>
+          </span>
+          <button class="user-menu-toggle" type="button" aria-label="Menú de usuario">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        </div>
+      }
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

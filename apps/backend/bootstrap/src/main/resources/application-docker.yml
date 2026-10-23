@@ -13,4 +13,4 @@ mapit:
 
 logging:
   level:
-    com.mapit: INFO
+    com.mapit: ${MAPIT_LOG_LEVEL:INFO}

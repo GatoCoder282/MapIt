@@ -1,0 +1,114 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <h1>{{ strings.tenants.title }}</h1>
+      <p class="intro">{{ strings.tenants.intro }}</p>
+    </div>
+    <a class="btn primary" routerLink="/admin/tenants/new">{{ strings.tenants.newTenant }}</a>
+  </header>
+
+  <div class="toolbar">
+    <label class="search">
+      <span class="visually-hidden">{{ strings.tenants.searchLabel }}</span>
+      <input
+        type="search"
+        [placeholder]="strings.tenants.searchPlaceholder"
+        [attr.aria-label]="strings.tenants.searchLabel"
+        [value]="store.searchInput()"
+        (input)="store.onSearchInput($any($event.target).value)"
+      />
+    </label>
+    <label class="filter">
+      <span class="visually-hidden">{{ strings.tenants.filterStatus }}</span>
+      <select
+        [attr.aria-label]="strings.tenants.filterStatus"
+        (change)="store.onStatusFilter($any($event.target).value)"
+      >
+        @for (option of statusFilters; track option.value) {
+          <option [value]="option.value" [selected]="store.statusFilter() === option.value">
+            {{ option.label }}
+          </option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p class="state" role="status">{{ strings.tenants.loading }}</p>
+    }
+    @case ('error') {
+      <div class="state error" role="alert">
+        <p>{{ store.errorMessage() }}</p>
+        <button class="btn secondary" type="button" (click)="store.retry()">
+          {{ strings.tenants.retry }}
+        </button>
+      </div>
+    }
+    @default {
+      @if (store.isEmpty()) {
+        <div class="state empty">
+          <p class="empty-title">{{ strings.tenants.emptyTitle }}</p>
+          <p>{{ strings.tenants.empty }}</p>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">{{ strings.tenants.columns.name }}</th>
+                <th scope="col">{{ strings.tenants.columns.slug }}</th>
+                <th scope="col" class="hide-mobile">{{ strings.tenants.columns.vertical }}</th>
+                <th scope="col">{{ strings.tenants.columns.status }}</th>
+                <th scope="col" class="hide-mobile">{{ strings.tenants.columns.createdAt }}</th>
+                <th scope="col">
+                  <span class="visually-hidden">{{ strings.tenants.columns.actions }}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (tenant of store.tenants(); track tenant.id) {
+                <tr>
+                  <td class="name">{{ tenant.name }}</td>
+                  <td class="slug">{{ tenant.slug }}</td>
+                  <td class="hide-mobile">{{ strings.tenants.verticalLabels[tenant.vertical] }}</td>
+                  <td>
+                    <span class="chip" [class.active]="tenant.status === 'ACTIVE'">
+                      {{ statusLabel(tenant.status) }}
+                    </span>
+                  </td>
+                  <td class="hide-mobile">{{ tenant.createdAt | date: 'mediumDate' }}</td>
+                  <td class="actions">
+                    <a class="btn ghost" [routerLink]="['/admin/tenants', tenant.id]">
+                      {{ strings.tenants.viewDetail }}
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <nav class="pagination" [attr.aria-label]="strings.tenants.paginationLabel">
+          <span class="count">
+            {{ store.page() * store.size() + (store.totalElements() ? 1 : 0) }}–{{
+              store.page() * store.size() + store.tenants().length
+            }}
+            {{ strings.tenants.ofTotal }} {{ store.totalElements() }}
+          </span>
+          <div class="pager">
+            <button class="btn secondary" type="button" [disabled]="!store.canGoPrev()" (click)="store.goPrev()">
+              {{ strings.tenants.previous }}
+            </button>
+            <span class="page-indicator">
+              {{ store.page() + 1 }} {{ strings.tenants.pageOf }} {{ store.totalPages() || 1 }}
+            </span>
+            <button class="btn secondary" type="button" [disabled]="!store.canGoNext()" (click)="store.goNext()">
+              {{ strings.tenants.next }}
+            </button>
+          </div>
+        </nav>
+      }
+    }
+  }
+</section>

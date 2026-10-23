@@ -32,7 +32,6 @@ dependencies {
     implementation(libs.spring.boot.starter.websocket)
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.springdoc.openapi)
-    implementation(libs.unleash.client)
     implementation(libs.bundles.jwt)
 
     testImplementation(libs.spring.boot.starter.test)
@@ -48,4 +47,6 @@ flyway {
     user = System.getenv("POSTGRES_USER") ?: "mapit"
     password = System.getenv("POSTGRES_PASSWORD") ?: "changeme_local"
     locations = arrayOf("filesystem:src/main/resources/db/migration")
+    // MAP-175: la contraseña de mapit_app llega del entorno, nunca del repo.
+    placeholders = mapOf("mapitAppDbPassword" to (System.getenv("MAPIT_APP_DB_PASSWORD") ?: ""))
 }

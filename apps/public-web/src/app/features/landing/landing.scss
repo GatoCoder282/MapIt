@@ -1,0 +1,28 @@
+:host {
+  display: block;
+  color-scheme: light;
+  background: var(--mapit-color-surface);
+  color: var(--mapit-color-text);
+  font-family: var(--mapit-font-sans);
+
+  /*
+   * La landing pública siempre es light-mode.
+   * Reiniciamos los tokens de color a sus valores claros aunque el sistema
+   * tenga dark mode activo — los tokens quedan en el scope del :host,
+   * por lo que todas las secciones hijas los heredan correctamente.
+   */
+  --mapit-color-canvas: #f7f8fa;
+  --mapit-color-surface: #ffffff;
+  --mapit-color-surface-low: #f0f3ff;
+  --mapit-color-surface-raised: #e7eefe;
+  --mapit-color-text: #151c27;
+  --mapit-color-text-variant: #454656;
+  --mapit-color-text-muted: #6b7280;
+  --mapit-color-border: #e5e7eb;
+  --mapit-color-border-input: #d1d5db;
+}
+
+/* Scroll suave para los anchors de navegación */
+:host-context(html) {
+  scroll-behavior: smooth;
+}

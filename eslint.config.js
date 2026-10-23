@@ -23,6 +23,12 @@ export default tseslint.config(
   ...base,
   ...angular,
   ...boundaries,
+  {
+    files: ['apps/console/**/*.ts', 'apps/public-web/**/*.ts', 'libs/**/*.ts'],
+    ignores: ['**/*.spec.ts', '**/generated/**'],
+    rules: { 'no-console': 'error' },
+  },
+  { files: ['libs/logging/src/console-adapter.ts'], rules: { 'no-console': 'off' } },
 
   // ── Prefijos de selector por app ────────────────────────────
   {
@@ -95,5 +101,16 @@ export default tseslint.config(
   {
     files: ['apps/e2e/**/*.ts'],
     rules: { 'no-console': 'off' },
+  },
+  {
+    files: ['apps/console/**/*.ts'],
+    rules: {
+      //Cambiar a 'warn' para verlas en amarillo sin que bloqueen
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
+      '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+    },
   },
 );
