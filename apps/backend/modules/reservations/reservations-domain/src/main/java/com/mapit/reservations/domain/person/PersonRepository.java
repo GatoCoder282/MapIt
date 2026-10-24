@@ -18,4 +18,11 @@ public interface PersonRepository {
   Optional<Person> findAliveByEmail(TenantId tenantId, String normalizedEmail);
 
   Person insert(Person person);
+
+  /**
+   * Inserta una persona pública o devuelve la persona viva que ya usa su email.
+   *
+   * <p>La operación es segura ante altas concurrentes con el mismo email.
+   */
+  Person findOrCreatePublic(Person person);
 }

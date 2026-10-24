@@ -47,6 +47,22 @@ class PersonTest {
   }
 
   @Test
+  void registraUnaPersonaPublicaSinActor() {
+    Person person =
+        Person.register(
+            PersonId.generate(),
+            TenantId.of("tenant-a"),
+            "Ana PǸrez",
+            "ana@example.com",
+            null,
+            NOW,
+            null);
+
+    assertThat(person.createdBy()).isNull();
+    assertThat(person.updatedBy()).isNull();
+  }
+
+  @Test
   void rechazaNombreVacio() {
     assertThatThrownBy(
             () ->

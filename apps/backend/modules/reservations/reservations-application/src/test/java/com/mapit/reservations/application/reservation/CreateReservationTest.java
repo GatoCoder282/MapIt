@@ -174,6 +174,52 @@ class CreateReservationTest {
   }
 
   @Test
+  void creaUnaReservaPublicaSinActorDeCreacion() {
+    Reservation created =
+        useCase.create(
+            TENANT,
+            null,
+            ESTABLISHMENT,
+            PersonId.of(PERSON),
+            List.of(ELEMENT_A),
+            STARTS_AT,
+            ENDS_AT,
+            true);
+
+    assertThat(created.createdBy()).isNull();
+    assertThat(created.status()).isEqualTo(ReservationStatus.CREATED);
+    assertThat(reservations.saved).isSameAs(created);
+  }
+
+  @Test
+  void unaReservaPublicaRechazaElementosFueraDeServicioComoNoDisponibles() {
+    resources.found =
+        List.of(
+            new ReservationResource(
+                ELEMENT_A,
+                ESTABLISHMENT,
+                ReservationResource.Kind.TABLE,
+                ReservationResource.OperationalState.OUT_OF_SERVICE));
+
+    assertThatThrownBy(
+            () ->
+                useCase.create(
+                    TENANT,
+                    null,
+                    ESTABLISHMENT,
+                    PersonId.of(PERSON),
+                    List.of(ELEMENT_A),
+                    STARTS_AT,
+                    ENDS_AT,
+                    true))
+        .isInstanceOfSatisfying(
+            ReservationResourceUnavailableException.class,
+            exception ->
+                assertThat(exception.unavailableElementIds()).containsExactly(ELEMENT_A));
+    assertThat(reservations.saved).isNull();
+  }
+
+  @Test
   void rechazaTodaLaReservaSiUnElementoSeSuperpone() {
     availability.conflicts = Set.of(ELEMENT_B);
 
@@ -234,6 +280,11 @@ class CreateReservationTest {
     public Person insert(Person newPerson) {
       person = newPerson;
       return newPerson;
+    }
+
+    @Override
+    public Person findOrCreatePublic(Person newPerson) {
+      return insert(newPerson);
     }
   }
 

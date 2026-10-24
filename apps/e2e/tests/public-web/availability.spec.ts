@@ -24,6 +24,12 @@ test.describe('Disponibilidad pública', () => {
     await expect(page.getByText('Mesa', { exact: true })).toBeVisible();
     await expect(page.getByText('20000000-0000-0000-0000-000000000001')).toBeVisible();
     await expect(page).not.toHaveURL(/login/);
+
+    await page.getByRole('link', { name: 'Reservar' }).click();
+    await expect(page).toHaveURL(
+      /\/reservar\/demo\/la-bahia\/20000000-0000-0000-0000-000000000001\?date=2026-10-25/,
+    );
+    await expect(page.getByRole('heading', { name: 'Completa tu reserva' })).toBeVisible();
   });
 
   test('muestra el estado vacío cuando no hay espacios disponibles', async ({ page }) => {

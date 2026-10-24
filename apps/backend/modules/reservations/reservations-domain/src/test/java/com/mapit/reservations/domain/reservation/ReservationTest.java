@@ -86,20 +86,19 @@ class ReservationTest {
   }
 
   @Test
-  void rechaza_rehidratar_una_reserva_sin_actor_de_creacion() {
-    assertThatThrownBy(
-            () ->
-                new Reservation(
-                    ReservationId.generate(),
-                    TENANT,
-                    ESTABLISHMENT,
-                    PersonId.of(PERSON),
-                    Set.of(ELEMENT_A),
-                    ReservationTimeRange.of(START, END),
-                    ReservationStatus.CREATED,
-                    START,
-                    null))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("createdBy");
+  void permite_rehidratar_una_reserva_publica_sin_actor_de_creacion() {
+    Reservation reservation =
+        new Reservation(
+            ReservationId.generate(),
+            TENANT,
+            ESTABLISHMENT,
+            PersonId.of(PERSON),
+            Set.of(ELEMENT_A),
+            ReservationTimeRange.of(START, END),
+            ReservationStatus.CREATED,
+            START,
+            null);
+
+    assertThat(reservation.createdBy()).isNull();
   }
 }

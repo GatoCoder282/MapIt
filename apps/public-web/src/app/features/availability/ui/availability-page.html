@@ -54,6 +54,13 @@
                   <span>{{ strings.availability.elementCode }}</span>
                   <code>{{ element.id }}</code>
                 </span>
+                <a
+                  class="book"
+                  [routerLink]="['/reservar', tenantSlug(), establishmentSlug(), element.id]"
+                  [queryParams]="{ date: store.date() }"
+                >
+                  {{ strings.availability.book }}
+                </a>
               </li>
             }
           </ul>
