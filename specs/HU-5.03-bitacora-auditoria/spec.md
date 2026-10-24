@@ -111,7 +111,7 @@ credenciales, cuerpos HTTP completos ni datos personales del cliente.
       ninguno puede observar ni inferir los registros del otro.
 - [ ] **CA-9:** Dados registros históricos de HU-3.01, cuando se aplica la nueva migración,
       entonces siguen disponibles en la consulta general con los mismos datos de trazabilidad.
-- [ ] **CA-10:** Dada la vista de auditoría, cuando carga, filtra, pagina o recibe un error,
+- [x] **CA-10:** Dada la vista de auditoría, cuando carga, filtra, pagina o recibe un error,
       entonces presenta estados comprensibles, accesibles y conserva los filtros útiles.
 - [ ] **CA-11:** Dado cualquier evento persistido o devuelto, cuando se inspeccionan sus datos,
       entonces no contiene contraseñas, hashes, JWT, credenciales ni datos personales innecesarios.

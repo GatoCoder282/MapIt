@@ -4,6 +4,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthSession } from '@mapit/auth';
 import {
   LucideCalendarPlus,
+  LucideHistory,
   LucideHouse,
   LucideLayers,
   LucideLogOut,
@@ -15,7 +16,7 @@ import { STRINGS } from '../core/strings';
 interface StaffNavItem {
   label: string;
   route: string;
-  icon: 'home' | 'spaces' | 'templates' | 'reservations';
+  icon: 'home' | 'spaces' | 'templates' | 'reservations' | 'audit';
   exact?: boolean;
 }
 /**
@@ -35,6 +36,7 @@ interface StaffNavItem {
     LucideLogOut,
     LucideComponent,
     LucideCalendarPlus,
+    LucideHistory,
   ],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
@@ -63,6 +65,15 @@ export class StaffShell {
       icon: 'reservations',
     },
   ];
+
+  protected readonly visibleNavItems = computed(() =>
+    this.session.user()?.role === 'ADMIN'
+      ? [
+          ...this.navItems,
+          { label: STRINGS.staffShell.nav.audit, route: '/audit', icon: 'audit' as const },
+        ]
+      : this.navItems,
+  );
 
   protected readonly roleLabel = computed(() => {
     const role = this.session.user()?.role;

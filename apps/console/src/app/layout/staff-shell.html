@@ -34,7 +34,7 @@
       <div class="scrim" (click)="closeMenu()" aria-hidden="true"></div>
     }
     <nav class="sidebar" [class.open]="menuOpen()" [attr.aria-label]="strings.staffShell.brandArea">
-      @for (item of navItems; track item.route) {
+      @for (item of visibleNavItems(); track item.route) {
         <a
           class="nav-item"
           [routerLink]="item.route"
@@ -54,6 +54,9 @@
             }
             @case ('reservations') {
               <svg lucideCalendarPlus aria-hidden="true"></svg>
+            }
+            @case ('audit') {
+              <svg lucideHistory aria-hidden="true"></svg>
             }
           }
           <span>{{ item.label }}</span>

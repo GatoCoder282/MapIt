@@ -28,12 +28,12 @@
 
 ## MAP-225 — Implementar vista de auditoría para Administrador
 
-- [ ] Crear feature Angular `audit` sin importar otras features.
-- [ ] Añadir capa de datos sobre el cliente OpenAPI generado.
-- [ ] Implementar store de filtros, paginación y estados de carga.
-- [ ] Crear vista responsive y accesible con textos del catálogo.
-- [ ] Añadir ruta y navegación visibles solo para `ADMIN`.
-- [ ] Cubrir el ViewModel con Vitest.
+- [x] Crear feature Angular `audit` sin importar otras features.
+- [x] Añadir capa de datos sobre el cliente OpenAPI generado.
+- [x] Implementar store de filtros, paginación y estados de carga.
+- [x] Crear vista responsive y accesible con textos del catálogo.
+- [x] Añadir ruta y navegación visibles solo para `ADMIN`.
+- [x] Cubrir el ViewModel con Vitest.
 
 ## MAP-226 — Tests de integración de auditoría
 
@@ -109,7 +109,17 @@
 
 ### MAP-225
 
-Pendiente.
+- Se añadió la feature Angular `audit` con separación `data/model/ui`; consume exclusivamente el
+  `AuditService` generado desde OpenAPI y no importa otras features.
+- El store conserva los filtros por recurso, evento, identificador y fechas al paginar o
+  reintentar, y expone estados de carga, vacío, error y autorización denegada.
+- La tabla se transforma en tarjetas etiquetadas en pantallas pequeñas, mantiene encabezados
+  semánticos y ofrece controles de filtros y paginación accesibles.
+- La ruta `/audit`, el acceso del menú y el endpoint quedan reservados a usuarios `ADMIN`; otros
+  roles no ven la navegación y el guard evita el acceso directo.
+- Se añadieron seis pruebas Vitest del ViewModel para carga, filtros, error, autorización,
+  limpieza y paginación. La suite completa compiló la pantalla y dejó frontend, contrato y
+  backend en verde después de corregir la advertencia de lint detectada en la primera pasada.
 
 ### MAP-226
 
