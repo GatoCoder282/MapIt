@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -101,7 +102,7 @@ public class ReservationController {
       Instant endsAt,
       ReservationStatus status,
       Instant createdAt,
-      UUID createdBy) {
+      @Nullable UUID createdBy) {
 
     static ReservationResponse fromDomain(Reservation reservation) {
       return new ReservationResponse(

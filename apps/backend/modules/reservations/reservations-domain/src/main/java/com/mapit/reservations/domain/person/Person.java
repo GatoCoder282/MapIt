@@ -18,9 +18,9 @@ public record Person(
     @Nullable String email,
     @Nullable String phone,
     Instant createdAt,
-    UUID createdBy,
+    @Nullable UUID createdBy,
     Instant updatedAt,
-    UUID updatedBy,
+    @Nullable UUID updatedBy,
     @Nullable Instant deletedAt,
     @Nullable UUID deletedBy) {
 
@@ -34,9 +34,7 @@ public record Person(
     email = normalizeEmail(email);
     phone = normalizeOptional(phone, 32, "El teléfono no puede superar 32 caracteres");
     Objects.requireNonNull(createdAt, "createdAt no puede ser null");
-    Objects.requireNonNull(createdBy, "createdBy no puede ser null");
     Objects.requireNonNull(updatedAt, "updatedAt no puede ser null");
-    Objects.requireNonNull(updatedBy, "updatedBy no puede ser null");
     if (deletedBy != null && deletedAt == null) {
       throw new IllegalArgumentException("deletedBy requiere deletedAt");
     }
@@ -49,7 +47,7 @@ public record Person(
       @Nullable String email,
       @Nullable String phone,
       Instant now,
-      UUID actorId) {
+      @Nullable UUID actorId) {
     return new Person(
         id, tenantId, fullName, email, phone, now, actorId, now, actorId, null, null);
   }
