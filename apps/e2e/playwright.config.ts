@@ -30,6 +30,11 @@ export default defineConfig({
     testIdAttribute: 'data-testid',
   },
 
+  // Baseline única cross-OS: el spec de login fija su propio viewport
+  // (1440x900), así que sin {-projectName}/{-platform} console y
+  // console-tablet —y win32 y linux— comparten la misma referencia.
+  snapshotPathTemplate: '{snapshotDir}/{testFileDir}/{testFileName}-snapshots/{arg}{ext}',
+
   projects: [
     {
       name: 'console',
@@ -39,9 +44,16 @@ export default defineConfig({
     {
       name: 'console-tablet',
       testMatch: /console\/.*\.spec\.ts/,
-      // El "modo operación" en recepción se usa en tablet (RNF07),
-      // así que se prueba en ese viewport, no solo en escritorio.
-      use: { ...devices['iPad Pro 11'], baseURL: CONSOLE_URL },
+      // El "modo operación" en recepción se usa en tablet (RNF07): mismo
+      // viewport de iPad, con Chromium. El WebKit de Playwright se crashea
+      // en el flujo del shell (renderer) y en CI es inestable; el objetivo
+      // aquí es probar el viewport, no el motor — el staff usa tablets con Chrome.
+      use: {
+        ...devices['iPad Pro 11'],
+        browserName: 'chromium',
+        defaultBrowserType: 'chromium',
+        baseURL: CONSOLE_URL,
+      },
     },
     {
       name: 'public-web',

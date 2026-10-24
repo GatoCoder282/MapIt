@@ -36,9 +36,18 @@ test.describe('Consola — administración de tenants', () => {
     }
 
     // Redirección por rol al módulo de tenants dentro del shell.
+    // Desktop: el rail es visible de inmediato (landmark nav «Plataforma»).
+    // En tablet (RNF07) la navegación vive en un drawer colapsado: se abre
+    // para verificarla y se cierra porque el scrim tapa todo el contenido.
     await expect(page).toHaveURL(/\/admin\/tenants/);
-    await expect(page.getByRole('link', { name: 'Tenants' })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Plataforma' })).toBeVisible();
+    if (await page.getByRole('link', { name: 'Tenants' }).isVisible()) {
+      await expect(page.getByRole('navigation', { name: 'Plataforma' })).toBeVisible();
+    } else {
+      await page.getByRole('button', { name: 'Abrir navegación' }).click();
+      await expect(page.getByRole('navigation', { name: 'Navegación móvil' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Tenants' })).toBeVisible();
+      await page.locator('.scrim').click();
+    }
 
     // Crear un tenant desde el listado.
     await page.getByRole('link', { name: /nuevo tenant/i }).click();

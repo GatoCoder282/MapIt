@@ -20,16 +20,26 @@ test.describe('Home Dashboard Visual', () => {
   });
 
   test('debe mostrar el layout completo con sidebar oscuro', async ({ page }) => {
-    // Verificar que el sidebar esté visible y oscuro
+    // Desktop: el rail es visible de inmediato. En tablet (RNF07) el rail
+    // colapsa en un drawer, que hay que abrir (y cerrar luego, porque el
+    // scrim tapa el contenido) para verificar la navegación.
     const sidebar = page.locator('.sidebar');
-    await expect(sidebar).toBeVisible();
+    if (await sidebar.isVisible()) {
+      // Verificar el logo en el sidebar (ahora es una imagen con texto alternativo)
+      await expect(page.getByAltText('MapIt').first()).toBeVisible();
 
-    // Verificar el logo en el sidebar (ahora es una imagen con texto alternativo)
-    await expect(page.getByAltText('MapIt').first()).toBeVisible();
-
-    // Verificar navegación
-    await expect(page.locator('text=Inicio').first()).toBeVisible();
-    await expect(page.locator('text=Negocios').first()).toBeVisible();
+      // Verificar navegación
+      await expect(page.locator('text=Inicio').first()).toBeVisible();
+      await expect(page.locator('text=Negocios').first()).toBeVisible();
+    } else {
+      await page.getByRole('button', { name: 'Abrir navegación' }).click();
+      await expect(page.getByRole('navigation', { name: 'Navegación móvil' })).toBeVisible();
+      const drawer = page.locator('.drawer');
+      await expect(drawer.getByAltText('MapIt')).toBeVisible();
+      await expect(drawer.getByRole('link', { name: 'Inicio' })).toBeVisible();
+      await expect(drawer.getByRole('link', { name: 'Negocios' })).toBeVisible();
+      await page.locator('.scrim').click();
+    }
 
     // Verificar topbar (el buscador se retiró del shell; queda el aviso)
     await expect(page.locator('.notification-btn')).toBeVisible();
