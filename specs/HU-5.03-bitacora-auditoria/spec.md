@@ -105,15 +105,15 @@ credenciales, cuerpos HTTP completos ni datos personales del cliente.
       cuando se consulta, entonces la respuesta contiene solo los registros coincidentes.
 - [x] **CA-6:** Dado un usuario anónimo o con rol `MANAGER`, `STAFF` o `SUPER_ADMIN`, cuando
       consulta la bitácora de esta historia, entonces recibe `401` o `403` según corresponda.
-- [ ] **CA-7:** Dado un registro existente, cuando el rol normal de la aplicación intenta
+- [x] **CA-7:** Dado un registro existente, cuando el rol normal de la aplicación intenta
       actualizarlo o eliminarlo, entonces PostgreSQL rechaza la operación y el registro no cambia.
 - [x] **CA-8:** Dados dos tenants con eventos, cuando cada administrador consulta, entonces
       ninguno puede observar ni inferir los registros del otro.
-- [ ] **CA-9:** Dados registros históricos de HU-3.01, cuando se aplica la nueva migración,
+- [x] **CA-9:** Dados registros históricos de HU-3.01, cuando se aplica la nueva migración,
       entonces siguen disponibles en la consulta general con los mismos datos de trazabilidad.
 - [x] **CA-10:** Dada la vista de auditoría, cuando carga, filtra, pagina o recibe un error,
       entonces presenta estados comprensibles, accesibles y conserva los filtros útiles.
-- [ ] **CA-11:** Dado cualquier evento persistido o devuelto, cuando se inspeccionan sus datos,
+- [x] **CA-11:** Dado cualquier evento persistido o devuelto, cuando se inspeccionan sus datos,
       entonces no contiene contraseñas, hashes, JWT, credenciales ni datos personales innecesarios.
 
 ## 9. Fuera de alcance

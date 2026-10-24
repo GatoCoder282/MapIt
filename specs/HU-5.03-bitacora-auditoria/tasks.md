@@ -37,19 +37,19 @@
 
 ## MAP-226 — Tests de integración de auditoría
 
-- [ ] Probar eventos de reserva y `SpaceElement` de extremo a extremo.
-- [ ] Probar atomicidad y ausencia de eventos huérfanos.
-- [ ] Probar migración del histórico de HU-3.01.
-- [ ] Probar aislamiento RLS y filtros explícitos entre dos tenants.
-- [ ] Probar autorización y ausencia de secretos.
-- [ ] Probar que el rol runtime no pueda actualizar ni eliminar registros.
+- [x] Probar eventos de reserva y `SpaceElement` de extremo a extremo.
+- [x] Probar atomicidad y ausencia de eventos huérfanos.
+- [x] Probar migración del histórico de HU-3.01.
+- [x] Probar aislamiento RLS y filtros explícitos entre dos tenants.
+- [x] Probar autorización y ausencia de secretos.
+- [x] Probar que el rol runtime no pueda actualizar ni eliminar registros.
 
 ## Cierre de HU-5.03
 
-- [ ] Ejecutar `pnpm check` y dejarlo en verde.
-- [ ] Ejecutar `pnpm be:it` y dejarlo en verde.
-- [ ] Marcar todos los criterios de aceptación de `spec.md`.
-- [ ] Completar las notas de ejecución de cada MAP.
+- [x] Ejecutar `pnpm check` y dejarlo en verde.
+- [x] Ejecutar `pnpm be:it` y dejarlo en verde.
+- [x] Marcar todos los criterios de aceptación de `spec.md`.
+- [x] Completar las notas de ejecución de cada MAP.
 - [ ] Adjuntar evidencias de backend, frontend y API al PR.
 
 ## Notas de ejecución
@@ -123,4 +123,18 @@
 
 ### MAP-226
 
-Pendiente.
+- Se añadió una prueba de migración real desde V18 que conserva identificador, tenant, actor,
+  instante, recurso, estados y sector del histórico de HU-3.01, evita duplicados y confirma la
+  eliminación de la tabla anterior.
+- La integración de cambio de estado ahora fuerza un fallo controlado al registrar auditoría y
+  demuestra que se revierten tanto la operación como el evento, sin escrituras parciales.
+- La API se prueba con un identificador real de otro tenant y devuelve una página vacía; también
+  se inspecciona la respuesta para confirmar que no expone contraseñas, hashes, JWT, tokens,
+  credenciales ni correo del actor.
+- Las suites existentes de reservas y `SpaceElement` cubren la creación de eventos desde los
+  casos de uso reales. Las pruebas de persistencia cubren RLS y el rechazo de `UPDATE` y `DELETE`
+  para el rol runtime.
+- Las tres suites específicas quedaron en verde y `pnpm be:it` completó toda la integración del
+  backend correctamente en 10 min 22 s.
+- `pnpm check` terminó completamente en verde: formato, lint, tipos, pruebas y build de frontend,
+  contrato API y backend con ArchUnit.

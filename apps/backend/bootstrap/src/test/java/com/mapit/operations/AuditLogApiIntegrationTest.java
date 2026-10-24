@@ -1,5 +1,6 @@
 package com.mapit.operations;
 
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -41,6 +42,8 @@ class AuditLogApiIntegrationTest {
       UUID.fromString("22400000-0000-0000-0000-000000000011");
   private static final UUID RESERVATION_B =
       UUID.fromString("22400000-0000-0000-0000-000000000012");
+  private static final UUID FOREIGN_RESERVATION =
+      UUID.fromString("22400000-0000-0000-0000-000000000013");
   private static final UUID ELEMENT_A =
       UUID.fromString("22400000-0000-0000-0000-000000000021");
   private static final UUID EVENT_A1 =
@@ -132,7 +135,7 @@ class AuditLogApiIntegrationTest {
         ADMIN_B,
         "2026-10-20T14:00:00Z",
         "RESERVATION",
-        UUID.randomUUID(),
+        FOREIGN_RESERVATION,
         "RESERVATION_CREATED",
         Map.of("status", "CREATED", "establishmentId", UUID.randomUUID().toString()));
   }
@@ -234,6 +237,42 @@ class AuditLogApiIntegrationTest {
         .isEqualTo(EVENT_B1.toString())
         .jsonPath("$.totalElements")
         .isEqualTo(1);
+
+    http()
+        .get()
+        .uri("/api/v1/audit-logs?resourceId=" + FOREIGN_RESERVATION)
+        .header("Authorization", bearer(token(ADMIN_A, TENANT_A, UserRole.ADMIN)))
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.content.length()")
+        .isEqualTo(0)
+        .jsonPath("$.totalElements")
+        .isEqualTo(0);
+  }
+
+  @Test
+  void respuesta_no_expone_credenciales_tokens_hashes_ni_datos_personales() {
+    String response =
+        http()
+            .get()
+            .uri("/api/v1/audit-logs")
+            .header("Authorization", bearer(token(ADMIN_A, TENANT_A, UserRole.ADMIN)))
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody(String.class)
+            .returnResult()
+            .getResponseBody();
+
+    assertThat(response)
+        .isNotNull()
+        .doesNotContainIgnoringCase("password")
+        .doesNotContainIgnoringCase("token")
+        .doesNotContainIgnoringCase("hash")
+        .doesNotContainIgnoringCase("email")
+        .doesNotContain("admin-a@audit-api.test");
   }
 
   @Test
