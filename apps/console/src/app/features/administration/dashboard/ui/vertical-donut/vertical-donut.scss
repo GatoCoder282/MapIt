@@ -1,0 +1,203 @@
+/* Donut de tenants por vertical.
+   El motor pinta el canvas; aquí solo se fija la caja, el total del centro y
+   la lista-leyenda. Sin hex: todo sale de los tokens. */
+
+:host {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--mapit-space-6);
+}
+
+.donut-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
+.donut {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+/* El total del centro: texto HTML de verdad (no canvas), así que se lee,
+   se traduce y usa las fuentes del sistema. */
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.1rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.donut-total {
+  font-family: var(--mapit-font-display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 2rem;
+  color: var(--mapit-color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.donut-label {
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+}
+
+/* ── Leyenda (lista propia, no la de ECharts) ─────────────── */
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--mapit-space-2);
+  min-width: 0;
+}
+
+.legend-item {
+  display: grid;
+  grid-template-columns: 0.5rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--mapit-space-2);
+  min-width: 0;
+}
+
+.legend-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+
+.legend-name {
+  font: var(--mapit-text-body);
+  color: var(--mapit-color-text-variant);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.legend-count {
+  font: var(--mapit-text-body-bold);
+  color: var(--mapit-color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend-percent {
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.25rem;
+  text-align: right;
+}
+
+.empty {
+  margin: 0;
+  grid-column: 1 / -1;
+  font: var(--mapit-text-body);
+  color: var(--mapit-color-text-muted);
+  text-align: center;
+  padding: var(--mapit-space-6) 0;
+}
+
+/* ── Error: la fuente falló ─────────────────────────────────
+   El fallo se vende como fallo (mensaje + reintento), no como un vacío
+   medido. Ocupa las dos columnas del host, como el esqueleto y el vacío. */
+.state.error {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--mapit-space-3);
+  justify-items: center;
+  padding: var(--mapit-space-6);
+  border: 1px solid var(--mapit-color-error);
+  border-radius: var(--mapit-radius-lg);
+  color: var(--mapit-color-error);
+  font: var(--mapit-text-body);
+  text-align: center;
+}
+
+.state.error p {
+  margin: 0;
+}
+
+.state.error button {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius-lg);
+  background: var(--mapit-color-surface);
+  color: var(--mapit-color-text);
+  font: var(--mapit-text-body-bold);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background var(--mapit-duration-fast) var(--mapit-ease-out);
+}
+
+.state.error button:hover {
+  background: var(--mapit-color-surface-low);
+}
+
+.state.error button:focus-visible {
+  outline: 2px solid var(--mapit-color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Texto solo para lectores de pantalla: los valores de cada porción. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Esqueleto de carga ───────────────────────────────────── */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  grid-column: 1 / -1;
+  min-height: 12rem;
+  border-radius: var(--mapit-radius-lg);
+  background: linear-gradient(
+    90deg,
+    var(--mapit-color-border) 25%,
+    var(--mapit-color-canvas) 50%,
+    var(--mapit-color-border) 75%
+  );
+  background-size: 200%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* El panel es el contenedor: si es estrecho, la leyenda baja debajo del
+   anillo. La consulta es de **contenedor** porque lo que decide es el ancho
+   del panel, no el del viewport (el sidebar se come 280px). */
+@container (max-width: 30rem) {
+  :host {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .legend {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--mapit-color-border);
+  }
+}

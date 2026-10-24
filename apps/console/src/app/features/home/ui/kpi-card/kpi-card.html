@@ -1,0 +1,88 @@
+@let change = delta();
+
+@if (loading()) {
+  <div class="skeleton" role="status" aria-busy="true" [attr.aria-label]="strings.loading"></div>
+} @else {
+  <div class="kpi-content">
+    <span class="kpi-icon" aria-hidden="true">
+      @switch (icon()) {
+        @case ('building') {
+          <svg lucideBuilding2></svg>
+        }
+        @case ('landmark') {
+          <svg lucideLandmark></svg>
+        }
+        @case ('layers') {
+          <svg lucideLayers></svg>
+        }
+        @case ('check-circle') {
+          <svg lucideCheckCircle2></svg>
+        }
+        @case ('pie-chart') {
+          <svg lucidePieChart></svg>
+        }
+        @case ('calendar') {
+          <svg lucideCalendarDays></svg>
+        }
+        @case ('users') {
+          <svg lucideUsers></svg>
+        }
+        @case ('qr-code') {
+          <svg lucideQrCode></svg>
+        }
+        @case ('wallet') {
+          <svg lucideWallet></svg>
+        }
+        @case ('percent') {
+          <svg lucidePercent></svg>
+        }
+      }
+    </span>
+
+    <div class="kpi-body">
+      <span class="label">{{ label() }}</span>
+
+      <!-- Fila del valor: la cifra a la izquierda y el sparkline de la serie
+           real a su derecha, alineados por la línea base. Sin serie real la
+           fila es solo la cifra: no se reserva hueco. -->
+      <div class="value-row">
+        <span class="value" [class.compact]="compact()" [attr.title]="value()">{{ value() }}</span>
+        @if (sparkline(); as points) {
+          <mapit-sparkline class="kpi-sparkline" [values]="points" />
+        }
+      </div>
+
+      @if (change !== null) {
+        <span class="trend" [class.positive]="change > 0" [class.negative]="change < 0">
+          <span class="trend-value">
+            @if (change >= 0) {
+              <svg class="trend-icon" lucideTrendingUp aria-hidden="true"></svg>
+            } @else {
+              <svg class="trend-icon" lucideTrendingDown aria-hidden="true"></svg>
+            }
+            {{ change > 0 ? '+' : '' }}{{ change }}%
+          </span>
+          @if (deltaLabel()) {
+            <span class="trend-detail">{{ deltaLabel() }}</span>
+          }
+        </span>
+      } @else if (context()) {
+        <span
+          class="trend"
+          [class.neutral]="contextTrend() === null"
+          [class.positive]="contextTrend() === 'up'"
+          [class.negative]="contextTrend() === 'down'"
+        >
+          <span class="trend-value">
+            @if (contextTrend() === 'up') {
+              <svg class="trend-icon" lucideTrendingUp aria-hidden="true"></svg>
+            } @else if (contextTrend() === 'down') {
+              <svg class="trend-icon" lucideTrendingDown aria-hidden="true"></svg>
+            }
+            {{ context() }}
+          </span>
+        </span>
+      }
+    </div>
+  </div>
+}

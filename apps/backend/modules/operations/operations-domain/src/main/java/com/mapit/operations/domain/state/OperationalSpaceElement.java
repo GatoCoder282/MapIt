@@ -11,6 +11,7 @@ import com.mapit.shared.tenant.TenantId;
 public record OperationalSpaceElement(
     UUID id,
     TenantId tenantId,
+    UUID establishmentId,
     UUID sectorId,
     SpaceElementState state,
     Instant updatedAt) {
@@ -18,6 +19,7 @@ public record OperationalSpaceElement(
   public OperationalSpaceElement {
     Objects.requireNonNull(id, "id no puede ser null");
     Objects.requireNonNull(tenantId, "tenantId no puede ser null");
+    Objects.requireNonNull(establishmentId, "establishmentId no puede ser null");
     Objects.requireNonNull(sectorId, "sectorId no puede ser null");
     Objects.requireNonNull(state, "state no puede ser null");
     Objects.requireNonNull(updatedAt, "updatedAt no puede ser null");
@@ -31,6 +33,6 @@ public record OperationalSpaceElement(
       return this;
     }
     SpaceElementStateMachine.requireAllowed(state, newState);
-    return new OperationalSpaceElement(id, tenantId, sectorId, newState, now);
+    return new OperationalSpaceElement(id, tenantId, establishmentId, sectorId, newState, now);
   }
 }

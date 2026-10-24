@@ -2,12 +2,20 @@
 
 ## MAP-146 — Emitir evento al cambiar estado
 
-- [ ] Crear el puerto `SpaceElementRealtimeContextRepository` en `operations-domain`.
-- [ ] Implementar el adaptador JDBC (establecimiento del sector y versión por auditoría).
-- [ ] Publicar `space-element.state.changed.v1` desde `UpdateSpaceElementState` tras auditar.
-- [ ] Test unitario: cambio publica payload completo; mismo estado e inválido no publican.
-- [ ] Test de integración: el cambio escribe una fila en `realtime_event_outbox` con versión
+- [x] Obtener el `establishmentId` del elemento (el topic es por establecimiento): el
+      adaptador JDBC lo resuelve con el join `sector → floor → establishment`, ya que la
+      vista de dominio `OperationalSpaceElement` es la que lleva el dato.
+- [x] Publicar `space-element.state.changed.v1` desde `UpdateSpaceElementState` tras auditar.
+- [x] Test unitario: cambio publica payload completo; mismo estado e inválido no publican.
+- [x] Test de integración: el cambio escribe una fila en `realtime_event_outbox` con versión
       creciente.
+
+> **Implementado en la v7 de CU-10** (el panel "Ocupación en vivo" del dashboard). El hueco
+> era real: el publicador del outbox existía y funcionaba, pero **solo lo usaban los tests** —
+> el caso de uso del cambio de estado no encolaba nada, así que la tabla
+> `realtime_event_outbox` quedaba vacía y el vivo no tenía nada que recibir. La versión del
+> agregado es el **número de cambios registrados del elemento, contando este**: crece con la
+> bitácora real, no con un contador inventado.
 
 ## MAP-148 — Cliente STOMP en Angular
 

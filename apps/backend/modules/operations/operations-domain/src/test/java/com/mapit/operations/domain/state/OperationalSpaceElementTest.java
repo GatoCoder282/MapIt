@@ -84,6 +84,11 @@ class OperationalSpaceElementTest {
 
   private static OperationalSpaceElement element(SpaceElementState state) {
     return new OperationalSpaceElement(
-        UUID.randomUUID(), TenantId.of("tenant-a"), UUID.randomUUID(), state, BEFORE);
+        UUID.randomUUID(),
+        TenantId.of("tenant-a"),
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        state,
+        BEFORE);
   }
 }

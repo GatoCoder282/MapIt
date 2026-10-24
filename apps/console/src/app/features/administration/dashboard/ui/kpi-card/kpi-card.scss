@@ -1,0 +1,137 @@
+/* Tarjeta de métrica del panel de plataforma.
+   Sin hex: todo sale de los tokens de `ui-kit/styles/_tokens`. */
+
+:host {
+  display: grid;
+  align-content: start;
+  gap: var(--mapit-space-3);
+  padding: var(--mapit-space-4);
+  background: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius-lg);
+  box-shadow: var(--mapit-shadow);
+  /* El esqueleto ocupa la tarjeta entera: sin esto sus esquinas saldrían de
+     la esquina redondeada. */
+  overflow: hidden;
+}
+
+.kpi-head {
+  display: flex;
+  align-items: center;
+  gap: var(--mapit-space-3);
+  min-width: 0;
+}
+
+.kpi-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--mapit-radius);
+  background: var(--mapit-color-primary-container);
+  color: var(--mapit-color-accent);
+}
+
+.kpi-icon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  stroke-width: 2;
+}
+
+.kpi-title {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font: var(--mapit-text-body-bold);
+  color: var(--mapit-color-text);
+  text-wrap: balance;
+}
+
+/* El chevron es un enlace real: 2.25rem de área interactiva (objetivo táctil). */
+.kpi-chevron {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--mapit-radius);
+  color: var(--mapit-color-text-muted);
+  text-decoration: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: var(--mapit-color-primary-container);
+  transition:
+    background var(--mapit-duration-fast) var(--mapit-ease-out),
+    color var(--mapit-duration-fast) var(--mapit-ease-out);
+}
+
+.kpi-chevron svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.kpi-chevron:hover {
+  background: var(--mapit-color-surface-low);
+  color: var(--mapit-color-text);
+}
+
+.kpi-chevron:focus-visible {
+  outline: 2px solid var(--mapit-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.kpi-value {
+  margin: 0;
+  font-family: var(--mapit-font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 2.25rem;
+  color: var(--mapit-color-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi-foot {
+  display: grid;
+  gap: var(--mapit-space-1);
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+}
+
+/* ── Esqueleto de carga ───────────────────────────────────── */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  min-height: 7rem;
+  margin: calc(var(--mapit-space-4) * -1);
+  background: linear-gradient(
+    90deg,
+    var(--mapit-color-border) 25%,
+    var(--mapit-color-canvas) 50%,
+    var(--mapit-color-border) 75%
+  );
+  background-size: 200%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--mapit-color-border);
+  }
+
+  .kpi-chevron {
+    transition: none;
+  }
+}

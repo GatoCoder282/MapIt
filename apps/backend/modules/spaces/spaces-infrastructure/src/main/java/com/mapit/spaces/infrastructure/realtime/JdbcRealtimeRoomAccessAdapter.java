@@ -12,11 +12,21 @@ import com.mapit.shared.realtime.RealtimeRoomAccessPort;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.shared.tenant.TenantScope;
 
-/** Verifica la pertenencia de una sala contra el modelo espacial y su RLS. */
+/**
+ * Verifica la pertenencia de una sala contra el modelo espacial y su RLS.
+ *
+ * <p>Regla de acceso: cualquier rol con acceso a la sala de <b>su propio tenant</b> —
+ * {@code ADMIN}, {@code MANAGER}, {@code STAFF} y también {@code SUPER_ADMIN}, que ya lee
+ * los mismos datos por HTTP (si los dos caminos no coincidieran, el dashboard en vivo no
+ * podría existir para el rol de plataforma). El aislamiento por tenant no se toca: el
+ * usuario debe estar activo en el tenant del JWT y el establecimiento o sector debe
+ * pertenecer a ese mismo tenant.
+ */
 @Component
 public final class JdbcRealtimeRoomAccessAdapter implements RealtimeRoomAccessPort {
 
-  private static final Set<String> ROLES_DE_OPERACION = Set.of("ADMIN", "MANAGER", "STAFF");
+  private static final Set<String> ROLES_CON_ACCESO_A_SALAS =
+      Set.of("ADMIN", "MANAGER", "STAFF", "SUPER_ADMIN");
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate transactions;
@@ -33,7 +43,7 @@ public final class JdbcRealtimeRoomAccessAdapter implements RealtimeRoomAccessPo
       String role,
       UUID establishmentId,
       Optional<UUID> sectorId) {
-    if (!ROLES_DE_OPERACION.contains(role)) return false;
+    if (!ROLES_CON_ACCESO_A_SALAS.contains(role)) return false;
     Boolean allowed =
         transactions.execute(
             status -> {

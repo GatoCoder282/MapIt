@@ -151,6 +151,39 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /reservations:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [reservations]
+      summary: Listar las reservas del tenant
+      description: |
+        Devuelve todas las reservas del tenant autenticado, de la más reciente a la más
+        antigua. El tenant se obtiene exclusivamente del JWT: nunca viaja en la petición.
+
+        **Techo conocido:** la respuesta es un array plano, sin paginación. Está pensada
+        para métricas agregadas (totales, crecimiento semanal, reparto por estado). Si un
+        tenant llega a acumular cientos de reservas, hará falta una variante paginada.
+      operationId: listReservations
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Reservas del tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reservation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /people:
     get:
       tags: [people]
@@ -1596,6 +1629,37 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /element-states/summary:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [operations]
+      summary: Resumen de los estados operativos de los elementos del tenant
+      description: |
+        Recuento agregado de los elementos espaciales vivos del tenant autenticado,
+        agrupados por su estado operativo, más el total. El tenant se obtiene
+        exclusivamente del claim `tenant` del JWT; los elementos dados de baja no se
+        cuentan. Las cinco claves de estado están siempre presentes (con 0 cuando no
+        hay elementos en ese estado) para que el cliente no trate claves ausentes.
+      operationId: summarizeSpaceElementStates
+      security: []
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Recuento de elementos por estado operativo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementStateSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   # ===== ELEMENT TEMPLATES (HU-4.02 / CU-07) =====
 
   /element-templates:
@@ -2873,6 +2937,30 @@ components:
           type: string
           format: date-time
           readOnly: true
+
+    ElementStateSummary:
+      type: object
+      required: [total, byState]
+      description: |
+        Recuento agregado de los elementos espaciales vivos del tenant por estado
+        operativo (sin los dados de baja). Las cinco claves están siempre presentes.
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: |
+            Elementos vivos del tenant: la suma de los cinco estados, incluidos los
+            fuera de servicio. Solo se excluyen los elementos dados de baja
+            lógicamente (`deleted_at`).
+        byState:
+          type: object
+          required: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
+          properties:
+            AVAILABLE: { type: integer, minimum: 0 }
+            OCCUPIED: { type: integer, minimum: 0 }
+            RESERVED: { type: integer, minimum: 0 }
+            CLEANING: { type: integer, minimum: 0 }
+            OUT_OF_SERVICE: { type: integer, minimum: 0 }
 
     # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
     # así que todos los errores de la API usan este formato.

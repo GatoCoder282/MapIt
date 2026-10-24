@@ -16,10 +16,17 @@ allowBuilds:
   msgpackr-extract: true
   nx: set this to true or false
 
+minimumReleaseAgeExclude:
+  - primeng@22.1.3
+
 # Angular y sus herramientas necesitan hoisting para resolver plugins.
+# El dev server de Angular (Vite) resuelve los imports desde la raíz virtual
+# (.angular/vite-root), no desde el archivo importador: sin hoist, un paquete
+# instalado solo en apps/console/node_modules falla con 500 en main.js.
 publicHoistPattern:
   - "*@angular*"
   - "*@lucide*" # Angular resuelve deps del dev server desde la raíz virtual (.angular); sin hoist falla
   - "*eslint*"
   - "*prettier*"
   - "*vitest*"
+  - "*echarts*" # echarts y ngx-echarts (el patrón cubre ambos)

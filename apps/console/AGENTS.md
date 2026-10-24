@@ -58,6 +58,13 @@ redirige al paso 1. No añadas parámetros a mano ni defaults ocultos.
 `@mapit/auth` (JWT) · `@mapit/feature-flags` · `@mapit/realtime` (STOMP) ·
 `@mapit/map-engine` (puerto del mapa)
 
+## Patrones de dashboard
+
+`apps/console/design/dashboard-patterns.md` — kit reutilizable de patrones para
+pantallas de datos (KPI con sparkline, total del header, pie con delta, selector de
+rango, leyenda multi-serie, donut, barras agrupadas, quick actions). Se aplica en
+`features/home/` y es la referencia al construir otro dashboard de la consola.
+
 ## Configuración
 
 Se lee en **runtime** de `/assets/config.json`, no de un `environment.ts` incrustado.

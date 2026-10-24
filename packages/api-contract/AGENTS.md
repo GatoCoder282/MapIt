@@ -34,7 +34,7 @@ El contrato lo hace cumplir el compilador, no la buena voluntad.
 5. Cada endpoint lleva `operationId` (es el nombre del método generado),
    `summary` y sus respuestas de error.
 6. WebSocket/STOMP **no** se describe aquí: OpenAPI no lo cubre. Va en
-   `docs/api/` y los tipos de payload en `src/realtime.ts`.
+   `docs/api/` y los tipos de payload en `libs/realtime/src/realtime.ts`.
 
 ## Por qué esto importa con 5 personas
 

@@ -1,0 +1,195 @@
+/* Tarjeta de métrica del dashboard. El estilo vive aquí: el shell solo la coloca
+   en la rejilla. Sin hex: todo sale de los tokens de `ui-kit/styles/_tokens`. */
+
+:host {
+  display: block;
+  background: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius-lg);
+  box-shadow: var(--mapit-shadow);
+  /* El esqueleto de carga ocupa la tarjeta entera: sin esto sus esquinas
+     saldrían de la esquina redondeada de la tarjeta. */
+  overflow: hidden;
+
+  /* Métricas de la cifra de la tarjeta.
+     La caja de línea de la cifra estándar es lo que reserva la fila del
+     valor: la cifra compacta (más pequeña, para que quepan los nombres largos
+     de las verticales) ocupa la MISMA caja de línea, y así su línea de
+     contexto no queda más arriba que la de las demás tarjetas y la fila de
+     valores no se escalona. Todo se deriva de las métricas de la cifra
+     estándar: ningún número mágico. */
+  --kpi-value-size: 1.75rem;
+  --kpi-value-leading: 1.1;
+  --kpi-value-line-box: calc(var(--kpi-value-size) * var(--kpi-value-leading));
+}
+
+.kpi-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mapit-space-3);
+  padding: var(--mapit-space-4);
+}
+
+.kpi-body {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.kpi-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--mapit-color-primary);
+  color: var(--mapit-color-on-primary);
+}
+
+.kpi-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  stroke-width: 2;
+}
+
+.label {
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+  font-weight: 500;
+  min-width: 0;
+  /* Dos líneas reservadas: los valores de la fila quedan alineados aunque un
+     label ocupe una línea y otro dos. OJO: esto **no acota** un label de tres
+     líneas; si el texto se aprieta y se va a tres, la tarjeta crece y la fila
+     queda escalonada. Por eso el label no se aprieta nunca: el sparkline vive
+     en la fila del valor, no en la esquina de la tarjeta. */
+  min-height: 2rem;
+  min-height: 2lh;
+}
+
+/* Fila del valor: la cifra a la izquierda y el sparkline a su derecha.
+   Es una fila y no dos: así el alto de la línea es el mismo en las cinco
+   tarjetas de la fila y los valores comparten línea base. */
+.value-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mapit-space-2);
+  min-width: 0;
+  /* La fila reserva la caja de línea de la cifra estándar. */
+  min-height: var(--kpi-value-line-box);
+}
+
+/* El sparkline cede espacio antes que la cifra: es decoración. */
+.kpi-sparkline {
+  flex: 0 8 auto;
+  min-width: 0;
+}
+
+.value {
+  font-family: var(--mapit-font-display);
+  font-size: var(--kpi-value-size);
+  font-weight: 700;
+  line-height: var(--kpi-value-leading);
+  color: var(--mapit-color-text);
+  font-variant-numeric: tabular-nums;
+  /* La cifra no se parte en dos líneas: si se partiera, esa tarjeta mediría más
+     que las demás y la fila quedaría escalonada. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Valor de texto largo (vertical): 1.25rem y truncado.
+   La glifo es más pequeña (para que quepan los nombres largos de las
+   verticales) pero la caja de línea es la de la cifra estándar: por eso la
+   línea de contexto cae a la misma altura que en las demás tarjetas. */
+.value.compact {
+  font-size: 1.25rem;
+  line-height: var(--kpi-value-line-box);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trend {
+  display: grid;
+  gap: 0.1rem;
+  width: fit-content;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--mapit-color-text-variant);
+}
+
+.trend-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.trend-detail {
+  font-weight: 500;
+  color: var(--mapit-color-text-muted);
+}
+
+.trend.neutral {
+  color: var(--mapit-color-text-muted);
+}
+
+/* Positivo: azul primario. El verde de estado solo va en el icono
+   (no alcanza contraste AA a 12px como texto). */
+.trend.positive {
+  color: var(--mapit-color-primary);
+}
+
+.trend.negative {
+  color: var(--mapit-color-error);
+}
+
+.trend.positive .trend-detail,
+.trend.negative .trend-detail {
+  color: var(--mapit-color-text-muted);
+}
+
+.trend-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--mapit-state-available);
+}
+
+.trend.negative .trend-icon {
+  color: var(--mapit-color-error);
+}
+
+/* ── Esqueleto de carga ─────────────────────────────────── */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  min-height: 7.5rem;
+  background: linear-gradient(
+    90deg,
+    var(--mapit-color-border) 25%,
+    var(--mapit-color-canvas) 50%,
+    var(--mapit-color-border) 75%
+  );
+  background-size: 200%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--mapit-color-border);
+  }
+}

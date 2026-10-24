@@ -12,4 +12,7 @@ public interface SpaceElementStateChangeRepository {
 
   List<SpaceElementStateChange> findByElement(
       TenantId tenantId, UUID sectorId, UUID elementId);
+
+  /** Cambios vivos registrados para el elemento; base de la versión del agregado. */
+  long countByElement(TenantId tenantId, UUID sectorId, UUID elementId);
 }

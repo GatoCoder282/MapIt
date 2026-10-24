@@ -1,6 +1,7 @@
 package com.mapit.operations.application.state;
 
 import java.time.Clock;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -10,6 +11,8 @@ import com.mapit.operations.domain.state.OperationalSpaceElement;
 import com.mapit.operations.domain.state.SpaceElementStateChange;
 import com.mapit.operations.domain.state.SpaceElementStateChangeRepository;
 import com.mapit.operations.domain.state.SpaceElementStateRepository;
+import com.mapit.shared.realtime.RealtimeEvent;
+import com.mapit.shared.realtime.RealtimeEventPublisher;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
@@ -20,6 +23,7 @@ public class UpdateSpaceElementState {
 
   private final SpaceElementStateRepository repository;
   private final SpaceElementStateChangeRepository changes;
+  private final RealtimeEventPublisher realtime;
   private final TenantContext tenantContext;
   private final ActorContext actorContext;
   private final Clock clock;
@@ -27,11 +31,13 @@ public class UpdateSpaceElementState {
   public UpdateSpaceElementState(
       SpaceElementStateRepository repository,
       SpaceElementStateChangeRepository changes,
+      RealtimeEventPublisher realtime,
       TenantContext tenantContext,
       ActorContext actorContext,
       Clock clock) {
     this.repository = repository;
     this.changes = changes;
+    this.realtime = realtime;
     this.tenantContext = tenantContext;
     this.actorContext = actorContext;
     this.clock = clock;
@@ -61,6 +67,20 @@ public class UpdateSpaceElementState {
             persisted.state(),
             actorContext.requireUserId(),
             persisted.updatedAt()));
+    // La versión del agregado es el número de cambios registrados, contando este: nunca
+    // repite y crece con la bitácora real, no con un contador inventado.
+    long aggregateVersion = changes.countByElement(tenantId, command.sectorId(), command.elementId());
+    realtime.publish(
+        RealtimeEvent.spaceElementStateChanged(
+            UUID.randomUUID(),
+            clock.instant(),
+            tenantId,
+            persisted.establishmentId(),
+            Optional.of(command.sectorId()),
+            command.elementId(),
+            Optional.of(current.state()),
+            persisted.state(),
+            aggregateVersion));
     return SpaceElementStateResult.from(persisted);
   }
 }

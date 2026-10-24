@@ -2,6 +2,7 @@ package com.mapit.spaces.domain;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -53,5 +54,13 @@ public record AuditTrail(
 
   public boolean isDeleted() {
     return deletedAt != null;
+  }
+
+  public Optional<UUID> author() {
+    return Optional.ofNullable(createdBy);
+  }
+
+  public Optional<UUID> lastEditor() {
+    return Optional.ofNullable(updatedBy);
   }
 }

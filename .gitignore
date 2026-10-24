@@ -31,6 +31,7 @@ apps/backend/**/generated/
 coverage/
 playwright-report/
 test-results/
+apps/e2e/screenshots/
 blob-report/
 .playwright/
 *.lcov

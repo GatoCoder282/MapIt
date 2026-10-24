@@ -250,3 +250,24 @@ h3 {
 .confirm-dialog .field input {
   border-color: color-mix(in srgb, var(--mapit-color-error) 35%, var(--mapit-color-border));
 }
+/* View Transitions   sutil, r�pido, sin bloqueo (skill animate) */
+::view-transition-new(root) {
+  animation: 180ms cubic-bezier(0.22, 1, 0.36, 1) fade-in-up both;
+}
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}

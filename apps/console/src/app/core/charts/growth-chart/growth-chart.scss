@@ -1,0 +1,66 @@
+/* Gráfico de crecimiento (área + línea) sobre ECharts. El motor pinta el
+   canvas; aquí solo se fija el tamaño y la fila de etiquetas de semana. */
+
+:host {
+  display: grid;
+  /* Columna con ancho 0 mínimo: el lienzo de ECharts fija su tamaño en
+     píxeles y, sin esto, ensancharía la columna de su panel. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mapit-space-2);
+  min-width: 0;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  /* Proporciones del `viewBox` original (720 × 200): el gráfico ocupa 3,6:1. */
+  aspect-ratio: 720 / 200;
+}
+
+.labels {
+  display: flex;
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+  text-align: center;
+}
+
+.labels span {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Con 12 cubos las etiquetas de semana no caben una por caja: se enseñan de
+   dos en dos (la última siempre visible) y con el tamaño mínimo del sistema. */
+.labels.dense {
+  font-size: 0.6875rem;
+}
+
+.labels.dense span:nth-child(even):not(:last-child) {
+  visibility: hidden;
+}
+
+/* Estado "sin datos": sustituye a la serie, no se dibuja nada encima. */
+.empty-note {
+  margin: 0;
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+}
+
+/* Texto solo para lectores de pantalla: la tabla con los valores de cada semana. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .labels span:nth-child(even) {
+    visibility: hidden;
+  }
+}

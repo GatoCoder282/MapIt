@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
 import com.mapit.operations.application.state.ListSpaceElementStateChanges;
+import com.mapit.operations.application.state.SummarizeSpaceElementStates;
 import com.mapit.operations.application.state.UpdateSpaceElementState;
 import com.mapit.operations.domain.state.InvalidSpaceElementStateTransitionException;
 import com.mapit.shared.realtime.SpaceElementState;
@@ -17,7 +18,9 @@ class SpaceElementStateControllerTest {
   void traduce_una_transicion_invalida_a_problem_details_409() {
     SpaceElementStateController controller =
         new SpaceElementStateController(
-            mock(UpdateSpaceElementState.class), mock(ListSpaceElementStateChanges.class));
+            mock(UpdateSpaceElementState.class),
+            mock(ListSpaceElementStateChanges.class),
+            mock(SummarizeSpaceElementStates.class));
 
     var response =
         controller.handleInvalidTransition(
