@@ -20,11 +20,11 @@
 
 ## MAP-224 — Implementar endpoint de histórico
 
-- [ ] Editar primero el contrato OpenAPI y ejecutar `pnpm api:gen`.
-- [ ] Definir respuesta paginada y filtros tipados.
-- [ ] Implementar caso de uso y controlador `GET /api/v1/audit-logs`.
-- [ ] Autorizar exclusivamente a `ADMIN` del tenant.
-- [ ] Cubrir respuesta, filtros, paginación, `400`, `401` y `403`.
+- [x] Editar primero el contrato OpenAPI y ejecutar `pnpm api:gen`.
+- [x] Definir respuesta paginada y filtros tipados.
+- [x] Implementar caso de uso y controlador `GET /api/v1/audit-logs`.
+- [x] Autorizar exclusivamente a `ADMIN` del tenant.
+- [x] Cubrir respuesta, filtros, paginación, `400`, `401` y `403`.
 
 ## MAP-225 — Implementar vista de auditoría para Administrador
 
@@ -96,7 +96,16 @@
 
 ### MAP-224
 
-Pendiente.
+- El contrato OpenAPI se editó antes de la implementación y generó `AuditService`, los tipos de
+  evento/recurso y la respuesta paginada para el cliente Angular.
+- `GET /api/v1/audit-logs` acepta filtros opcionales por recurso, evento, identificador e
+  intervalo inclusivo, además de paginación entre 1 y 100 elementos.
+- El caso de uso obtiene el tenant exclusivamente del contexto autenticado; el adaptador JDBC
+  repite el filtro explícito por `tenant_id` y ordena por `occurred_at DESC, id DESC`.
+- `SecurityConfig` autoriza únicamente a `ADMIN`; usuarios anónimos reciben `401` y los roles
+  `MANAGER`, `STAFF` y `SUPER_ADMIN` reciben `403`.
+- Seis pruebas de integración verifican respuesta y orden, combinación de filtros, paginación,
+  aislamiento entre tenants, parámetros inválidos y autorización completa.
 
 ### MAP-225
 

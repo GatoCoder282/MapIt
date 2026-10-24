@@ -99,15 +99,15 @@ credenciales, cuerpos HTTP completos ni datos personales del cliente.
       se registra `SPACE_ELEMENT_STATE_CHANGED` con estado anterior y nuevo.
 - [x] **CA-3:** Dada una acción que falla o se revierte, cuando termina la transacción, entonces
       no queda un evento huérfano ni una escritura parcial.
-- [ ] **CA-4:** Dado un `ADMIN` autenticado, cuando consulta el histórico, entonces recibe una
+- [x] **CA-4:** Dado un `ADMIN` autenticado, cuando consulta el histórico, entonces recibe una
       página ordenada de eventos pertenecientes únicamente a su tenant.
-- [ ] **CA-5:** Dado un filtro por tipo de recurso, evento, identificador o intervalo de fechas,
+- [x] **CA-5:** Dado un filtro por tipo de recurso, evento, identificador o intervalo de fechas,
       cuando se consulta, entonces la respuesta contiene solo los registros coincidentes.
-- [ ] **CA-6:** Dado un usuario anónimo o con rol `MANAGER`, `STAFF` o `SUPER_ADMIN`, cuando
+- [x] **CA-6:** Dado un usuario anónimo o con rol `MANAGER`, `STAFF` o `SUPER_ADMIN`, cuando
       consulta la bitácora de esta historia, entonces recibe `401` o `403` según corresponda.
 - [ ] **CA-7:** Dado un registro existente, cuando el rol normal de la aplicación intenta
       actualizarlo o eliminarlo, entonces PostgreSQL rechaza la operación y el registro no cambia.
-- [ ] **CA-8:** Dados dos tenants con eventos, cuando cada administrador consulta, entonces
+- [x] **CA-8:** Dados dos tenants con eventos, cuando cada administrador consulta, entonces
       ninguno puede observar ni inferir los registros del otro.
 - [ ] **CA-9:** Dados registros históricos de HU-3.01, cuando se aplica la nueva migración,
       entonces siguen disponibles en la consulta general con los mismos datos de trazabilidad.

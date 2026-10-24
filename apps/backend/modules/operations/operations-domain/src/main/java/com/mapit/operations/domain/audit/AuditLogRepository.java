@@ -11,4 +11,6 @@ public interface AuditLogRepository {
   void append(AuditLog auditLog);
 
   Optional<AuditLog> findById(TenantId tenantId, UUID id);
+
+  AuditLogPage search(TenantId tenantId, AuditLogFilter filter, int page, int size);
 }

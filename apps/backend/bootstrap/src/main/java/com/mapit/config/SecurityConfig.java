@@ -122,6 +122,10 @@ public class SecurityConfig {
                                 UserRole.ADMIN.name(),
                                 UserRole.MANAGER.name(),
                                 UserRole.STAFF.name())
+                        // HU-5.03: la bitácora contiene trazabilidad interna del tenant y
+                        // su consulta corresponde exclusivamente al administrador.
+                        .requestMatchers(HttpMethod.GET, ApiPaths.AUDIT_LOGS)
+                        .hasRole(UserRole.ADMIN.name())
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         // Administración de tenants (CU-01/CU-03): operación exclusiva
                         // del SUPER_ADMIN de plataforma. Cualquier otro rol autenticado
