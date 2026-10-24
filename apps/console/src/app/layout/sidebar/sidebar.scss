@@ -1,0 +1,270 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.sidebar {
+  height: 100%;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mapit-space-3);
+  height: 100%;
+  padding: var(--mapit-space-4) var(--mapit-space-3);
+  background: var(--mapit-sidebar-bg);
+  border-right: 1px solid var(--mapit-sidebar-border);
+  overflow: hidden;
+  min-width: 0;
+  width: var(--mapit-sidebar-width);
+  /* El rail es un contenedor: el ornamento sabe cuánto ancho tiene y puede
+     degradarse en vez de desbordar la navegación. */
+  container-type: inline-size;
+}
+
+.brand-sidebar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: var(--mapit-space-2);
+}
+
+.brand-logo {
+  display: block;
+  width: auto;
+  height: 2.5rem;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mapit-space-1);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--mapit-space-3);
+  padding: 0.6rem 0.75rem;
+  border: 0;
+  border-radius: var(--mapit-radius);
+  background: transparent;
+  color: var(--mapit-sidebar-text);
+  font: var(--mapit-text-body);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+  transition:
+    background var(--mapit-duration-fast) var(--mapit-ease-out),
+    color var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  svg {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex: none;
+  }
+
+  &:hover {
+    background: rgb(255 255 255 / 0.08);
+    color: var(--mapit-sidebar-text-hover);
+  }
+
+  &.active {
+    background: var(--mapit-sidebar-active-bg);
+    color: var(--mapit-sidebar-active-text);
+    font-weight: 600;
+  }
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.group-toggle {
+  width: 100%;
+}
+
+.chevron {
+  width: 1rem;
+  height: 1rem;
+  margin-left: auto;
+  transition: transform var(--mapit-duration-fast) var(--mapit-ease-out);
+
+  &.open {
+    transform: rotate(180deg);
+  }
+}
+
+.nav-divider {
+  width: 100%;
+  margin: var(--mapit-space-2) 0;
+  border: 0;
+  border-top: 1px solid var(--mapit-sidebar-border);
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mapit-space-1);
+}
+
+.subitem {
+  padding-left: 2.35rem;
+  font-size: 0.8125rem;
+
+  svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+}
+
+/* ── Ornamento inferior del rail ───────────────────────────────
+   El adorno de la referencia: disco de marca grande sangrando por la esquina
+   inferior izquierda + retícula de puntos blancos a la derecha del arco.
+   **Igual en todos los shells** (staff y plataforma): el usuario lo definió
+   una única vez contra la referencia.
+
+   - La caja del adorno cancela el padding del rail (márgenes negativos) para
+     llegar al borde izquierdo: el disco se apoya en el borde, no a 0,75rem
+     de él.
+   - El disco es un círculo de 16rem con `border-radius: 50%` cuyo centro
+     sangra 7rem por ambos bordes: lo que se ve es exactamente **un cuarto**
+     (el cuadrante superior derecho del círculo), con los lados rectos contra
+     el borde izquierdo y el inferior del rail y el arco hacia dentro.
+   - `overflow: hidden` (del rail y de la propia caja) recorta lo que sangra:
+     el adorno nunca sale del sidebar ni del viewport.
+   - Es decorativo: `aria-hidden` en el marcado y `pointer-events: none`. */
+.sidebar-decor {
+  position: relative;
+  flex: none;
+  height: 12rem;
+  /* El espacio sobrante cae entre la navegación y el ornamento. */
+  margin-top: auto;
+  margin-left: calc(var(--mapit-space-3) * -1);
+  margin-right: calc(var(--mapit-space-3) * -1);
+  margin-bottom: calc(var(--mapit-space-4) * -1);
+  pointer-events: none;
+  /* Cinturón: aunque algo crezca, el ornamento no sale de su caja. */
+  overflow: hidden;
+}
+
+.decor-circle {
+  position: absolute;
+  left: -7rem;
+  bottom: -7rem;
+  width: 16rem;
+  height: 16rem;
+  border-radius: 50%;
+  background: var(--mapit-color-primary);
+  opacity: 0.9;
+}
+
+/* La retícula flota arrancando a la derecha del punto donde el disco corta el
+   borde inferior, un escalón por encima del arco. */
+.decor-dots {
+  position: absolute;
+  left: 10rem;
+  bottom: 6.75rem;
+  width: 4rem;
+  height: 2rem;
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.5) 1.4px, transparent 1.75px);
+  background-size: 0.75rem 0.75rem;
+}
+
+/* ── Drawer móvil ─────────────────────────────────────────── */
+.drawer {
+  position: fixed;
+  inset: var(--mapit-topbar-height) auto 0 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mapit-space-3);
+  width: var(--mapit-sidebar-width);
+  padding: var(--mapit-space-4) var(--mapit-space-3);
+  overflow-y: auto;
+  background: var(--mapit-sidebar-bg);
+  border-right: 1px solid var(--mapit-sidebar-border);
+  transform: translateX(-100%);
+  transition: transform var(--mapit-duration) var(--mapit-ease-out);
+  /* El drawer también es un contenedor: su ornamento sabe cuánto ancho tiene. */
+  container-type: inline-size;
+}
+
+.drawer.open {
+  transform: translateX(0);
+}
+
+.scrim {
+  position: fixed;
+  inset: var(--mapit-topbar-height) 0 0;
+  z-index: 20;
+  background: rgb(15 23 42 / 0.35);
+}
+
+.drawer-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mapit-space-2);
+}
+
+.drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mapit-space-1);
+}
+
+.drawer-close {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: var(--mapit-radius);
+  background: transparent;
+  color: var(--mapit-sidebar-text);
+  cursor: pointer;
+  transform: translateY(-50%);
+
+  &:hover {
+    background: rgb(255 255 255 / 0.08);
+    color: var(--mapit-sidebar-text-hover);
+  }
+}
+
+@media (max-width: 860px) {
+  :host {
+    height: auto;
+  }
+
+  .rail {
+    display: none;
+  }
+}
+
+/* Rail estrecho (el estado colapsado a 60px): el ornamento se oculta en vez
+   de desbordar la navegación. La consulta es de **contenedor** porque el ancho
+   del rail depende de su estado, no del viewport. */
+@container (max-width: 7rem) {
+  .sidebar-decor {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .chevron {
+    transition: none !important;
+  }
+}

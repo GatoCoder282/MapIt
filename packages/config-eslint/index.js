@@ -18,6 +18,9 @@ export default tseslint.config(
       '**/generated/**',
       '**/playwright-report/**',
       '**/test-results/**',
+      // Scratch local no versionado: scripts de debug (e2e, screenshots). Se
+      // escriben con globals de browser a pelo y romperían la gate; no se lintean.
+      '**/tmp/**',
     ],
   },
 

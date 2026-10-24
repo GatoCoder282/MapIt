@@ -122,6 +122,14 @@ public class SecurityConfig {
                                 UserRole.ADMIN.name(),
                                 UserRole.MANAGER.name(),
                                 UserRole.STAFF.name())
+                        // CU-12: el listado de reservas del tenant es del mismo staff
+                        // operativo que las da de alta. Sin token, 401; con un rol sin
+                        // acceso, 403.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/reservations")
+                        .hasAnyRole(
+                                UserRole.ADMIN.name(),
+                                UserRole.MANAGER.name(),
+                                UserRole.STAFF.name())
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
                         // Administración de tenants (CU-01/CU-03): operación exclusiva
                         // del SUPER_ADMIN de plataforma. Cualquier otro rol autenticado

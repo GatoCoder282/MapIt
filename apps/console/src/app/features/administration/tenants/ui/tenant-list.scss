@@ -49,7 +49,7 @@
     color: var(--mapit-color-on-primary);
 
     &:hover {
-      background: var(--mapit-color-primary);
+      background: var(--mapit-color-primary-hover);
     }
   }
 
@@ -176,7 +176,7 @@ table {
   align-items: center;
   gap: var(--mapit-space-2);
   padding: 0.15rem 0.6rem;
-  border-radius: 9999px;
+  border-radius: var(--mapit-radius-xl);
   font: var(--mapit-text-metadata);
   font-weight: 600;
   background: var(--mapit-color-surface-raised);

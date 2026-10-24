@@ -6,10 +6,10 @@
 | --------------------------------- | ------------------------------------------------- | -------------------------------------- |
 | `roadmap/`                        | alcance, requerimientos, casos de uso             | Markdown                               |
 | `architecture/adr/`               | decisiones de arquitectura y su porqué            | Markdown, plantilla en `adr/README.md` |
-| `architecture/c4/`                | diagramas C4: contexto, contenedores, componentes | Mermaid                                |
+| `architecture/c4/`                | diagramas C4: contexto, contenedores, componentes | Mermaid — **aún no existe**            |
 | `architecture/design-patterns.md` | catálogo de patrones y dónde encajan              | Markdown                               |
 | `db/mapit.dbml`                   | **modelo de datos** (fuente de verdad conceptual) | DBML                                   |
-| `diagrams/`                       | UML: casos de uso, secuencia, estados             | Mermaid o PlantUML                     |
+| `diagrams/`                       | UML: casos de uso, secuencia, estados             | Mermaid o PlantUML — **aún no existe** |
 | `api/`                            | lo que OpenAPI no cubre (WebSocket/STOMP)         | Markdown / AsyncAPI                    |
 | `prompts/`                        | prompts guardados del equipo                      | Markdown                               |
 

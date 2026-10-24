@@ -280,5 +280,10 @@ class CreateReservationTest {
       saved = reservation;
       return reservation;
     }
+
+    @Override
+    public List<Reservation> findAll(TenantId tenantId) {
+      return List.of();
+    }
   }
 }

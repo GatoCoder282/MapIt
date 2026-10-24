@@ -1,0 +1,59 @@
+@if (failed()) {
+  <!-- El fallo se vende como fallo: mensaje y reintento, no un "vacío" medido. -->
+  <div class="state error" role="alert">
+    <p>{{ strings.loadError }}</p>
+    <button type="button" (click)="reintentar.emit()">{{ strings.retry }}</button>
+  </div>
+} @else if (loading()) {
+  <div class="skeleton" role="status" aria-busy="true" [attr.aria-label]="strings.loading"></div>
+} @else if (isEmpty()) {
+  <p class="empty">{{ strings.donutEmpty }}</p>
+} @else {
+  <div class="donut-wrap">
+    <!-- El canvas no es legible por lector de pantalla: el módulo de aria de
+         ECharts pone la descripción y, debajo, la tabla `sr-only` lleva los
+         valores. El total del centro es texto HTML de verdad. -->
+    <div class="donut" echarts [options]="options()" [theme]="theme"></div>
+    <div class="donut-center">
+      <span class="donut-total">{{ total() }}</span>
+      <span class="donut-label">{{ strings.donutTotalLabel }}</span>
+    </div>
+  </div>
+
+  <!-- Leyenda propia (no la de ECharts): es una lista de texto, se puede
+       leer, traducir y copiar. El color es la pista visual; el texto, el dato. -->
+  <ul class="legend" [attr.aria-label]="strings.donutLegendLabel">
+    @for (item of reparto(); track item.vertical) {
+      <li class="legend-item">
+        <span class="legend-dot" [style.background]="mapitVerticalVar(item.vertical)" aria-hidden="true"></span>
+        <span class="legend-name">{{ verticalLabel(item.vertical) }}</span>
+        <span class="legend-count">{{ item.count }}</span>
+        <span class="legend-percent">{{ percent(item.percent) }} {{ strings.donutPercentUnit }}</span>
+      </li>
+    }
+  </ul>
+
+  <table class="sr-only">
+    <caption>
+      {{
+        strings.donutDataCaption
+      }}
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">{{ strings.donutDataVertical }}</th>
+        <th scope="col">{{ strings.donutDataCount }}</th>
+        <th scope="col">{{ strings.donutDataPercent }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of reparto(); track item.vertical) {
+        <tr>
+          <th scope="row">{{ verticalLabel(item.vertical) }}</th>
+          <td>{{ item.count }}</td>
+          <td>{{ percent(item.percent) }} {{ strings.donutPercentUnit }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

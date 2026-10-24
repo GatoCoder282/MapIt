@@ -8,6 +8,7 @@ import { AuthSession } from '@mapit/auth';
 import { STRINGS } from '../../../core/strings';
 import { SLUG_PATTERN } from '../../../core/patterns';
 import { LoginApi } from '../data/login-api';
+import { PageTransitionService } from '@mapit/ui-kit';
 
 /** Timeout de la llamada de login (ms): cubre cold starts en dev local. */
 const LOGIN_TIMEOUT_MS = 15_000;
@@ -18,6 +19,7 @@ export class LoginStore {
   private readonly api = inject(LoginApi);
   private readonly session = inject(AuthSession);
   private readonly router = inject(Router);
+  private readonly transition = inject(PageTransitionService);
   private readonly destroyRef = inject(DestroyRef);
   readonly pending = signal(false);
   private readonly route = inject(ActivatedRoute);
@@ -84,7 +86,8 @@ export class LoginStore {
         finalize(() => this.pending.set(false)),
       )
       .subscribe({
-        next: (response) => {
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        next: async (response) => {
           try {
             this.session.start(response, tenantSlug, remember);
           } catch {
@@ -92,12 +95,11 @@ export class LoginStore {
             return;
           }
           this.password.set('');
-          // Redirección por rol: el SUPER_ADMIN entra a la consola de plataforma;
-          // el resto a la consola operativa de su tenant. Se lee de la sesión
-          // validada (no del payload crudo) para no confiar en datos no verificados.
-          void this.router.navigateByUrl(
-            this.session.user()?.role === 'SUPER_ADMIN' ? '/admin/tenants' : '/home',
-          );
+          // Transición de página: wipe-in, navega, espera a que llegue, wipe-out.
+          const destino = this.session.user()?.role === 'SUPER_ADMIN' ? '/admin/tenants' : '/home';
+          await this.transition.start();
+          await this.router.navigateByUrl(destino);
+          await this.transition.complete();
         },
         error: (error: unknown) => {
           this.message.set(

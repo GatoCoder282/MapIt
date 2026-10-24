@@ -21,27 +21,39 @@
   --mapit-text-metadata: 400 0.75rem / 1rem var(--mapit-font-sans);
   --mapit-text-caps: 700 0.6875rem / 0.75rem var(--mapit-font-sans);
 
-  /* ── Color: marca índigo ────────────────────────────────── */
-  --mapit-color-primary: #1c2edb;
-  --mapit-color-accent: #3d4ef2; /* relleno de botones y CTAs */
+  /* ── Color: marca Royal Blue (Fidelidad con imagen y editor de mapas) ── */
+  --mapit-color-primary: #2563eb;
+  --mapit-color-primary-hover: #1d4ed8;
+  --mapit-color-accent: #2563eb; /* relleno de botones y CTAs */
   --mapit-color-on-primary: #ffffff;
-  --mapit-color-primary-container: #dfe0ff;
-  --mapit-color-nav-active-bg: #eef0ff;
+  --mapit-color-primary-container: #dbeafe;
+  --mapit-color-nav-active-bg: #dbeafe;
 
   /* ── Color: superficies por nivel (lienzo → panel → tarjeta) */
-  --mapit-color-canvas: #f7f8fa;
+  --mapit-color-canvas: #f8fafc;
   --mapit-color-surface: #ffffff;
-  --mapit-color-surface-low: #f0f3ff;
-  --mapit-color-surface-raised: #e7eefe;
+  --mapit-color-surface-low: #f1f5f9;
+  --mapit-color-surface-raised: #e2e8f0;
+
+  /* ── Color: sidebar oscuro de alta gama (Midnight Navy) ─── */
+  --mapit-sidebar-bg: #0b132b;
+  --mapit-sidebar-text: #8e9aa8;
+  --mapit-sidebar-text-hover: #ffffff;
+  --mapit-sidebar-active-bg: #2563eb;
+  --mapit-sidebar-active-text: #ffffff;
+  --mapit-sidebar-border: #1e293b;
 
   /* ── Color: texto y bordes ──────────────────────────────── */
-  --mapit-color-text: #151c27;
-  --mapit-color-text-variant: #454656;
-  --mapit-color-text-muted: #6b7280;
-  --mapit-color-border: #e5e7eb;
-  --mapit-color-border-input: #d1d5db;
-  --mapit-color-error: #ba1a1a;
-  --mapit-color-focus-ring: rgb(61 78 242 / 0.2);
+  --mapit-color-text: #0f172a;
+  --mapit-color-text-variant: #334155;
+  --mapit-color-text-muted: #64748b;
+  --mapit-color-border: #e2e8f0;
+  --mapit-color-border-input: #cbd5e1;
+  --mapit-color-error: #dc2626;
+  /* Fondo de los mensajes de error. Valor ya documentado en libs/ui-kit/DESIGN.md
+     (`error-container`); antes se usaba un hex suelto (#fee2e2) en un template. */
+  --mapit-color-error-container: #ffdad6;
+  --mapit-color-focus-ring: rgb(37 99 235 / 0.2);
 
   /* Estados de los elementos del mapa (RF06).
      Definidos como tokens para que el mapa, la leyenda y el dashboard
@@ -52,6 +64,14 @@
   --mapit-state-cleaning: #3b82f6;
   --mapit-state-out-of-service: #9ca3af;
 
+  /* — Color: vertical de negocio (panel de plataforma) ————— */
+  /* Un matiz por vertical, distinguibles entre sí: se usan como punto o
+     segmento (donut, lista de distribución), nunca como color de texto. */
+  --mapit-vertical-restaurant: #2563eb;
+  --mapit-vertical-nightclub: #7c3aed;
+  --mapit-vertical-event-hall: #10b981;
+  --mapit-vertical-hotel: #f59e0b;
+
   /* ── Espaciado (rejilla base de 4px) ────────────────────── */
   --mapit-space-1: 0.25rem;
   --mapit-space-2: 0.5rem;
@@ -60,6 +80,7 @@
   --mapit-space-6: 1.5rem;
   --mapit-space-8: 2rem;
   --mapit-sidebar-width: 17.5rem;
+  --mapit-sidebar-width-collapsed: 3.75rem;
   --mapit-topbar-height: 4rem;
 
   /* ── Formas y elevación ─────────────────────────────────── */

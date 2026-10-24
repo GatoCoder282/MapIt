@@ -19,6 +19,8 @@ import com.mapit.operations.domain.state.OperationalSpaceElement;
 import com.mapit.operations.domain.state.SpaceElementStateChange;
 import com.mapit.operations.domain.state.SpaceElementStateChangeRepository;
 import com.mapit.operations.domain.state.SpaceElementStateRepository;
+import com.mapit.shared.realtime.RealtimeEvent;
+import com.mapit.shared.realtime.RealtimeEventPublisher;
 import com.mapit.shared.realtime.SpaceElementState;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
@@ -27,6 +29,7 @@ import com.mapit.shared.tenant.TenantId;
 class UpdateSpaceElementStateTest {
 
   private static final TenantId TENANT = TenantId.of("tenant-a");
+  private static final UUID ESTABLISHMENT = UUID.randomUUID();
   private static final UUID SECTOR = UUID.randomUUID();
   private static final UUID ELEMENT = UUID.randomUUID();
   private static final UUID ACTOR = UUID.randomUUID();
@@ -35,24 +38,26 @@ class UpdateSpaceElementStateTest {
 
   private InMemoryRepository repository;
   private InMemoryChanges changes;
+  private RecordingPublisher publisher;
   private UpdateSpaceElementState useCase;
 
   @BeforeEach
   void setUp() {
     repository = new InMemoryRepository();
     changes = new InMemoryChanges();
+    publisher = new RecordingPublisher();
     TenantContext tenants = () -> Optional.of(TENANT);
     ActorContext actors = () -> Optional.of(ACTOR);
     useCase =
         new UpdateSpaceElementState(
-            repository, changes, tenants, actors, Clock.fixed(NOW, ZoneOffset.UTC));
+            repository, changes, publisher, tenants, actors, Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   @Test
   void actualiza_un_elemento_del_tenant_y_sector_actuales() {
     repository.element =
         new OperationalSpaceElement(
-            ELEMENT, TENANT, SECTOR, SpaceElementState.AVAILABLE, BEFORE);
+            ELEMENT, TENANT, ESTABLISHMENT, SECTOR, SpaceElementState.AVAILABLE, BEFORE);
 
     SpaceElementStateResult result =
         useCase.execute(
@@ -75,7 +80,7 @@ class UpdateSpaceElementStateTest {
   void repetir_el_estado_no_escribe_de_nuevo() {
     repository.element =
         new OperationalSpaceElement(
-            ELEMENT, TENANT, SECTOR, SpaceElementState.AVAILABLE, BEFORE);
+            ELEMENT, TENANT, ESTABLISHMENT, SECTOR, SpaceElementState.AVAILABLE, BEFORE);
 
     SpaceElementStateResult result =
         useCase.execute(
@@ -85,13 +90,44 @@ class UpdateSpaceElementStateTest {
     assertThat(result.updatedAt()).isEqualTo(BEFORE);
     assertThat(repository.saves).isZero();
     assertThat(changes.entries).isEmpty();
+    assertThat(publisher.events).isEmpty();
+  }
+
+  @Test
+  void publica_exactamente_un_evento_con_el_envelope_correcto() {
+    repository.element =
+        new OperationalSpaceElement(
+            ELEMENT, TENANT, ESTABLISHMENT, SECTOR, SpaceElementState.AVAILABLE, BEFORE);
+
+    useCase.execute(
+        new UpdateSpaceElementStateCommand(SECTOR, ELEMENT, SpaceElementState.OCCUPIED));
+    useCase.execute(
+        new UpdateSpaceElementStateCommand(SECTOR, ELEMENT, SpaceElementState.CLEANING));
+
+    assertThat(publisher.events).hasSize(2);
+    RealtimeEvent first = publisher.events.get(0);
+    assertThat(first.eventType()).isEqualTo(RealtimeEvent.SPACE_ELEMENT_STATE_CHANGED_V1);
+    assertThat(first.schemaVersion()).isEqualTo(RealtimeEvent.CURRENT_SCHEMA_VERSION);
+    assertThat(first.occurredAt()).isEqualTo(NOW);
+    assertThat(first.tenantId()).isEqualTo(TENANT);
+    assertThat(first.establishmentId()).isEqualTo(ESTABLISHMENT);
+    assertThat(first.sectorId()).contains(SECTOR);
+    assertThat(first.spaceElementId()).isEqualTo(ELEMENT);
+    assertThat(first.previousState()).contains(SpaceElementState.AVAILABLE);
+    assertThat(first.state()).isEqualTo(SpaceElementState.OCCUPIED);
+    assertThat(first.aggregateVersion()).isEqualTo(1);
+    // La versión es honesta: crece con la bitácora, no repite nunca.
+    assertThat(publisher.events.get(1).aggregateVersion()).isEqualTo(2);
+    assertThat(publisher.events.get(1).previousState())
+        .contains(SpaceElementState.OCCUPIED);
+    assertThat(publisher.events.get(1).state()).isEqualTo(SpaceElementState.CLEANING);
   }
 
   @Test
   void consulta_el_historial_solo_despues_de_validar_el_elemento() {
     repository.element =
         new OperationalSpaceElement(
-            ELEMENT, TENANT, SECTOR, SpaceElementState.OCCUPIED, NOW);
+            ELEMENT, TENANT, ESTABLISHMENT, SECTOR, SpaceElementState.OCCUPIED, NOW);
     changes.entries.add(
         new SpaceElementStateChange(
             UUID.randomUUID(),
@@ -127,7 +163,7 @@ class UpdateSpaceElementStateTest {
   void una_transicion_invalida_no_persiste_ni_registra_auditoria() {
     repository.element =
         new OperationalSpaceElement(
-            ELEMENT, TENANT, SECTOR, SpaceElementState.OUT_OF_SERVICE, BEFORE);
+            ELEMENT, TENANT, ESTABLISHMENT, SECTOR, SpaceElementState.OUT_OF_SERVICE, BEFORE);
 
     assertThatThrownBy(
             () ->
@@ -139,6 +175,7 @@ class UpdateSpaceElementStateTest {
     assertThat(repository.element.state()).isEqualTo(SpaceElementState.OUT_OF_SERVICE);
     assertThat(repository.saves).isZero();
     assertThat(changes.entries).isEmpty();
+    assertThat(publisher.events).isEmpty();
   }
 
   private static final class InMemoryRepository implements SpaceElementStateRepository {
@@ -183,6 +220,20 @@ class UpdateSpaceElementStateTest {
           .filter(change -> change.sectorId().equals(sectorId))
           .filter(change -> change.elementId().equals(elementId))
           .toList();
+    }
+
+    @Override
+    public long countByElement(TenantId tenantId, UUID sectorId, UUID elementId) {
+      return findByElement(tenantId, sectorId, elementId).size();
+    }
+  }
+
+  private static final class RecordingPublisher implements RealtimeEventPublisher {
+    private final List<RealtimeEvent> events = new ArrayList<>();
+
+    @Override
+    public void publish(RealtimeEvent event) {
+      events.add(event);
     }
   }
 }
