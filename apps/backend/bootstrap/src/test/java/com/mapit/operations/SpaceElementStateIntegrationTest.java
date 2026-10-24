@@ -89,8 +89,7 @@ class SpaceElementStateIntegrationTest {
 
   @BeforeEach
   void fixtures() {
-    jdbc.update(
-        "delete from space_element_state_change where tenant_id in (?, ?)", TENANT_A, TENANT_B);
+    jdbc.execute("truncate table audit_log");
     jdbc.update("delete from space_element where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from app_user where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from sector where tenant_id in (?, ?)", TENANT_A, TENANT_B);
@@ -249,7 +248,12 @@ class SpaceElementStateIntegrationTest {
   private long auditCount(UUID elementId) {
     Long count =
         jdbc.queryForObject(
-            "select count(*) from space_element_state_change where space_element_id = ?",
+            """
+            select count(*) from audit_log
+            where resource_type = 'SPACE_ELEMENT'
+              and event_type = 'SPACE_ELEMENT_STATE_CHANGED'
+              and resource_id = ?
+            """,
             Long.class,
             elementId);
     return count == null ? 0 : count;

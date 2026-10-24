@@ -93,11 +93,11 @@ credenciales, cuerpos HTTP completos ni datos personales del cliente.
 
 ## 8. Criterios de aceptación
 
-- [ ] **CA-1:** Dada una reserva creada correctamente, cuando finaliza la transacción, entonces
+- [x] **CA-1:** Dada una reserva creada correctamente, cuando finaliza la transacción, entonces
       existe exactamente un evento `RESERVATION_CREATED` con tenant, actor, instante y recurso.
-- [ ] **CA-2:** Dado un cambio válido de estado de `SpaceElement`, cuando se confirma, entonces
+- [x] **CA-2:** Dado un cambio válido de estado de `SpaceElement`, cuando se confirma, entonces
       se registra `SPACE_ELEMENT_STATE_CHANGED` con estado anterior y nuevo.
-- [ ] **CA-3:** Dada una acción que falla o se revierte, cuando termina la transacción, entonces
+- [x] **CA-3:** Dada una acción que falla o se revierte, cuando termina la transacción, entonces
       no queda un evento huérfano ni una escritura parcial.
 - [ ] **CA-4:** Dado un `ADMIN` autenticado, cuando consulta el histórico, entonces recibe una
       página ordenada de eventos pertenecientes únicamente a su tenant.

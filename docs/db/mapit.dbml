@@ -202,23 +202,6 @@ Table space_element {
   }
 }
 
-Table space_element_state_change {
-  id               uuid        [pk, note: 'default gen_random_uuid()']
-  tenant_id        text        [not null, ref: > tenant.id]
-  sector_id        uuid        [not null, ref: > sector.id]
-  space_element_id uuid        [not null, ref: > space_element.id]
-  previous_state   text        [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
-  new_state        text        [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
-  changed_by       uuid        [not null, ref: > app_user.id]
-  changed_at       timestamptz [not null, default: `now()`]
-
-  Indexes {
-    (tenant_id, id)                               [name: 'space_element_state_change_tenant_id_id_idx']
-    (tenant_id, space_element_id, changed_at, id) [name: 'space_element_state_change_history_idx', type: btree]
-  }
-  Note: 'MAP-125 / HU-3.01. Fuente histórica preservada en audit_log por V19; permanece durante la transición del escritor en MAP-223.'
-}
-
 Table audit_log {
   id            uuid        [pk, note: 'default gen_random_uuid()']
   tenant_id     text        [not null, ref: > tenant.id]
@@ -236,9 +219,10 @@ Table audit_log {
     (tenant_id, event_type, occurred_at, id)                 [name: 'audit_log_event_history_idx', type: btree]
   }
   Note: '''
-    MAP-222 / HU-5.03. Bitácora general append-only con RLS forzada.
+    MAP-222/MAP-223 / HU-5.03. Bitácora general append-only con RLS forzada.
     El rol runtime solo puede insertar y consultar; UPDATE y DELETE también
-    se bloquean mediante trigger. V19 migra el histórico de HU-3.01.
+    se bloquean mediante trigger. V19 migra el histórico de HU-3.01 y V20
+    retira su tabla específica después de una copia final idempotente.
   '''
 }
 

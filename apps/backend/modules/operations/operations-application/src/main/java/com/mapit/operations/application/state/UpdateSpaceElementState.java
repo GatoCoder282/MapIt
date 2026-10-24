@@ -1,15 +1,18 @@
 package com.mapit.operations.application.state;
 
 import java.time.Clock;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.operations.domain.state.OperationalSpaceElement;
-import com.mapit.operations.domain.state.SpaceElementStateChange;
-import com.mapit.operations.domain.state.SpaceElementStateChangeRepository;
 import com.mapit.operations.domain.state.SpaceElementStateRepository;
+import com.mapit.shared.audit.AuditEvent;
+import com.mapit.shared.audit.AuditEventRecorder;
+import com.mapit.shared.audit.AuditEventType;
+import com.mapit.shared.audit.AuditResourceType;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
@@ -19,19 +22,19 @@ import com.mapit.shared.tenant.TenantId;
 public class UpdateSpaceElementState {
 
   private final SpaceElementStateRepository repository;
-  private final SpaceElementStateChangeRepository changes;
+  private final AuditEventRecorder auditEvents;
   private final TenantContext tenantContext;
   private final ActorContext actorContext;
   private final Clock clock;
 
   public UpdateSpaceElementState(
       SpaceElementStateRepository repository,
-      SpaceElementStateChangeRepository changes,
+      AuditEventRecorder auditEvents,
       TenantContext tenantContext,
       ActorContext actorContext,
       Clock clock) {
     this.repository = repository;
-    this.changes = changes;
+    this.auditEvents = auditEvents;
     this.tenantContext = tenantContext;
     this.actorContext = actorContext;
     this.clock = clock;
@@ -51,16 +54,20 @@ public class UpdateSpaceElementState {
     }
 
     OperationalSpaceElement persisted = repository.save(changed);
-    changes.append(
-        new SpaceElementStateChange(
+    UUID actorId = actorContext.requireUserId();
+    auditEvents.record(
+        new AuditEvent(
             UUID.randomUUID(),
             tenantId,
-            command.sectorId(),
+            actorId,
+            persisted.updatedAt(),
+            AuditResourceType.SPACE_ELEMENT,
             command.elementId(),
-            current.state(),
-            persisted.state(),
-            actorContext.requireUserId(),
-            persisted.updatedAt()));
+            AuditEventType.SPACE_ELEMENT_STATE_CHANGED,
+            Map.of(
+                "previousState", current.state().name(),
+                "newState", persisted.state().name(),
+                "sectorId", command.sectorId().toString())));
     return SpaceElementStateResult.from(persisted);
   }
 }

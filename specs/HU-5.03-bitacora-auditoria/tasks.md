@@ -12,11 +12,11 @@
 
 ## MAP-223 — Registrar eventos de Reservation y SpaceElement
 
-- [ ] Registrar `RESERVATION_CREATED` en la transacción de creación.
-- [ ] Registrar `SPACE_ELEMENT_STATE_CHANGED` reutilizando el flujo de HU-3.01.
-- [ ] Integrar `RESERVATION_STATUS_CHANGED` si HU-5.02 ya existe en la rama base.
-- [ ] Garantizar rollback conjunto cuando falle la auditoría.
-- [ ] Verificar que no se registren secretos ni datos personales innecesarios.
+- [x] Registrar `RESERVATION_CREATED` en la transacción de creación.
+- [x] Registrar `SPACE_ELEMENT_STATE_CHANGED` reutilizando el flujo de HU-3.01.
+- [x] Integrar `RESERVATION_STATUS_CHANGED` si HU-5.02 ya existe en la rama base.
+- [x] Garantizar rollback conjunto cuando falle la auditoría.
+- [x] Verificar que no se registren secretos ni datos personales innecesarios.
 
 ## MAP-224 — Implementar endpoint de histórico
 
@@ -80,7 +80,19 @@
 
 ### MAP-223
 
-Pendiente.
+- `CreateReservation` registra exactamente un `RESERVATION_CREATED` en su misma transacción con
+  estado inicial y establecimiento; no persiste datos del cliente, credenciales ni cuerpos HTTP.
+- `UpdateSpaceElementState` registra `SPACE_ELEMENT_STATE_CHANGED` con estado anterior, estado
+  nuevo y sector. Los cambios inválidos y las solicitudes sin cambio no generan eventos.
+- El histórico de HU-3.01 ahora se consulta desde `audit_log`. V20 realiza una copia final
+  idempotente y retira `space_element_state_change`, de modo que queda una sola fuente de
+  trazabilidad.
+- HU-5.02 todavía no está integrada en la rama base, por lo que no existe un caso de uso donde
+  conectar `RESERVATION_STATUS_CHANGED`; el tipo cerrado permanece preparado para esa historia.
+- Las pruebas unitarias de reservas, operaciones e infraestructura quedaron en verde. Las suites
+  de integración `ReservationCreationIntegrationTest` y `SpaceElementStateIntegrationTest`
+  verifican los eventos, la ausencia de escrituras ante errores y el rollback conjunto si falla
+  el registro de auditoría.
 
 ### MAP-224
 
