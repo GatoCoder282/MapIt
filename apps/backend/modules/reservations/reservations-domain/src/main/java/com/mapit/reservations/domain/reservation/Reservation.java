@@ -7,6 +7,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import org.jspecify.annotations.Nullable;
+
 import com.mapit.reservations.domain.person.PersonId;
 import com.mapit.shared.tenant.TenantId;
 
@@ -27,7 +29,7 @@ public record Reservation(
     ReservationTimeRange timeRange,
     ReservationStatus status,
     Instant createdAt,
-    UUID createdBy) {
+    @Nullable UUID createdBy) {
 
   public Reservation {
     Objects.requireNonNull(id, "id no puede ser null");
@@ -38,7 +40,6 @@ public record Reservation(
     Objects.requireNonNull(timeRange, "timeRange no puede ser null");
     Objects.requireNonNull(status, "status no puede ser null");
     Objects.requireNonNull(createdAt, "createdAt no puede ser null");
-    Objects.requireNonNull(createdBy, "createdBy no puede ser null");
 
     if (spaceElementIds.isEmpty()) {
       throw new IllegalArgumentException("La reserva debe incluir al menos un elemento");
@@ -58,7 +59,7 @@ public record Reservation(
       Collection<UUID> spaceElementIds,
       ReservationTimeRange timeRange,
       Instant createdAt,
-      UUID createdBy) {
+      @Nullable UUID createdBy) {
     Objects.requireNonNull(spaceElementIds, "spaceElementIds no puede ser null");
 
     Set<UUID> uniqueElements = new LinkedHashSet<>();
