@@ -130,6 +130,45 @@ public class JdbcPersonRepository implements PersonRepository {
     }
   }
 
+  @Override
+  public Person findOrCreatePublic(Person person) {
+    setTenant(person.tenantId());
+    String email = person.email();
+    if (email == null) {
+      return insert(person);
+    }
+    List<Person> inserted =
+        jdbc.query(
+            """
+            insert into person (
+              id, tenant_id, full_name, email, phone,
+              created_at, created_by, updated_at, updated_by
+            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            on conflict (tenant_id, email)
+              where email is not null and deleted_at is null
+              do nothing
+            returning *
+            """,
+            JdbcPersonRepository::map,
+            person.id().value(),
+            person.tenantId().value(),
+            person.fullName(),
+            email,
+            person.phone(),
+            Timestamp.from(person.createdAt()),
+            person.createdBy(),
+            Timestamp.from(person.updatedAt()),
+            person.updatedBy());
+    if (!inserted.isEmpty()) {
+      return inserted.getFirst();
+    }
+    return findAliveByEmail(person.tenantId(), email)
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "No se pudo recuperar la persona pública con email " + email));
+  }
+
   private static boolean isEmailConflict(DataIntegrityViolationException exception) {
     Throwable cause = exception;
     while (cause != null) {

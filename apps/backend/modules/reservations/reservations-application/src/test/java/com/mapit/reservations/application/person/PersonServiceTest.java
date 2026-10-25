@@ -102,5 +102,14 @@ class PersonServiceTest {
       people.add(person);
       return person;
     }
+
+    @Override
+    public Person findOrCreatePublic(Person person) {
+      return people.stream()
+          .filter(candidate -> person.tenantId().equals(candidate.tenantId()))
+          .filter(candidate -> person.email() != null && person.email().equals(candidate.email()))
+          .findFirst()
+          .orElseGet(() -> insert(person));
+    }
   }
 }

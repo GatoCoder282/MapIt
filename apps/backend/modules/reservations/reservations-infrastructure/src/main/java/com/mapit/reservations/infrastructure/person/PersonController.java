@@ -83,9 +83,9 @@ public class PersonController {
       @Nullable String email,
       @Nullable String phone,
       Instant createdAt,
-      UUID createdBy,
+      @Nullable UUID createdBy,
       Instant updatedAt,
-      UUID updatedBy) {
+      @Nullable UUID updatedBy) {
 
     static PersonResponse fromDomain(Person person) {
       return new PersonResponse(

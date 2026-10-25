@@ -1,0 +1,171 @@
+<mapit-ui-site-nav />
+
+<main class="page">
+  <div class="content">
+    <a class="back" [routerLink]="['/disponibilidad', tenantSlug(), establishmentSlug()]">
+      {{ strings.booking.back }}
+    </a>
+
+    @if (store.reservation(); as reservation) {
+      <section class="success" role="status" aria-labelledby="booking-success-title">
+        <h1 id="booking-success-title">{{ strings.booking.successTitle }}</h1>
+        <p>{{ strings.booking.successMessage }}</p>
+        <dl>
+          <div>
+            <dt>{{ strings.booking.reservationCode }}</dt>
+            <dd>
+              <code>{{ reservation.id }}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>{{ strings.booking.when }}</dt>
+            <dd>
+              {{ formatWhen(reservation.date, reservation.startTime, reservation.endTime) }}
+            </dd>
+          </div>
+          <div>
+            <dt>{{ strings.booking.timezone }}</dt>
+            <dd>{{ reservation.timezone }}</dd>
+          </div>
+          <div>
+            <dt>{{ strings.booking.elementCode }}</dt>
+            <dd>
+              <code>{{ elementId() }}</code>
+            </dd>
+          </div>
+        </dl>
+        <a class="primary" [routerLink]="['/disponibilidad', tenantSlug(), establishmentSlug()]">
+          {{ strings.booking.newReservation }}
+        </a>
+      </section>
+    } @else {
+      <header class="heading">
+        <h1>{{ strings.booking.title }}</h1>
+        <p>{{ strings.booking.subtitle }}</p>
+        <p class="space">
+          <span>{{ strings.booking.selectedSpace }}</span>
+          <code>{{ elementId() }}</code>
+        </p>
+      </header>
+
+      @if (store.errorMessage()) {
+        <div class="notice notice--error" role="alert">{{ store.errorMessage() }}</div>
+      }
+
+      <form class="booking-form" (submit)="submit($event)" novalidate>
+        <fieldset>
+          <legend>{{ strings.booking.dateLabel }}</legend>
+          <label for="booking-date">{{ strings.booking.dateLabel }}</label>
+          <input
+            id="booking-date"
+            type="date"
+            [min]="minimumDate"
+            [value]="store.date()"
+            (input)="store.setDate(value($event))"
+            [attr.aria-invalid]="store.dateError() ? 'true' : null"
+            [attr.aria-describedby]="store.dateError() ? 'booking-date-error' : null"
+          />
+          @if (store.dateError()) {
+            <p id="booking-date-error" class="field-error" role="alert">
+              {{ store.dateError() }}
+            </p>
+          }
+        </fieldset>
+
+        <div class="time-row">
+          <div>
+            <label for="booking-start">{{ strings.booking.startTimeLabel }}</label>
+            <input
+              id="booking-start"
+              type="time"
+              [value]="store.startTime()"
+              (input)="store.setStartTime(value($event))"
+              [attr.aria-invalid]="store.timeError() ? 'true' : null"
+              [attr.aria-describedby]="store.timeError() ? 'booking-time-error' : null"
+            />
+          </div>
+          <div>
+            <label for="booking-end">{{ strings.booking.endTimeLabel }}</label>
+            <input
+              id="booking-end"
+              type="time"
+              [value]="store.endTime()"
+              (input)="store.setEndTime(value($event))"
+              [attr.aria-invalid]="store.timeError() ? 'true' : null"
+              [attr.aria-describedby]="store.timeError() ? 'booking-time-error' : null"
+            />
+          </div>
+        </div>
+        @if (store.timeError()) {
+          <p id="booking-time-error" class="field-error" role="alert">{{ store.timeError() }}</p>
+        }
+
+        <fieldset>
+          <legend>{{ strings.booking.customerTitle }}</legend>
+
+          <label for="booking-name">{{ strings.booking.fullNameLabel }}</label>
+          <input
+            id="booking-name"
+            type="text"
+            autocomplete="name"
+            maxlength="120"
+            [value]="store.fullName()"
+            (input)="store.setFullName(value($event))"
+            [attr.aria-invalid]="store.fullNameError() ? 'true' : null"
+            [attr.aria-describedby]="store.fullNameError() ? 'booking-name-error' : null"
+          />
+          @if (store.fullNameError()) {
+            <p id="booking-name-error" class="field-error" role="alert">
+              {{ store.fullNameError() }}
+            </p>
+          }
+
+          <label for="booking-email">{{ strings.booking.emailLabel }}</label>
+          <input
+            id="booking-email"
+            type="email"
+            autocomplete="email"
+            maxlength="254"
+            [value]="store.email()"
+            (input)="store.setEmail(value($event))"
+            [attr.aria-invalid]="store.emailError() ? 'true' : null"
+            [attr.aria-describedby]="store.emailError() ? 'booking-email-error' : null"
+          />
+          @if (store.emailError()) {
+            <p id="booking-email-error" class="field-error" role="alert">
+              {{ store.emailError() }}
+            </p>
+          }
+
+          <label for="booking-phone">{{ strings.booking.phoneLabel }}</label>
+          <input
+            id="booking-phone"
+            type="tel"
+            autocomplete="tel"
+            maxlength="32"
+            [value]="store.phone()"
+            (input)="store.setPhone(value($event))"
+            [attr.aria-invalid]="store.phoneError() ? 'true' : null"
+            [attr.aria-describedby]="store.phoneError() ? 'booking-phone-error' : null"
+          />
+          @if (store.phoneError()) {
+            <p id="booking-phone-error" class="field-error" role="alert">
+              {{ store.phoneError() }}
+            </p>
+          }
+        </fieldset>
+
+        <button
+          class="primary"
+          type="submit"
+          [disabled]="store.status() === 'submitting'"
+          [attr.aria-busy]="store.status() === 'submitting'"
+        >
+          {{ store.status() === 'submitting' ? strings.booking.submitting : strings.booking.submit }}
+        </button>
+      </form>
+    }
+  </div>
+</main>
+
+<mapit-ui-site-footer />
