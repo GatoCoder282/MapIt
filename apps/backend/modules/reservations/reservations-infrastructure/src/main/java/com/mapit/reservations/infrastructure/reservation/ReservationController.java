@@ -10,10 +10,12 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,26 +25,41 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mapit.reservations.application.reservation.CreateReservation;
 import com.mapit.reservations.application.reservation.InvalidReservationResourceException;
+import com.mapit.reservations.application.reservation.ListReservations;
 import com.mapit.reservations.application.reservation.ReservationOverlapException;
 import com.mapit.reservations.application.reservation.ReservationReferenceNotFoundException;
 import com.mapit.reservations.domain.reservation.Reservation;
 import com.mapit.reservations.domain.reservation.ReservationStatus;
 import com.mapit.reservations.infrastructure.ReservationsProblemTypes;
 
-/** Adaptador REST para crear reservas internas dentro de un establecimiento. */
+/**
+ * Adaptador REST de las reservas internas.
+ *
+ * <p>Dos recurso distintos sobre la misma entidad: la reserva se crea bajo un
+ * establecimiento ({@code POST /api/v1/establishments/{id}/reservations}) y se lista a
+ * nivel de tenant ({@code GET /api/v1/reservations}), que es lo que consume el panel.
+ */
 @RestController
-@RequestMapping("/api/v1/establishments/{establishmentId}/reservations")
+@RequestMapping("/api/v1")
 public class ReservationController {
 
   private static final int MAX_ELEMENTS_PER_RESERVATION = 100;
 
   private final CreateReservation createReservation;
+  private final ListReservations listReservations;
 
-  public ReservationController(CreateReservation createReservation) {
+  public ReservationController(
+      CreateReservation createReservation, ListReservations listReservations) {
     this.createReservation = createReservation;
+    this.listReservations = listReservations;
   }
 
-  @PostMapping
+  @GetMapping("/reservations")
+  public List<ReservationResponse> findAll() {
+    return listReservations.execute().stream().map(ReservationResponse::fromDomain).toList();
+  }
+
+  @PostMapping("/establishments/{establishmentId}/reservations")
   @ResponseStatus(HttpStatus.CREATED)
   public ReservationResponse create(
       @PathVariable UUID establishmentId,
@@ -101,7 +118,7 @@ public class ReservationController {
       Instant endsAt,
       ReservationStatus status,
       Instant createdAt,
-      UUID createdBy) {
+      @Nullable UUID createdBy) {
 
     static ReservationResponse fromDomain(Reservation reservation) {
       return new ReservationResponse(

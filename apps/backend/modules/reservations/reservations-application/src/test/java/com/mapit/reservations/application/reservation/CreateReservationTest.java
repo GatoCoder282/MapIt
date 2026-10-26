@@ -194,6 +194,52 @@ class CreateReservationTest {
   }
 
   @Test
+  void creaUnaReservaPublicaSinActorDeCreacion() {
+    Reservation created =
+        useCase.create(
+            TENANT,
+            null,
+            ESTABLISHMENT,
+            PersonId.of(PERSON),
+            List.of(ELEMENT_A),
+            STARTS_AT,
+            ENDS_AT,
+            true);
+
+    assertThat(created.createdBy()).isNull();
+    assertThat(created.status()).isEqualTo(ReservationStatus.CREATED);
+    assertThat(reservations.saved).isSameAs(created);
+  }
+
+  @Test
+  void unaReservaPublicaRechazaElementosFueraDeServicioComoNoDisponibles() {
+    resources.found =
+        List.of(
+            new ReservationResource(
+                ELEMENT_A,
+                ESTABLISHMENT,
+                ReservationResource.Kind.TABLE,
+                ReservationResource.OperationalState.OUT_OF_SERVICE));
+
+    assertThatThrownBy(
+            () ->
+                useCase.create(
+                    TENANT,
+                    null,
+                    ESTABLISHMENT,
+                    PersonId.of(PERSON),
+                    List.of(ELEMENT_A),
+                    STARTS_AT,
+                    ENDS_AT,
+                    true))
+        .isInstanceOfSatisfying(
+            ReservationResourceUnavailableException.class,
+            exception ->
+                assertThat(exception.unavailableElementIds()).containsExactly(ELEMENT_A));
+    assertThat(reservations.saved).isNull();
+  }
+
+  @Test
   void rechazaTodaLaReservaSiUnElementoSeSuperpone() {
     availability.conflicts = Set.of(ELEMENT_B);
 
@@ -255,6 +301,11 @@ class CreateReservationTest {
       person = newPerson;
       return newPerson;
     }
+
+    @Override
+    public Person findOrCreatePublic(Person newPerson) {
+      return insert(newPerson);
+    }
   }
 
   private static final class FakeResources implements ReservationResourceRepository {
@@ -299,6 +350,11 @@ class CreateReservationTest {
     public Reservation save(Reservation reservation) {
       saved = reservation;
       return reservation;
+    }
+
+    @Override
+    public List<Reservation> findAll(TenantId tenantId) {
+      return List.of();
     }
   }
 

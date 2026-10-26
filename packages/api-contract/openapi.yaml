@@ -58,6 +58,8 @@ tags:
     description: Bitácora inmutable de eventos de negocio del tenant (HU-5.03)
   - name: public-availability
     description: Consulta anónima de disponibilidad para el portal público (HU-6.01)
+  - name: public-reservations
+    description: Reserva anónima desde el portal público (HU-6.02)
 
 paths:
   /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/availability:
@@ -107,6 +109,58 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/reservations:
+    parameters:
+      - name: tenantSlug
+        in: path
+        required: true
+        description: Slug público del tenant.
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 63
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+      - name: establishmentSlug
+        in: path
+        required: true
+        description: Slug del establecimiento dentro del tenant.
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 63
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+    post:
+      tags: [public-reservations]
+      summary: Crear una reserva pública
+      description: |
+        Crea una reserva anónima en estado `CREATED` para uno o más elementos del
+        establecimiento. El tenant y el establecimiento se resuelven exclusivamente por sus
+        slugs públicos. La fecha y las horas se interpretan en la zona horaria configurada
+        para el establecimiento. No requiere JWT ni acepta `tenantId`, `status` ni auditoría.
+      operationId: createPublicReservation
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicReservationCreateRequest"
+      responses:
+        "201":
+          description: Reserva pública creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicReservation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -218,6 +272,39 @@ paths:
                 $ref: "#/components/schemas/AuditLogPage"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /reservations:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [reservations]
+      summary: Listar las reservas del tenant
+      description: |
+        Devuelve todas las reservas del tenant autenticado, de la más reciente a la más
+        antigua. El tenant se obtiene exclusivamente del JWT: nunca viaja en la petición.
+
+        **Techo conocido:** la respuesta es un array plano, sin paginación. Está pensada
+        para métricas agregadas (totales, crecimiento semanal, reparto por estado). Si un
+        tenant llega a acumular cientos de reservas, hará falta una variante paginada.
+      operationId: listReservations
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Reservas del tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reservation"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1670,6 +1757,37 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /element-states/summary:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      tags: [operations]
+      summary: Resumen de los estados operativos de los elementos del tenant
+      description: |
+        Recuento agregado de los elementos espaciales vivos del tenant autenticado,
+        agrupados por su estado operativo, más el total. El tenant se obtiene
+        exclusivamente del claim `tenant` del JWT; los elementos dados de baja no se
+        cuentan. Las cinco claves de estado están siempre presentes (con 0 cuando no
+        hay elementos en ese estado) para que el cliente no trate claves ausentes.
+      operationId: summarizeSpaceElementStates
+      security: []
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Recuento de elementos por estado operativo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementStateSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   # ===== ELEMENT TEMPLATES (HU-4.02 / CU-07) =====
 
   /element-templates:
@@ -1936,6 +2054,119 @@ components:
         type:
           type: string
           enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM]
+
+    PublicReservationCreateRequest:
+      type: object
+      required: [date, startTime, endTime, spaceElementIds, customer]
+      additionalProperties: false
+      description: Reserva anónima con fecha y horas locales del establecimiento.
+      properties:
+        date:
+          type: string
+          format: date
+          description: Día local del establecimiento (YYYY-MM-DD).
+        startTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: Hora local de inicio (HH:mm).
+          examples: ["20:00"]
+        endTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: Hora local de fin (HH:mm), posterior al inicio.
+          examples: ["22:00"]
+        spaceElementIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        customer:
+          $ref: "#/components/schemas/PublicCustomer"
+
+    PublicCustomer:
+      type: object
+      required: [fullName, email]
+      additionalProperties: false
+      description: Datos mínimos del cliente final que crea la reserva.
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: [string, "null"]
+          maxLength: 32
+
+    PublicReservation:
+      type: object
+      required:
+        - id
+        - establishmentId
+        - spaceElementIds
+        - date
+        - startTime
+        - endTime
+        - startsAt
+        - endsAt
+        - timezone
+        - status
+        - createdAt
+      additionalProperties: false
+      description: Confirmación pública sin datos personales ni auditoría del actor.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        establishmentId:
+          type: string
+          format: uuid
+          readOnly: true
+        spaceElementIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+          readOnly: true
+        date:
+          type: string
+          format: date
+          readOnly: true
+        startTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          readOnly: true
+        endTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          readOnly: true
+        startsAt:
+          type: string
+          format: date-time
+          readOnly: true
+        endsAt:
+          type: string
+          format: date-time
+          readOnly: true
+        timezone:
+          type: string
+          readOnly: true
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
 
     Reservation:
       type: object
@@ -3017,6 +3248,30 @@ components:
           type: string
           format: date-time
           readOnly: true
+
+    ElementStateSummary:
+      type: object
+      required: [total, byState]
+      description: |
+        Recuento agregado de los elementos espaciales vivos del tenant por estado
+        operativo (sin los dados de baja). Las cinco claves están siempre presentes.
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: |
+            Elementos vivos del tenant: la suma de los cinco estados, incluidos los
+            fuera de servicio. Solo se excluyen los elementos dados de baja
+            lógicamente (`deleted_at`).
+        byState:
+          type: object
+          required: [AVAILABLE, OCCUPIED, RESERVED, CLEANING, OUT_OF_SERVICE]
+          properties:
+            AVAILABLE: { type: integer, minimum: 0 }
+            OCCUPIED: { type: integer, minimum: 0 }
+            RESERVED: { type: integer, minimum: 0 }
+            CLEANING: { type: integer, minimum: 0 }
+            OUT_OF_SERVICE: { type: integer, minimum: 0 }
 
     # RFC 9457 — Problem Details. Spring 6+ lo soporta de forma nativa,
     # así que todos los errores de la API usan este formato.

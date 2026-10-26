@@ -95,6 +95,8 @@ class SpaceElementStateIntegrationTest {
   void fixtures() {
     FAIL_AUDIT.set(false);
     jdbc.execute("truncate table audit_log");
+    jdbc.update(
+        "delete from realtime_event_outbox where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from space_element where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from app_user where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from sector where tenant_id in (?, ?)", TENANT_A, TENANT_B);
@@ -219,6 +221,38 @@ class SpaceElementStateIntegrationTest {
 
     assertThat(stateOf(ELEMENT_B)).isEqualTo("AVAILABLE");
     assertThat(auditCount(ELEMENT_A) + auditCount(ELEMENT_B)).isZero();
+  }
+
+  @Test
+  void el_cambio_de_estado_deja_un_evento_en_el_outbox_en_la_misma_transaccion() {
+    patch(SECTOR_A, ELEMENT_A, "RESERVED", token(ADMIN_A, UserRole.ADMIN))
+        .expectStatus()
+        .isOk();
+
+    java.util.Map<String, Object> outbox =
+        jdbc.queryForMap(
+            "select event_type, tenant_id, establishment_id, sector_id, aggregate_version,"
+                + " payload->'payload'->>'previousState' as previous_state,"
+                + " payload->'payload'->>'state' as state"
+                + " from realtime_event_outbox where tenant_id = ?",
+            TENANT_A);
+    assertThat(outbox.get("event_type")).isEqualTo("space-element.state.changed.v1");
+    assertThat(outbox.get("tenant_id")).isEqualTo(TENANT_A);
+    assertThat(outbox.get("establishment_id")).isEqualTo(ESTABLISHMENT_A);
+    assertThat(outbox.get("sector_id")).isEqualTo(SECTOR_A);
+    assertThat(((Number) outbox.get("aggregate_version")).longValue()).isEqualTo(1);
+    assertThat(outbox.get("previous_state")).isEqualTo("AVAILABLE");
+    assertThat(outbox.get("state")).isEqualTo("RESERVED");
+
+    patch(SECTOR_A, ELEMENT_A, "RESERVED", token(ADMIN_A, UserRole.ADMIN))
+        .expectStatus()
+        .isOk();
+    Long events =
+        jdbc.queryForObject(
+            "select count(*) from realtime_event_outbox where tenant_id = ?",
+            Long.class,
+            TENANT_A);
+    assertThat(events).isEqualTo(1);
   }
 
   private RestTestClient http() {

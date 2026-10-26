@@ -1,0 +1,159 @@
+<aside class="sidebar" [attr.aria-label]="navLabel()">
+  <ng-template #navIcon let-icon>
+    @switch (icon) {
+      @case ('dashboard') {
+        <svg lucideLayoutDashboard aria-hidden="true"></svg>
+      }
+      @case ('tenants') {
+        <svg lucideBuilding2 aria-hidden="true"></svg>
+      }
+      @case ('settings') {
+        <svg lucideSettings aria-hidden="true"></svg>
+      }
+      @case ('profile') {
+        <svg lucideUser aria-hidden="true"></svg>
+      }
+      @case ('home') {
+        <svg lucideHouse aria-hidden="true"></svg>
+      }
+      @case ('spaces') {
+        <svg lucideLayers aria-hidden="true"></svg>
+      }
+      @case ('map') {
+        <svg lucideMap aria-hidden="true"></svg>
+      }
+      @case ('businesses') {
+        <svg lucideStore aria-hidden="true"></svg>
+      }
+      @case ('users') {
+        <svg lucideUsers aria-hidden="true"></svg>
+      }
+      @case ('reports') {
+        <svg lucideChartColumn aria-hidden="true"></svg>
+      }
+      @case ('templates') {
+        <svg lucideComponent aria-hidden="true"></svg>
+      }
+      @case ('reservations') {
+        <svg lucideCalendarPlus aria-hidden="true"></svg>
+      }
+      @case ('audit') {
+        <svg lucideHistory aria-hidden="true"></svg>
+      }
+      @default {
+        <svg lucideLayoutDashboard aria-hidden="true"></svg>
+      }
+    }
+  </ng-template>
+
+  <ng-template #navList>
+    @for (item of nav(); track item.label) {
+      @if (item.dividerBefore) {
+        <hr class="nav-divider" />
+      }
+      @if (item.children?.length) {
+        <button
+          class="nav-item group-toggle"
+          type="button"
+          (click)="toggleGroup(item.label)"
+          [attr.aria-expanded]="isGroupOpen(item.label)"
+        >
+          <ng-container [ngTemplateOutlet]="navIcon" [ngTemplateOutletContext]="{ $implicit: item.icon }" />
+          <span class="label">{{ item.label }}</span>
+          <svg lucideChevronDown class="chevron" [class.open]="isGroupOpen(item.label)" aria-hidden="true"></svg>
+        </button>
+        @if (isGroupOpen(item.label)) {
+          <div class="nav-group">
+            @for (child of item.children; track child.route) {
+              <a
+                class="nav-item subitem"
+                [routerLink]="child.route"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: child.exact ?? false }"
+                [attr.aria-label]="child.label"
+                (click)="onLinkClick()"
+              >
+                <ng-container [ngTemplateOutlet]="navIcon" [ngTemplateOutletContext]="{ $implicit: child.icon }" />
+                <span class="label">{{ child.label }}</span>
+              </a>
+            }
+          </div>
+        }
+      } @else if (item.route) {
+        <a
+          class="nav-item"
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+          [attr.aria-label]="item.label"
+          (click)="onLinkClick()"
+        >
+          <ng-container [ngTemplateOutlet]="navIcon" [ngTemplateOutletContext]="{ $implicit: item.icon }" />
+          <span class="label">{{ item.label }}</span>
+        </a>
+      }
+    }
+  </ng-template>
+
+  <div class="rail">
+    <div class="brand-sidebar">
+      <img
+        class="brand-logo"
+        ngSrc="assets/img/logo_mapit_white.png"
+        width="334"
+        height="153"
+        [alt]="strings.brand.name"
+      />
+    </div>
+    <nav class="nav" [attr.aria-label]="navAriaLabel()">
+      <ng-container [ngTemplateOutlet]="navList" />
+    </nav>
+    <div class="sidebar-decor" aria-hidden="true">
+      <span class="decor-circle"></span>
+      <span class="decor-dots"></span>
+    </div>
+  </div>
+
+  @if (drawerOpen()) {
+    <div class="scrim" (click)="drawerClose.emit()" aria-hidden="true"></div>
+  }
+  <div
+    class="drawer"
+    [class.open]="drawerOpen()"
+    [attr.aria-hidden]="!drawerOpen()"
+    [attr.inert]="drawerOpen() ? null : ''"
+  >
+    <div class="drawer-header">
+      <img
+        class="brand-logo"
+        ngSrc="assets/img/logo_mapit_white.png"
+        width="334"
+        height="153"
+        [alt]="strings.brand.name"
+      />
+      <button type="button" class="drawer-close" (click)="drawerClose.emit()" [attr.aria-label]="closeLabel()">
+        <svg
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+          stroke="currentColor"
+          stroke-width="2"
+          fill="none"
+          aria-hidden="true"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+
+    <nav class="drawer-nav" [attr.aria-label]="strings.shell.drawerNavLabel">
+      <ng-container [ngTemplateOutlet]="navList" />
+    </nav>
+
+    <div class="sidebar-decor" aria-hidden="true">
+      <span class="decor-circle"></span>
+      <span class="decor-dots"></span>
+    </div>
+  </div>
+</aside>

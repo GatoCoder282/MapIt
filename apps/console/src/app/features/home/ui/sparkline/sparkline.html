@@ -1,0 +1,7 @@
+<!-- El sparkline es decoración: la cifra y su delta ya están en el texto de la
+     tarjeta, así que el lector de pantalla no necesita el mismo dato dos veces. -->
+@if (points(); as line) {
+  <svg class="sparkline" [attr.viewBox]="viewBox" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <polyline [attr.points]="line" />
+  </svg>
+}

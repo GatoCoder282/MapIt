@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, NavigationEnd, Router } from '@angular/router';
 import { of, Subject, type Observable } from 'rxjs';
 import { type LoginResponse } from '@mapit/api-client';
 import { AuthSession } from '@mapit/auth';
 import { LoginApi } from '../data/login-api';
 import { HttpErrorResponse } from '@angular/common/http';
 import { LoginStore } from './login-store';
+import { PageTransitionService } from '@mapit/ui-kit';
 
 describe('LoginStore', () => {
   const response = new Subject<LoginResponse>();
@@ -13,9 +14,13 @@ describe('LoginStore', () => {
   const start = vi.fn();
   const sessionUser = vi.fn(() => null);
   const navigateByUrl = vi.fn();
+  const transitionStart = vi.fn().mockResolvedValue(undefined);
+  const transitionComplete = vi.fn().mockResolvedValue(undefined);
   beforeEach(() => {
     vi.clearAllMocks();
     sessionUser.mockReturnValue(null);
+    transitionStart.mockResolvedValue(undefined);
+    transitionComplete.mockResolvedValue(undefined);
   });
   function create(tenant = 'empresa-prueba'): LoginStore {
     const paramMap = convertToParamMap(tenant ? { tenantSlug: tenant } : {});
@@ -24,7 +29,17 @@ describe('LoginStore', () => {
         LoginStore,
         { provide: LoginApi, useValue: { login } },
         { provide: AuthSession, useValue: { start, user: sessionUser } },
-        { provide: Router, useValue: { navigateByUrl } },
+        {
+          provide: Router,
+          useValue: {
+            navigateByUrl,
+            events: of(new NavigationEnd(1, '/home', '/home')),
+          },
+        },
+        {
+          provide: PageTransitionService,
+          useValue: { start: transitionStart, complete: transitionComplete },
+        },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -73,7 +88,7 @@ describe('LoginStore', () => {
     expect(store.pending()).toBe(true);
   });
 
-  it('establece sesión, limpia contraseña y navega al inicio', () => {
+  it('establece sesión, limpia contraseña y navega al inicio', async () => {
     login.mockReturnValueOnce(of({ accessToken: 'token' } as LoginResponse));
     const store = create();
     store.setEmail('persona@empresa.com');
@@ -82,11 +97,11 @@ describe('LoginStore', () => {
     store.submit();
     expect(start).toHaveBeenCalledWith({ accessToken: 'token' }, 'empresa-prueba', true);
     expect(store.password()).toBe('');
-    expect(navigateByUrl).toHaveBeenCalledWith('/home');
+    await vi.waitFor(() => expect(navigateByUrl).toHaveBeenCalledWith('/home'));
     expect(store.pending()).toBe(false);
   });
 
-  it('dirige al SUPER_ADMIN a la consola de plataforma', () => {
+  it('dirige al SUPER_ADMIN a la consola de plataforma', async () => {
     login.mockReturnValueOnce(of({ accessToken: 'token' } as LoginResponse));
     sessionUser.mockReturnValue({
       id: '00000000-0000-0000-0000-0000000000aa',
@@ -99,7 +114,7 @@ describe('LoginStore', () => {
     store.setEmail('superadmin@mapit.local');
     store.setPassword('clave');
     store.submit();
-    expect(navigateByUrl).toHaveBeenCalledWith('/admin/tenants');
+    await vi.waitFor(() => expect(navigateByUrl).toHaveBeenCalledWith('/admin/tenants'));
   });
 
   it('permite reintentar tras 401 sin mostrar detalles del servidor', () => {

@@ -21,6 +21,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
@@ -29,6 +30,7 @@ import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
@@ -56,8 +58,15 @@ import com.mapit.shared.tenant.TenantScope;
 class RealtimeWebSocketIntegrationTest {
 
   private static final UUID USER = UUID.fromString("00000000-0000-0000-0000-000000000011");
+  private static final UUID SUPER =
+      UUID.fromString("00000000-0000-0000-0000-000000000013");
+  private static final UUID OTRO_SUPER =
+      UUID.fromString("00000000-0000-0000-0000-000000000014");
   private static final UUID ESTABLISHMENT =
       UUID.fromString("00000000-0000-0000-0000-000000000012");
+  private static final UUID FLOOR = UUID.fromString("00000000-0000-0000-0000-000000000021");
+  private static final UUID SECTOR = UUID.fromString("00000000-0000-0000-0000-000000000031");
+  private static final UUID ELEMENT = UUID.fromString("00000000-0000-0000-0000-000000000041");
 
   @Container
   private static final PostgreSQLContainer<?> POSTGRES =
@@ -111,6 +120,17 @@ class RealtimeWebSocketIntegrationTest {
   @AfterEach
   void stopClient() {
     client.stop();
+  }
+
+  /** Limpia el mapa de la prueba E2E en orden inverso de FKs (todas RESTRICT). */
+  @AfterEach
+  void removeMapFixtures() {
+    jdbc.update(
+        "delete from space_element_state_change where tenant_id = 'demo' and changed_by = ?",
+        USER);
+    jdbc.update("delete from space_element where id = ?", ELEMENT);
+    jdbc.update("delete from sector where id = ?", SECTOR);
+    jdbc.update("delete from floor where id = ?", FLOOR);
   }
 
   @Test
@@ -186,6 +206,135 @@ class RealtimeWebSocketIntegrationTest {
             String.class);
     assertThat(delivered).as("%s payload=%s", outboxState, receivedPayload.get()).isTrue();
     assertThat(receivedPayload.get()).contains("space-element.state.changed.v1");
+    session.disconnect();
+    assertThat(session.isConnected()).isFalse();
+  }
+
+  @Test
+  void super_admin_suscribe_a_su_tenant_y_el_aislamiento_se_mantiene() {
+    jdbc.update("delete from app_user where id = ?", SUPER);
+    jdbc.update("delete from app_user where id = ?", OTRO_SUPER);
+    jdbc.update("delete from tenant where id = 'otro'");
+    jdbc.update(
+        "insert into tenant (id, name, slug, vertical, status) values ('otro', 'Otro', 'otro', 'RESTAURANT', 'ACTIVE') on conflict (id) do nothing");
+    jdbc.update(
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Super', 'SUPER_ADMIN', true)",
+        SUPER,
+        "realtime-" + SUPER + "@example.test");
+    jdbc.update(
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'otro', ?, 'unused', 'Otro Super', 'SUPER_ADMIN', true)",
+        OTRO_SUPER,
+        "realtime-" + OTRO_SUPER + "@example.test");
+
+    // SUPER_ADMIN de su propio tenant: permitido, ya lee estos mismos datos por HTTP.
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), SUPER, "SUPER_ADMIN", ESTABLISHMENT, Optional.empty()))
+        .isTrue();
+    // Los roles operativos siguen permitidos.
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), USER, "ADMIN", ESTABLISHMENT, Optional.empty()))
+        .isTrue();
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), USER, "MANAGER", ESTABLISHMENT, Optional.empty()))
+        .isTrue();
+    // SUPER_ADMIN de otro tenant: denegado; el check de tenant se mantiene para cualquier rol.
+    assertThat(roomAccess.canSubscribe(TenantId.of("otro"), OTRO_SUPER, "SUPER_ADMIN", ESTABLISHMENT, Optional.empty()))
+        .isFalse();
+    // Usuario inactivo: denegado.
+    jdbc.update("update app_user set active = false where id = ?", SUPER);
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), SUPER, "SUPER_ADMIN", ESTABLISHMENT, Optional.empty()))
+        .isFalse();
+    jdbc.update("update app_user set active = true where id = ?", SUPER);
+    // Rol ajeno al catálogo (llegaría falsificado en el JWT): denegado.
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), SUPER, "DESARROLLADOR", ESTABLISHMENT, Optional.empty()))
+        .isFalse();
+  }
+
+  @Test
+  void el_cambio_de_estado_del_caso_de_uso_llega_por_stomp_con_el_envelope_correcto()
+      throws Exception {
+    jdbc.update(
+        "insert into floor (id, tenant_id, establishment_id, name, level, slug) values (?, 'demo', ?, 'Piso RT', 1, ?)",
+        FLOOR,
+        ESTABLISHMENT,
+        "rt-floor-" + FLOOR);
+    jdbc.update(
+        "insert into sector (id, tenant_id, floor_id, name, slug, max_capacity) values (?, 'demo', ?, 'Sector RT', ?, 10)",
+        SECTOR,
+        FLOOR,
+        "rt-sector-" + SECTOR);
+    jdbc.update(
+        "insert into space_element (id, tenant_id, sector_id, type, state, x, y) values (?, 'demo', ?, 'TABLE', 'AVAILABLE', 1, 1)",
+        ELEMENT,
+        SECTOR);
+
+    String token =
+        tokenIssuer
+            .issue(
+                new AuthenticatedUser(
+                    USER,
+                    TenantId.of("demo"),
+                    "realtime-" + USER + "@example.test",
+                    "Realtime Staff",
+                    UserRole.STAFF))
+            .value();
+    StompHeaders connectHeaders = new StompHeaders();
+    connectHeaders.add("Authorization", "Bearer " + token);
+    StompSession session =
+        client
+            .connectAsync(
+                    URI.create("ws://localhost:" + port + "/ws"),
+                    new org.springframework.web.socket.WebSocketHttpHeaders(),
+                    connectHeaders,
+                    new StompSessionHandlerAdapter() {})
+            .get(10, TimeUnit.SECONDS);
+
+    CountDownLatch received = new CountDownLatch(1);
+    AtomicReference<String> receivedPayload = new AtomicReference<>();
+    session.subscribe(
+        "/topic/establishments/" + ESTABLISHMENT,
+        new StompFrameHandler() {
+          @Override
+          public java.lang.reflect.Type getPayloadType(StompHeaders headers) {
+            return String.class;
+          }
+
+          @Override
+          public void handleFrame(StompHeaders headers, Object payload) {
+            String body = String.valueOf(payload);
+            receivedPayload.set(body);
+            received.countDown();
+          }
+        });
+    // El simple broker no emite RECEIPT para SUBSCRIBE; dejamos que el frame cruce el canal
+    // antes del PATCH que dispara el caso de uso real.
+    TimeUnit.SECONDS.sleep(2);
+
+    RestTestClient http = RestTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+    http.patch()
+        .uri("/api/v1/sectors/{sectorId}/elements/{elementId}/state", SECTOR, ELEMENT)
+        .contentType(MediaType.APPLICATION_JSON)
+        .header("Authorization", "Bearer " + token)
+        .body("{\"state\":\"OCCUPIED\"}")
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    dispatcher.dispatchPending();
+
+    boolean delivered = received.await(2, TimeUnit.SECONDS);
+    String outboxState =
+        jdbc.queryForObject(
+            "select concat('attempts=', attempts, ', published=', coalesce(published_at::text, 'null'), ', error=', coalesce(last_error, 'null')) from realtime_event_outbox order by created_at desc limit 1",
+            String.class);
+    assertThat(delivered).as("%s payload=%s", outboxState, receivedPayload.get()).isTrue();
+    // El dispatcher envía el texto jsonb, que inserta espacios; comparamos sin ellos.
+    String envelope = receivedPayload.get().replace(" ", "");
+    assertThat(envelope)
+        .contains("space-element.state.changed.v1")
+        .contains(ESTABLISHMENT.toString())
+        .contains(SECTOR.toString())
+        .contains(ELEMENT.toString())
+        .contains("\"previousState\":\"AVAILABLE\"")
+        .contains("\"state\":\"OCCUPIED\"")
+        .contains("\"aggregateVersion\":1");
     session.disconnect();
     assertThat(session.isConnected()).isFalse();
   }

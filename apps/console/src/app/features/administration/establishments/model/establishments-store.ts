@@ -1,4 +1,4 @@
-﻿import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import type { Establishment, EstablishmentType } from '@mapit/api-client';
 import { finalize } from 'rxjs';
 import { STRINGS } from '../../../../core/strings';
@@ -20,10 +20,6 @@ export const ESTABLISHMENT_TYPES: readonly EstablishmentType[] = [
   'HOTEL',
 ];
 
-/**
- * Zona horaria por defecto. Espejo 1:1 del dominio backend
- * (`Establishment.ZONA_HORARIA_POR_DEFECTO`) y del placeholder que la UI sugiere.
- */
 const ZONA_HORARIA_POR_DEFECTO = STRINGS.establishments.form.timezonePlaceholder;
 
 const EMPTY_DRAFT: EstablishmentDraft = {
@@ -121,7 +117,7 @@ export class EstablishmentsStore {
     const timezone = draft.timezone.trim() || ZONA_HORARIA_POR_DEFECTO;
     const editingId = this.editingIdState();
 
-    // El tipo solo viaja al crear: es inmutable tras la creaciÃ³n (RN-3) y por eso
+    // El tipo solo viaja al crear: es inmutable tras la creación (RN-3) y por eso
     // `EstablishmentUpdateRequest` ni siquiera lo declara.
     const request$ =
       editingId === null
@@ -148,7 +144,7 @@ export class EstablishmentsStore {
     });
   }
 
-  /** Da de baja. Es lÃ³gica en el backend: la fila se conserva y el slug queda libre. */
+  /** Da de baja. Es lógica en el backend: la fila se conserva y el slug queda libre. */
   remove(id: string): void {
     this.savingState.set(true);
     this.errorState.set(null);

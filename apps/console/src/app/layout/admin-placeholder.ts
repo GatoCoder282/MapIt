@@ -16,6 +16,12 @@ import { STRINGS } from '../core/strings';
     </section>
   `,
   styles: `
+    :host {
+      display: block;
+    }
+    :host-context(mapit-staff-shell) {
+      padding: var(--mapit-space-6);
+    }
     .page {
       max-width: 60rem;
     }

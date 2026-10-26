@@ -1,0 +1,82 @@
+@let change = peopleDelta();
+
+<header class="panel-header">
+  <span class="panel-icon" aria-hidden="true"><svg lucideCreditCard></svg></span>
+  <div class="panel-title-group">
+    <h2>{{ strings.paymentsPanelTitle }}</h2>
+    <p class="muted">{{ strings.paymentsPanelSubtitle }}</p>
+  </div>
+</header>
+
+<div class="metrics">
+  <div class="metric" data-testid="home-kpi-personas" [class.has-sparkline]="!!peopleSparkline()?.length">
+    <span class="metric-icon" aria-hidden="true"><svg lucideUsers></svg></span>
+    @if (peopleSparkline(); as points) {
+      <mapit-sparkline class="metric-sparkline" [values]="points" />
+    }
+    <span class="metric-label">{{ strings.paymentsPeopleLabel }}</span>
+    <span class="metric-value">{{ peopleTotal() }}</span>
+    @if (change !== null) {
+      <span class="trend" [class.positive]="change > 0" [class.negative]="change < 0">
+        <span class="trend-value">
+          @if (change >= 0) {
+            <svg class="trend-icon" lucideTrendingUp aria-hidden="true"></svg>
+          } @else {
+            <svg class="trend-icon" lucideTrendingDown aria-hidden="true"></svg>
+          }
+          {{ change > 0 ? '+' : '' }}{{ change }}%
+        </span>
+        <span class="trend-detail">{{ strings.kpiVsLastWeek }}</span>
+      </span>
+    } @else if (!peopleAvailable()) {
+      <!-- El rol no puede leer las personas: no se inventa un 0 ni un
+           "N nuevas esta semana". -->
+      <span class="trend neutral">
+        <span class="trend-value">{{ strings.noData }}</span>
+      </span>
+    } @else {
+      <span class="trend neutral">
+        <span class="trend-value">
+          {{ peopleNewThisWeek() }}
+          {{ peopleNewThisWeek() === 1 ? strings.kpiNewThisWeekOne : strings.kpiNewThisWeek }}
+        </span>
+      </span>
+    }
+  </div>
+
+  <div class="metric">
+    <span class="metric-icon" aria-hidden="true"><svg lucideQrCode></svg></span>
+    <span class="metric-label">{{ strings.paymentsQrLabel }}</span>
+    <span class="metric-value is-empty">{{ strings.noValue }}</span>
+    <span class="trend neutral">
+      <span class="trend-value">{{ strings.noData }}</span>
+    </span>
+  </div>
+
+  <div class="metric">
+    <span class="metric-icon" aria-hidden="true"><svg lucideWallet></svg></span>
+    <span class="metric-label">{{ strings.paymentsRevenueLabel }}</span>
+    <span class="metric-value is-empty">{{ strings.noValue }}</span>
+    <span class="trend neutral">
+      <span class="trend-value">{{ strings.noData }}</span>
+    </span>
+  </div>
+
+  <div class="metric">
+    <span class="metric-icon" aria-hidden="true"><svg lucidePercent></svg></span>
+    <span class="metric-label">{{ strings.paymentsConversionLabel }}</span>
+    <span class="metric-value is-empty">{{ strings.noValue }}</span>
+    <span class="trend neutral">
+      <span class="trend-value">{{ strings.noData }}</span>
+    </span>
+  </div>
+</div>
+
+<p class="note">
+  <svg class="note-icon" lucideInfo aria-hidden="true"></svg>
+  @if (flags.isEnabled('payments.qr')()) {
+    {{ strings.paymentsEnabledNote }}
+  } @else {
+    {{ strings.paymentsPendingNote }}
+  }
+</p>

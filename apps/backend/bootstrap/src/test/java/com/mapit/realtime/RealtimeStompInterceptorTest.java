@@ -34,6 +34,12 @@ class RealtimeStompInterceptorTest {
       UUID.fromString("00000000-0000-0000-0000-000000000002");
   private static final AuthenticatedPrincipal PRINCIPAL =
       new AuthenticatedPrincipal(USER, TenantId.of("demo"), "staff@example.test", UserRole.STAFF);
+  private static final AuthenticatedPrincipal SUPER_PRINCIPAL =
+      new AuthenticatedPrincipal(
+          UUID.fromString("00000000-0000-0000-0000-000000000003"),
+          TenantId.of("demo"),
+          "super@example.test",
+          UserRole.SUPER_ADMIN);
 
   private final AccessTokenVerifier tokens = mock(AccessTokenVerifier.class);
   private final RealtimeRoomAccessPort rooms = mock(RealtimeRoomAccessPort.class);
@@ -64,6 +70,25 @@ class RealtimeStompInterceptorTest {
     StompHeaderAccessor subscribe = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
     subscribe.setDestination("/topic/establishments/" + ESTABLISHMENT);
     subscribe.setUser(authenticatedHeaders.getUser());
+    interceptor.preSend(message(subscribe), channel);
+  }
+
+  @Test
+  void autoriza_la_sala_al_super_admin_de_su_tenant() {
+    when(tokens.verify("super-jwt")).thenReturn(Optional.of(SUPER_PRINCIPAL));
+    when(rooms.canSubscribe(
+            SUPER_PRINCIPAL.tenantId(),
+            SUPER_PRINCIPAL.id(),
+            SUPER_PRINCIPAL.role().name(),
+            ESTABLISHMENT,
+            Optional.empty()))
+        .thenReturn(true);
+
+    Message<?> connect =
+        interceptor.preSend(message(StompCommand.CONNECT, null, "Bearer super-jwt", null), channel);
+    StompHeaderAccessor subscribe = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+    subscribe.setDestination("/topic/establishments/" + ESTABLISHMENT);
+    subscribe.setUser(StompHeaderAccessor.wrap(connect).getUser());
     interceptor.preSend(message(subscribe), channel);
   }
 

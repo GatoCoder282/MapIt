@@ -2,21 +2,24 @@
 
 ## Contexto fijo del proyecto
 
-Monorepo pnpm. Frontend Angular en `apps/<tu-app-angular>`. Backend Kotlin/Java en `apps/backend` — **no lo toques bajo ninguna circunstancia**, ni siquiera para "arreglar" algo relacionado.
+Monorepo pnpm. Frontend Angular en `apps/console`. Backend Kotlin/Java en `apps/backend` — **no lo toques bajo ninguna circunstancia**, ni siquiera para "arreglar" algo relacionado.
 
 ### Librerías de frontend ya decididas y aprobadas
 
 No instales otras sin preguntar primero y justificar por qué estas no alcanzan.
 
-| Librería                   | Uso                                                                                                                          |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `@angular/animations`      | Transiciones simples de UI (hover, estado, entrada/salida)                                                                   |
-| GSAP + ScrollTrigger       | Animaciones complejas, scroll-driven                                                                                         |
-| Lenis                      | Solo si la referencia visual pide scroll cinematográfico explícito                                                           |
-| spartan/ui (`@spartan-ng`) | Solo si falta una primitiva headless que el HTML/imagen no resuelve por sí sola                                              |
-| `@playwright/test`         | Verificación visual (ver flujo de recreación abajo)                                                                          |
-| `@lucide/angular`          | Librería de iconos — variedad, consistencia de stroke/grid, personalizable con tokens de `DESIGN.md` (color, tamaño, grosor) |
-| `@ng-icons/core`           | Respaldo de iconos — solo si Lucide no cubre un icono necesario (ver "Estrategia de iconos" abajo)                           |
+| Librería                      | Uso                                                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@angular/animations`         | Transiciones simples de UI (hover, estado, entrada/salida)                                                                   |
+| GSAP + ScrollTrigger          | Animaciones complejas, scroll-driven                                                                                         |
+| Lenis                         | Solo si la referencia visual pide scroll cinematográfico explícito                                                           |
+| spartan/ui (`@spartan-ng`)    | Solo si falta una primitiva headless que el HTML/imagen no resuelve por sí sola                                              |
+| `@playwright/test`            | Verificación visual (ver flujo de recreación abajo)                                                                          |
+| `@lucide/angular`             | Librería de iconos — variedad, consistencia de stroke/grid, personalizable con tokens de `DESIGN.md` (color, tamaño, grosor) |
+| `@ng-icons/core`              | Respaldo de iconos — solo si Lucide no cubre un icono necesario (ver "Estrategia de iconos" abajo)                           |
+| `primeng` (+ tema vía tokens) | Solo para dashboards/pantallas de datos: `p-table`, selects, date pickers, paginador, filtros. NO para UI general de la app  |
+| `echarts` + `ngx-echarts`     | Gráficos de dashboards (barras, líneas, heatmaps, gauges, treemaps). Import por módulos (tree-shaking), con tema propio      |
+| `ag-grid-angular` (Community) | Respaldo condicional de tabla: solo si `p-table` no alcanza (ver "Flujo especial — Dashboards")                              |
 
 ### Documentos vivos de referencia
 
@@ -51,7 +54,7 @@ Carpetas presentes: `animate`, `animate-expo`, `animation-vocabulary`, `apple-de
 - `animation-vocabulary` → traduce una petición vaga de motion ("que se sienta más fluido") a términos precisos, antes de invocar `animate`.
 - `review-animations` → audita el motion de un archivo/componente puntual con reglas estrictas.
 - `improve-animations` → audita el motion de **todo el codebase** y devuelve un plan priorizado — úsala para pasadas globales, no por archivo.
-- `pick-ui-library` → elige la librería correcta para una necesidad de UI (toasts, OTP, charts, drag&drop, virtualización, command menus) de una lista curada y confiable. **Consúltala primero** cuando se necesite una capacidad nueva, antes de preguntarme a mí o de que el agente decida por su cuenta.
+- `pick-ui-library` → elige la librería correcta para una necesidad de UI (toasts, OTP, charts, drag&drop, virtualización, command menus) de una lista curada y confiable. **Consúltala primero** cuando se necesite una capacidad nueva, antes de preguntarme a mí o de que el agente decida por su cuenta. (Excepción: dashboards, tablas y gráficos ya están resueltos en "Flujo especial — Dashboards".)
 - `emil-design-eng` → skill general de diseño/motion, úsala solo si ninguna de las anteriores, más específicas, cubre el caso.
 - `apple-design` → principios de Apple/WWDC para web. **Opt-in explícito únicamente** — tu Figma ya define la estética del proyecto; no debe activarse automáticamente ni competir con `DESIGN.md`.
 - `prototype` → genera varias versiones de una UI para elegir visualmente. Solo se invoca a pedido explícito, nunca automático.
@@ -77,7 +80,7 @@ Reglas de contención de `design-taste-frontend`:
 
 - Si `DESIGN.md` define el valor, la skill no lo cambia. Si cree que debería cambiar, se trata como propuesta bajo la Regla 3 (incluida la excepción de paleta), nunca se aplica directo.
 - Sus esqueletos de GSAP y su intensidad de motion solo se usan DESPUÉS de que `find-animation-opportunities` diga "sí anima" y la evaluación de valor UX diga "aporta".
-- Sus tres dials se fijan en valores conservadores y se registran en `DESIGN.md`. Un dashboard o pantalla de app no usa los valores de una landing. La skill está orientada a landing pages, portfolios y rediseños: en pantallas funcionales de la app (mapa, formularios, listados) usa solo su preflight anti-genérico, no su generación de dirección visual.
+- Sus tres dials se fijan en valores conservadores y se registran en `DESIGN.md`. Un dashboard o pantalla de app no usa los valores de una landing. La skill está orientada a landing pages, portfolios y rediseños: en pantallas funcionales de la app (mapa, formularios, listados, dashboards) usa solo su preflight anti-genérico, no su generación de dirección visual.
 - Si `impeccable` ya auditó el mismo archivo en la tarea inmediatamente anterior sin cambios nuevos, el preflight de taste no se repite. Si ambas marcan lo mismo, se reporta una sola vez.
 - Sus hallazgos se presentan como lista (Regla 2); no se aplican automáticamente.
 
@@ -99,6 +102,12 @@ Esto reemplaza la idea de "elegir una skill según la categoría de la tarea". E
 [ ] 6. ¿Se necesita una capacidad de UI nueva (toast,
        OTP, charts, drag&drop, virtualización, etc.)? → pick-ui-library ANTES de instalar algo
                                                           o preguntar
+                                                          EXCEPCIÓN: dashboards/tablas/gráficos
+                                                          ya están resueltos por la sección
+                                                          "Flujo especial — Dashboards". No
+                                                          invoques pick-ui-library para elegir
+                                                          librería en ese caso; solo si la
+                                                          necesidad cae FUERA de esa sección.
 [ ] 7. ¿Hay que decidir/proponer la dirección visual
        de algo SIN spec en DESIGN.md y SIN referencia
        (imagen/código)? ¿O se cierra una tarea que
@@ -127,7 +136,7 @@ No dependas solo de que el usuario use la palabra exacta "anima" o "mejora". Det
 | `review-animations` / `improve-animations`                                       | "revisa las animaciones", "audita el motion", "esto se siente mal" sobre algo YA implementado                                                                 | Corrige motion existente contra reglas estrictas                                                                      | Es una animación nueva que aún no existe — ahí va `animate`, no la revisión                                                                                      |
 | `impeccable`                                                                     | "distribución", "layout", "espaciado", "alineación", "jerarquía", "tipografía", "que se vea mejor/más profesional/menos genérico", "mejora", "pule", "audita" | Detecta y corrige patrones genéricos de IA (gradiente morado, Inter sin criterio, tarjetas anidadas, contraste pobre) | Ya se corrió sobre este mismo archivo/sección en la tarea inmediatamente anterior sin cambios nuevos de por medio                                                |
 | `extract-design-system`                                                          | La tarea toca 2+ páginas/componentes, o dice "en toda la app", "en todas las páginas", "consistente con las demás"                                            | Verifica que los tokens no diverjan entre componentes                                                                 | Es un solo componente aislado sin relación con otros ya construidos                                                                                              |
-| `pick-ui-library`                                                                | Se necesita toast, OTP input, charts, drag&drop, virtualización, command menu, o cualquier capacidad de UI nueva                                              | Elige la librería correcta de una lista curada, en vez de hand-rollear el componente o instalar algo sin evaluar      | Ya existe una librería aprobada para ese caso en la tabla de arriba (GSAP, Lenis, spartan/ui, Lucide)                                                            |
+| `pick-ui-library`                                                                | Se necesita toast, OTP input, drag&drop, virtualización, command menu, o cualquier capacidad de UI nueva                                                      | Elige la librería correcta de una lista curada, en vez de hand-rollear el componente o instalar algo sin evaluar      | Ya existe una librería aprobada para ese caso en la tabla de arriba (GSAP, Lenis, spartan/ui, Lucide, PrimeNG/ECharts/AG Grid para dashboards)                   |
 | `design-taste-frontend`                                                          | Se crea UI nueva sin referencia, "que no se vea genérico", landing/marketing, o cierre de tarea con UI nueva                                                  | Propone dirección visual y corre preflight anti-slop, dentro de los límites de "Precedencia"                          | `DESIGN.md` ya especifica el componente, hay imagen/Figma de referencia, `impeccable` ya corrió sobre el mismo archivo sin cambios, o la skill no está instalada |
 
 ### Evaluación de valor UX — obligatoria antes de aplicar CUALQUIER motion (dentro del paso 3)
@@ -167,6 +176,40 @@ No mezcles librerías de iconos libremente — la inconsistencia de stroke/grid 
 - **CoreUI Icons**: set decente (~2,000 iconos, MIT) pero sin ninguna ventaja real sobre Lucide para tu caso — menor variedad, sin paquete Angular tan pulido, y pensado para el ecosistema de plantillas CoreUI (dashboards Bootstrap), no para un diseño custom como el tuyo.
 
 **Regla de activación**: si necesitas un icono y no lo encuentras en Lucide, dilo explícitamente ("no encontré un icono adecuado en Lucide para X") antes de recurrir a `@ng-icons/core` — no instales la segunda librería preventivamente "por si acaso".
+
+---
+
+## Flujo especial — Dashboards, tablas estadísticas y gráficos
+
+Se activa si la tarea implica un dashboard, una tabla de datos (ordenar/filtrar/paginar/agrupar), un gráfico, un KPI card, o cualquier pantalla que presente datos numéricos. Se evalúa DENTRO del paso 6 del pipeline, antes de instalar o escribir nada.
+
+### Stack asignado
+
+| Necesidad                                                           | Herramienta                                 | Restricción                                                                                                                                                |
+| ------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tabla (ordenar, filtrar, paginar, agrupar simple, exportar)         | PrimeNG `p-table`                           | Primera opción siempre                                                                                                                                     |
+| Controles de filtro (select, multiselect, calendario)               | PrimeNG                                     | Solo si spartan/ui no cubre la primitiva (preguntar si hay duda)                                                                                           |
+| Gráficos                                                            | ECharts vía `ngx-echarts`                   | Import por módulos, lazy-load del componente de gráfico                                                                                                    |
+| Tabla con pivot, agrupación por filas con agregaciones, 100k+ filas | AG Grid **Community** únicamente            | Pivot/agrupación/agregaciones son **Enterprise (de pago)**. **Prohibido** usar Enterprise sin preguntarme. Si la necesidad exige Enterprise, dilo y espera |
+| KPI cards, layout del dashboard, contenedores                       | HTML + CSS propio con tokens de `DESIGN.md` | NO usar componentes de PrimeNG para esto                                                                                                                   |
+
+### Reglas obligatorias
+
+1. **Antes de instalar PrimeNG**: verifica que su versión sea compatible con la versión de Angular del proyecto (leer `package.json`, consultar la documentación oficial). Si no puedes verificarlo, dilo y pregunta. No asumas.
+2. **Tematización obligatoria desde `DESIGN.md`**: PrimeNG se configura con su sistema de tokens/preset personalizado alimentado por los valores de `DESIGN.md` (color, radio, tipografía, espaciado). Prohibido dejar el tema por defecto. Si un componente no se puede alinear con `DESIGN.md`, repórtalo en vez de aceptar la desviación.
+3. **Iconos**: los componentes de PrimeNG deben usar Lucide (Regla de "Estrategia de iconos"). No cargar PrimeIcons salvo que Lucide no cubra el caso y lo hayas declarado.
+4. **Tema de ECharts propio**: registrar un tema con paleta, tipografía, grosores y colores de ejes/tooltips tomados de `DESIGN.md`. Prohibido usar la paleta por defecto de ECharts. Si `DESIGN.md` no define una paleta para series de datos, aplica la Regla 3 (excepción de paleta) y propónla antes de implementar.
+5. **Bundle**: importar solo los módulos de ECharts usados (`echarts/core` + los charts/componentes/renderer necesarios). Prohibido `import * as echarts from 'echarts'`. Los gráficos pesados se cargan de forma diferida.
+6. **Evaluación de valor UX del motion en gráficos**: la animación por defecto de ECharts también cae bajo la "Evaluación de valor UX". Decide explícitamente si la animación de entrada aporta. Para dashboards de consulta recurrente, el criterio por defecto es **no animar la carga inicial** y mantener solo el feedback de tooltip/hover. Lenis y scroll cinematográfico están prohibidos en dashboards (ya lo dice la tabla de motion; se repite aquí por claridad).
+7. **Accesibilidad**: los gráficos son canvas y no son legibles por lectores de pantalla por defecto. Activar el módulo/opción de aria de ECharts con descripciones, y cuando el gráfico comunique datos críticos, ofrecer los mismos datos en tabla. Si algo no se pudo cubrir, dilo.
+8. **Datos y backend**: `apps/backend` sigue intocable. Si el dashboard necesita un endpoint que no existe, NO lo crees ni lo modifiques: usa datos mock tipados claramente marcados como temporales, y dime qué endpoint falta y con qué forma de respuesta.
+9. **Estados que no se pueden omitir**: cada tabla y gráfico debe resolver los estados vacío, carga y error. Si la referencia visual no los muestra, dilo (Flujo de imagen: no inventar con confianza) y propón el diseño para aprobación.
+10. **Verificación visual con Playwright**: para comparar screenshots de gráficos, desactiva la animación de ECharts durante el test o espera a que termine; si no, el diff será ruido. Reporta el diff con números.
+11. **No mezclar**: una pantalla no usa `p-table` y AG Grid a la vez. Si cambias de una a otra, se cambia en todas las tablas del módulo (`extract-design-system` para verificar consistencia).
+
+### Resumen obligatorio al cerrar una tarea de dashboard
+
+Indica explícitamente: qué librería resolvió cada pieza, cómo se tematizó desde `DESIGN.md`, si algún componente quedó con desviación del diseño, qué módulos de ECharts se importaron, qué estados (vacío/carga/error) se cubrieron, y qué datos son mock.
 
 ### Fallback — board de referencia visual (`imagegen-frontend-web`)
 

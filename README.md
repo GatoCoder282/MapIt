@@ -12,15 +12,20 @@ Proyecto de **Taller de Sistemas de Información**. Ver [`docs/roadmap/`](docs/r
 
 ## Requisitos (instalar una sola vez)
 
-| #   | Herramienta        | Versión  | Dónde                                                                              |
-| --- | ------------------ | -------- | ---------------------------------------------------------------------------------- |
-| 1   | **Node.js**        | 24 LTS   | [nodejs.org](https://nodejs.org)                                                   |
-| 2   | **pnpm**           | 11+      | `corepack enable`                                                                  |
-| 3   | **JDK Temurin**    | 25       | [adoptium.net](https://adoptium.net)                                               |
-| 4   | **Docker Desktop** | reciente | [docker.com](https://www.docker.com/products/docker-desktop/) — WSL2 + 6 GB de RAM |
+| #   | Herramienta        | Versión  | Dónde                                                                                                                                    |
+| --- | ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Node.js**        | 24 LTS   | [nodejs.org](https://nodejs.org)                                                                                                         |
+| 2   | **pnpm**           | 11+      | `corepack enable`                                                                                                                        |
+| 3   | **JDK Temurin**    | 25       | [adoptium.net](https://adoptium.net)                                                                                                     |
+| 4   | **Docker Desktop** | reciente | [docker.com](https://www.docker.com/products/docker-desktop/) — necesario para ejecutar la infraestructura de la app; WSL2 + 6 GB de RAM |
 
 > **No instales Gradle ni Angular CLI.** Van incluidos en el repo (wrapper de Gradle y
 > `pnpm exec ng`), así los 5 usamos exactamente la misma versión.
+
+> **Importante:** Docker Desktop es indispensable para arrancar MapIt. Antes de ejecutar los
+> comandos de arranque de abajo (`pnpm setup`, `pnpm dev` o `pnpm dev:back`), ábrelo y espera a
+> que indique **Running**; PostgreSQL y otros servicios de infraestructura se ejecutan en
+> contenedores.
 
 **Windows:** `winget install EclipseAdoptium.Temurin.25.JDK` y reabre la terminal.
 

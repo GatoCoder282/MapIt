@@ -28,6 +28,19 @@ export const STRINGS = {
     logout: 'Cerrar sesión',
     openMenu: 'Abrir navegación',
     closeMenu: 'Cerrar navegación',
+    /**
+     * Nombre accesible del landmark `<nav>` del rail.
+     *
+     * El `aria-label` estaba en el `<aside>` y el `<nav>` se quedaba sin nombre
+     * accesible: un landmark sin nombre no se puede alcanzar por rol (WCAG
+     * 1.3.1 / 2.4.1). Ahora el nombre lo lleva el `<nav>`, que es el
+     * landmark que el usuario quiere ("la navegación de la plataforma").
+     */
+    navLandmarkLabel: 'Plataforma',
+    /** Nombre accesible del `<nav>` del drawer móvil (otralandmark, otro nombre). */
+    drawerNavLabel: 'Navegación móvil',
+    /** Botón de la campana de notificaciones (decorativa: no hay endpoint). */
+    notifications: 'Notificaciones',
     roleLabels: {
       SUPER_ADMIN: 'Super Admin',
       ADMIN: 'Administrador',
@@ -39,9 +52,15 @@ export const STRINGS = {
   /** Shell de la consola operativa de staff (por tenant). */
   staffShell: {
     brandArea: 'Consola',
+    /** Nombre accesible del landmark `<nav>` del rail de staff. */
+    navLandmarkLabel: 'Consola',
     nav: {
       home: 'Inicio',
-      business: 'Mi negocio',
+      map: 'Mapa',
+      businesses: 'Negocios',
+      users: 'Usuarios',
+      reports: 'Reportes',
+      settings: 'Configuración',
       templates: 'Plantillas de elementos',
       reservations: 'Reservas',
       audit: 'Auditoría',
@@ -99,19 +118,290 @@ export const STRINGS = {
       newStatus: 'Estado nuevo',
     },
   },
-  adminDashboard: {
-    title: 'Dashboard',
+  /**
+   * Panel de control de la plataforma (SUPER_ADMIN).
+   *
+   * Sustituye al resumen plano que había antes: cuatro tarjetas de KPI, dos
+   * gráficos y la tabla de tenants. Textos de la spec
+   * `apps/console/design/platform-panel/`.
+   */
+  platformPanel: {
     eyebrow: 'MapIt · Plataforma',
-    greeting: 'Panel de administración de la plataforma',
-    intro: 'Gestiona las empresas registradas y su ciclo de vida desde un solo lugar.',
-    quickActionsTitle: 'Accesos rápidos',
-    goToTenants: 'Ir a Tenants',
-    tenantsWithData: 'tenants registrados',
-    tenantsActive: 'activos',
-    tenantsSuspended: 'suspendidos',
-    loading: 'Cargando resumen…',
-    loadError: 'No se pudo cargar el resumen. Inténtalo de nuevo.',
+    title: 'Panel de control de la plataforma',
+    subtitle: 'Supervisá el crecimiento, estado y actividad de tus tenants.',
+
+    loading: 'Cargando el panel de plataforma…',
+    loadError: 'No se pudo cargar el panel de plataforma. Inténtalo de nuevo.',
     retry: 'Reintentar',
+
+    /** Marcador único de "sin valor" del panel (mismo que el dashboard de home). */
+    noValue: '—',
+    /** "Sin datos": el dato no aplica (no es un 0 medido). */
+    noData: 'Sin datos',
+
+    /* ── Tarjeta 1: tenants totales ─────────────────────────── */
+    kpiTotalTitle: 'Tenants totales',
+    /** Nombre accesible del chevron de la tarjeta 1. */
+    kpiTotalLink: 'Ver los tenants de la plataforma',
+    /** Pie de la tarjeta 1: "{n} activos". */
+    kpiTotalActive: '{n} activos',
+    /** Pie de la tarjeta 1: "{n} suspendidos". */
+    kpiTotalSuspended: '{n} suspendidos',
+
+    /* ── Tarjeta 2: nuevos esta semana ─────────────────────── */
+    kpiNewTitle: 'Nuevos esta semana',
+    /** Nombre accesible del chevron de la tarjeta 2. */
+    kpiNewLink: 'Ver los tenants dados de alta esta semana',
+    /** Pie con variación real: "{n} % vs. semana anterior". */
+    kpiNewVsLastWeek: '{n} % vs. semana anterior',
+    /** Pie sin base real (la semana previa fue 0): nunca un porcentaje inventado. */
+    kpiNewNoBase: '{n} nuevos esta semana',
+
+    /* ── Tarjeta 3: distribución por vertical ───────────────── */
+    kpiVerticalTitle: 'Distribución por vertical',
+    /** Nombre accesible del chevron de la tarjeta 3. */
+    kpiVerticalLink: 'Ver el reparto de tenants por vertical',
+
+    /* ── Tarjeta 4: requieren atención ──────────────────────── */
+    kpiAttentionTitle: 'Requieren atención',
+    /** Nombre accesible del chevron de la tarjeta 4. */
+    kpiAttentionLink: 'Ver los tenants que requieren atención',
+    /** Pie de la tarjeta 4: "{n} suspendidos". */
+    kpiAttentionSuspended: '{n} suspendidos',
+    /**
+     * Pie de la tarjeta 4: "{n} sin cambios en 30+ días".
+     *
+     * El contrato no trae "actividad del negocio": el criterio es `updatedAt`
+     * del tenant. Nunca "sin actividad".
+     */
+    kpiAttentionNoChanges: '{n} sin cambios en 30+ días',
+
+    /* ── Gráfico de altas por semana ────────────────────────── */
+    growthTitle: 'Altas de tenants por semana',
+    growthSubtitle: 'Nuevas empresas registradas por semana.',
+    growthPeriod: 'Altas por semana',
+    growthTotalUnit: 'altas',
+    /** Nombre accesible del gráfico de altas. */
+    growthAria: 'Gráfico de altas de tenants por semana, últimas {weeks} semanas',
+    /** Nombre accesible del selector de rango. */
+    growthRangeLabel: 'Rango del periodo del gráfico de altas de tenants',
+    /** Opciones del selector de rango (semanas). */
+    rangeOptions: [
+      { weeks: 8, label: 'Últimas 8 semanas' },
+      { weeks: 12, label: 'Últimas 12 semanas' },
+      { weeks: 16, label: 'Últimas 16 semanas' },
+    ],
+    /** Caption de la tabla `sr-only` con los valores de cada semana. */
+    growthDataCaption: 'Detalle numérico del gráfico de altas de tenants',
+    growthDataWeek: 'Semana',
+    growthDataValue: 'Altas',
+
+    /* ── Donut de tenants por vertical ──────────────────────── */
+    donutTitle: 'Tenants por vertical',
+    donutSubtitle: 'Reparto de la plataforma por tipo de negocio.',
+    /** Texto bajo el total del centro del donut. */
+    donutTotalLabel: 'Total tenants',
+    /** Nombre accesible del donut. */
+    donutAria: 'Gráfico de tenants por vertical',
+    /** Nombre accesible de la lista-leyenda. */
+    donutLegendLabel: 'Detalle de tenants por vertical',
+    donutEmpty: 'Todavía no hay tenants registrados.',
+    /** Unidad del porcentaje en la leyenda y la tabla del donut (precedente: growthTotalUnit). */
+    donutPercentUnit: '%',
+    /** Caption de la tabla `sr-only` del donut. */
+    donutDataCaption: 'Detalle numérico del gráfico de tenants por vertical',
+    donutDataVertical: 'Vertical',
+    donutDataCount: 'Tenants',
+    donutDataPercent: 'Porcentaje',
+
+    /* ── Panel de tenants (tabla) ───────────────────────────── */
+    tableTitle: 'Tenants',
+    tableSubtitle: 'Gestión de las empresas registradas en la plataforma.',
+    /** Caption de la tabla (solo lectores de pantalla). */
+    tableCaption: 'Tenants registrados en la plataforma',
+    searchPlaceholder: 'Buscar tenant por nombre…',
+    searchLabel: 'Buscar tenant por nombre',
+    filterStatus: 'Filtrar estado',
+    filterAll: 'Todos',
+    filterActive: 'Activo',
+    filterSuspended: 'Suspendido',
+    export: 'Exportar',
+    newTenant: 'Nuevo tenant',
+    columns: {
+      tenant: 'Tenant',
+      vertical: 'Vertical',
+      status: 'Estado',
+      createdAt: 'Fecha de alta',
+      updatedAt: 'Últ. cambio',
+      actions: 'Acciones',
+    },
+    statusActive: 'Activo',
+    statusSuspended: 'Suspendido',
+    /**
+     * Badge secundario del tenant activo que lleva 30+ días sin modificarse.
+     * "Sin actividad" no existe en el contrato: el criterio es `updatedAt`.
+     */
+    badgeNoChanges: 'Sin cambios',
+    emptyTitle: 'No hay tenants que coincidan',
+    empty: 'Ajusta la búsqueda o el filtro de estado para ver resultados.',
+    clearFilters: 'Limpiar filtros',
+    tableError: 'No se pudo cargar el listado de tenants. Inténtalo de nuevo.',
+    /** Pie de la tabla: "Mostrando 1–5 de 35 tenants". */
+    showing: 'Mostrando {from}–{to} de {total} tenants',
+    paginationLabel: 'Paginación de tenants',
+    pageOf: 'de',
+    previous: 'Anterior',
+    next: 'Siguiente',
+    /** Nombre accesible del botón de acciones de una fila. */
+    detailFor: 'Ver detalle de {name}',
+    /** "Últ. cambio": tiempo relativo. */
+    relativeNow: 'Hace instantes',
+    relativeMinutes: 'Hace {n} min',
+    relativeHours: 'Hace {n} h',
+    relativeYesterday: 'Ayer',
+    relativeDays: 'Hace {n} días',
+  },
+  /** Dashboard de administrador en la pantalla de inicio/home. */
+  adminDashboardHome: {
+    title: 'Dashboard',
+    heroEyebrow: '¡Hola,',
+    heroTitle: 'Gestiona, analiza y haz crecer tu red de negocios',
+    heroSubtitle:
+      'Aquí tienes un resumen de la actividad en tu plataforma. Revisa tus negocios, su distribución y crecimiento.',
+    summaryTitle: 'Resumen de la plataforma',
+    noData: 'Sin datos',
+    noValue: '—',
+    loading: 'Cargando resumen…',
+    loadError: 'No se pudieron cargar los negocios. Inténtalo de nuevo.',
+    retry: 'Reintentar',
+
+    kpiBusinesses: 'Total de negocios',
+    kpiNewThisWeek: 'nuevas esta semana',
+    kpiNewThisWeekOne: 'nueva esta semana',
+    kpiVsLastWeek: 'altas vs. semana anterior',
+    kpiInPlatform: 'en la plataforma',
+    tenantsTotal: 'Tenants registrados',
+    kpiReservations: 'Reservas',
+    kpiReservationsVsLastWeek: 'reservas vs. semana anterior',
+
+    /**
+     * KPI y panel "Ocupación en vivo" (v7). El vocabulario es "elementos",
+     * nunca "mesas": `space_element.type` incluye TABLE | BAR | SECTOR_ZONE |
+     * STAGE | SEAT | ROOM | DECOR y las reglas de reservabilidad por vertical
+     * (CU-19…22) no están implementadas.
+     */
+    kpiOccupancy: '% de ocupación',
+    /** Unidad del denominador del KPI de ocupación. */
+    kpiOccupancyOperable: 'elementos en servicio',
+    occupancyPanelTitle: 'Ocupación en vivo',
+    occupancyPanelSubtitle: 'Estado actual de los elementos del espacio.',
+    /**
+     * Los cinco estados, en el orden del panel. La concordancia es con
+     * "elemento" (masculino): el panel nunca dice "mesas", así que tampoco
+     * dice "Ocupada".
+     */
+    occupancyStates: {
+      AVAILABLE: 'Disponible',
+      OCCUPIED: 'Ocupado',
+      RESERVED: 'Reservado',
+      CLEANING: 'En limpieza',
+      OUT_OF_SERVICE: 'Fuera de servicio',
+    },
+    /** Unidad del total de elementos del panel. */
+    occupancyTotalUnit: 'elementos',
+    /** Estado vacío: el tenant todavía no tiene elementos. */
+    occupancyEmpty: 'Sin elementos',
+    occupancyEmptyNote: 'Todavía no hay elementos que contar.',
+    /** Error del resumen de estados: aísla su fuente, el resto sigue igual. */
+    occupancyError: 'No se pudo cargar el estado de los elementos. Inténtalo de nuevo.',
+    /** Limitación honesta del conteo (una línea, sin jerga). */
+    occupancyNote: 'Cuenta todos los elementos del espacio, no solo los que se pueden reservar.',
+    /** Chip de conexión: nunca dice "en vivo" si no lo está. */
+    occupancyLive: 'En vivo',
+    occupancyConnecting: 'Conectando…',
+    occupancyDisconnected: 'Sin conexión',
+    occupancyConnectionError: 'Error de conexión',
+    occupancySnapshot: 'Instantánea',
+    /** Nota de pie que explica el panel cuando no hay directo. */
+    occupancyConnectingNote: 'Conectando con el servicio en vivo…',
+    occupancyDisconnectedNote: 'Sin conexión: se muestran los últimos valores conocidos.',
+    occupancyConnectionErrorNote: 'Error de conexión: se muestran los últimos valores conocidos.',
+    occupancyDisabledNote:
+      'Instantánea: la actualización en vivo está desactivada, los datos son de la última carga.',
+    occupancyIdleNote:
+      'Instantánea: todavía no hay conexión en vivo, los datos son de la última carga.',
+
+    growthTitle: 'Crecimiento de negocios',
+    growthSubtitle: 'Evolución de altas semanales.',
+    growthPeriod: 'Altas por semana',
+    periodCurrent: 'Actual',
+    /**
+     * Opciones del selector de rango del periodo (semanas). El valor de cada
+     * opción es el número de semanas; la etiqueta es lo que se ve.
+     */
+    rangeOptions: [
+      { weeks: 4, label: 'Últimas 4 semanas' },
+      { weeks: 8, label: 'Últimas 8 semanas' },
+      { weeks: 12, label: 'Últimas 12 semanas' },
+    ],
+    /** Nombre accesible del selector de rango del gráfico de negocios. */
+    rangeLabelGrowth: 'Rango del periodo del gráfico de negocios',
+    /** Nombre accesible del selector de rango del gráfico de reservas. */
+    rangeLabelReservations: 'Rango del periodo del gráfico de reservas',
+    /** Unidad del total del periodo en el header del panel de negocios. */
+    periodTotalAltas: 'altas',
+    /** Unidad del total del periodo en el header del panel de reservas. */
+    periodTotalReservas: 'reservas',
+    /** Detalle de la comparación contra la primera semana del periodo. */
+    periodDeltaVsFirst: 'vs. la primera semana del periodo',
+    /** Enlace del pie de los paneles de gráfico. */
+    chartViewAll: 'Ver todos',
+    /** Nombre accesible del enlace del pie (su destino es el listado de negocios). */
+    chartViewAllAria: 'Ver todos los negocios',
+    chartEmpty: 'Sin datos en las últimas {weeks} semanas.',
+    chartDataCaption: 'Detalle numérico del gráfico',
+    chartDataPeriod: 'Semana',
+    chartDataValue: 'Valor',
+    /** Resumen que ECharts lee como nombre accesible del gráfico (aria). */
+    chartAriaSummary: 'Máximo {max}, mínimo {min}, total {total}.',
+    growthAria: 'Gráfico de crecimiento de negocios, últimas {weeks} semanas',
+
+    reservationsGrowthTitle: 'Crecimiento de reservas',
+    reservationsGrowthSubtitle: 'Evolución de reservas semanales.',
+    reservationsGrowthPeriod: 'Reservas por semana',
+    reservationsGrowthAria: 'Gráfico de crecimiento de reservas, últimas {weeks} semanas',
+
+    paymentsPanelTitle: 'Reservas y pagos',
+    paymentsPanelSubtitle: 'Personas del tenant y estado de los pagos.',
+    paymentsPeopleLabel: 'Personas registradas',
+    paymentsQrLabel: 'Pagos QR',
+    paymentsRevenueLabel: 'Ingresos',
+    paymentsConversionLabel: 'Tasa de conversión',
+    paymentsPendingNote:
+      'Pagos QR, ingresos y tasa de conversión se rellenan solos cuando llegue la capacidad de pagos (CU-17). La rama con datos reales depende de la flag «payments.qr», hoy apagada.',
+    paymentsEnabledNote:
+      'Pagos QR, ingresos y tasa de conversión se rellenan solos cuando exista el endpoint de pagos (CU-17). La capacidad «payments.qr» ya está activa en este tenant.',
+
+    activityTitle: 'Actividad reciente',
+    activityRegistered: 'registrado',
+    activityEmpty: 'Sin actividad con fecha de alta válida.',
+    activityViewAll: 'Ver negocios',
+
+    quickTitle: 'Accesos rápidos',
+    quickRegister: 'Registrar negocio',
+    quickRegisterDesc: 'Da de alta un nuevo establecimiento',
+    quickStructure: 'Estructura del espacio',
+    quickStructureDesc: 'Plantas, sectores y elementos',
+    quickTemplates: 'Plantillas de elementos',
+    quickTemplatesDesc: 'Reutiliza configuraciones de elementos',
+    quickReservation: 'Nueva reserva',
+    quickReservationDesc: 'Crea una reserva interna',
+    quickPlatform: 'Panel de plataforma',
+    quickPlatformDesc: 'Gestiona tenants de toda la plataforma',
+
+    ctaTitle: 'Más negocios, mayor impacto',
+    ctaBody: 'MapIt te ayuda a conectar, crecer y potenciar tu red comercial.',
+    ctaButton: 'Gestionar negocios',
   },
   /** Traducciones de las verticales de negocio: una sola fuente para toda la app. */
   verticals: VERTICAL_LABELS,
@@ -222,6 +512,12 @@ export const STRINGS = {
     forgotPassword: '¿Olvidaste tu contraseña?',
     submit: 'Iniciar sesión',
     submitting: 'Iniciando sesión…',
+    pageAriaLabel: 'Plataforma MapIt',
+    panelTitle: '¿Nuevo aquí?',
+    panelIntro:
+      'Únete hoy y descubre todo lo que MapIt puede hacer por tu negocio. Crea tu cuenta en segundos.',
+    panelCta: 'Crear cuenta',
+    transitionAriaLabel: 'Transición de página',
     newBusiness: '¿Nuevo negocio?',
     requestAccess: 'Solicita acceso',
     termsPrefix: 'Al continuar, aceptas nuestros',
@@ -264,17 +560,6 @@ export const STRINGS = {
       ruleMetSr: '(cumplido)',
       rulePendingSr: '(pendiente)',
     },
-  },
-  home: {
-    title: 'MapIt · Consola',
-    sub: 'Mapea tu negocio, opéralo en tiempo real.',
-    welcome: 'Bienvenido,',
-    tenantLabel: 'Empresa:',
-    roleLabel: 'Rol:',
-    logout: 'Cerrar sesión',
-    flagBannerTitle: 'El feature toggle está activo.',
-    flagBannerBody: 'Apaga demo.hello en Unleash (:4242) y este banner desaparece sin recompilar.',
-    paymentsQrEnabled: 'El pago con QR está habilitado (CU-17).',
   },
   reservations: {
     customer: {

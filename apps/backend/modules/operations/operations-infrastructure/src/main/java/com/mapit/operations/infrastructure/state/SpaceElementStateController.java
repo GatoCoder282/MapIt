@@ -2,6 +2,7 @@ package com.mapit.operations.infrastructure.state;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -22,6 +23,8 @@ import com.mapit.operations.application.state.ListSpaceElementStateChanges;
 import com.mapit.operations.application.state.OperationalSpaceElementNotFoundException;
 import com.mapit.operations.application.state.SpaceElementStateChangeResult;
 import com.mapit.operations.application.state.SpaceElementStateResult;
+import com.mapit.operations.application.state.SpaceElementStateSummaryResult;
+import com.mapit.operations.application.state.SummarizeSpaceElementStates;
 import com.mapit.operations.application.state.UpdateSpaceElementState;
 import com.mapit.operations.application.state.UpdateSpaceElementStateCommand;
 import com.mapit.operations.domain.state.InvalidSpaceElementStateTransitionException;
@@ -39,14 +42,26 @@ public class SpaceElementStateController {
 
   private final UpdateSpaceElementState updateState;
   private final ListSpaceElementStateChanges listChanges;
+  private final SummarizeSpaceElementStates summarizeStates;
 
   public SpaceElementStateController(
-      UpdateSpaceElementState updateState, ListSpaceElementStateChanges listChanges) {
+      UpdateSpaceElementState updateState,
+      ListSpaceElementStateChanges listChanges,
+      SummarizeSpaceElementStates summarizeStates) {
     this.updateState = updateState;
     this.listChanges = listChanges;
+    this.summarizeStates = summarizeStates;
   }
 
   public record StateRequest(@NotNull SpaceElementState state) {}
+
+  public record SpaceElementStateSummaryResponse(
+      int total, Map<SpaceElementState, Integer> byState) {
+
+    static SpaceElementStateSummaryResponse from(SpaceElementStateSummaryResult result) {
+      return new SpaceElementStateSummaryResponse(result.total(), result.byState());
+    }
+  }
 
   @PatchMapping("/sectors/{sectorId}/elements/{elementId}/state")
   public ResponseEntity<SpaceElementStateResult> update(
@@ -62,6 +77,11 @@ public class SpaceElementStateController {
   public ResponseEntity<List<SpaceElementStateChangeResult>> history(
       @PathVariable UUID sectorId, @PathVariable UUID elementId) {
     return ResponseEntity.ok(listChanges.execute(sectorId, elementId));
+  }
+
+  @GetMapping("/element-states/summary")
+  public ResponseEntity<SpaceElementStateSummaryResponse> summary() {
+    return ResponseEntity.ok(SpaceElementStateSummaryResponse.from(summarizeStates.execute()));
   }
 
   @ExceptionHandler(OperationalSpaceElementNotFoundException.class)

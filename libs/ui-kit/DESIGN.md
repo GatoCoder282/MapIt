@@ -1,26 +1,26 @@
 ---
 name: MapIt
 colors:
-  surface: '#f9f9ff'
-  surface-dim: '#d3daea'
-  surface-bright: '#f9f9ff'
+  surface: '#ffffff'
+  surface-dim: '#f1f5f9'
+  surface-bright: '#ffffff'
   surface-container-lowest: '#ffffff'
-  surface-container-low: '#f0f3ff'
-  surface-container: '#e7eefe'
-  surface-container-high: '#e2e8f8'
-  surface-container-highest: '#dce2f3'
-  on-surface: '#151c27'
-  on-surface-variant: '#454656'
-  inverse-surface: '#2a313d'
-  inverse-on-surface: '#ebf1ff'
-  outline: '#757687'
-  outline-variant: '#c5c5d8'
-  surface-tint: '#3547ec'
-  primary: '#1c2edb'
+  surface-container-low: '#f8fafc'
+  surface-container: '#f1f5f9'
+  surface-container-high: '#e2e8f0'
+  surface-container-highest: '#cbd5e1'
+  on-surface: '#0f172a'
+  on-surface-variant: '#334155'
+  inverse-surface: '#0b132b'
+  inverse-on-surface: '#f8fafc'
+  outline: '#64748b'
+  outline-variant: '#e2e8f0'
+  surface-tint: '#2563eb'
+  primary: '#2563eb'
   on-primary: '#ffffff'
-  primary-container: '#3d4ef2'
-  on-primary-container: '#dfe0ff'
-  inverse-primary: '#bdc2ff'
+  primary-container: '#dbeafe'
+  on-primary-container: '#1e3a8a'
+  inverse-primary: '#93c5fd'
   secondary: '#5c5f60'
   on-secondary: '#ffffff'
   secondary-container: '#dee0e2'
@@ -121,6 +121,47 @@ La paleta se ancla en un blanco puro (`#FFFFFF`) como base para maximizar la leg
   superficie desaturado y de alta luminancia, para que el mapa siga siendo legible
   aunque esté muy poblado.
 
+### Estados operativos (compartidos con el dashboard)
+
+Los cinco tokens `--mapit-state-*` son la **única** fuente de color del estado
+operativo de un elemento, y se comparten entre el mapa y el panel "Ocupación en vivo"
+del dashboard: el mismo verde significa "disponible" en los dos sitios.
+
+| Token                          | Hex       | Estado            |
+| ------------------------------ | --------- | ----------------- |
+| `--mapit-state-available`      | `#22c55e` | Disponible        |
+| `--mapit-state-occupied`       | `#ef4444` | Ocupado           |
+| `--mapit-state-reserved`       | `#f59e0b` | Reservado         |
+| `--mapit-state-cleaning`       | `#3b82f6` | En limpieza       |
+| `--mapit-state-out-of-service` | `#9ca3af` | Fuera de servicio |
+
+En el mapa el color va en el **trazo** y en un mini-badge; en el dashboard va en un
+**punto** junto al rótulo, nunca en el texto (el verde no alcanza contraste AA como
+texto pequeño). `--mapit-state-out-of-service` estaba definido y sin uso: su primer
+consumidor es el panel de ocupación del dashboard de la consola.
+
+El vocabulario es **elementos**, no "mesas": `space_element.type` incluye
+`TABLE | BAR | SECTOR_ZONE | STAGE | SEAT | ROOM | DECOR` y las reglas de qué tipos
+son reservables en cada vertical (CU-19…22) todavía no existen.
+
+### Color por vertical de negocio
+
+Un matiz por vertical, para el panel de plataforma (donut y lista de distribución de
+tenants). Se usan como **punto o segmento**, nunca como color de texto: el ámbar sobre
+blanco no alcanza el contraste AA para texto pequeño.
+
+| Token                         | Hex       | Vertical         |
+| ----------------------------- | --------- | ---------------- |
+| `--mapit-vertical-restaurant` | `#2563eb` | Restaurante      |
+| `--mapit-vertical-nightclub`  | `#7c3aed` | Discoteca        |
+| `--mapit-vertical-event-hall` | `#10b981` | Salón de eventos |
+| `--mapit-vertical-hotel`      | `#f59e0b` | Hotel            |
+
+Motivo: la paleta de series de ECharts es de azules y grises, así que dos de los cuatro
+sectores del donut quedarían casi indistinguibles entre sí. Dos de estos cuatro valores
+coinciden con tokens que ya existían (`--mapit-color-primary` y `--mapit-state-reserved`);
+los otros dos son nuevos y se registran aquí.
+
 ## Tipografía
 
 Estrategia de doble fuente:
@@ -135,11 +176,25 @@ mantener la jerarquía visual entre contenido primario y detalles secundarios.
 
 ## Layout y espaciado
 
-El layout sigue un modelo de **sidebar fijo**, que actúa como ancla persistente para la
-navegación global y los filtros de espacio.
+El layout sigue un modelo de **sidebar ancla**: siempre presente, colapsable en desktop.
 
 - **Contenedor principal:** fluido, con padding interno mínimo de 24px.
-- **Sidebar (280px):** aloja la jerarquía organizativa y los filtros de alto nivel.
+- **Sidebar (280px expandida / 60px en rail):** aloja la jerarquía organizativa y los
+  filtros de alto nivel. En desktop descansa como rail de iconos de 60px y se expande
+  a 280px on hover o focus-within, desplazando el contenido (no lo solapa); los labels
+  hacen fade con la transición. En móvil (<860px) mantiene el drawer con scrim
+  existente. (Aprobado 2026-10-17, adaptado de la referencia Aceternity/21st.dev.)
+- **Ornamento del pie del sidebar:** un cuarto de disco de marca (2.5rem,
+  `--mapit-color-primary`, `border-radius: 100% 0 0 0` anclado a la esquina inferior
+  derecha) y, a su lado, una retícula de puntos blancos (2rem × 1.5rem,
+  `radial-gradient` de 0.9px con paso de 0.5rem), dentro de una franja de 3rem al pie.
+  Es decorativo (`aria-hidden` + `pointer-events: none`) y **contenido**: sin márgenes
+  negativos, siempre dentro de la caja del sidebar, y por debajo del último ítem de
+  navegación. En un rail estrecho (≤ 7rem) **se oculta** (`@container`): un adorno que
+  no cabe no se dibuja, en vez de desbordar la navegación.
+  **Motivo:** con el disco a 7rem y desplazado a la izquierda, el adorno se salía del
+  sidebar y quedaba cortado por el borde de la ventana — se leía como un fallo de
+  render, no como una decoración. El ornamento se queda pequeño y dentro.
 - **Grid:** rejilla base de 4px para todo el espaciado interno de componentes
   (padding/margin), garantizando un ritmo vertical matemáticamente consistente.
 - **Vista de mapa:** el workspace central maximiza el viewport; las acciones
@@ -230,6 +285,20 @@ todos los hijos), sin tocar los tokens globales de otras pantallas.
 
 La tarjeta del wizard usa `border-radius: 16px`; el botón "Agregar piso" es una caja
 alta con borde dashed `#CBD5E1` sobre fondo muted.
+
+## Skill design-taste-frontend — contención
+
+Instalada desde `Leonxlnx/taste-skill` (v2, 2026-10-17), vendida en `.agents/skills/`.
+Su `SKILL.md` **no define "dials"** — el concepto no existe en v2; no hay valores que
+registrar. Alcance acordado:
+
+- **Solo preflight anti-genérico** en pantallas funcionales de la app (su propio
+  frontmatter: "Not for dashboards or app screens"). Nunca genera dirección visual;
+  `DESIGN.md` y las aprobaciones del usuario mandan.
+- **Gate aplicable:** `lint.mjs` sobre archivos fuente tocados. `inspect.mjs` solo para
+  URLs públicas sin auth — las pantallas de consola están tras JWT.
+- **Motion:** sus recetas no fijan valores aquí; mandan los tokens
+  `--mapit-duration*` / `--mapit-ease*` de `_tokens.scss`.
 
 ## Pendiente de resolver con el equipo de diseño
 

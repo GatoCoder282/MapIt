@@ -1,0 +1,209 @@
+/* Panel "Reservas y pagos". Cuatro slots compactos: una métrica con dato real
+   y tres sin fuente de datos, que muestran "—" y "Sin datos" en lugar de
+   inventar cifras. Sin hex: todo sale de los tokens de `ui-kit/styles/_tokens`. */
+
+:host {
+  display: grid;
+  gap: var(--mapit-space-4);
+  min-width: 0;
+  padding: var(--mapit-space-4);
+  background: var(--mapit-color-surface);
+  border: 1px solid var(--mapit-color-border);
+  border-radius: var(--mapit-radius-lg);
+  box-shadow: var(--mapit-shadow);
+}
+
+.panel-header {
+  display: flex;
+  gap: var(--mapit-space-3);
+  align-items: center;
+}
+
+.panel-title-group {
+  min-width: 0;
+  flex: 1;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font: var(--mapit-text-section);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--mapit-color-text);
+}
+
+.panel-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--mapit-color-primary-container);
+  color: var(--mapit-color-primary);
+}
+
+.panel-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  stroke-width: 2;
+}
+
+.muted {
+  margin: 0;
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+}
+
+/* ── Slots de métrica ───────────────────────────────────── */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--mapit-space-4) var(--mapit-space-6);
+}
+
+.metric {
+  display: grid;
+  gap: 0.2rem;
+  align-content: start;
+  min-width: 0;
+  /* Ancla del sparkline de la esquina del slot. */
+  position: relative;
+}
+
+/* Sparkline del slot: misma pieza que la de la tarjeta de KPI, en la esquina
+   opuesta al icono. */
+.metric-sparkline {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* Con sparkline, el label deja libre su esquina. */
+.metric.has-sparkline .metric-label {
+  padding-right: 4.75rem;
+}
+
+.metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: var(--mapit-space-2);
+  border-radius: var(--mapit-radius-lg);
+  background: var(--mapit-color-primary-container);
+  color: var(--mapit-color-primary);
+}
+
+.metric-icon svg {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 2;
+}
+
+.metric-label {
+  font: var(--mapit-text-metadata);
+  font-weight: 500;
+  color: var(--mapit-color-text-muted);
+}
+
+.metric-value {
+  font-family: var(--mapit-font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--mapit-color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sin dato: la cifra no compite con las que sí lo tienen. */
+.metric-value.is-empty {
+  color: var(--mapit-color-text-muted);
+}
+
+/* ── Tendencia ───────────────────────────────────────────── */
+.trend {
+  display: grid;
+  gap: 0.1rem;
+  width: fit-content;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--mapit-color-text-variant);
+}
+
+.trend-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.trend-detail {
+  font-weight: 500;
+  color: var(--mapit-color-text-muted);
+}
+
+.trend.neutral {
+  color: var(--mapit-color-text-muted);
+}
+
+.trend.positive {
+  color: var(--mapit-color-primary);
+}
+
+.trend.negative {
+  color: var(--mapit-color-error);
+}
+
+.trend.positive .trend-detail,
+.trend.negative .trend-detail {
+  color: var(--mapit-color-text-muted);
+}
+
+.trend-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--mapit-state-available);
+}
+
+.trend.negative .trend-icon {
+  color: var(--mapit-color-error);
+}
+
+/* ── Nota de capacidad pendiente ─────────────────────────── */
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mapit-space-2);
+  margin: 0;
+  padding-top: var(--mapit-space-3);
+  border-top: 1px solid var(--mapit-color-border);
+  font: var(--mapit-text-metadata);
+  color: var(--mapit-color-text-muted);
+}
+
+.note-icon {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-top: 0.1rem;
+  stroke-width: 2;
+}
+
+@media (max-width: 900px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  :host {
+    padding: var(--mapit-space-3);
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}

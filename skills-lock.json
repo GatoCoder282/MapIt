@@ -37,6 +37,12 @@
       "skillPath": "SKILL.md",
       "computedHash": "0f201444bf093b998649b15992206101a12cca505310cc9afcdad633544d20ed"
     },
+    "design-taste-frontend": {
+      "source": "Leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "41463de84d80d8839b1e9fc8ddfd140578443d095b53710d1f331dbab3079712"
+    },
     "emil-design-eng": {
       "source": "emilkowalski/skills",
       "sourceType": "github",

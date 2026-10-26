@@ -66,8 +66,8 @@
 ### MAP-222
 
 - La especificación fue aprobada por el responsable el 2026-10-22.
-- Se creó `audit_log` en V19 porque `origin/main` ya usa V18 para la geometría de plantas y
-  sectores.
+- Se creó `audit_log` en V20 porque `origin/main` ya usa V19 para permitir reservas públicas sin
+  actor de staff.
 - La migración conserva el histórico de `space_element_state_change`; la tabla anterior sigue
   disponible hasta que MAP-223 cambie su escritor.
 - El modelo admite únicamente combinaciones cerradas de recurso, evento y detalles mínimos. El
@@ -84,7 +84,7 @@
   estado inicial y establecimiento; no persiste datos del cliente, credenciales ni cuerpos HTTP.
 - `UpdateSpaceElementState` registra `SPACE_ELEMENT_STATE_CHANGED` con estado anterior, estado
   nuevo y sector. Los cambios inválidos y las solicitudes sin cambio no generan eventos.
-- El histórico de HU-3.01 ahora se consulta desde `audit_log`. V20 realiza una copia final
+- El histórico de HU-3.01 ahora se consulta desde `audit_log`. V21 realiza una copia final
   idempotente y retira `space_element_state_change`, de modo que queda una sola fuente de
   trazabilidad.
 - HU-5.02 todavía no está integrada en la rama base, por lo que no existe un caso de uso donde

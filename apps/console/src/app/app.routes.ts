@@ -82,7 +82,19 @@ export const routes: Routes = [
     children: [
       {
         path: 'home',
-        loadComponent: () => import('./features/home/home').then((m) => m.Home),
+        loadComponent: () => import('./features/home/ui/home').then((m) => m.Home),
+      },
+      {
+        // Secciones del roadmap sin caso de uso todavía: placeholder honesto
+        // hasta que exista la feature real (mismo patrón que /admin/settings).
+        path: 'users',
+        data: { title: STRINGS.staffShell.nav.users },
+        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+      },
+      {
+        path: 'reports',
+        data: { title: STRINGS.staffShell.nav.reports },
+        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
       },
       {
         // Establecimientos (CU-04): staff de un tenant (ADMIN+, con contexto tenant).

@@ -1,0 +1,28 @@
+@use 'ui-kit/styles/tokens';
+
+.page-wipe-overlay {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 9999;
+  opacity: 1;
+  display: block;
+  pointer-events: none;
+
+  &.hidden {
+    display: none !important;
+  }
+}
+
+.wipe-circle {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: #1c2edb;
+  transform: translate(-50%, -50%) scale(0);
+  transform-origin: center;
+  pointer-events: none;
+}

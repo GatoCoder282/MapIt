@@ -26,6 +26,21 @@ La suscripción se autoriza con el `tenant` y la identidad del JWT. El backend d
 que el establecimiento/sector existe, está vivo y pertenece al tenant. No se acepta un `tenantId`
 en el destino ni en el payload enviado por el cliente.
 
+**No hay sala por tenant.** Una vista que agregue datos de los establecimientos de un tenant
+(por ejemplo, el panel "Ocupación en vivo" de la consola, CU-10) tiene que abrir **una
+suscripción por establecimiento** de ese tenant, sobre la misma conexión STOMP. El techo es
+`N = número de establecimientos del tenant`: con decenas es viable; con cientos, el backend
+debería publicar además un topic por tenant. El payload de
+`space-element.state.changed.v1` trae `previousState` y `state`, así que el consumidor puede
+aplicar el delta en local sin volver a pedir el agregado.
+
+**Quién puede suscribirse.** Todo rol con acceso a la sala de **su propio tenant**: `ADMIN`,
+`MANAGER`, `STAFF` y también `SUPER_ADMIN` (que ya lee los mismos datos por HTTP; si los dos
+caminos no coincidieran, el panel en vivo no podría existir para el rol de plataforma). La
+comprobación es doble: el usuario está activo y pertenece al tenant del JWT (`app_user`), y el
+establecimiento o sector solicitado es de ese mismo tenant. Ningún rol alcanza la sala de otro
+tenant.
+
 ## Envelope v1
 
 El servidor publica JSON con `eventType = space-element.state.changed.v1` y `schemaVersion = 1`:

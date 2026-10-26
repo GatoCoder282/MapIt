@@ -7,4 +7,20 @@
  *
  * Aquí van los mocks globales y la configuración común de los tests cuando hagan falta.
  */
+
+/**
+ * `ResizeObserver` no existe en jsdom y `ngx-echarts` lo exige para observar
+ * el tamaño del lienzo (si no, lanza al inicializar). Stub mínimo: no hace
+ * falta que redimensione nada en un test.
+ */
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = ResizeObserverStub;
+}
+
 export {};

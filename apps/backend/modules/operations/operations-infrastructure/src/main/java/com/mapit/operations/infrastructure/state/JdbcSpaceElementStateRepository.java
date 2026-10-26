@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import com.mapit.operations.domain.state.OperationalSpaceElement;
@@ -19,6 +20,16 @@ public class JdbcSpaceElementStateRepository implements SpaceElementStateReposit
 
   private final JdbcTemplate jdbc;
 
+  private static final RowMapper<OperationalSpaceElement> MAPPER =
+      (rs, rowNum) ->
+          new OperationalSpaceElement(
+              rs.getObject("id", UUID.class),
+              TenantId.of(rs.getString("tenant_id")),
+              rs.getObject("establishment_id", UUID.class),
+              rs.getObject("sector_id", UUID.class),
+              SpaceElementState.valueOf(rs.getString("state")),
+              rs.getTimestamp("updated_at").toInstant());
+
   public JdbcSpaceElementStateRepository(JdbcTemplate jdbc) {
     this.jdbc = jdbc;
   }
@@ -30,17 +41,14 @@ public class JdbcSpaceElementStateRepository implements SpaceElementStateReposit
     return jdbc
         .query(
             """
-            select id, tenant_id, sector_id, state, updated_at
-            from space_element
-            where tenant_id = ? and sector_id = ? and id = ? and deleted_at is null
+            select el.id, el.tenant_id, f.establishment_id, el.sector_id, el.state, el.updated_at
+            from space_element el
+            join sector s on s.id = el.sector_id
+            join floor f on f.id = s.floor_id
+            where el.tenant_id = ? and el.sector_id = ? and el.id = ?
+              and el.deleted_at is null and s.deleted_at is null and f.deleted_at is null
             """,
-            (rs, rowNum) ->
-                new OperationalSpaceElement(
-                    rs.getObject("id", UUID.class),
-                    TenantId.of(rs.getString("tenant_id")),
-                    rs.getObject("sector_id", UUID.class),
-                    SpaceElementState.valueOf(rs.getString("state")),
-                    rs.getTimestamp("updated_at").toInstant()),
+            MAPPER,
             tenantId.value(),
             sectorId,
             elementId)
@@ -54,18 +62,15 @@ public class JdbcSpaceElementStateRepository implements SpaceElementStateReposit
     return jdbc
         .query(
             """
-            update space_element
+            update space_element el
             set state = ?, updated_at = ?
-            where tenant_id = ? and sector_id = ? and id = ? and deleted_at is null
-            returning id, tenant_id, sector_id, state, updated_at
+            from sector s
+            join floor f on f.id = s.floor_id
+            where el.tenant_id = ? and el.sector_id = ? and el.id = ? and s.id = el.sector_id
+              and el.deleted_at is null and s.deleted_at is null and f.deleted_at is null
+            returning el.id, el.tenant_id, f.establishment_id, el.sector_id, el.state, el.updated_at
             """,
-            (rs, rowNum) ->
-                new OperationalSpaceElement(
-                    rs.getObject("id", UUID.class),
-                    TenantId.of(rs.getString("tenant_id")),
-                    rs.getObject("sector_id", UUID.class),
-                    SpaceElementState.valueOf(rs.getString("state")),
-                    rs.getTimestamp("updated_at").toInstant()),
+            MAPPER,
             element.state().name(),
             Timestamp.from(element.updatedAt()),
             element.tenantId().value(),

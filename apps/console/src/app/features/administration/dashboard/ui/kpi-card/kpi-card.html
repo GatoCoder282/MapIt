@@ -1,0 +1,33 @@
+@if (loading()) {
+  <div class="skeleton" role="status" aria-busy="true" [attr.aria-label]="strings.loading"></div>
+} @else {
+  <header class="kpi-head">
+    <span class="kpi-icon" aria-hidden="true">
+      @switch (icon()) {
+        @case ('tenants') {
+          <svg lucideBuilding2></svg>
+        }
+        @case ('new') {
+          <svg lucideUserPlus></svg>
+        }
+        @case ('vertical') {
+          <svg lucidePieChart></svg>
+        }
+        @case ('attention') {
+          <svg lucideTriangleAlert></svg>
+        }
+      }
+    </span>
+    <h2 class="kpi-title">{{ label() }}</h2>
+    <a class="kpi-chevron" [routerLink]="link()" [attr.aria-label]="linkAria()">
+      <svg lucideChevronRight aria-hidden="true"></svg>
+    </a>
+  </header>
+
+  <!-- La cifra: Manrope, tabular-nums para que no baile al actualizarse. -->
+  <p class="kpi-value">{{ value() }}</p>
+
+  <div class="kpi-foot">
+    <ng-content />
+  </div>
+}
