@@ -236,7 +236,7 @@ class CreatePublicReservationTest {
 
     @Override
     public List<Reservation> findAll(TenantId tenantId) {
-      return saved == null ? List.of() : List.of(saved);
+      return saved != null && saved.tenantId().equals(tenantId) ? List.of(saved) : List.of();
     }
   }
 }

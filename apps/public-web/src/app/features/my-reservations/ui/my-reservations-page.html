@@ -1,0 +1,127 @@
+<mapit-ui-site-nav />
+
+<main class="page">
+  <div class="content">
+    <a class="back" routerLink="/reservas">{{ strings.back }}</a>
+
+    <header class="heading">
+      <h1>{{ strings.title }}</h1>
+      @if (!store.sessionActive()) {
+        <p>{{ strings.intro }}</p>
+      }
+    </header>
+
+    @if (store.sessionNotice()) {
+      <p class="notice" role="status">{{ store.sessionNotice() }}</p>
+    }
+
+    @if (store.exchangeStatus() === 'loading') {
+      <p class="notice" role="status" aria-live="polite">{{ strings.exchanging }}</p>
+    } @else if (!store.sessionActive()) {
+      @if (store.errorMessage()) {
+        <p class="notice notice--error" role="alert">{{ store.errorMessage() }}</p>
+      }
+      @if (store.requestStatus() === 'sent') {
+        <p class="notice" role="status">{{ strings.sent }}</p>
+      }
+      <form class="access-form" (submit)="submit($event)" novalidate>
+        <label for="history-email">{{ strings.emailLabel }}</label>
+        <input
+          id="history-email"
+          type="email"
+          autocomplete="email"
+          required
+          maxlength="254"
+          [value]="store.email()"
+          [attr.aria-invalid]="store.emailError() ? 'true' : null"
+          [attr.aria-describedby]="store.emailError() ? 'history-email-error' : null"
+          (input)="store.setEmail(value($event))"
+        />
+        @if (store.emailError()) {
+          <p id="history-email-error" class="field-error" role="alert">
+            {{ store.emailError() }}
+          </p>
+        }
+        <button type="submit" class="primary" [disabled]="store.requestStatus() === 'loading'">
+          {{ store.requestStatus() === 'loading' ? strings.requesting : strings.request }}
+        </button>
+      </form>
+    } @else {
+      <div class="session-actions">
+        <button type="button" class="secondary" (click)="store.logout()">
+          {{ strings.logout }}
+        </button>
+      </div>
+
+      <div class="periods">
+        @for (period of periods; track period) {
+          <section [attr.aria-labelledby]="period + '-title'" class="period">
+            <h2 [id]="period + '-title'">
+              {{ period === 'upcoming' ? strings.upcoming : strings.past }}
+            </h2>
+            @if (section(period).status === 'loading' && section(period).items.length === 0) {
+              <p class="notice" role="status">{{ strings.loading }}</p>
+            }
+            @if (section(period).status === 'error') {
+              <div class="notice notice--error" role="alert">
+                <p>{{ strings.errors.history }}</p>
+                <button type="button" class="secondary" (click)="retry(period)">
+                  {{ strings.retry }}
+                </button>
+              </div>
+            }
+            @if (section(period).status === 'loaded' && section(period).items.length === 0) {
+              <p class="notice" role="status">
+                {{ period === 'upcoming' ? strings.upcomingEmpty : strings.pastEmpty }}
+              </p>
+            }
+            @if (section(period).items.length > 0) {
+              <ul class="reservation-list">
+                @for (reservation of section(period).items; track reservation.id) {
+                  <li class="reservation">
+                    <div class="reservation-heading">
+                      <h3>{{ reservation.establishmentName }}</h3>
+                      <span class="status" [class.status--cancelled]="reservation.status === 'CANCELLED'">
+                        {{ strings.statusLabels[reservation.status] }}
+                      </span>
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>{{ strings.dates }}</dt>
+                        <dd>{{ formatRange(reservation) }}</dd>
+                      </div>
+                      <div>
+                        <dt>{{ strings.timezone }}</dt>
+                        <dd>{{ reservation.timezone }}</dd>
+                      </div>
+                      <div>
+                        <dt>{{ strings.spaces }}</dt>
+                        <dd>
+                          @for (elementId of reservation.spaceElementIds; track elementId) {
+                            <span class="space-code">{{ strings.spaceCode }}: {{ elementId }}</span>
+                          }
+                        </dd>
+                      </div>
+                    </dl>
+                  </li>
+                }
+              </ul>
+              @if (section(period).hasMore || section(period).status === 'loading') {
+                <button
+                  type="button"
+                  class="secondary load-more"
+                  [disabled]="section(period).status === 'loading'"
+                  (click)="loadMore(period)"
+                >
+                  {{ section(period).status === 'loading' ? strings.loading : strings.loadMore }}
+                </button>
+              }
+            }
+          </section>
+        }
+      </div>
+    }
+  </div>
+</main>
+
+<mapit-ui-site-footer />

@@ -37,6 +37,9 @@
         <a class="primary" [routerLink]="['/disponibilidad', tenantSlug(), establishmentSlug()]">
           {{ strings.booking.newReservation }}
         </a>
+        <a class="back" [routerLink]="['/mis-reservas', tenantSlug()]">
+          {{ strings.booking.viewHistory }}
+        </a>
       </section>
     } @else {
       <header class="heading">
