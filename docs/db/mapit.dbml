@@ -305,3 +305,24 @@ Table reservation_space_element {
   }
   Note: 'MAP-209. Asociación de uno o más elementos por reserva con FKs multi-tenant y RLS forzada.'
 }
+
+Table customer_history_access {
+  id                 uuid        [pk, note: 'default gen_random_uuid()']
+  tenant_id          text        [not null, ref: > tenant.id]
+  person_id          uuid        [not null, note: 'FK compuesta (tenant_id, person_id) a person']
+  link_hash          text        [not null, note: 'SHA-256 del secreto del enlace; nunca texto plano']
+  link_expires_at    timestamptz [not null]
+  consumed_at        timestamptz
+  session_hash       text        [note: 'SHA-256 de una segunda credencial; NULL al revocar']
+  session_expires_at timestamptz
+  revoked_at         timestamptz
+  created_at         timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (tenant_id, id) [name: 'customer_history_access_tenant_id_id_idx']
+    (tenant_id, link_hash) [unique, name: 'customer_history_access_link_hash_idx']
+    (tenant_id, session_hash) [unique, name: 'customer_history_access_session_hash_idx', note: 'Parcial WHERE session_hash IS NOT NULL']
+    (tenant_id, person_id, created_at) [name: 'customer_history_access_cooldown_idx']
+  }
+  Note: 'HU-6.04. FK compuesta a person, RLS forzada; canje único y revocación invalidan los secretos.'
+}

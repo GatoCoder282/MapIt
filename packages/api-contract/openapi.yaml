@@ -58,6 +58,8 @@ tags:
     description: Consulta anónima de disponibilidad para el portal público (HU-6.01)
   - name: public-reservations
     description: Reserva anónima desde el portal público (HU-6.02)
+  - name: customer-history
+    description: Acceso temporal y consulta del historial propio en el portal público (HU-6.04)
 
 paths:
   /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/availability:
@@ -159,6 +161,207 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /public/tenants/{tenantSlug}/history-access-requests:
+    parameters:
+      - name: tenantSlug
+        in: path
+        required: true
+        description: Pista pública para localizar el tenant; no concede autorización.
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 63
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+    post:
+      tags: [customer-history]
+      summary: Solicitar enlace de acceso al historial
+      description: |
+        Responde de forma neutra aunque el correo no corresponda a una persona viva,
+        el tenant esté inactivo, haya cooldown o falle SMTP. Si corresponde, envía
+        un enlace temporal al correo registrado. No exige JWT ni devuelve secretos.
+        Los límites por IP pueden responder 429 sin revelar si existe el correo.
+      operationId: requestCustomerHistoryAccess
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerHistoryAccessRequest"
+      responses:
+        "202":
+          description: Solicitud recibida; no indica si existe la persona o se envió correo
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /public/tenants/{tenantSlug}/history-sessions:
+    parameters:
+      - name: tenantSlug
+        in: path
+        required: true
+        description: Pista pública; debe coincidir con el tenant ligado al enlace.
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 63
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+    post:
+      tags: [customer-history]
+      summary: Canjear enlace de un solo uso por una sesión de historial
+      description: |
+        Consume una única vez el token del enlace recibido en el cuerpo, nunca
+        en una URL de la API. Devuelve una credencial opaca distinta, acotada al
+        tenant y la persona verificados; no es un JWT de staff. Los errores no
+        incluyen el token ni revelan la identidad asociada.
+      operationId: exchangeCustomerHistoryLink
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerHistoryLinkExchangeRequest"
+      responses:
+        "200":
+          description: Enlace consumido y credencial temporal emitida
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerHistorySession"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /public/tenants/{tenantSlug}/my-reservations:
+    parameters:
+      - name: tenantSlug
+        in: path
+        required: true
+        description: Solo pista de búsqueda; tenant y persona autorizados salen de la sesión validada.
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 63
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+    get:
+      tags: [customer-history]
+      summary: Consultar mis reservas próximas o pasadas
+      description: |
+        Aunque la ruta está bajo /public/, la lectura requiere la cabecera
+        X-Customer-History-Session, verificada antes de consultar reservas.
+        No usar Authorization: Bearer: ese header es exclusivo del JWT de staff.
+        El slug solo acota la búsqueda de la sesión; el tenant y personId se
+        obtienen de la credencial validada, nunca del cliente. Consulta con
+        filtro tenant/persona y RLS. Incluye todos los estados persistidos,
+        incluso CANCELLED; el periodo depende solo de endsAt frente a asOf.
+      operationId: listMyReservations
+      security:
+        - customerHistorySession: []
+      parameters:
+        - name: period
+          in: query
+          required: true
+          description: Próximas si endsAt > asOf; pasadas si endsAt <= asOf.
+          schema:
+            type: string
+            enum: [upcoming, past]
+        - name: limit
+          in: query
+          description: Máximo de reservas por página; por defecto 20.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          description: Desplazamiento dentro del periodo; por defecto 0.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: asOf
+          in: query
+          description: |
+            Instante UTC opcional. Si falta, lo fija el servidor y lo devuelve;
+            reutilizarlo en ambas secciones y sus páginas. No autoriza el acceso.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Página de reservas de la persona acreditada en ese tenant
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerReservationHistory"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /public/tenants/{tenantSlug}/history-sessions/revoke:
+    parameters:
+      - name: tenantSlug
+        in: path
+        required: true
+        description: Pista pública; no determina identidad ni autoriza por sí misma.
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 63
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+    post:
+      tags: [customer-history]
+      summary: Revocar mi sesión temporal de historial
+      description: |
+        Requiere la credencial opaca de la cabecera, no JWT de staff ni body
+        con IDs. El servidor invalida la sesión presentada para lecturas futuras.
+        No acepta el token del enlace. No enviar el secreto en la URL.
+      operationId: revokeCustomerHistorySession
+      security:
+        - customerHistorySession: []
+      responses:
+        "204":
+          description: Sesión revocada; sin cuerpo
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1866,6 +2069,12 @@ components:
         type: string
         format: uuid
       example: "c1b3ad60-64d2-4a6b-a94e-7a43251c3fab"
+    NoStore:
+      description: Impide almacenar respuestas de acceso e historial en cachés.
+      required: true
+      schema:
+        type: string
+        const: no-store
 
   securitySchemes:
     bearerAuth:
@@ -1876,6 +2085,15 @@ components:
         Token JWT emitido por `/auth/login`. Incluye el claim `tenant`, que es de
         donde el backend resuelve el tenant (NO del header `X-Tenant-Id`, que el
         cliente podría falsificar).
+    customerHistorySession:
+      type: apiKey
+      in: header
+      name: X-Customer-History-Session
+      description: |
+        Credencial opaca temporal de lectura emitida al canjear un enlace por
+        correo. No es el token de ese enlace ni un JWT; no usar Authorization.
+        El backend la valida y obtiene de ella tenant y persona antes de leer
+        reservas. Puede caducar o revocarse mediante la operación de salida.
 
   schemas:
     PublicAvailability:
@@ -2016,6 +2234,117 @@ components:
           readOnly: true
         timezone:
           type: string
+          readOnly: true
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CustomerHistoryAccessRequest:
+      type: object
+      required: [email]
+      additionalProperties: false
+      description: Solicitud de enlace por correo; nunca actúa como autorización de lectura.
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+
+    CustomerHistoryLinkExchangeRequest:
+      type: object
+      required: [token]
+      additionalProperties: false
+      description: Secreto temporal de un solo uso recibido por correo, solo en el body.
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 200
+          writeOnly: true
+
+    CustomerHistorySession:
+      type: object
+      required: [sessionToken, expiresAt]
+      additionalProperties: false
+      description: Credencial de lectura distinta del enlace, válida solo durante su vigencia.
+      properties:
+        sessionToken:
+          type: string
+          description: Secreto opaco; enviar solo en X-Customer-History-Session.
+          readOnly: true
+        expiresAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CustomerReservationHistory:
+      type: object
+      required: [items, hasMore, asOf]
+      additionalProperties: false
+      description: Página de reservas de una sola persona del tenant acreditado.
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerReservationHistoryItem"
+        hasMore:
+          type: boolean
+          description: Hay más reservas en este periodo después de la página actual.
+          readOnly: true
+        asOf:
+          type: string
+          format: date-time
+          description: Instante UTC utilizado para clasificar esta página.
+          readOnly: true
+
+    CustomerReservationHistoryItem:
+      type: object
+      required:
+        - id
+        - establishmentId
+        - establishmentName
+        - spaceElementIds
+        - startsAt
+        - endsAt
+        - timezone
+        - status
+        - createdAt
+      additionalProperties: false
+      description: Proyección mínima del historial; sin datos personales ni auditoría.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        establishmentId:
+          type: string
+          format: uuid
+          readOnly: true
+        establishmentName:
+          type: string
+          readOnly: true
+        spaceElementIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+          readOnly: true
+        startsAt:
+          type: string
+          format: date-time
+          readOnly: true
+        endsAt:
+          type: string
+          format: date-time
+          readOnly: true
+        timezone:
+          type: string
+          description: Zona IANA actual del establecimiento; no es un snapshot histórico.
           readOnly: true
         status:
           $ref: "#/components/schemas/ReservationStatus"
@@ -3209,6 +3538,15 @@ components:
           examples: ["BAR"]
 
   responses:
+    TooManyRequests:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      description: Límite por origen excedido, independiente de si existe la persona
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
     Unauthorized:
       headers:
         X-Request-ID:

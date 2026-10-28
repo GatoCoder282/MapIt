@@ -8,4 +8,5 @@ dependencies {
     implementation(project(":modules:reservations:reservations-domain"))
     implementation(project(":modules:reservations:reservations-application"))
     implementation(project(":shared-kernel"))
+    implementation(libs.spring.boot.starter.mail)
 }

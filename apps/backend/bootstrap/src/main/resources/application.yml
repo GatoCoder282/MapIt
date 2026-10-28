@@ -91,6 +91,13 @@ mapit:
     password: ${SUPER_ADMIN_PASSWORD:}
   mail:
     from: ${MAIL_FROM:no-reply@mapit.local}
+  public-web-url: ${PUBLIC_WEB_URL:http://localhost:4300}
+  customer-history:
+    link-ttl-minutes: ${CUSTOMER_HISTORY_LINK_TTL_MINUTES:15}
+    session-ttl-minutes: ${CUSTOMER_HISTORY_SESSION_TTL_MINUTES:30}
+    window-minutes: ${CUSTOMER_HISTORY_WINDOW_MINUTES:15}
+    person-limit: ${CUSTOMER_HISTORY_PERSON_LIMIT:3}
+    ip-limit: ${CUSTOMER_HISTORY_IP_LIMIT:10}
   unleash:
     enabled: ${UNLEASH_ENABLED:true}
     url: ${UNLEASH_URL:http://localhost:4242/api}
