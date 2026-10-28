@@ -1,6 +1,6 @@
 # HU-6.04 — Historial de Reservas del Cliente
 
-> **Estado:** implementada y verificada (T01–T09); decisiones funcionales aprobadas por el responsable funcional del proyecto · **Prioridad:** Medium · **Sprint propuesto:** 6 · **Alcance:** CU-18 (`docs/roadmap/use_cases.md`). Identificador MAP de esta HU: por confirmar; no se modifica Jira.
+> **Estado:** implementada y verificada (T01–T09); decisiones funcionales aprobadas por el responsable funcional del proyecto · **Prioridad:** Medium · **Sprint propuesto:** 6 · **Alcance:** CU-18 (`docs/roadmap/use_cases.md`). Ticket Jira confirmado por el responsable: MAP-240; no se modifica Jira.
 
 ## Enunciado y contexto
 

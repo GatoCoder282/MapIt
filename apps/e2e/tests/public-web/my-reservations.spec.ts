@@ -32,7 +32,7 @@ test('consulta el historial desde el enlace y lo borra al salir', async ({ page 
     await route.fulfill({ status: 202 });
   });
   await page.route(`${BASE}/history-sessions`, async (route) => {
-    expect(page.url()).not.toContain('token=');
+    await expect(page).not.toHaveURL(/token=/);
     const link = (route.request().postDataJSON() as { token: string }).token;
     expect(['link-from-email', 'second-link']).toContain(link);
     currentToken = link === 'second-link' ? NEXT_TOKEN : TOKEN;
@@ -78,7 +78,7 @@ test('consulta el historial desde el enlace y lo borra al salir', async ({ page 
     await route.fulfill({ status: 204 });
   });
   await page.route('**/api/v1/public/tenants/tenant-b/history-sessions', async (route) => {
-    expect(page.url()).not.toContain('token=');
+    await expect(page).not.toHaveURL(/token=/);
     expect(route.request().postDataJSON()).toEqual({ token: 'third-link' });
     await route.fulfill({
       status: 200,
