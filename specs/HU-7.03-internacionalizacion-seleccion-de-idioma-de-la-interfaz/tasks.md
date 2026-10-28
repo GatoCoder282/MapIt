@@ -60,8 +60,9 @@
 - `pnpm --filter @mapit/e2e run typecheck` pasó.
 - `pnpm --filter @mapit/e2e exec playwright test tests/console/language.spec.ts tests/public-web/language.spec.ts --reporter=line` pasó: 4/4 (Console desktop/tablet, Public Web desktop/móvil).
 - El setup local creó `.env` y levantó Postgres/Unleash. La migración local se omitió porque el volumen ya existente tiene un checksum distinto en V12; no se reparó ni borró la base. Los E2E de idioma no dependen del backend.
+- El primer E2E completo de CI encontró que el ajuste responsive ocultaba la campana en Console tablet, contradiciendo una expectativa existente. Se eliminó esa regla de ocultamiento; se mantiene visible la campana/avatar y se oculta solo el texto del usuario en viewports pequeños.
 - Se detuvieron los frontends y contenedores iniciados para las pruebas; los volúmenes locales se conservaron.
 
 ### PR y evidencia
 
-Pendiente de crear el PR, esperar los checks de GitHub y adjuntar la captura requerida de Checks en verde.
+PR [#51](https://github.com/GatoCoder282/MapIt/pull/51) abierto hacia `main`. Pendiente el rerun de CI después del ajuste tablet y la captura requerida de Checks en verde.
