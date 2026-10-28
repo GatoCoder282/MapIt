@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.bundles.jwt)
 
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.flyway.core)
     testImplementation(libs.spring.security.test)
     testImplementation(libs.archunit.junit5)
     testImplementation(libs.bundles.testcontainers)

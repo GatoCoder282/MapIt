@@ -1,0 +1,157 @@
+<section class="page">
+  <header class="page-header">
+    <p class="eyebrow">{{ strings.audit.eyebrow }}</p>
+    <h1>{{ strings.audit.title }}</h1>
+    <p class="intro">{{ strings.audit.intro }}</p>
+  </header>
+
+  <form class="filters" (submit)="$event.preventDefault(); store.applyFilters()">
+    <h2>{{ strings.audit.filtersTitle }}</h2>
+    <div class="filter-grid">
+      <label>
+        <span>{{ strings.audit.resourceTypeLabel }}</span>
+        <select
+          [value]="store.filters().resourceType"
+          (change)="store.updateFilter('resourceType', $any($event.target).value)"
+        >
+          @for (option of resourceOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        <span>{{ strings.audit.eventTypeLabel }}</span>
+        <select
+          [value]="store.filters().eventType"
+          (change)="store.updateFilter('eventType', $any($event.target).value)"
+        >
+          @for (option of eventOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        <span>{{ strings.audit.resourceIdLabel }}</span>
+        <input
+          type="text"
+          [value]="store.filters().resourceId"
+          [placeholder]="strings.audit.resourceIdPlaceholder"
+          (input)="store.updateFilter('resourceId', $any($event.target).value)"
+        />
+      </label>
+
+      <label>
+        <span>{{ strings.audit.fromLabel }}</span>
+        <input
+          type="date"
+          [value]="store.filters().from"
+          (input)="store.updateFilter('from', $any($event.target).value)"
+        />
+      </label>
+
+      <label>
+        <span>{{ strings.audit.toLabel }}</span>
+        <input type="date" [value]="store.filters().to" (input)="store.updateFilter('to', $any($event.target).value)" />
+      </label>
+    </div>
+    <div class="filter-actions">
+      <button class="button primary" type="submit" [disabled]="store.status() === 'loading'">
+        {{ strings.audit.applyFilters }}
+      </button>
+      <button
+        class="button secondary"
+        type="button"
+        [disabled]="store.status() === 'loading'"
+        (click)="store.clearFilters()"
+      >
+        {{ strings.audit.clearFilters }}
+      </button>
+    </div>
+  </form>
+
+  @switch (store.status()) {
+    @case ('idle') {}
+    @case ('loading') {
+      <p class="state" role="status">{{ strings.audit.loading }}</p>
+    }
+    @case ('error') {
+      <div class="state error" role="alert">
+        <p>{{ store.errorMessage() }}</p>
+        <button class="button secondary" type="button" (click)="store.retry()">
+          {{ strings.audit.retry }}
+        </button>
+      </div>
+    }
+    @default {
+      @if (store.isEmpty()) {
+        <div class="state empty">
+          <h2>{{ strings.audit.emptyTitle }}</h2>
+          <p>{{ strings.audit.empty }}</p>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">{{ strings.audit.columns.occurredAt }}</th>
+                <th scope="col">{{ strings.audit.columns.event }}</th>
+                <th scope="col">{{ strings.audit.columns.resource }}</th>
+                <th scope="col">{{ strings.audit.columns.actor }}</th>
+                <th scope="col">{{ strings.audit.columns.details }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entry of store.entries(); track entry.id) {
+                <tr>
+                  <td [attr.data-label]="strings.audit.columns.occurredAt">
+                    <time [attr.datetime]="entry.occurredAt">{{ entry.occurredAt | date: 'medium' }}</time>
+                  </td>
+                  <td [attr.data-label]="strings.audit.columns.event">
+                    <span class="event-chip">{{ eventLabel(entry.eventType) }}</span>
+                  </td>
+                  <td [attr.data-label]="strings.audit.columns.resource">
+                    <span class="resource-name">{{ resourceLabel(entry.resourceType) }}</span>
+                    <code>{{ entry.resourceId }}</code>
+                  </td>
+                  <td [attr.data-label]="strings.audit.columns.actor">
+                    <code>{{ entry.actorId }}</code>
+                  </td>
+                  <td [attr.data-label]="strings.audit.columns.details">
+                    <dl class="details">
+                      @for (detail of entry.details | keyvalue; track detail.key) {
+                        <div>
+                          <dt>{{ detailLabel(detail.key) }}</dt>
+                          <dd>{{ detail.value }}</dd>
+                        </div>
+                      }
+                    </dl>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <nav class="pagination" [attr.aria-label]="strings.audit.paginationLabel">
+          <span>
+            {{ store.page() * store.size() + (store.totalElements() ? 1 : 0) }}–{{
+              store.page() * store.size() + store.entries().length
+            }}
+            {{ strings.audit.ofTotal }} {{ store.totalElements() }}
+          </span>
+          <div class="pager">
+            <button class="button secondary" type="button" [disabled]="!store.canGoPrev()" (click)="store.goPrev()">
+              {{ strings.audit.previous }}
+            </button>
+            <span>{{ store.page() + 1 }} {{ strings.audit.pageOf }} {{ store.totalPages() || 1 }}</span>
+            <button class="button secondary" type="button" [disabled]="!store.canGoNext()" (click)="store.goNext()">
+              {{ strings.audit.next }}
+            </button>
+          </div>
+        </nav>
+      }
+    }
+  }
+</section>

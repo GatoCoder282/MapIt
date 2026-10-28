@@ -28,6 +28,10 @@ import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.reservations.domain.reservation.ReservationResourceRepository;
 import com.mapit.reservations.domain.reservation.ReservationStatus;
 import com.mapit.reservations.domain.reservation.ReservationTimeRange;
+import com.mapit.shared.audit.AuditEvent;
+import com.mapit.shared.audit.AuditEventRecorder;
+import com.mapit.shared.audit.AuditEventType;
+import com.mapit.shared.audit.AuditResourceType;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
@@ -54,6 +58,7 @@ class CreateReservationTest {
   private FakeConcurrencyGuard concurrencyGuard;
   private FakeAvailability availability;
   private FakeReservations reservations;
+  private FakeAuditEvents auditEvents;
   private CreateReservation useCase;
 
   @BeforeEach
@@ -70,6 +75,7 @@ class CreateReservationTest {
     concurrencyGuard = new FakeConcurrencyGuard();
     availability = new FakeAvailability();
     reservations = new FakeReservations();
+    auditEvents = new FakeAuditEvents();
     TenantContext tenantContext = () -> Optional.of(TENANT);
     ActorContext actorContext = () -> Optional.of(ACTOR);
     useCase =
@@ -79,6 +85,7 @@ class CreateReservationTest {
             concurrencyGuard,
             availability,
             reservations,
+            auditEvents,
             tenantContext,
             actorContext,
             Clock.fixed(NOW, ZoneOffset.UTC));
@@ -97,6 +104,18 @@ class CreateReservationTest {
     assertThat(created.createdBy()).isEqualTo(ACTOR);
     assertThat(reservations.saved).isSameAs(created);
     assertThat(concurrencyGuard.lockedIds).containsExactlyInAnyOrder(ELEMENT_A, ELEMENT_B);
+    assertThat(auditEvents.events).singleElement().satisfies(event -> {
+      assertThat(event.tenantId()).isEqualTo(TENANT);
+      assertThat(event.actorId()).isEqualTo(ACTOR);
+      assertThat(event.occurredAt()).isEqualTo(NOW);
+      assertThat(event.resourceType()).isEqualTo(AuditResourceType.RESERVATION);
+      assertThat(event.resourceId()).isEqualTo(created.id().value());
+      assertThat(event.eventType()).isEqualTo(AuditEventType.RESERVATION_CREATED);
+      assertThat(event.details())
+          .containsExactlyInAnyOrderEntriesOf(
+              java.util.Map.of(
+                  "status", "CREATED", "establishmentId", ESTABLISHMENT.toString()));
+    });
   }
 
   @Test
@@ -107,6 +126,7 @@ class CreateReservationTest {
         .isInstanceOf(ReservationReferenceNotFoundException.class)
         .hasMessageContaining("Cliente no encontrado");
     assertThat(reservations.saved).isNull();
+    assertThat(auditEvents.events).isEmpty();
   }
 
   @Test
@@ -335,6 +355,15 @@ class CreateReservationTest {
     @Override
     public List<Reservation> findAll(TenantId tenantId) {
       return List.of();
+    }
+  }
+
+  private static final class FakeAuditEvents implements AuditEventRecorder {
+    private final List<AuditEvent> events = new ArrayList<>();
+
+    @Override
+    public void record(AuditEvent event) {
+      events.add(event);
     }
   }
 }
