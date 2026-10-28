@@ -54,6 +54,8 @@ tags:
     description: Clientes del tenant usados en reservas (CU-11)
   - name: reservations
     description: Reservas internas asociadas a clientes y elementos espaciales (CU-12)
+  - name: audit
+    description: Bitácora inmutable de eventos de negocio del tenant (HU-5.03)
   - name: public-availability
     description: Consulta anónima de disponibilidad para el portal público (HU-6.01)
   - name: public-reservations
@@ -202,6 +204,78 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /audit-logs:
+    get:
+      tags: [audit]
+      summary: Consultar la bitácora de auditoría
+      description: |
+        Devuelve una página del historial inmutable del tenant autenticado, ordenada por
+        `occurredAt DESC, id DESC`. Permite filtrar por recurso, evento, identificador e
+        intervalo inclusivo de fechas. El tenant se obtiene exclusivamente del JWT y la
+        operación requiere rol ADMIN.
+      operationId: listAuditLogs
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: resourceType
+          in: query
+          description: Tipo del recurso auditado.
+          schema:
+            $ref: "#/components/schemas/AuditResourceType"
+        - name: eventType
+          in: query
+          description: Tipo del evento de negocio.
+          schema:
+            $ref: "#/components/schemas/AuditEventType"
+        - name: resourceId
+          in: query
+          description: Identificador exacto del recurso auditado.
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          description: Instante mínimo inclusivo de ocurrencia.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: Instante máximo inclusivo de ocurrencia.
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Página de eventos del tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1878,6 +1952,76 @@ components:
         cliente podría falsificar).
 
   schemas:
+    AuditResourceType:
+      type: string
+      enum: [RESERVATION, SPACE_ELEMENT]
+
+    AuditEventType:
+      type: string
+      enum: [RESERVATION_CREATED, RESERVATION_STATUS_CHANGED, SPACE_ELEMENT_STATE_CHANGED]
+
+    AuditLogEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - actorId
+        - occurredAt
+        - resourceType
+        - resourceId
+        - eventType
+        - details
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        actorId:
+          type: string
+          format: uuid
+          readOnly: true
+        occurredAt:
+          type: string
+          format: date-time
+          readOnly: true
+        resourceType:
+          $ref: "#/components/schemas/AuditResourceType"
+        resourceId:
+          type: string
+          format: uuid
+          readOnly: true
+        eventType:
+          $ref: "#/components/schemas/AuditEventType"
+        details:
+          type: object
+          additionalProperties:
+            type: string
+          readOnly: true
+
+    AuditLogPage:
+      type: object
+      additionalProperties: false
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLogEntry"
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+
     PublicAvailability:
       type: object
       required: [establishmentId, date, elements]

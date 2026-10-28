@@ -169,6 +169,11 @@ export const routes: Routes = [
           import('./features/reservations/ui/reservation-form').then((m) => m.ReservationForm),
       },
       {
+        path: 'audit',
+        canActivate: [roleGuard('ADMIN')],
+        loadComponent: () => import('./features/audit/ui/audit-page').then((m) => m.AuditPage),
+      },
+      {
         path: 'demo-items',
         loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
       },

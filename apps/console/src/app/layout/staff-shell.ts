@@ -49,6 +49,12 @@ export class StaffShell {
     },
   ];
 
+  protected readonly visibleNavItems = computed(() =>
+    this.session.user()?.role === 'ADMIN'
+      ? [...this.navItems, { label: STRINGS.staffShell.nav.audit, route: '/audit', icon: 'audit' }]
+      : this.navItems,
+  );
+
   protected readonly roleLabel = computed(() => {
     const role = this.session.user()?.role;
     return role ? STRINGS.shell.roleLabels[role] : '';

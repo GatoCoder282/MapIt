@@ -24,6 +24,10 @@ import com.mapit.reservations.domain.reservation.ReservationRepository;
 import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.reservations.domain.reservation.ReservationResourceRepository;
 import com.mapit.reservations.domain.reservation.ReservationTimeRange;
+import com.mapit.shared.audit.AuditEvent;
+import com.mapit.shared.audit.AuditEventRecorder;
+import com.mapit.shared.audit.AuditEventType;
+import com.mapit.shared.audit.AuditResourceType;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
@@ -37,6 +41,7 @@ public class CreateReservation {
   private final ReservationConcurrencyGuard concurrencyGuard;
   private final ReservationAvailabilityRepository availability;
   private final ReservationRepository reservations;
+  private final AuditEventRecorder auditEvents;
   private final TenantContext tenantContext;
   private final ActorContext actorContext;
   private final Clock clock;
@@ -47,6 +52,7 @@ public class CreateReservation {
       ReservationConcurrencyGuard concurrencyGuard,
       ReservationAvailabilityRepository availability,
       ReservationRepository reservations,
+      AuditEventRecorder auditEvents,
       TenantContext tenantContext,
       ActorContext actorContext,
       Clock clock) {
@@ -55,6 +61,7 @@ public class CreateReservation {
     this.concurrencyGuard = concurrencyGuard;
     this.availability = availability;
     this.reservations = reservations;
+    this.auditEvents = auditEvents;
     this.tenantContext = tenantContext;
     this.actorContext = actorContext;
     this.clock = clock;
@@ -107,7 +114,22 @@ public class CreateReservation {
     requireValidResources(tenantId, reservation, requireAvailableState);
     requireAvailability(tenantId, reservation);
 
-    return reservations.save(reservation);
+    Reservation persisted = reservations.save(reservation);
+    if (persisted.createdBy() != null) {
+      auditEvents.record(
+          new AuditEvent(
+              UUID.randomUUID(),
+              tenantId,
+              persisted.createdBy(),
+              persisted.createdAt(),
+              AuditResourceType.RESERVATION,
+              persisted.id().value(),
+              AuditEventType.RESERVATION_CREATED,
+              java.util.Map.of(
+                  "status", persisted.status().name(),
+                  "establishmentId", persisted.establishmentId().toString())));
+    }
+    return persisted;
   }
 
   private void requirePerson(TenantId tenantId, PersonId personId) {

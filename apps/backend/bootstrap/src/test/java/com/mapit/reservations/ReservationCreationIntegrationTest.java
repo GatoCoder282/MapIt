@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.sql.DataSource;
 
@@ -38,6 +39,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import com.mapit.identity.domain.AccessTokenIssuer;
 import com.mapit.identity.domain.AuthenticatedUser;
 import com.mapit.identity.domain.UserRole;
+import com.mapit.operations.infrastructure.audit.JdbcAuditLogRepository;
+import com.mapit.shared.audit.AuditEventRecorder;
 import com.mapit.shared.flags.FeatureFlag;
 import com.mapit.shared.flags.FeatureFlagPort;
 import com.mapit.shared.tenant.TenantId;
@@ -80,6 +83,7 @@ class ReservationCreationIntegrationTest {
   private static final UUID ELEMENT_B = uuid("52000000-0000-0000-0000-000000000041");
   private static final UUID PERSON_A = uuid("51000000-0000-0000-0000-000000000051");
   private static final UUID PERSON_B = uuid("52000000-0000-0000-0000-000000000051");
+  private static final AtomicBoolean FAIL_AUDIT = new AtomicBoolean();
 
   @LocalServerPort private int port;
   @Autowired private JdbcTemplate jdbc;
@@ -102,6 +106,8 @@ class ReservationCreationIntegrationTest {
 
   @BeforeEach
   void fixtures() {
+    FAIL_AUDIT.set(false);
+    jdbc.execute("truncate table audit_log");
     jdbc.update(
         "delete from reservation_space_element where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from reservation where tenant_id in (?, ?)", TENANT_A, TENANT_B);
@@ -171,6 +177,13 @@ class ReservationCreationIntegrationTest {
     assertThat(created.createdBy()).isEqualTo(ADMIN_A);
     assertThat(reservationCount(TENANT_A)).isEqualTo(1);
     assertThat(associationCount(TENANT_A)).isEqualTo(2);
+    Map<String, Object> audit = auditEntry(created.id());
+    assertThat(audit)
+        .containsEntry("tenant_id", TENANT_A)
+        .containsEntry("actor_id", ADMIN_A)
+        .containsEntry("event_type", "RESERVATION_CREATED")
+        .containsEntry("status", "CREATED")
+        .containsEntry("establishment_id", ESTABLISHMENT_A.toString());
   }
 
   @Test
@@ -249,6 +262,7 @@ class ReservationCreationIntegrationTest {
 
     assertThat(reservationCount(TENANT_A)).isZero();
     assertThat(associationCount(TENANT_A)).isZero();
+    assertThat(auditCount(TENANT_A, "RESERVATION_CREATED")).isZero();
   }
 
   @Test
@@ -406,7 +420,28 @@ class ReservationCreationIntegrationTest {
 
     assertThat(reservationCount(TENANT_A)).isEqualTo(1);
     assertThat(associationCount(TENANT_A)).isEqualTo(1);
+    assertThat(auditCount(TENANT_A, "RESERVATION_CREATED")).isEqualTo(1);
     assertThat(associationCountFor(ELEMENT_A_SECOND)).isZero();
+  }
+
+  @Test
+  void auditFailureRollsBackTheReservationAndItsAssociations() {
+    FAIL_AUDIT.set(true);
+
+    create(
+            ESTABLISHMENT_A,
+            PERSON_A,
+            List.of(ELEMENT_A),
+            "2026-10-20T10:00:00Z",
+            "2026-10-20T11:00:00Z",
+            token(STAFF_A, TENANT_A, UserRole.STAFF))
+        .expectStatus()
+        .isEqualTo(500);
+
+    FAIL_AUDIT.set(false);
+    assertThat(reservationCount(TENANT_A)).isZero();
+    assertThat(associationCount(TENANT_A)).isZero();
+    assertThat(auditCount(TENANT_A, "RESERVATION_CREATED")).isZero();
   }
 
   @Test
@@ -571,6 +606,28 @@ class ReservationCreationIntegrationTest {
         "select count(*) from reservation_space_element where space_element_id = ?", elementId);
   }
 
+  private long auditCount(String tenantId, String eventType) {
+    Long result =
+        jdbc.queryForObject(
+            "select count(*) from audit_log where tenant_id = ? and event_type = ?",
+            Long.class,
+            tenantId,
+            eventType);
+    return result == null ? 0 : result;
+  }
+
+  private Map<String, Object> auditEntry(UUID reservationId) {
+    return jdbc.queryForMap(
+        """
+        select tenant_id, actor_id, event_type,
+               details ->> 'status' as status,
+               details ->> 'establishmentId' as establishment_id
+        from audit_log
+        where resource_type = 'RESERVATION' and resource_id = ?
+        """,
+        reservationId);
+  }
+
   private long count(String sql, Object argument) {
     Long result = jdbc.queryForObject(sql, Long.class, argument);
     return result == null ? 0 : result;
@@ -669,6 +726,17 @@ class ReservationCreationIntegrationTest {
 
   @TestConfiguration
   static class TestFlags {
+
+    @Bean
+    @Primary
+    AuditEventRecorder controlledAuditRecorder(JdbcAuditLogRepository delegate) {
+      return event -> {
+        if (FAIL_AUDIT.get()) {
+          throw new IllegalStateException("Fallo de auditoría controlado por la prueba");
+        }
+        delegate.record(event);
+      };
+    }
 
     @Bean
     @Primary
