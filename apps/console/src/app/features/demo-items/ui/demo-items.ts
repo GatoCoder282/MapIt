@@ -1,12 +1,12 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { STRINGS } from '../../../core/strings';
+import { I18nService, LocalizedDatePipe } from '@mapit/i18n';
+import { localizeString, STRINGS } from '../../../core/strings';
 import { DemoItemsStore } from '../model/demo-items-store';
 
 /** Pantalla de demostración con alta, consulta, edición y eliminación. */
 @Component({
   selector: 'mapit-demo-items',
-  imports: [DatePipe],
+  imports: [LocalizedDatePipe],
   providers: [DemoItemsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -23,7 +23,7 @@ import { DemoItemsStore } from '../model/demo-items-store';
       </header>
 
       @if (store.error(); as error) {
-        <p class="message error" role="alert">{{ error }}</p>
+        <p class="message error" role="alert">{{ localizeString(error) }}</p>
       }
 
       <section class="workspace">
@@ -137,7 +137,7 @@ import { DemoItemsStore } from '../model/demo-items-store';
                     <p>{{ item.description || strings.demoItems.list.noDescription }}</p>
                     <small
                       >{{ strings.demoItems.list.updatedPrefix }}
-                      {{ item.updatedAt | date: 'short' }}</small
+                      {{ item.updatedAt | localDate: locale() : 'short' }}</small
                     >
                   </div>
                   <div class="row-actions">
@@ -377,6 +377,8 @@ import { DemoItemsStore } from '../model/demo-items-store';
   `,
 })
 export class DemoItems {
+  protected readonly locale = inject(I18nService).locale;
+  protected readonly localizeString = localizeString;
   protected readonly store = inject(DemoItemsStore);
   protected readonly strings = STRINGS;
 }

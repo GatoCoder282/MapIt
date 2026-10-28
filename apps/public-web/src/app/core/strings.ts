@@ -1,13 +1,19 @@
 /**
- * Catálogo central de textos visibles de la web pública (español).
+ * Catalogo central de textos visibles de Public Web.
  *
- * Misma convención que en la consola (`apps/console/src/app/core/strings.ts`):
- * objeto tipado `as const`; una errata en la clave no compila. Sin framework
- * i18n: una sola lengua por ahora.
+ * Espanol es la fuente canonica y el fallback. Los catalogos de ingles y
+ * japones viven en archivos adyacentes con las mismas claves.
  *
- * NOTA: los datos del listado de `reservas` (`establishments.data.ts`) son
- * contenido mock de negocio, no chrome de UI: se conservan ahí a propósito.
+ * Los datos mock de establecimientos son contenido de negocio, no chrome.
  */
+
+import {
+  createLocalizedCatalog,
+  createLocalizedTextResolver,
+  type LocalizedShape,
+} from '@mapit/i18n';
+import { PUBLIC_STRINGS_EN } from './strings.en';
+import { PUBLIC_STRINGS_JA } from './strings.ja';
 
 /** CTAs compartidos entre secciones. */
 const SHARED = {
@@ -15,7 +21,7 @@ const SHARED = {
   seeHowItWorks: 'Ver cómo funciona',
 } as const;
 
-export const STRINGS = {
+const STRINGS_ES = {
   shared: SHARED,
 
   landing: {
@@ -251,4 +257,13 @@ export const STRINGS = {
   },
 } as const;
 
-export type PublicStrings = typeof STRINGS;
+const CATALOGS = {
+  es: STRINGS_ES,
+  en: PUBLIC_STRINGS_EN,
+  'ja-JP': PUBLIC_STRINGS_JA,
+} satisfies Record<'es' | 'en' | 'ja-JP', LocalizedShape<typeof STRINGS_ES>>;
+
+export const STRINGS = createLocalizedCatalog<typeof STRINGS_ES>(CATALOGS, 'es');
+export const localizeString = createLocalizedTextResolver(CATALOGS, 'es');
+
+export type PublicStrings = typeof STRINGS_ES;

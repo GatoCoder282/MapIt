@@ -1,4 +1,5 @@
-<main class="auth-page" aria-label="{{ strings.login.pageAriaLabel }}">
+<main class="auth-page" [attr.aria-label]="strings.login.pageAriaLabel">
+  <mapit-language-selector class="language-choice" />
   <!-- Decoraciones de fondo: anillos concéntricos tenues -->
   <div class="bg-decorations" aria-hidden="true">
     <svg class="bg-shape bg-shape-tr" viewBox="0 0 800 800" fill="none">
@@ -78,7 +79,7 @@
   </div>
 
   <!-- Marca / wordmark -->
-  <a href="#" class="brand" role="img" aria-label="MapIt">
+  <a href="#" class="brand" role="img" [attr.aria-label]="strings.login.logoAlt">
     Map<span class="brand-i"
       >ı<svg viewBox="0 0 24 32" aria-hidden="true">
         <path d="M12 0C5.4 0 0 5.3 0 12c0 8.2 12 20 12 20s12-11.8 12-20C24 5.3 18.6 0 12 0Z" />
@@ -86,9 +87,9 @@
     >t
   </a>
 
-  <section class="auth-card" aria-label="Inicio de sesión">
+  <section class="auth-card" [attr.aria-label]="strings.login.title">
     <!-- Panel de bienvenida (estático, sin registro) -->
-    <aside class="overlay" aria-label="Bienvenida">
+    <aside class="overlay" [attr.aria-label]="strings.login.panelTitle">
       <div class="overlay-content">
         <h2>{{ strings.login.panelTitle }}</h2>
         <p>{{ strings.login.panelIntro }}</p>
@@ -187,7 +188,7 @@
       </button>
 
       @if (store.message()) {
-        <p class="form-message" role="status">{{ store.message() }}</p>
+        <p class="form-message" role="status">{{ localizeString(store.message()) }}</p>
       }
     </form>
   </section>

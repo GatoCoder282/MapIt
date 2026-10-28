@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterOutlet } from '@angular/router';
 
 import { AuthSession } from '@mapit/auth';
+import { LanguageSelector } from '@mapit/i18n';
 import { Sidebar, type SidebarNavItem } from './sidebar/sidebar';
 
 import { STRINGS } from '../core/strings';
@@ -14,7 +15,7 @@ import { STRINGS } from '../core/strings';
  */
 @Component({
   selector: 'mapit-staff-shell',
-  imports: [RouterOutlet, Sidebar],
+  imports: [RouterOutlet, Sidebar, LanguageSelector],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,7 +25,7 @@ export class StaffShell {
   protected readonly session = inject(AuthSession);
   protected readonly menuOpen = signal(false);
 
-  protected readonly navItems: readonly SidebarNavItem[] = [
+  protected readonly navItems = computed<readonly SidebarNavItem[]>(() => [
     { label: STRINGS.staffShell.nav.home, route: '/home', icon: 'home', exact: true },
     { label: STRINGS.staffShell.nav.map, route: '/spaces/setup', icon: 'map' },
     { label: STRINGS.staffShell.nav.businesses, route: '/establishments', icon: 'businesses' },
@@ -47,12 +48,15 @@ export class StaffShell {
         },
       ],
     },
-  ];
+  ]);
 
   protected readonly visibleNavItems = computed(() =>
     this.session.user()?.role === 'ADMIN'
-      ? [...this.navItems, { label: STRINGS.staffShell.nav.audit, route: '/audit', icon: 'audit' }]
-      : this.navItems,
+      ? [
+          ...this.navItems(),
+          { label: STRINGS.staffShell.nav.audit, route: '/audit', icon: 'audit' },
+        ]
+      : this.navItems(),
   );
 
   protected readonly roleLabel = computed(() => {

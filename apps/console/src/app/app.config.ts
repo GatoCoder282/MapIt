@@ -9,6 +9,7 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
 
 import { AuthSession, authInterceptor, AUTH_API_URL } from '@mapit/auth';
+import { provideI18n } from '@mapit/i18n';
 import { BASE_PATH } from '@mapit/api-client';
 import { FeatureFlagService, provideFeatureFlags } from '@mapit/feature-flags';
 import { provideRealtime } from '@mapit/realtime';
@@ -28,6 +29,7 @@ import { routes } from './app.routes';
  */
 export const appConfig: ApplicationConfig = {
   providers: [
+    provideI18n(),
     provideBrowserGlobalErrorListeners(),
     provideLogging({ service: 'mapit-console' }),
     {

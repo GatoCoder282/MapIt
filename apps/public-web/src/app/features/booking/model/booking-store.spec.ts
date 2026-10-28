@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { PublicReservation } from '@mapit/api-client';
+import { I18nService, provideI18n } from '@mapit/i18n';
 import { of, throwError } from 'rxjs';
 
 import { BookingApi } from '../data/booking-api';
@@ -23,13 +24,17 @@ describe('BookingStore', () => {
 
   let api: { create: ReturnType<typeof vi.fn> };
   let store: BookingStore;
+  let i18n: I18nService;
 
   beforeEach(() => {
+    localStorage.clear();
     api = { create: vi.fn() };
     TestBed.configureTestingModule({
-      providers: [BookingStore, { provide: BookingApi, useValue: api }],
+      providers: [provideI18n(), BookingStore, { provide: BookingApi, useValue: api }],
     });
     store = TestBed.inject(BookingStore);
+    i18n = TestBed.inject(I18nService);
+    i18n.initialize();
   });
 
   afterEach(() => TestBed.resetTestingModule());
@@ -62,6 +67,26 @@ describe('BookingStore', () => {
     });
     expect(store.status()).toBe('success');
     expect(store.reservation()).toEqual(reservation);
+  });
+
+  it('cambia la interfaz sin modificar el tenant ni el payload de reserva', () => {
+    api.create.mockReturnValue(of(reservation));
+    fillValidForm();
+
+    i18n.setLanguage('ja-JP');
+    store.submit('demo', 'la-bahia', '30000000-0000-0000-0000-000000000001');
+
+    expect(api.create).toHaveBeenCalledWith('demo', 'la-bahia', {
+      date: '2026-10-25',
+      startTime: '19:00',
+      endTime: '21:00',
+      spaceElementIds: new Set(['30000000-0000-0000-0000-000000000001']),
+      customer: {
+        fullName: 'Ana Pérez',
+        email: 'ana@example.com',
+        phone: '+591 70000000',
+      },
+    });
   });
 
   it('no llama a la API cuando el formulario es inválido', () => {

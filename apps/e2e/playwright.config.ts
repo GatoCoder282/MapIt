@@ -16,7 +16,7 @@ export default defineConfig({
   // En CI, un `test.only` olvidado haría pasar el pipeline sin correr el resto.
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
-  workers: process.env['CI'] ? 1 : undefined,
+  ...(process.env['CI'] ? { workers: 1 } : {}),
 
   reporter: process.env['CI']
     ? [['html', { open: 'never' }], ['github']]

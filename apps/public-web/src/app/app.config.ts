@@ -6,6 +6,7 @@ import { provideRouter, withComponentInputBinding, withViewTransitions } from '@
 
 import { provideFeatureFlags } from '@mapit/feature-flags';
 import { BASE_PATH } from '@mapit/api-client';
+import { provideI18n } from '@mapit/i18n';
 
 import { routes } from './app.routes';
 
@@ -18,6 +19,7 @@ import { routes } from './app.routes';
  */
 export const appConfig: ApplicationConfig = {
   providers: [
+    provideI18n(),
     provideBrowserGlobalErrorListeners(),
     provideLogging({ service: 'mapit-public-web' }),
     providePublicRuntimeConfig(),

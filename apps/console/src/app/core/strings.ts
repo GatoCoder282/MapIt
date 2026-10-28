@@ -1,11 +1,17 @@
 /**
- * Catálogo central de textos visibles de la consola (español).
+ * Catalogo central de textos visibles de Console.
  *
- * Regla del proyecto: cero texto hardcodeado en componentes nuevos. Todo texto
- * visible de las features administrativas sale de aquí, tipado: una errata en la
- * clave no compila. No es un framework de i18n — es el formato simple aprobado
- * hasta que exista una segunda lengua.
+ * Espanol es la fuente canonica y el fallback; los catalogos de ingles y
+ * japones viven en archivos adyacentes y conservan la misma estructura.
  */
+import {
+  createLocalizedCatalog,
+  createLocalizedTextResolver,
+  type LocalizedShape,
+} from '@mapit/i18n';
+import { STRINGS_EN } from './strings.en';
+import { STRINGS_JA } from './strings.ja';
+
 const VERTICAL_LABELS = {
   RESTAURANT: 'Restaurante',
   NIGHTCLUB: 'Discoteca',
@@ -13,7 +19,7 @@ const VERTICAL_LABELS = {
   HOTEL: 'Hotel',
 } as const;
 
-export const STRINGS = {
+const STRINGS_ES = {
   brand: {
     name: 'MapIt',
   },
@@ -41,6 +47,7 @@ export const STRINGS = {
     drawerNavLabel: 'Navegación móvil',
     /** Botón de la campana de notificaciones (decorativa: no hay endpoint). */
     notifications: 'Notificaciones',
+    userMenu: 'Menú de usuario',
     roleLabels: {
       SUPER_ADMIN: 'Super Admin',
       ADMIN: 'Administrador',
@@ -551,6 +558,7 @@ export const STRINGS = {
       casing: 'Mayúsculas y minúsculas',
       digit: 'Un número',
       symbol: 'Un símbolo',
+      ariaLabel: 'Fortaleza de la contraseña',
       labels: ['Vacía', 'Débil', 'Aceptable', 'Buena', 'Fuerte'],
       announcePrefix: 'Fortaleza de la contraseña:',
       commonPattern: 'Es un patrón muy común.',
@@ -1036,4 +1044,13 @@ export const STRINGS = {
   },
 } as const;
 
-export type AppStrings = typeof STRINGS;
+const CATALOGS = {
+  es: STRINGS_ES,
+  en: STRINGS_EN,
+  'ja-JP': STRINGS_JA,
+} satisfies Record<'es' | 'en' | 'ja-JP', LocalizedShape<typeof STRINGS_ES>>;
+
+export const STRINGS = createLocalizedCatalog<typeof STRINGS_ES>(CATALOGS, 'es');
+export const localizeString = createLocalizedTextResolver(CATALOGS, 'es');
+
+export type AppStrings = typeof STRINGS_ES;

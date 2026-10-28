@@ -20,7 +20,7 @@ export const ESTABLISHMENT_TYPES: readonly EstablishmentType[] = [
   'HOTEL',
 ];
 
-const ZONA_HORARIA_POR_DEFECTO = STRINGS.establishments.form.timezonePlaceholder;
+const ZONA_HORARIA_POR_DEFECTO = 'America/La_Paz';
 
 const EMPTY_DRAFT: EstablishmentDraft = {
   name: '',

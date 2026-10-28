@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { currentLocaleTag } from '@mapit/i18n';
 import { SiteFooter, SiteNav } from '@mapit/ui-kit';
 import type { PublicAvailabilityElement } from '@mapit/api-client';
 
@@ -50,9 +51,10 @@ export class AvailabilityPage {
   }
 
   protected formatDate(date: string): string {
-    return new Intl.DateTimeFormat('es-BO', { dateStyle: 'long', timeZone: 'UTC' }).format(
-      new Date(`${date}T12:00:00Z`),
-    );
+    return new Intl.DateTimeFormat(currentLocaleTag(), {
+      dateStyle: 'long',
+      timeZone: 'UTC',
+    }).format(new Date(`${date}T12:00:00Z`));
   }
 
   private search(): Promise<void> {

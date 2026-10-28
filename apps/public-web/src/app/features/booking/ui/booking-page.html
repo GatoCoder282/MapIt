@@ -49,7 +49,7 @@
       </header>
 
       @if (store.errorMessage()) {
-        <div class="notice notice--error" role="alert">{{ store.errorMessage() }}</div>
+        <div class="notice notice--error" role="alert">{{ localizeString(store.errorMessage()) }}</div>
       }
 
       <form class="booking-form" (submit)="submit($event)" novalidate>

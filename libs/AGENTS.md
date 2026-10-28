@@ -14,6 +14,10 @@ apps, vive aquí. Si solo lo necesita una, va en su carpeta `features/`.
 | `realtime`      | WebSocket/STOMP (CU-09)                       | debe respetar el kill switch `realtime.websocket`                   |
 | `map-engine`    | **puerto** del motor de mapa + adaptadores    | ver abajo                                                           |
 
+## i18n — preferencia de idioma compartida
+
+`@mapit/i18n` centraliza la preferencia de idioma, el fallback y el selector. `ui-kit` puede importar su componente selector para mostrarlo en la navegación pública, y `auth` puede usar el resolvedor para sus mensajes visibles. La dependencia es unidireccional: `i18n` no importa de `ui-kit`, `auth` ni de las apps.
+
 ## map-engine: la decisión pendiente
 
 El motor de renderizado **no está decidido** (Konva propio vs. un SDK tipo Seats.io —
