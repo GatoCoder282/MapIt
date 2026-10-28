@@ -102,14 +102,12 @@ class RealtimeWebSocketIntegrationTest {
   @BeforeEach
   void prepareStaffAndEstablishment() {
     jdbc.update("delete from realtime_event_outbox");
-    jdbc.update("delete from app_user where id = ?", USER);
-    jdbc.update("delete from establishment where id = ?", ESTABLISHMENT);
     jdbc.update(
-        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Staff', 'STAFF', true)",
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Staff', 'STAFF', true) on conflict (id) do update set email = excluded.email, password_hash = excluded.password_hash, full_name = excluded.full_name, role = excluded.role, active = excluded.active",
         USER,
         "realtime-" + USER + "@example.test");
     jdbc.update(
-        "insert into establishment (id, tenant_id, name, type, slug) values (?, 'demo', 'Realtime', 'RESTAURANT', ?)",
+        "insert into establishment (id, tenant_id, name, type, slug) values (?, 'demo', 'Realtime', 'RESTAURANT', ?) on conflict (id) do update set name = excluded.name, type = excluded.type, slug = excluded.slug",
         ESTABLISHMENT,
         "realtime-" + ESTABLISHMENT);
     client = new WebSocketStompClient(new StandardWebSocketClient());
@@ -122,12 +120,9 @@ class RealtimeWebSocketIntegrationTest {
     client.stop();
   }
 
-  /** Limpia el mapa de la prueba E2E en orden inverso de FKs (todas RESTRICT). */
+  /** Limpia las entidades reversibles; audit_log es append-only y permanece como historial. */
   @AfterEach
   void removeMapFixtures() {
-    jdbc.update(
-        "delete from space_element_state_change where tenant_id = 'demo' and changed_by = ?",
-        USER);
     jdbc.update("delete from space_element where id = ?", ELEMENT);
     jdbc.update("delete from sector where id = ?", SECTOR);
     jdbc.update("delete from floor where id = ?", FLOOR);
@@ -212,17 +207,14 @@ class RealtimeWebSocketIntegrationTest {
 
   @Test
   void super_admin_suscribe_a_su_tenant_y_el_aislamiento_se_mantiene() {
-    jdbc.update("delete from app_user where id = ?", SUPER);
-    jdbc.update("delete from app_user where id = ?", OTRO_SUPER);
-    jdbc.update("delete from tenant where id = 'otro'");
     jdbc.update(
-        "insert into tenant (id, name, slug, vertical, status) values ('otro', 'Otro', 'otro', 'RESTAURANT', 'ACTIVE') on conflict (id) do nothing");
+        "insert into tenant (id, name, slug, vertical, status) values ('otro', 'Otro', 'otro', 'RESTAURANT', 'ACTIVE') on conflict (id) do update set name = excluded.name, slug = excluded.slug, vertical = excluded.vertical, status = excluded.status");
     jdbc.update(
-        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Super', 'SUPER_ADMIN', true)",
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Super', 'SUPER_ADMIN', true) on conflict (id) do update set tenant_id = excluded.tenant_id, email = excluded.email, password_hash = excluded.password_hash, full_name = excluded.full_name, role = excluded.role, active = excluded.active",
         SUPER,
         "realtime-" + SUPER + "@example.test");
     jdbc.update(
-        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'otro', ?, 'unused', 'Otro Super', 'SUPER_ADMIN', true)",
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'otro', ?, 'unused', 'Otro Super', 'SUPER_ADMIN', true) on conflict (id) do update set tenant_id = excluded.tenant_id, email = excluded.email, password_hash = excluded.password_hash, full_name = excluded.full_name, role = excluded.role, active = excluded.active",
         OTRO_SUPER,
         "realtime-" + OTRO_SUPER + "@example.test");
 

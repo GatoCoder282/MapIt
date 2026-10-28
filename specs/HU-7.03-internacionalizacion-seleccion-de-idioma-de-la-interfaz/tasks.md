@@ -31,7 +31,7 @@
 
 ## Entrega
 
-- [ ] Crear PR hacia `main` con el título exacto de Jira, trazabilidad MAP-240 y la plantilla completa.
+- [x] Crear PR hacia `main` con el título exacto de Jira, trazabilidad MAP-240 y la plantilla completa (PR #51).
 - [ ] Esperar workflows requeridos y adjuntar captura de Checks con todos los checks de prueba en verde.
 - [ ] Marcar criterios aplicables y actualizar notas de ejecución con la evidencia del PR.
 
@@ -59,10 +59,12 @@
 - `pnpm check` pasó completo después de configurar un shim temporal que permite al script encontrar Corepack pnpm: formato, ESLint, typecheck, 310 tests frontend, builds, contrato API y backend build/tests/ArchUnit.
 - `pnpm --filter @mapit/e2e run typecheck` pasó.
 - `pnpm --filter @mapit/e2e exec playwright test tests/console/language.spec.ts tests/public-web/language.spec.ts --reporter=line` pasó: 4/4 (Console desktop/tablet, Public Web desktop/móvil).
+- `node tools/scripts/gradle.mjs :bootstrap:integrationTest --tests "com.mapit.realtime.RealtimeWebSocketIntegrationTest"` pasó tras reparar fixtures obsoletos: V21 retiró `space_element_state_change` y el `audit_log` append-only impide borrar usuarios referenciados; el test ahora conserva/upsertea las identidades.
 - El setup local creó `.env` y levantó Postgres/Unleash. La migración local se omitió porque el volumen ya existente tiene un checksum distinto en V12; no se reparó ni borró la base. Los E2E de idioma no dependen del backend.
 - El primer E2E completo de CI encontró que el ajuste responsive ocultaba la campana en Console tablet, contradiciendo una expectativa existente. Se eliminó esa regla de ocultamiento; se mantiene visible la campana/avatar y se oculta solo el texto del usuario en viewports pequeños.
+- CI run `40632262062`: el E2E completo pasó; el job de integración reportó 3 fallas en `RealtimeWebSocketIntegrationTest` por fixtures incompatibles con V21. Los fixtures ya quedaron corregidos y la clase pasa localmente; el nuevo run de CI verificará el arreglo.
 - Se detuvieron los frontends y contenedores iniciados para las pruebas; los volúmenes locales se conservaron.
 
 ### PR y evidencia
 
-PR [#51](https://github.com/GatoCoder282/MapIt/pull/51) abierto hacia `main`. Pendiente el rerun de CI después del ajuste tablet y la captura requerida de Checks en verde.
+PR [#51](https://github.com/GatoCoder282/MapIt/pull/51) abierto hacia `main`. El nuevo run tras el ajuste de fixtures y la captura requerida de Checks en verde siguen pendientes.
