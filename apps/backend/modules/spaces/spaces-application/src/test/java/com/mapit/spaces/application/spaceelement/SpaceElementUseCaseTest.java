@@ -36,6 +36,15 @@ import com.mapit.spaces.domain.spaceelement.SpaceElementType;
  * Sin contexto Spring: la jerarquía y las validaciones se prueban en milisegundos.
  */
 class SpaceElementUseCaseTest {
+  @Test void comandos_legacy_preservan_presencia_metadata() {
+    var omitted=new UpdateSpaceElementCommand(SECTOR_A,UUID.randomUUID(),"TABLE",1.0,2.0,20.0,20.0,0.0);
+    assertThat(omitted.labelPresent()).isFalse();
+    assertThat(omitted.capacityPresent()).isFalse();
+    var clear=new UpdateSpaceElementCommand(SECTOR_A,omitted.elementId(),"TABLE",1.0,2.0,20.0,20.0,0.0,true,null,true,null);
+    assertThat(clear.labelPresent()).isTrue();
+    assertThat(clear.capacityPresent()).isTrue();
+    assertThat(clear.label()).isNull();
+  }
 
   private static final TenantId TENANT_A = TenantId.of("tenant-a");
   private static final TenantId TENANT_B = TenantId.of("tenant-b");
@@ -108,6 +117,15 @@ class SpaceElementUseCaseTest {
   }
 
   // ===== Creación =====
+  @Test void actualizar_geometria_omite_y_conserva_metadata_null_explicito_limpia() {
+    var created=create.create(new CreateSpaceElementCommand(SECTOR_A,"TABLE",10.0,20.0,80.0,80.0,0.0,null," Jardín ",4));
+    assertThat(created.name()).isEqualTo("Jardín");
+    var moved=update.update(new UpdateSpaceElementCommand(SECTOR_A,created.id(),"TABLE",11.0,20.0,80.0,80.0,0.0));
+    assertThat(moved.label()).isEqualTo("Jardín"); assertThat(moved.capacity()).isEqualTo(4);
+    var cleared=update.update(new UpdateSpaceElementCommand(SECTOR_A,created.id(),"TABLE",11.0,20.0,80.0,80.0,0.0,true,null,true,null));
+    assertThat(cleared.label()).isNull(); assertThat(cleared.capacity()).isNull();
+    assertThat(query.byId(SECTOR_A,created.id()).name()).isEqualTo("Mesa sin nombre");
+  }
 
   @Test
   void alta_valida_deja_el_elemento_con_tenant_del_contexto() {
@@ -316,6 +334,7 @@ class SpaceElementUseCaseTest {
     @Override
     public SpaceElement save(SpaceElement element) {
       guardado = element;
+      data.removeIf(existing -> existing.tenantId().equals(element.tenantId()) && existing.id().equals(element.id()));
       data.add(element);
       return element;
     }

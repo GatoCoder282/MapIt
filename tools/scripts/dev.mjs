@@ -64,6 +64,9 @@ if (wantBack) {
     children.push(
       spawnPrefixed('backend', c.green, wrapper, ['bootRun', '--console=plain'], {
         cwd: join(ROOT, 'apps', 'backend'),
+        // El perfil local habilita únicamente la simulación de pagos MOCK. Los
+        // despliegues no pasan por este script y el backend base permanece apagado.
+        env: { SPRING_PROFILES_ACTIVE: process.env.SPRING_PROFILES_ACTIVE ?? 'dev' },
       }),
     );
     await sleep(2000);

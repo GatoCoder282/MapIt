@@ -58,6 +58,7 @@ import com.mapit.shared.tenant.TenantScope;
 class RealtimeWebSocketIntegrationTest {
 
   private static final UUID USER = UUID.fromString("00000000-0000-0000-0000-000000000011");
+  private static final UUID ACCESS_ADMIN = UUID.fromString("00000000-0000-0000-0000-000000000015");
   private static final UUID SUPER =
       UUID.fromString("00000000-0000-0000-0000-000000000013");
   private static final UUID OTRO_SUPER =
@@ -102,6 +103,7 @@ class RealtimeWebSocketIntegrationTest {
   @BeforeEach
   void prepareStaffAndEstablishment() {
     jdbc.update("delete from realtime_event_outbox");
+    jdbc.update("delete from establishment_staff_access where establishment_id = ?", ESTABLISHMENT);
     jdbc.update("delete from app_user where id = ?", USER);
     jdbc.update("delete from establishment where id = ?", ESTABLISHMENT);
     jdbc.update(
@@ -112,6 +114,8 @@ class RealtimeWebSocketIntegrationTest {
         "insert into establishment (id, tenant_id, name, type, slug) values (?, 'demo', 'Realtime', 'RESTAURANT', ?)",
         ESTABLISHMENT,
         "realtime-" + ESTABLISHMENT);
+    jdbc.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values(?,'demo','realtime-grants@example.test','unused','Administrador de concesiones','ADMIN') on conflict(id) do nothing",ACCESS_ADMIN);
+    jdbc.update("insert into establishment_staff_access(tenant_id,establishment_id,user_id,can_check_in,updated_at,updated_by) values('demo',?,?,true,now(),?)",ESTABLISHMENT,USER,ACCESS_ADMIN);
     client = new WebSocketStompClient(new StandardWebSocketClient());
     client.setMessageConverter(new StringMessageConverter());
     client.start();
@@ -131,6 +135,13 @@ class RealtimeWebSocketIntegrationTest {
     jdbc.update("delete from space_element where id = ?", ELEMENT);
     jdbc.update("delete from sector where id = ?", SECTOR);
     jdbc.update("delete from floor where id = ?", FLOOR);
+  }
+
+  @Test
+  void revocar_concesion_impide_nuevas_suscripciones_staff() {
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"),USER,"STAFF",ESTABLISHMENT,Optional.empty())).isTrue();
+    jdbc.update("update establishment_staff_access set can_check_in=false where tenant_id='demo' and establishment_id=? and user_id=?",ESTABLISHMENT,USER);
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"),USER,"STAFF",ESTABLISHMENT,Optional.empty())).isFalse();
   }
 
   @Test

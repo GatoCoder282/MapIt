@@ -48,7 +48,7 @@ public class UpdateSpaceElementState {
     TenantId tenantId = tenantContext.require();
     OperationalSpaceElement current =
         repository
-            .findAliveById(tenantId, command.sectorId(), command.elementId())
+            .lockAliveById(tenantId, command.sectorId(), command.elementId())
             .orElseThrow(() -> new OperationalSpaceElementNotFoundException(command.elementId()));
 
     OperationalSpaceElement changed = current.changeState(command.state(), clock.instant());

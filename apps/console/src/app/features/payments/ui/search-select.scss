@@ -1,0 +1,95 @@
+@use 'ui-kit/styles/tokens';
+
+:host {
+  display: block;
+  min-width: 0;
+}
+.search-select {
+  position: relative;
+  display: grid;
+  gap: var(--mapit-space-2);
+  min-width: 0;
+}
+label {
+  font-weight: 600;
+}
+.control {
+  position: relative;
+}
+input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.75rem;
+  min-width: 0;
+  padding: 0.625rem 2.5rem 0.625rem 0.75rem;
+  border: 1px solid var(--mapit-color-border-input);
+  border-radius: var(--mapit-radius-input);
+  color: var(--mapit-color-text);
+  background: var(--mapit-color-surface);
+  font: inherit;
+  font-size: 1rem;
+}
+input::placeholder {
+  color: var(--mapit-color-text-muted);
+}
+input:focus-visible {
+  outline: 2px solid var(--mapit-color-primary);
+  outline-offset: 3px;
+}
+input:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.chevron {
+  position: absolute;
+  inset-inline-end: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--mapit-color-text-muted);
+}
+.dropdown {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + var(--mapit-space-1));
+  z-index: 20;
+  border: 1px solid var(--mapit-color-border-input);
+  border-radius: var(--mapit-radius-input);
+  background: var(--mapit-color-surface);
+  overflow: hidden;
+}
+.options {
+  max-height: 16rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+button {
+  display: grid;
+  gap: var(--mapit-space-1);
+  width: 100%;
+  min-height: 2.75rem;
+  border: 0;
+  padding: 0.75rem;
+  text-align: start;
+  font: inherit;
+  color: var(--mapit-color-text);
+  background: transparent;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+button[aria-selected='true'] {
+  font-weight: 600;
+}
+button.active,
+button:hover {
+  background: var(--mapit-color-primary-container);
+}
+small {
+  color: var(--mapit-color-text-muted);
+  font-weight: 400;
+}
+.empty {
+  margin: 0;
+  padding: 0.75rem;
+  color: var(--mapit-color-text-muted);
+}

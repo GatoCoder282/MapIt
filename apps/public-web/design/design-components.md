@@ -15,7 +15,7 @@ Barra blanca sticky, altura 64px, borde inferior 1px `#E5E7EB`, blur 12px si hay
 | ----------- | -------------------------------------------------------------------- |
 | Logo        | Imagen MapIt a la izquierda, enlaza a `/`                            |
 | Links       | Producto, Cómo funciona, Negocios, **Reservas** (router `/reservas`) |
-| Link activo | Texto `#1C2EDB` + subrayado de 2px en `#3D4EF2`                      |
+| Link activo | Texto `#2563EB` + subrayado de 2px en `#2563EB`                      |
 | Link normal | `#64748B`, hover a `#0F172A`                                         |
 | Derecha     | Link "Iniciar sesión" (texto) + botón pill "Solicitar acceso →"      |
 | Mobile      | Hamburguesa con panel desplegable (mismo conjunto de enlaces)        |
@@ -51,7 +51,7 @@ oscuro previo del landing: la referencia lo muestra claro y se adopta para ambas
 | Estado   | Fondo     | Borde         | Texto     |
 | -------- | --------- | ------------- | --------- |
 | Inactivo | `#FFFFFF` | `#E2E8F0` 1px | `#334155` |
-| Activo   | `#3D4EF2` | `transparent` | `#FFFFFF` |
+| Activo   | `#2563EB` | `transparent` | `#FFFFFF` |
 
 Altura 40px, padding 0 20px, radius 999px, `aria-pressed`. Conjunto: Todos, Restaurantes, Discotecas, Eventos, Hoteles.
 
@@ -72,10 +72,10 @@ Tarjeta blanca 16px de radio, borde `#E5E7EB`, padding 20px, ancho flexible.
 
 | Elemento  | Spec                                            |
 | --------- | ----------------------------------------------- |
-| Icono     | Círculo 40px fondo `#DFE0FF`, icono accent 20px |
+| Icono     | Círculo 40px fondo `#DBEAFE`, icono accent 20px |
 | Título    | Manrope 16px 700                                |
 | Subtítulo | Inter 12px 400 `#64748B`, 1–2 líneas            |
-| Flecha    | "→" 16px en `#3D4EF2`, margen-superior auto     |
+| Flecha    | "→" 16px en `#2563EB`, margen-superior auto     |
 | Hover     | Sombra nivel 2 + flecha se desplaza 4px         |
 
 Set exacto: **Restaurantes** ("Gastronomía y buen ambiente"), **Discotecas** ("Música, tragos y diversión"), **Eventos** ("Celebraciones y momentos especiales"), **Hoteles** ("Descanso y comodidad").
@@ -115,7 +115,7 @@ Textos: 1 "Busca tu lugar", 2 "Selecciona espacio", 3 "Completa tu reserva", 4 "
 
 ### Hero block
 
-Dos columnas: izquierda eyebrow + H1 (con tramo "reserva tu espacio." en `#1C2EDB`) +
+Dos columnas: izquierda eyebrow + H1 (con tramo "reserva tu espacio." en `#2563EB`) +
 párrafo + search + fila de chips; derecha imagen `assets/img/imagen_inicio_reservas.png`
 con sombra nivel 2 y radio 16px. Fondo de sección con gradiente radial azul muy suave.
 
@@ -139,3 +139,7 @@ fila de pasos y el bloque de confirmación a la derecha.
 
 Estrella 13px `#F59E0B` + valor 600 + "(N reseñas)" `#64748B` en Inter 12px.
 El valor nunca se muestra sin el conteo (evita sesgo visual).
+
+## Pagos y comprobantes
+
+Especificación de la extensión y sus estados: [payment-flow.md](payment-flow.md).

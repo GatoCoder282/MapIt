@@ -37,6 +37,16 @@ public class JdbcSpaceElementStateRepository implements SpaceElementStateReposit
   @Override
   public Optional<OperationalSpaceElement> findAliveById(
       TenantId tenantId, UUID sectorId, UUID elementId) {
+    return read(tenantId, sectorId, elementId, false);
+  }
+
+  @Override
+  public Optional<OperationalSpaceElement> lockAliveById(
+      TenantId tenantId, UUID sectorId, UUID elementId) {
+    return read(tenantId, sectorId, elementId, true);
+  }
+
+  private Optional<OperationalSpaceElement> read(TenantId tenantId, UUID sectorId, UUID elementId, boolean lock) {
     setTenant(tenantId);
     return jdbc
         .query(
@@ -47,7 +57,7 @@ public class JdbcSpaceElementStateRepository implements SpaceElementStateReposit
             join floor f on f.id = s.floor_id
             where el.tenant_id = ? and el.sector_id = ? and el.id = ?
               and el.deleted_at is null and s.deleted_at is null and f.deleted_at is null
-            """,
+            """ + (lock ? " for update of el" : ""),
             MAPPER,
             tenantId.value(),
             sectorId,

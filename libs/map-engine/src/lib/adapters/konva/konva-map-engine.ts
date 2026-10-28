@@ -10,8 +10,8 @@ import type {
   Size,
   ElementState,
   SpaceElementType,
+  SpaceAvailability,
 } from '../../map-layout.model';
-import { TYPE_DEFAULTS } from '../../map-layout.model';
 import { MAP_ENGINE, type MapEnginePort } from '../../map-engine.port';
 
 const DEFAULT_SECTOR_SIZE: Size = { width: 1200, height: 800 };
@@ -58,6 +58,16 @@ const STATE_COLORS: Record<ElementState, { fill: string; stroke: string }> = {
   OUT_OF_SERVICE: { fill: '#6b7280', stroke: '#4b5563' },
 };
 
+const AVAILABILITY_COLORS: Record<SpaceAvailability, ElementState> = {
+  AVAILABLE: 'AVAILABLE',
+  RESERVED: 'RESERVED',
+  UNAVAILABLE: 'OUT_OF_SERVICE',
+};
+
+function paintState(el: SpaceElement): ElementState {
+  return el.availability ? AVAILABILITY_COLORS[el.availability] : el.state;
+}
+
 /** Paleta del editor (espejo de --mapit-editor-* de ui-kit; el adaptador es imperativo). */
 const EDITOR = {
   selection: '#2563eb',
@@ -75,7 +85,6 @@ function createElementNode(
   element: SpaceElement,
   sectorSize: { width: number; height: number },
 ): Konva.Group {
-  const _defaults = TYPE_DEFAULTS[element.type] ?? TYPE_DEFAULTS.TABLE;
   const { width: elementWidth, height: elementHeight } = element.size;
   const { width: sectorWidth, height: sectorHeight } = sectorSize;
 
@@ -138,12 +147,13 @@ function createElementNode(
   };
 
   const { width, height } = element.size;
-  const colors = STATE_COLORS[element.state];
+  const state = paintState(element);
+  const colors = STATE_COLORS[state];
 
   // HU-4.01 v2: reposo = blanco con outline pizarra; el estado vive en el trazo (más
   // grueso) y nunca rellena el marcador. La selección la pinta el adaptador al
   // seleccionar (relleno azul claro + marco), no la creación del nodo.
-  const isPlain = element.state === 'AVAILABLE';
+  const isPlain = state === 'AVAILABLE';
   const shape = new Konva.Rect({
     width,
     height,
@@ -276,8 +286,9 @@ function createSectorNode(
   // Elementos del sector en SOLO LECTURA (RN-2/D-3): se editan en la vista de sector.
   // Son composited dentro del grupo; su transformación la hace Konva con el grupo.
   sector.children.forEach((el) => {
-    const colors = STATE_COLORS[el.state];
-    const plain = el.state === 'AVAILABLE';
+    const state = paintState(el);
+    const colors = STATE_COLORS[state];
+    const plain = state === 'AVAILABLE';
     group.add(
       new Konva.Rect({
         x: el.position.x,
@@ -402,6 +413,7 @@ export class KonvaMapEngine implements MapEnginePort {
   private sectorClickCallbacks: ((payload: { id: SpaceElementId | null }) => void)[] = [];
   private externalDropCallbacks: ((payload: { key: string; x: number; y: number }) => void)[] = [];
   private sectorTransformer: Konva.Transformer | null = null;
+  private selectedSectorId: SpaceElementId | null = null;
   private sectorDragStartPos: { x: number; y: number } | null = null;
 
   // Flag to prevent transformend callbacks during programmatic transformer operations
@@ -450,7 +462,7 @@ export class KonvaMapEngine implements MapEnginePort {
     // HU-4.01 (I-5): el handler se registra UNA vez al montar, no por nodo: así
     // deseleccionar un sector nunca deja muda la rotación al siguiente clic.
     sectorTr.on('transformend', () => {
-      if (this._isProgrammaticTransform) return;
+      if (!this._editable() || this._isProgrammaticTransform) return;
       const target = sectorTr.nodes()[0];
       if (!target) return;
       // Solo rotación: el tamaño intrínseco no se edita en la vista de planta (D-3).
@@ -519,20 +531,26 @@ export class KonvaMapEngine implements MapEnginePort {
    * El stage vive en (0,0) del host: sin pan/zoom actual, basta la resta del rect.
    */
   private setupExternalDrop(host: HTMLElement): void {
-    host.addEventListener('dragover', (event: DragEvent) => {
-      event.preventDefault();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
-    });
-    host.addEventListener('drop', (event: DragEvent) => {
-      event.preventDefault();
-      const key = event.dataTransfer?.getData('text/plain');
-      if (!key) return;
-      const rect = host.getBoundingClientRect();
-      const x = Math.max(0, Math.round(event.clientX - rect.left));
-      const y = Math.max(0, Math.round(event.clientY - rect.top));
-      this.externalDropCallbacks.forEach((cb) => cb({ key, x, y }));
-    });
+    host.addEventListener('dragover', this.handleDragOver);
+    host.addEventListener('drop', this.handleDrop);
   }
+
+  private readonly handleDragOver = (event: DragEvent): void => {
+    if (!this._editable()) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  };
+
+  private readonly handleDrop = (event: DragEvent): void => {
+    if (!this._editable() || !this.hostElement) return;
+    event.preventDefault();
+    const key = event.dataTransfer?.getData('text/plain');
+    if (!key) return;
+    const rect = this.hostElement.getBoundingClientRect();
+    const x = Math.max(0, Math.round(event.clientX - rect.left));
+    const y = Math.max(0, Math.round(event.clientY - rect.top));
+    this.externalDropCallbacks.forEach((cb) => cb({ key, x, y }));
+  };
 
   drawBackground(layout: MapLayout): void {
     if (!this.layer) return;
@@ -603,6 +621,7 @@ export class KonvaMapEngine implements MapEnginePort {
         if (shape) {
           shape.width(el.size.width);
           shape.height(el.size.height);
+          this.paintElement(shape, el);
         }
 
         // Actualizar label (centrado horizontal)
@@ -641,6 +660,15 @@ export class KonvaMapEngine implements MapEnginePort {
       }
     });
 
+    if (this._selectedElement() && !layoutIds.has(this._selectedElement()!)) {
+      this.transformer?.nodes([]);
+      this.transformer?.hide();
+      this._selectedElement.set(null);
+    } else if (this._selectedElement()) {
+      const selected = this.elementsLayer.findOne<Konva.Group>(`#${this._selectedElement()}`);
+      if (selected) this.applySelectionPaint(selected, true);
+    }
+
     // 3. Apilado por tipo (zona → habitación → escenario → mesas y el resto al
     // frente), en cada render. `sort` es estable: dentro de la misma capa se
     // conserva el orden del layout. Los transformers siempre quedan encima.
@@ -651,6 +679,9 @@ export class KonvaMapEngine implements MapEnginePort {
       });
     this.transformer?.moveToTop();
     this.sectorTransformer?.moveToTop();
+
+    this.syncEditableState();
+    if (this._selectedElement()) this.selectElement(this._selectedElement()!);
 
     this.elementsLayer.batchDraw();
   }
@@ -678,8 +709,9 @@ export class KonvaMapEngine implements MapEnginePort {
         // nunca edita): se reconstruyen los rect del interior del sector.
         node.find('.sector-child').forEach((child) => child.destroy());
         sector.children.forEach((el) => {
-          const colors = STATE_COLORS[el.state];
-          const plain = el.state === 'AVAILABLE';
+          const state = paintState(el);
+          const colors = STATE_COLORS[state];
+          const plain = state === 'AVAILABLE';
           node.add(
             new Konva.Rect({
               x: el.position.x,
@@ -710,6 +742,9 @@ export class KonvaMapEngine implements MapEnginePort {
         child.destroy();
       }
     });
+    if (this.selectedSectorId && !wantedIds.has(this.selectedSectorId)) this.deselectSector();
+    this.syncEditableState();
+    if (this.selectedSectorId) this.selectSector(this.selectedSectorId);
     this.elementsLayer!.batchDraw();
   }
 
@@ -722,6 +757,7 @@ export class KonvaMapEngine implements MapEnginePort {
       this.sectorTransformer.nodes([]);
       this.sectorTransformer.hide();
     }
+    this.selectedSectorId = null;
   }
 
   private clearElementNodes(): void {
@@ -742,13 +778,15 @@ export class KonvaMapEngine implements MapEnginePort {
     if (!node || !node.hasName('sector-node')) return;
 
     this.deselectElement();
-    if (this.sectorTransformer) this.sectorTransformer.nodes([]);
-    this.sectorTransformer.nodes([node]);
-    this.sectorTransformer.show();
+    this.selectedSectorId = id;
+    this.sectorTransformer.nodes(this._editable() ? [node] : []);
+    if (this._editable()) this.sectorTransformer.show();
+    else this.sectorTransformer.hide();
     this.elementsLayer.batchDraw();
   }
 
   private deselectSector(): void {
+    this.selectedSectorId = null;
     if (!this.sectorTransformer) return;
     this.sectorTransformer.nodes([]);
     this.sectorTransformer.hide();
@@ -758,12 +796,14 @@ export class KonvaMapEngine implements MapEnginePort {
   private attachSectorHandlers(node: Konva.Group): void {
     node.off('.sectorDrag');
     node.on('dragstart.sectorDrag', () => {
+      if (!this._editable()) return;
       node.moveToTop();
       node.opacity(0.92);
       document.body.style.cursor = 'grabbing';
       this.sectorDragStartPos = { x: node.x(), y: node.y() };
     });
     node.on('dragend.sectorDrag', () => {
+      if (!this._editable()) return;
       node.opacity(1);
       document.body.style.cursor = '';
       const moved =
@@ -784,7 +824,7 @@ export class KonvaMapEngine implements MapEnginePort {
     if (!this.elementsLayer || !this.transformer) return;
 
     const node = this.elementsLayer.findOne(`#${id}`) as Konva.Group;
-    if (!node || !isKonvaGroup(node)) return;
+    if (!node || !isKonvaGroup(node) || !node.hasName('space-element')) return;
 
     // SOLO ignorar si el nodo YA está en medio de un arrastre físico
     if (node.isDragging()) {
@@ -796,7 +836,7 @@ export class KonvaMapEngine implements MapEnginePort {
     if (this._selectedElement() === id) {
       // Verificar si el transformer ya está en este nodo
       const currentNodes = this.transformer.nodes();
-      if (currentNodes.length > 0 && currentNodes[0] === node) {
+      if (currentNodes.length > 0 && currentNodes[0] === node && this._editable()) {
         return; // Ya está completamente configurado
       }
       // Si llegamos aquí, es un nodo nuevo recreado - necesitamos reconectar handlers
@@ -815,8 +855,9 @@ export class KonvaMapEngine implements MapEnginePort {
     this.applySelectionPaint(node, true);
     this.showNamePill(node);
 
-    this.transformer.nodes([node]);
-    this.transformer.show();
+    this.transformer.nodes(this._editable() ? [node] : []);
+    if (this._editable()) this.transformer.show();
+    else this.transformer.hide();
 
     // Ensure transformer is in the elementsLayer before moving to top
     if (!this.transformer.getLayer()) {
@@ -866,6 +907,12 @@ export class KonvaMapEngine implements MapEnginePort {
     this.elementsLayer.batchDraw();
   }
 
+  setSelectedElement(id: SpaceElementId | null): void {
+    if (id && this.elementsLayer?.findOne(`#${id}`)?.hasName('space-element'))
+      this.selectElement(id);
+    else this.deselectElement();
+  }
+
   /** HU-4.01 v2: pinta/despeja el tratamiento de selección del marcador. */
   private applySelectionPaint(node: Konva.Group, selected: boolean): void {
     const shape = node.findOne('.shape');
@@ -877,11 +924,14 @@ export class KonvaMapEngine implements MapEnginePort {
       return;
     }
     const el = this._layout().elements.find((e) => e.id === node.id());
-    const stateStroke = el ? STATE_COLORS[el.state].stroke : EDITOR.furnitureStroke;
-    const plain = !el || el.state === 'AVAILABLE';
+    if (el) this.paintElement(shape, el);
+  }
+
+  private paintElement(shape: Konva.Rect, el: SpaceElement): void {
+    const state = paintState(el);
     shape.fill(EDITOR.furniture);
-    shape.stroke(plain ? EDITOR.furnitureStroke : stateStroke);
-    shape.strokeWidth(plain ? 1.5 : 3);
+    shape.stroke(state === 'AVAILABLE' ? EDITOR.furnitureStroke : STATE_COLORS[state].stroke);
+    shape.strokeWidth(state === 'AVAILABLE' ? 1.5 : 3);
   }
 
   /** Pill de nombre sobre el seleccionado (referencia v2): pill azul sólido + texto blanco. */
@@ -934,7 +984,6 @@ export class KonvaMapEngine implements MapEnginePort {
   private attachDragHandlers(node: Konva.Group): void {
     const originalShadowColor = 'rgba(0,0,0,0.15)';
     const originalShadowBlur = 4;
-    const _originalZIndex = node.zIndex();
 
     // SI EL NODO YA SE ESTÁ ARRASTRANDO NATIVAMENTE EN KONVA, NO TOCAR SUS LISTENERS
     if (node.isDragging()) return;
@@ -943,6 +992,7 @@ export class KonvaMapEngine implements MapEnginePort {
     node.off('.mapDrag');
 
     node.on('dragstart.mapDrag', () => {
+      if (!this._editable()) return;
       const shape = node.findOne('.shape');
       if (isKonvaRect(shape)) {
         shape.shadowColor('rgba(0,0,0,0.3)');
@@ -960,7 +1010,8 @@ export class KonvaMapEngine implements MapEnginePort {
       this.dragStartCallbacks.forEach((cb) => cb(node.id()));
     });
 
-    node.on('dragmove.mapDrag', (_e) => {
+    node.on('dragmove.mapDrag', () => {
+      if (!this._editable()) return;
       // Emit real-time position for optimistic UI update
       const currentX = node.x();
       const currentY = node.y();
@@ -977,6 +1028,7 @@ export class KonvaMapEngine implements MapEnginePort {
     });
 
     node.on('dragend.mapDrag', () => {
+      if (!this._editable()) return;
       const shape = node.findOne('.shape');
       if (isKonvaRect(shape)) {
         shape.shadowColor(originalShadowColor);
@@ -1021,7 +1073,7 @@ export class KonvaMapEngine implements MapEnginePort {
     this.transformer.off('transformend');
     this.transformer.on('transformend', () => {
       // Skip if this is a programmatic transform (e.g., during element selection)
-      if (this._isProgrammaticTransform) return;
+      if (!this._editable() || this._isProgrammaticTransform) return;
 
       // Get the current transform state from the transformer
       const rotation = Math.round(this.transformer!.rotation() % 360);
@@ -1093,8 +1145,6 @@ export class KonvaMapEngine implements MapEnginePort {
   }
 
   private isElementOutOfBounds(node: Konva.Group, width: number, height: number): boolean {
-    const _x = node.x();
-    const _y = node.y();
     const rotation = node.rotation();
 
     // For simplicity, check if the bounding box of the rotated element fits in the sector
@@ -1142,8 +1192,11 @@ export class KonvaMapEngine implements MapEnginePort {
     if (!isKonvaRect(shape)) return;
     const colors = STATE_COLORS[state];
     // HU-4.01 v2: el estado vive en el trazo; no teñir el relleno a sangre.
-    shape.stroke(colors.stroke);
-    shape.strokeWidth(state === 'AVAILABLE' ? 1.5 : 3);
+    const el = this._layout().elements.find((item) => item.id === id);
+    if (!el?.availability && this._selectedElement() !== id) {
+      shape.stroke(colors.stroke);
+      shape.strokeWidth(state === 'AVAILABLE' ? 1.5 : 3);
+    }
     this.elementsLayer.batchDraw();
 
     this._layout.update((current) => ({
@@ -1154,19 +1207,33 @@ export class KonvaMapEngine implements MapEnginePort {
 
   setEditable(editable: boolean): void {
     this._editable.set(editable);
-    if (!this.elementsLayer || !this.transformer) return;
-
-    if (!editable) {
-      this.deselectElement();
-      this.elementsLayer.children.forEach((child) => {
-        if (child.hasName('space-element')) {
-          (child as Konva.Group).draggable(false);
-        }
-      });
-    } else if (this._selectedElement()) {
-      this.selectElement(this._selectedElement()!);
-    }
+    this.syncEditableState();
+    if (!this.elementsLayer) return;
+    if (this._selectedElement()) this.selectElement(this._selectedElement()!);
+    if (this.selectedSectorId) this.selectSector(this.selectedSectorId);
     this.elementsLayer.batchDraw();
+  }
+
+  private syncEditableState(): void {
+    if (!this.elementsLayer) return;
+    for (const child of this.elementsLayer.getChildren()) {
+      if (!child.hasName('space-element') && !child.hasName('sector-node')) continue;
+      const node = child as Konva.Group;
+      node.draggable(this._editable());
+      if (this._editable()) {
+        if (node.hasName('sector-node')) this.attachSectorHandlers(node);
+        else this.attachDragHandlers(node);
+      } else {
+        node.off('.mapDrag');
+        node.off('.sectorDrag');
+      }
+    }
+    if (!this._editable()) {
+      this.transformer?.nodes([]);
+      this.transformer?.hide();
+      this.sectorTransformer?.nodes([]);
+      this.sectorTransformer?.hide();
+    }
   }
 
   exportLayout(): MapLayout {
@@ -1190,6 +1257,11 @@ export class KonvaMapEngine implements MapEnginePort {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
     }
+    this.hostElement?.removeEventListener('dragover', this.handleDragOver);
+    this.hostElement?.removeEventListener('drop', this.handleDrop);
+    this._selectedElement.set(null);
+    this.selectedSectorId = null;
+    this.sectorTransformer = null;
     if (this.stage) {
       this.stage.off('click tap');
       if (this.elementsLayer) {

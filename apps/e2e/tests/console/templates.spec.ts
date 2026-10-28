@@ -70,6 +70,16 @@ test.describe('Consola — plantillas de elemento', () => {
       data: { tenantSlug: linkSlug, token: rawToken, password, passwordConfirm: password },
     });
     expect(activated.status(), `activación de ${email}`).toBe(200);
+    const adminLogin = await request.post(`${API}/auth/login`, {
+      data: { tenantSlug: slug, email, password },
+    });
+    expect(adminLogin.ok()).toBe(true);
+    const adminSession = (await adminLogin.json()) as { accessToken: string };
+    const establishment = await request.post(`${API}/establishments`, {
+      headers: { Authorization: `Bearer ${adminSession.accessToken}` },
+      data: { name: `Sede plantillas ${run}`, type: 'RESTAURANT', slug: 'sede' },
+    });
+    expect(establishment.status()).toBe(201);
   });
 
   test('ciclo CRUD de plantillas de elemento por el staff', async ({ page }) => {
@@ -89,7 +99,6 @@ test.describe('Consola — plantillas de elemento', () => {
       if (navigated) break;
     }
 
-    // Redirección por rol al home del staff.
     await expect(page).toHaveURL(/\/home/);
 
     // Navegar a las plantillas a través del menú

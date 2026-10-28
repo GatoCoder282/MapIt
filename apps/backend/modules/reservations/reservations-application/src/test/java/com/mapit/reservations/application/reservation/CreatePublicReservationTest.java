@@ -63,7 +63,8 @@ class CreatePublicReservationTest {
     CreateReservation createReservation =
         new CreateReservation(
             people, resources, guard, availability, reservations, tenantContext, actorContext, clock);
-    useCase = new CreatePublicReservation(establishments, people, createReservation, clock);
+    useCase = new CreatePublicReservation(establishments, people, createReservation, clock,
+        new PublicReservationAccessService(new ReservationAccessTestRepository(), establishments, guard, resources, clock));
   }
 
   @Test
@@ -94,7 +95,20 @@ class CreatePublicReservationTest {
     assertThat(people.created.createdBy()).isNull();
     assertThat(people.created.updatedBy()).isNull();
     assertThat(result.establishment().timezone()).isEqualTo("America/La_Paz");
+    assertThat(result.access().token()).matches("[A-Za-z0-9_-]{43}");
+    assertThat(result.access().expiresAt()).isEqualTo(Instant.parse("2026-10-27T01:00:00Z"));
     assertThat(reservations.saved).isSameAs(reservation);
+  }
+
+  @Test
+  void rechazaUnaFechaPasadaAntesDeRegistrarLaPersona() {
+    assertThatThrownBy(() -> useCase.execute(new CreatePublicReservation.Command(
+        "demo", "la-bahia", LocalDate.parse("2026-10-19"), LocalTime.parse("19:00"),
+        LocalTime.parse("21:00"), List.of(ELEMENT),
+        new CreatePublicReservation.Customer("Ana Pérez", "ana@example.com", null))))
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("futuro");
+    assertThat(people.created).isNull();
+    assertThat(reservations.saved).isNull();
   }
 
   @Test
@@ -216,12 +230,18 @@ class CreatePublicReservationTest {
   }
 
   private static final class FakeReservations implements ReservationRepository {
+
     private @Nullable Reservation saved;
 
     @Override
     public Reservation save(Reservation reservation) {
       saved = reservation;
       return reservation;
+    }
+
+    @Override
+    public java.util.List<Reservation> findAll(com.mapit.shared.tenant.TenantId tenantId) {
+      return java.util.List.of();
     }
   }
 }

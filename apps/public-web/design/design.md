@@ -9,10 +9,9 @@ degradados azul claro, acento índigo de marca, tarjetas blancas con sombra suav
 píldora. Titulares en Manrope, UI en Inter (misma doble fuente del sistema). Base de
 espaciado 4px. Plataforma: web responsive (referencia a ~1040px de ancho).
 
-**Nota de mapeo de color:** la imagen usa un azul tipo `#2563EB`. El sistema de marca
-aprobado (`libs/ui-kit/DESIGN.md`) fija el índigo `#3D4EF2` como relleno y `#1C2EDB` como
-texto/acento. **Se usan los tokens de marca, no el azul crudo de la imagen.** Es la única
-desviación deliberada de color respecto a la referencia.
+**Nota de mapeo de color:** el sistema global vigente (`libs/ui-kit/DESIGN.md` y
+`_tokens.scss`) define azul `#2563EB` para acciones y acentos, con contenedor `#DBEAFE`.
+Esta guía se sincroniza con esos tokens; no redefine una paleta independiente para pagos.
 
 ## Colores
 
@@ -20,11 +19,11 @@ desviación deliberada de color respecto a la referencia.
 
 | Role          | Hex       | Token                             | Uso                                                                            |
 | ------------- | --------- | --------------------------------- | ------------------------------------------------------------------------------ |
-| primary       | `#1C2EDB` | `--mapit-color-primary`           | Palabra destacada en H1, enlaces activos, textos de acento                     |
-| accent-fill   | `#3D4EF2` | `--mapit-color-accent`            | Chips activos, botones "Ver establecimiento", botón buscar, círculos numerados |
+| primary       | `#2563EB` | `--mapit-color-primary`           | Palabra destacada en H1, enlaces activos, textos de acento                     |
+| accent-fill   | `#2563EB` | `--mapit-color-accent`            | Chips activos, botones "Ver establecimiento", botón buscar, círculos numerados |
 | on-primary    | `#FFFFFF` | `--mapit-color-on-primary`        | Texto sobre accent                                                             |
-| primary-tint  | `#DFE0FF` | `--mapit-color-primary-container` | Iconos en símbolos circulares (categorías), resaltes suaves                    |
-| nav-active-bg | `#EEF0FF` | `--mapit-color-nav-active-bg`     | Fondo de estados activos tipo píldora                                          |
+| primary-tint  | `#DBEAFE` | `--mapit-color-primary-container` | Iconos en símbolos circulares (categorías), resaltes suaves                    |
+| nav-active-bg | `#DBEAFE` | `--mapit-color-nav-active-bg`     | Fondo de estados activos tipo píldora                                          |
 
 ### Surface & Neutral
 
@@ -95,7 +94,7 @@ Fondo de página: `radial-gradient` de `#EAF2FF` (arriba-derecha) a `#F9FAFF`.
 | Estado | Regla                                                                     |
 | ------ | ------------------------------------------------------------------------- |
 | Hover  | chips: borde accent; tarjetas: sombra nivel 2; links: color accent        |
-| Focus  | `outline: 2px solid #3D4EF2; outline-offset: 2px` (visible)               |
+| Focus  | `outline: 2px solid #2563EB; outline-offset: 2px` (visible)               |
 | Active | chip activo: relleno accent + texto blanco                                |
 | Motion | `150–250ms`, easing `cubic-bezier(0.22, 1, 0.36, 1)` (`--mapit-ease-out`) |
 

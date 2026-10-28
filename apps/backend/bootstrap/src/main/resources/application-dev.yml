@@ -1,0 +1,4 @@
+mapit:
+  payments:
+    mock:
+      enabled: true

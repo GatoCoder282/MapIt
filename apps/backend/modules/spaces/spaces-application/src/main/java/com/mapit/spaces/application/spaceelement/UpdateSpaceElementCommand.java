@@ -15,4 +15,9 @@ public record UpdateSpaceElementCommand(
     Double y,
     Double width,
     Double height,
-    Double rotation) {}
+    Double rotation, boolean labelPresent, @org.jspecify.annotations.Nullable String label,
+    boolean capacityPresent, @org.jspecify.annotations.Nullable Integer capacity) {
+  public UpdateSpaceElementCommand(UUID sectorId, UUID elementId, String type, Double x, Double y, Double width, Double height, Double rotation) {
+    this(sectorId, elementId, type, x, y, width, height, rotation, false, null, false, null);
+  }
+}

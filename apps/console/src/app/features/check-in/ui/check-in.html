@@ -1,0 +1,305 @@
+<section class="check-in-page" data-testid="check-in-page" aria-labelledby="check-in-title">
+  <header class="page-header">
+    <h1 id="check-in-title">{{ strings.title }}</h1>
+    <p>{{ strings.intro }}</p>
+  </header>
+
+  @if (!store.enabled()) {
+    <section class="unavailable" role="status">
+      <h2>{{ strings.unavailableTitle }}</h2>
+      <p>{{ strings.unavailable }}</p>
+    </section>
+  } @else if (!store.authorized()) {
+    <p class="message error" role="alert">{{ strings.previewOnlyTenant }}</p>
+  } @else {
+    @if (store.preview()) {
+      <p class="preview-banner" data-testid="preview-banner">{{ strings.previewBanner }}</p>
+    }
+    <p class="sr-only" role="status">
+      {{ store.querying() ? strings.querying : store.result() ? strings.lookupSuccess : '' }}
+    </p>
+    <label class="field venue-field">
+      <span>{{ strings.venue }}</span>
+      <select
+        data-testid="check-in-venue"
+        [disabled]="store.arriving()"
+        (change)="scanner.stop(); store.selectEstablishment($any($event.target).value)"
+      >
+        <option value="" [selected]="!store.establishmentId()">{{ strings.chooseVenue }}</option>
+        @for (venue of store.establishments(); track venue.id) {
+          <option [value]="venue.id" [selected]="store.establishmentId() === venue.id">{{ venue.name }}</option>
+        }
+        @if (store.preview()) {
+          <option value="demo-other-establishment">{{ strings.otherVenue }}</option>
+        }
+      </select>
+    </label>
+
+    @if (store.venuesError()) {
+      <p role="alert">{{ strings.venuesError }}</p>
+      <button class="button secondary" type="button" (click)="store.loadEstablishments()">{{ strings.retry }}</button>
+    }
+    <div class="workspace">
+      <section class="scan-panel" aria-labelledby="scan-title">
+        <header>
+          <h2 id="scan-title">{{ strings.scannerTitle }}</h2>
+          <p>{{ strings.scannerIntro }}</p>
+        </header>
+        <div class="camera-frame" [class.active]="scanner.state() === 'active'">
+          <video
+            #scannerVideo
+            data-testid="scanner-video"
+            muted
+            playsinline
+            [attr.aria-label]="strings.cameraLabel"
+          ></video>
+          @if (scanner.state() !== 'active') {
+            <p class="camera-placeholder">
+              {{ scanner.state() === 'starting' ? strings.cameraStarting : strings.cameraStopped }}
+            </p>
+          }
+        </div>
+        <p class="camera-status" role="status">{{ scanner.state() === 'active' ? strings.cameraReady : '' }}</p>
+        @if (scanner.error(); as cameraError) {
+          <p class="message error" role="alert">{{ cameraError }}</p>
+        }
+        <label class="field">
+          <span>{{ strings.camera }}</span>
+          <select
+            [value]="scanner.selectedDevice()"
+            [disabled]="store.arriving() || scanner.state() === 'starting'"
+            (change)="scanner.selectDevice($any($event.target).value)"
+          >
+            <option value="">{{ strings.defaultCamera }}</option>
+            @for (device of scanner.devices(); track device.deviceId; let index = $index) {
+              <option [value]="device.deviceId">
+                {{ device.label || strings.unnamedCamera.replace('{number}', '' + (index + 1)) }}
+              </option>
+            }
+          </select>
+        </label>
+        <div class="camera-actions">
+          <button
+            class="button secondary"
+            data-testid="scanner-start"
+            type="button"
+            [disabled]="
+              !store.establishmentId() ||
+              store.arriving() ||
+              scanner.state() === 'starting' ||
+              scanner.state() === 'active'
+            "
+            (click)="scanner.start(scannerVideo, store.onScan)"
+          >
+            {{ strings.startCamera }}
+          </button>
+          <button
+            class="button secondary"
+            data-testid="scanner-stop"
+            type="button"
+            [disabled]="scanner.state() !== 'starting' && scanner.state() !== 'active'"
+            (click)="scanner.stop()"
+          >
+            {{ strings.stopCamera }}
+          </button>
+        </div>
+
+        <form class="manual-entry" (submit)="$event.preventDefault(); scanner.stop(); store.query()">
+          <label class="field">
+            <span>{{ strings.manualLabel }}</span>
+            <input
+              data-testid="check-in-code"
+              name="receiptCode"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              maxlength="2048"
+              aria-describedby="code-hint"
+              [value]="store.input()"
+              [disabled]="store.arriving()"
+              (input)="store.setInput($any($event.target).value)"
+            />
+            <small id="code-hint">{{ strings.manualHint }}</small>
+          </label>
+          <div class="camera-actions">
+            <button
+              class="button primary"
+              data-testid="lookup-receipt"
+              type="submit"
+              [disabled]="store.arriving() || store.querying() || !store.input()"
+            >
+              {{ store.querying() ? strings.querying : strings.query }}
+            </button>
+            <button
+              class="button secondary"
+              type="button"
+              [disabled]="store.arriving()"
+              (click)="scanner.stop(); store.clear()"
+            >
+              {{ strings.clear }}
+            </button>
+          </div>
+        </form>
+        @if (store.error(); as error) {
+          <p class="message error" role="alert">{{ error }}</p>
+        }
+
+        @if (store.preview()) {
+          <details class="demo-controls">
+            <summary>{{ strings.demoTitle }}</summary>
+            <p>{{ strings.demoHint }}</p>
+            <label class="field">
+              <span>{{ strings.scenario }}</span>
+              <select
+                data-testid="check-in-scenario"
+                [value]="store.scenario()"
+                [disabled]="store.arriving()"
+                (change)="scanner.stop(); store.setScenario($any($event.target).value)"
+              >
+                @for (scenario of store.scenarios; track scenario) {
+                  <option [value]="scenario">{{ strings.scenarios[scenario] }}</option>
+                }
+              </select>
+            </label>
+            <button
+              data-testid="check-in-demo-code"
+              class="button secondary"
+              type="button"
+              [disabled]="store.arriving()"
+              (click)="store.useDemoCode()"
+            >
+              {{ strings.demoCode }}
+            </button>
+          </details>
+        }
+      </section>
+
+      <section
+        class="result-panel"
+        aria-labelledby="result-title"
+        [attr.aria-busy]="store.querying() || store.arriving()"
+      >
+        @if (store.result(); as result) {
+          <div class="result-content">
+            <header>
+              <h2 id="result-title">{{ strings.resultTitle }}</h2>
+              <p class="establishment-name">{{ result.receipt.reservation.establishmentName }}</p>
+            </header>
+            <dl class="reservation-details">
+              <div>
+                <dt>{{ strings.reservationCode }}</dt>
+                <dd class="code">{{ result.receipt.reservation.id }}</dd>
+              </div>
+              <div>
+                <dt>{{ strings.schedule }}</dt>
+                <dd>
+                  {{ store.formatDate(result.receipt.reservation.startsAt, result.receipt.reservation.timezone) }} —
+                  {{ store.formatDate(result.receipt.reservation.endsAt, result.receipt.reservation.timezone) }}
+                </dd>
+              </div>
+              <div>
+                <dt>{{ strings.reservationState }}</dt>
+                <dd>{{ store.reservationLabel(result.receipt.reservation.status) }}</dd>
+              </div>
+              <div>
+                <dt>{{ strings.paymentState }}</dt>
+                <dd>{{ store.paymentLabel(result.receipt.payment.status) }}</dd>
+              </div>
+              <div>
+                <dt>{{ strings.arrivalState }}</dt>
+                <dd data-testid="check-in-status">
+                  {{ result.receipt.checkIn === 'CHECKED_IN' ? strings.checkedIn : strings.notCheckedIn }}
+                </dd>
+              </div>
+            </dl>
+            <section class="spaces" aria-labelledby="spaces-title">
+              <h3 id="spaces-title">{{ strings.spacesTitle }}</h3>
+              <ul>
+                @for (space of result.receipt.reservation.spaces; track space.id) {
+                  <li>
+                    <strong>{{ space.name }}</strong
+                    ><span>{{ space.floor }} · {{ space.sector }}</span
+                    ><span>{{ store.spaceLabel(space.state) }}</span>
+                  </li>
+                }
+              </ul>
+            </section>
+            <dl class="amount-details">
+              <div>
+                <dt>{{ strings.paid }}</dt>
+                <dd>
+                  {{ store.formatMoney(result.receipt.paidAmount, result.receipt.currency) }}
+                </dd>
+              </div>
+              @if (result.receipt.balanceAmount !== null) {
+                <div>
+                  <dt>{{ strings.balance }}</dt>
+                  <dd>{{ store.formatMoney(result.receipt.balanceAmount, result.receipt.currency) }}</dd>
+                </div>
+              }
+            </dl>
+            <p class="hint">{{ store.preview() ? strings.amountHint : strings.amountHintReal }}</p>
+            <p class="identity-hint">{{ strings.identityHint }}</p>
+            @if (store.eligibilityMessage(); as message) {
+              <p class="message error" role="status">{{ message }}</p>
+            } @else if (result.receipt.checkIn === 'CHECKED_IN') {
+              <p class="message success" role="status">
+                {{ store.preview() ? strings.arrivalSuccess : strings.arrivalSuccessReal }}
+              </p>
+            } @else {
+              <p class="eligibility">{{ store.preview() ? strings.eligible : strings.eligibleReal }}</p>
+            }
+            <button
+              data-testid="register-arrival"
+              class="button primary arrival-button"
+              type="button"
+              [disabled]="!store.canArrive()"
+              (click)="scanner.stop(); store.arrive()"
+            >
+              {{ store.arriving() ? strings.arriving : store.preview() ? strings.arrive : strings.arriveReal }}
+            </button>
+            @if (result.audit; as audit) {
+              <section class="audit" aria-labelledby="audit-title">
+                <h3 id="audit-title">{{ store.preview() ? strings.auditTitle : strings.auditTitleReal }}</h3>
+                <dl>
+                  <div>
+                    <dt>{{ strings.auditActor }}</dt>
+                    <dd class="code">{{ audit.actorId }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ strings.auditDate }}</dt>
+                    <dd data-testid="arrival-audit-time">
+                      {{ store.formatDate(audit.occurredAt, result.receipt.reservation.timezone) }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{{ strings.auditSpaces }}</dt>
+                    <dd>{{ audit.spaceIds.join(', ') }}</dd>
+                  </div>
+                </dl>
+              </section>
+            }
+          </div>
+        } @else {
+          <div class="result-empty">
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <path
+                d="M8 3H4a1 1 0 0 0-1 1v4m13-5h4a1 1 0 0 1 1 1v4M3 16v4a1 1 0 0 0 1 1h4m13-5v4a1 1 0 0 1-1 1h-4M8 8h3v3H8zm5 0h3v3h-3zm-5 5h3v3H8zm5 0h3v3h-3z"
+              />
+            </svg>
+            <h2 id="result-title">{{ strings.emptyTitle }}</h2>
+            <p>{{ strings.empty }}</p>
+          </div>
+        }
+      </section>
+    </div>
+  }
+</section>

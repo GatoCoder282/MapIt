@@ -43,8 +43,8 @@
     }
   </ng-template>
 
-  <ng-template #navList>
-    @for (item of nav(); track item.label) {
+  <ng-template #navList let-items let-level="level">
+    @for (item of items; track item.label) {
       @if (item.dividerBefore) {
         <hr class="nav-divider" />
       }
@@ -52,33 +52,25 @@
         <button
           class="nav-item group-toggle"
           type="button"
-          (click)="toggleGroup(item.label)"
-          [attr.aria-expanded]="isGroupOpen(item.label)"
+          (click)="toggleGroup(item)"
+          [attr.aria-expanded]="isGroupOpen(item)"
         >
           <ng-container [ngTemplateOutlet]="navIcon" [ngTemplateOutletContext]="{ $implicit: item.icon }" />
           <span class="label">{{ item.label }}</span>
-          <svg lucideChevronDown class="chevron" [class.open]="isGroupOpen(item.label)" aria-hidden="true"></svg>
+          <svg lucideChevronDown class="chevron" [class.open]="isGroupOpen(item)" aria-hidden="true"></svg>
         </button>
-        @if (isGroupOpen(item.label)) {
+        @if (isGroupOpen(item)) {
           <div class="nav-group">
-            @for (child of item.children; track child.route) {
-              <a
-                class="nav-item subitem"
-                [routerLink]="child.route"
-                routerLinkActive="active"
-                [routerLinkActiveOptions]="{ exact: child.exact ?? false }"
-                [attr.aria-label]="child.label"
-                (click)="onLinkClick()"
-              >
-                <ng-container [ngTemplateOutlet]="navIcon" [ngTemplateOutletContext]="{ $implicit: child.icon }" />
-                <span class="label">{{ child.label }}</span>
-              </a>
-            }
+            <ng-container
+              [ngTemplateOutlet]="navList"
+              [ngTemplateOutletContext]="{ $implicit: item.children, level: level + 1 }"
+            />
           </div>
         }
       } @else if (item.route) {
         <a
           class="nav-item"
+          [class.subitem]="level > 0"
           [routerLink]="item.route"
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
@@ -103,7 +95,7 @@
       />
     </div>
     <nav class="nav" [attr.aria-label]="navAriaLabel()">
-      <ng-container [ngTemplateOutlet]="navList" />
+      <ng-container [ngTemplateOutlet]="navList" [ngTemplateOutletContext]="{ $implicit: nav(), level: 0 }" />
     </nav>
     <div class="sidebar-decor" aria-hidden="true">
       <span class="decor-circle"></span>
@@ -145,7 +137,7 @@
     </div>
 
     <nav class="drawer-nav" [attr.aria-label]="strings.shell.drawerNavLabel">
-      <ng-container [ngTemplateOutlet]="navList" />
+      <ng-container [ngTemplateOutlet]="navList" [ngTemplateOutletContext]="{ $implicit: nav(), level: 0 }" />
     </nav>
 
     <div class="sidebar-decor" aria-hidden="true">

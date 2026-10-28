@@ -21,13 +21,18 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import com.mapit.identity.domain.AccessTokenIssuer;
+import com.mapit.identity.domain.AuthenticatedUser;
+import com.mapit.identity.domain.UserRole;
+import com.mapit.shared.tenant.TenantId;
+
 /**
  * Contrato HTTP de extremo a extremo del layout de plantas (HU-4.01): lectura
  * agregada (CA-1), guardado por lotes con concurrencia optimista (CA-2/CA-8),
  * duplicado de sector (CA-5) y borrado de elemento con guarda de reservas (RN-1).
  *
- * <p>La ruta sigue pública provisionalmente (CU-23/CU-24), con el tenant fallback
- * {@code demo}; el aislamiento RLS bidireccional lo cubre la suite de aislamiento.
+ * <p>Las peticiones usan un JWT ADMIN auténtico del tenant explícito {@code demo};
+ * el aislamiento RLS bidireccional lo cubre la suite de aislamiento.
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -47,13 +52,18 @@ class FloorLayoutApiIntegrationTest {
   private static final UUID FLOOR_ID = UUID.fromString("91000000-0000-0000-0000-000000000002");
   private static final UUID SECTOR_ID = UUID.fromString("91000000-0000-0000-0000-000000000003");
   private static final UUID PERSON_ID = UUID.fromString("91000000-0000-0000-0000-000000000004");
+  private static final UUID ADMIN_ID = UUID.fromString("91000000-0000-0000-0000-000000000005");
 
   @LocalServerPort private int port;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private AccessTokenIssuer tokens;
 
   private RestTestClient client() {
-    return RestTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+    String token = tokens.issue(new AuthenticatedUser(
+        ADMIN_ID, TenantId.of(TENANT), "layout@example.test", "Layout tester", UserRole.ADMIN)).value();
+    return RestTestClient.bindToServer().baseUrl("http://localhost:" + port)
+        .defaultHeader("Authorization", "Bearer " + token).build();
   }
 
   @DynamicPropertySource
@@ -73,6 +83,10 @@ class FloorLayoutApiIntegrationTest {
         "insert into tenant (id, name, slug, status, vertical) values (?, ?, ?, 'ACTIVE', 'RESTAURANT') "
             + "on conflict (id) do nothing",
         TENANT, "Demo", "demo");
+    jdbcTemplate.update(
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role) "
+            + "values (?, ?, 'layout@example.test', 'unused', 'Layout tester', 'ADMIN') on conflict do nothing",
+        ADMIN_ID, TENANT);
     jdbcTemplate.update(
         "insert into establishment (id, tenant_id, name, type, slug) values (?, ?, ?, 'RESTAURANT', 'est-layout') "
             + "on conflict (id) do nothing",

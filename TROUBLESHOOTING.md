@@ -26,6 +26,20 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 25)   # macOS
 export JAVA_HOME=/usr/lib/jvm/temurin-25-jdk       # Linux
 ```
 
+### El editor muestra métodos inexistentes, pero `pnpm check` pasa
+
+En VS Code o Kiro, revisa `java.import.gradle.java.home` en la configuración de usuario
+y del workspace. La importación de Gradle necesita un **JDK 25**, aunque la terminal ya
+tenga `JAVA_HOME` correcto. Un valor antiguo como `jre-1.8` deja al editor con un modelo
+de dependencias desactualizado: aparecen métodos, constructores o paquetes inexistentes
+que sí están en el código fuente.
+
+Selecciona la carpeta del JDK 25 instalado (no su subcarpeta `bin`), ejecuta
+**Java: Reload Projects** para los módulos del backend y **Java: Rebuild Projects**.
+Si el servidor sigue usando el modelo anterior, ejecuta **Developer: Reload Window**.
+Abre un archivo Java y espera a que el servidor termine de importar y compilar en modo
+estándar antes de evaluar el panel Problems.
+
 ### `pnpm: command not found` después de `corepack enable`
 
 La terminal guarda el `PATH` de cuando se abrió. **Ciérrala y ábrela de nuevo.**

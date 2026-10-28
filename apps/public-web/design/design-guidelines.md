@@ -21,7 +21,7 @@
 Aclaraciones críticas:
 
 - El texto `#64748B` (secondary) solo se usa sobre blanco/claro — nunca sobre la banda azul del CTA (ahí va `#FFFFFF` puro).
-- El blanco sobre el accent `#3D4EF2` cumple 4.5:1 (botones); el accent NO se usa como texto pequeño sobre blanco; para texto acento se usa `#1C2EDB`.
+- El blanco sobre el accent `#2563EB` cumple 4.5:1 (botones); el accent NO se usa como texto pequeño sobre blanco; para texto acento se usa `#2563EB`.
 - El pill oscuro "N espacios disponibles" usa texto blanco ≥12px.
 
 ### Touch Targets
@@ -66,7 +66,7 @@ Aclaraciones críticas:
 
 ### Color
 
-- **Do** usar `#3D4EF2` como relleno de CTA y `#1C2EDB` para texto de acento.
+- **Do** usar `#2563EB` como relleno de CTA y `#2563EB` para texto de acento.
 - **Don't** aplicar el azul crudo de la imagen (`#2563EB`) directo — los hex aprobados son los de marca.
 - **Don't** introducir neones; la foto del "Club Eclipse" ya aporta color suficiente dentro de la imagen.
 

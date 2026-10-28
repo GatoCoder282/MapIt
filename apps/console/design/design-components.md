@@ -121,3 +121,7 @@
 ### Estado de guardado
 
 - Indicador "Guardando posición." existente (punto+latido de la sección). Se mantiene.
+
+## Recepción y métodos de cobro
+
+Especificación de las pantallas operativas QR: [check-in.md](check-in.md).

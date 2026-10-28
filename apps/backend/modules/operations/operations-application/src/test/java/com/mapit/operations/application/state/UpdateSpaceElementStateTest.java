@@ -179,6 +179,10 @@ class UpdateSpaceElementStateTest {
   }
 
   private static final class InMemoryRepository implements SpaceElementStateRepository {
+    @Override
+    public Optional<OperationalSpaceElement> lockAliveById(TenantId tenant, UUID sector, UUID id) {
+      return findAliveById(tenant, sector, id);
+    }
     private OperationalSpaceElement element;
     private TenantId lastTenant;
     private int saves;

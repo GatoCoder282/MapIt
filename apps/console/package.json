@@ -25,7 +25,12 @@
     "@ng-icons/core": "^36.0.0",
     "@ng-icons/heroicons": "^36.0.0",
     "@stomp/stompjs": "7.3.0",
+    "@zxing/browser": "0.2.1",
     "echarts": "6.1.0",
-    "ngx-echarts": "22.0.0"
+    "ngx-echarts": "22.0.0",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "1.5.6"
   }
 }

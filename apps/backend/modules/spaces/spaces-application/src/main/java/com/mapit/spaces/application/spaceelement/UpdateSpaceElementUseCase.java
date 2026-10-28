@@ -66,7 +66,9 @@ public class UpdateSpaceElementUseCase {
 
     SpaceElement saved =
         repository.save(
-            existing.update(type, command.x(), command.y(), command.width(), command.height(), command.rotation(), clock.instant(), null));
+            existing.update(type, command.x(), command.y(), command.width(), command.height(), command.rotation(), clock.instant(), null)
+                .withMetadata(command.labelPresent() ? command.label() : existing.label(),
+                    command.capacityPresent() ? command.capacity() : existing.capacity()));
     return SpaceElementResponse.fromDomain(saved);
   }
 }

@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.jspecify.annotations.Nullable;
+
 import com.mapit.shared.realtime.SpaceElementState;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.spaces.domain.AuditTrail;
@@ -40,9 +42,21 @@ public record SpaceElement(
     double height,
     double rotation,
     SpaceElementState state,
-    AuditTrail audit) {
+    AuditTrail audit, @Nullable String label, @Nullable Integer capacity) {
+
+  public SpaceElement(SpaceElementId id, TenantId tenantId, UUID sectorId, SpaceElementType type,
+      double x, double y, double width, double height, double rotation, SpaceElementState state, AuditTrail audit) {
+    this(id, tenantId, sectorId, type, x, y, width, height, rotation, state, audit, null, null);
+  }
+
+  public SpaceElement withMetadata(@Nullable String label, @Nullable Integer capacity) {
+    return new SpaceElement(id, tenantId, sectorId, type, x, y, width, height, rotation, state, audit, label, capacity);
+  }
 
   public SpaceElement {
+    label = label == null || label.isBlank() ? null : label.trim();
+    if (label != null && label.length() > 120) throw new IllegalArgumentException("Label máximo 120 caracteres");
+    if (capacity != null && capacity <= 0) throw new IllegalArgumentException("Capacidad debe ser positiva");
     Objects.requireNonNull(id, "id no puede ser null");
     Objects.requireNonNull(tenantId, "tenantId no puede ser null");
     Objects.requireNonNull(sectorId, "sectorId no puede ser null");
@@ -126,7 +140,7 @@ public record SpaceElement(
       throw new IllegalArgumentException("x, y, width, height son obligatorias");
     }
     return new SpaceElement(
-        id, tenantId, sectorId, type, x, y, width, height, rotation != null ? rotation : 0.0, state, audit.touched(now, by));
+        id, tenantId, sectorId, type, x, y, width, height, rotation != null ? rotation : 0.0, state, audit.touched(now, by), label, capacity);
   }
 
   /**
@@ -139,7 +153,7 @@ public record SpaceElement(
       throw new IllegalStateException("No se puede cambiar el estado de un elemento dado de baja");
     }
     return new SpaceElement(
-        id, tenantId, sectorId, type, x, y, width, height, rotation, newState, audit.touched(now, by));
+        id, tenantId, sectorId, type, x, y, width, height, rotation, newState, audit.touched(now, by), label, capacity);
   }
 
   /**
@@ -151,7 +165,7 @@ public record SpaceElement(
       throw new IllegalStateException("El elemento ya estaba dado de baja");
     }
     return new SpaceElement(
-        id, tenantId, sectorId, type, x, y, width, height, rotation, state, audit.deleted(now, by));
+        id, tenantId, sectorId, type, x, y, width, height, rotation, state, audit.deleted(now, by), label, capacity);
   }
 
   public boolean isDeleted() {

@@ -177,6 +177,40 @@ class PublicAvailabilityIntegrationTest {
         .contains("TABLE", "BAR", "SEAT");
   }
 
+  @Test void mapa_intervalo_frontera_allowlist_y_estado_operativo_prevalente() {
+    jdbc.update("update reservation set starts_at=starts_at+interval '4 years',ends_at=ends_at+interval '4 years' where tenant_id=?",TENANT);
+    jdbc.update("update space_element set label='Jardín',capacity=4 where tenant_id=? and id=?",TENANT,FREE);
+    String map=path(TENANT,ESTABLISHMENT_SLUG)+"/map?date=2030-10-25";
+    var response=client().get().uri(map+"&startTime=00:00&endTime=00:45").exchange().expectStatus().isOk()
+        .expectBody(com.mapit.reservations.domain.availability.PublicAvailabilityMap.class).returnResult().getResponseBody();
+    assertThat(response).isNotNull();
+    var elements=response.floors().getFirst().sectors().getFirst().elements();
+    assertThat(elements).extracting(e -> e.id()).doesNotContain(DELETED);
+    assertThat(elements.stream().filter(e -> e.id().equals(FREE)).findFirst().orElseThrow().name()).isEqualTo("Jardín");
+    assertThat(elements.stream().filter(e -> e.id().equals(OVERLAPS_DAY_START)).findFirst().orElseThrow().availability()).isEqualTo("RESERVED");
+    assertThat(elements.stream().filter(e -> e.id().equals(OCCUPIED)).findFirst().orElseThrow().availability()).isEqualTo("UNAVAILABLE");
+    assertThat(elements.stream().filter(e -> e.id().equals(DECOR)).findFirst().orElseThrow().selectable()).isFalse();
+    client().get().uri(map+"&startTime=00:30&endTime=01:30").exchange().expectStatus().isOk().expectBody()
+        .jsonPath("$.floors[0].sectors[0].elements[?(@.id=='"+OVERLAPS_DAY_START+"')].availability").isEqualTo("AVAILABLE")
+        .jsonPath("$.floors[0].sectors[0].elements[0].state").doesNotExist()
+        .jsonPath("$.floors[0].sectors[0].elements[0].attributes").doesNotExist();
+    for(String query : List.of("&startTime=10:00","&endTime=11:00","&startTime=11:00&endTime=10:00","&startTime=25:00&endTime=26:00")) {
+      client().get().uri(map+query).exchange().expectStatus().isBadRequest();
+    }
+    client().get().uri(path(TENANT,"foreign-only")+"/map?date=2030-10-25").exchange().expectStatus().isNotFound();
+    jdbc.update("update establishment set timezone='Europe/Madrid' where tenant_id=? and id=?",TENANT,ESTABLISHMENT);
+    client().get().uri(path(TENANT,ESTABLISHMENT_SLUG)+"/map?date=2030-03-31&startTime=02:30&endTime=03:30")
+        .exchange().expectStatus().isBadRequest();
+    var day=client().get().uri(path(TENANT,ESTABLISHMENT_SLUG)+"/map?date=2030-03-31").exchange().expectStatus().isOk()
+        .expectBody(com.mapit.reservations.domain.availability.PublicAvailabilityMap.class).returnResult().getResponseBody();
+    assertThat(java.time.Duration.between(day.startsAt(),day.endsAt()).toHours()).isEqualTo(23);
+    var ambiguous=client().get().uri(path(TENANT,ESTABLISHMENT_SLUG)+"/map?date=2030-10-27&startTime=02:30&endTime=03:30")
+        .exchange().expectStatus().isOk().expectBody(com.mapit.reservations.domain.availability.PublicAvailabilityMap.class)
+        .returnResult().getResponseBody();
+    assertThat(ambiguous.startsAt()).isEqualTo(Instant.parse("2030-10-27T00:30:00Z"));
+    assertThat(ambiguous.startTime()).isEqualTo("02:30");
+  }
+
   @Test
   void returnsAnEmptyListWhenAllElementsAreOperationallyUnavailable() {
     jdbc.update("update space_element set state = 'OCCUPIED' where tenant_id = ?", TENANT);

@@ -13,3 +13,5 @@ libs/api-client/src/lib/generated/
 # El formato de Java lo maneja Spotless, no Prettier
 *.java
 docs/design-reference/**
+# Grafo y caché generados por Graphify (no son código fuente)
+graphify-out/

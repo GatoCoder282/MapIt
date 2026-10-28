@@ -23,6 +23,9 @@ export interface MapEnginePort {
   /** Elemento seleccionado ahora mismo, o `null`. */
   readonly selectedElement: Signal<SpaceElementId | null>;
 
+  /** Selección programática sin notificar clics ni modificar el layout. ID desconocido limpia. */
+  setSelectedElement(id: SpaceElementId | null): void;
+
   /** Layout actual, reactivo a las ediciones del usuario. */
   readonly layout: Signal<MapLayout>;
 
