@@ -37,9 +37,9 @@
 
 ## MAP-235 — Validar integración, contratos, aislamiento multi-tenant y regresiones
 
-- [ ] IT de aislamiento tenant/establishment del perfil y de la reserva por vertical.
-- [ ] Regresión HU-6.01/6.02/6.03 (`PublicAvailability*`, `PublicReservation*`, `PublicPaymentFlow*`).
-- [ ] `pnpm api:check`, `pnpm check`, `pnpm be:test`, `pnpm be:it`, `pnpm fe:test`.
+- [x] IT de aislamiento tenant/establishment del perfil y de la reserva por vertical.
+- [x] Regresión HU-6.01/6.02/6.03 (`PublicAvailability*`, `PublicReservation*`, `PublicPaymentFlow*`).
+- [x] `pnpm api:check`, `pnpm check`, `pnpm be:test`, `pnpm be:it`, `pnpm fe:test`.
 
 ## MAP-249 — E2E y aceptación reproducible de Restaurante, Discoteca, Salón y Hotel
 
@@ -151,3 +151,21 @@
   pago MOCK confirmado y la habitación sigue `AVAILABLE` (pagar no es check-in).
 - Verificación: `ng test public-web` (134) verde; `PublicPaymentFlowIntegrationTest` verde;
   `ng build public-web`, ESLint y `pnpm fe:typecheck` limpios.
+
+### MAP-235 — Validación de integración, contratos y aislamiento
+
+- `UnleashFeatureFlagAdapterTest`: la flag de vertical se evalúa con `UnleashContext`
+  (`tenantId`) y, si Unleash no la conoce (servidor caído), devuelve el default encendido.
+- `VerticalReservationIntegrationTest` suma una carrera: dos estadías solapadas sobre la misma
+  habitación lanzadas a la vez dejan una sola reserva (`201` + `409`), gracias al bloqueo de
+  HU-5.01 que la estrategia de ventana no altera.
+- Cobertura ya existente que se reutiliza: elemento incompatible por vertical → 400
+  (`SpaceElementApiIntegrationTest`, CA-7), aislamiento de `establishment` por RLS y regresión
+  de HU-6.01/6.02/6.03 (`PublicAvailability*`, `PublicReservation*`, `PublicPaymentFlow*`).
+- `pnpm check` (29/10/2026): formato, lint, tipos, tests frontend (console 300, public-web 134,
+  libs) y build frontend verdes. Contrato y backend fallaron en la primera pasada por causas
+  locales y se corrigieron: la huella de `api:gen` era anterior al prettier del hook de commit
+  (`pnpm api:gen` → `pnpm api:check` sincronizado) y faltaba `pnpm be:fmt` en el test nuevo
+  (`gradle build` verde después).
+- `pnpm be:it`: 191 tests de integración, 0 fallos, 0 omitidos (13 min 54 s con Docker local).
+  `pnpm be:test`: 439 unitarios + ArchUnit, 0 fallos.
