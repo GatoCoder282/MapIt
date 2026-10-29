@@ -1,5 +1,34 @@
 # Tasks — MAP-229
 
+## Seguimiento E2E de reserva pública (2026-10-28)
+
+- [x] Revisar el log CI: cuatro timeouts (dos casos por escritorio/móvil) esperando
+      `Nombre completo` antes de confirmar el espacio; 36 pruebas restantes aprobadas.
+- [x] Contrastar spec/plan y UI actual: horario completo → resolver mesa → confirmar
+      espacio → datos → crear reserva → resumen propio. La creación no confirma el pago.
+- [x] Actualizar los dos casos existentes, sus fixtures de disponibilidad/checkout y
+      credencial anónima; verificar conservación de datos al volver a confirmar tras 409.
+- [x] Ejecutar Playwright en escritorio/móvil y documentar alcance, resultados y límites.
+
+Corrección limitada a regresiones E2E; sin cambios de producto, contrato ni reglas de pago.
+
+Resultado: se reprodujo el timeout original en `Nombre completo`; se actualizaron
+horario de URL, confirmación del espacio, fixtures de mapa/checkout, capability y
+textos actuales (Crear reserva / Reserva registrada). Se comprueba recarga del resumen
+y conservación de datos tras 409, sin JWT staff en las peticiones públicas del caso.
+
+- Cuatro casos de booking en escritorio/móvil: 4/4 aprobados en puerto aislado :4502.
+- La primera ampliación pública en :4502 tuvo 14/16 aprobados: los dos fallos de
+  activación eran CORS por ese origen de prueba, no regresión de booking. Se repitió
+  la suite completa usando los orígenes habituales permitidos, sin debilitar CORS.
+- `pnpm --filter @mapit/e2e exec playwright test --workers=1 --reporter=list`, con
+  PUBLIC_WEB_URL=:4300 y CONSOLE_URL=:4200: exit 0, **40/40 aprobados**, 2.7 minutos.
+  Evidencia local ignorada: `.tmp-e2e-all-final.log`.
+- `pnpm --filter @mapit/e2e run typecheck`, ESLint focal y Prettier: exit 0.
+- El servidor de prueba :4502 se detuvo y el puerto quedó libre. El stack del usuario
+  permanece activo. No se modificaron snapshots, timeouts de la suite, retries ni CI.
+- Resultado local; no se afirma reejecución remota de GitHub Actions. Sin commit/push.
+
 ## Integración con main (2026-10-28)
 
 - Se integran auditoría e historial de reservas de `origin/main` (`d4731c2`) conservando pagos QR. Las versiones V20–V22 de main se mantienen; las migraciones de esta rama pasan de V20–V28 a V23–V31, con sus pruebas de upgrade actualizadas.
