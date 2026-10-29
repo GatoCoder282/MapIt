@@ -115,26 +115,24 @@ describe('ReservationsApi', () => {
     api = TestBed.inject(ReservationsApi);
   });
 
-  it('arma las opciones reservables con sus nombres de ubicación', async () => {
+  it('arma las opciones con sus nombres de ubicación y descarta la decoración', async () => {
     const result = await firstValueFrom(api.listReservableElements('establishment-1'));
 
-    // Mesa y barra (sillas) son reservables; zona, escenario y decoración
-    // (infraestructura del local) quedan excluidas.
+    // HU-7.01/7.02: qué tipos se reservan lo decide el perfil de vertical en el ViewModel
+    // (una zona es reservable en una discoteca); aquí solo se excluye la decoración.
+    const option = (id: string, type: string) => ({
+      id,
+      type,
+      label: null,
+      state: 'AVAILABLE',
+      floorName: 'Planta baja',
+      sectorName: 'Salón',
+    });
     expect(result).toEqual([
-      {
-        id: 'table-1',
-        type: 'TABLE',
-        state: 'AVAILABLE',
-        floorName: 'Planta baja',
-        sectorName: 'Salón',
-      },
-      {
-        id: 'bar-1',
-        type: 'BAR',
-        state: 'AVAILABLE',
-        floorName: 'Planta baja',
-        sectorName: 'Salón',
-      },
+      option('table-1', 'TABLE'),
+      option('bar-1', 'BAR'),
+      option('zone-1', 'SECTOR_ZONE'),
+      option('stage-1', 'STAGE'),
     ]);
   });
 

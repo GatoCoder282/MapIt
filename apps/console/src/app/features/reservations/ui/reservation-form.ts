@@ -27,8 +27,10 @@ export class ReservationForm implements OnInit {
     this.store.setPerson(person);
   }
 
+  /** Nombre del tipo en la terminología de la vertical (mesa VIP, ubicación…). */
   protected elementTypeLabel(type: SpaceElement.TypeEnum): string {
     if (type === 'DECOR') return type;
-    return this.strings.elementTypes[type];
+    const overrides: Readonly<Record<string, string>> = this.store.terms()?.elementTypes ?? {};
+    return overrides[type] ?? this.strings.elementTypes[type];
   }
 }

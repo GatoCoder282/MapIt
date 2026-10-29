@@ -6,6 +6,7 @@ import type {
   Reservation,
   ReservationCreateRequest,
   SpaceElement,
+  VerticalProfile,
 } from '@mapit/api-client';
 import {
   EstablishmentsService,
@@ -14,11 +15,12 @@ import {
   SpacesService,
 } from '@mapit/api-client';
 import { forkJoin, map, of, switchMap, type Observable } from 'rxjs';
-import { TYPE_DEFAULTS } from '@mapit/map-engine';
 
 export interface ReservationElementOption {
   id: string;
   type: SpaceElement.TypeEnum;
+  /** Etiqueta visible del elemento (p. ej. «Mesa 4», «Fila A · 1»); nula si no se nombró. */
+  label: string | null;
   state: SpaceElement.StateEnum;
   floorName: string;
   sectorName: string;
@@ -44,6 +46,15 @@ export class ReservationsApi {
     return this.establishments.listEstablishments();
   }
 
+  /** HU-7.01/7.02: reglas de la vertical del establecimiento (ventana y reservables). */
+  getVerticalProfile(establishmentId: string): Observable<VerticalProfile> {
+    return this.establishments.getEstablishmentVerticalProfile({ establishmentId });
+  }
+
+  /**
+   * Elementos activos del establecimiento. Qué tipos se ofrecen lo decide el ViewModel con el
+   * perfil de vertical; aquí solo se descartan la decoración y lo fuera de servicio.
+   */
   listReservableElements(establishmentId: string): Observable<ReservationElementOption[]> {
     return this.spaces.listFloorsByEstablishment({ establishmentId }).pipe(
       switchMap((floors) =>
@@ -58,17 +69,15 @@ export class ReservationsApi {
                             this.spaces.listSpaceElementsBySector({ sectorId: sector.id }).pipe(
                               map((elements) =>
                                 elements
-                                  // Reservable = lo que sirve al cliente (mesa,
-                                  // barra, butaca, habitación). Zona, escenario y
-                                  // decoración son infraestructura del local.
                                   .filter(
                                     (element) =>
-                                      TYPE_DEFAULTS[element.type].reservable &&
+                                      element.type !== 'DECOR' &&
                                       element.state !== 'OUT_OF_SERVICE',
                                   )
                                   .map((element) => ({
                                     id: element.id,
                                     type: element.type,
+                                    label: element.label ?? null,
                                     state: element.state,
                                     floorName: floor.name,
                                     sectorName: sector.name,
