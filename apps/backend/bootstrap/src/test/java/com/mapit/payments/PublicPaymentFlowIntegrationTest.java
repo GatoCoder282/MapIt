@@ -208,7 +208,11 @@ class PublicPaymentFlowIntegrationTest {
     assertThat(count("reservation_event","reservation_id",booking.id())).isEqualTo(2);
     assertThat(jdbc.queryForObject("select count(*) from reservation_event where tenant_id=? and reservation_id=? and event_type='CHECKED_IN'",Integer.class,tenant,booking.id())).isEqualTo(1);
     assertThat(jdbc.queryForObject("select checked_in_by from reservation where tenant_id=? and id=?",UUID.class,tenant,booking.id())).isEqualTo(staff);
-    assertThat(jdbc.queryForObject("select count(*) from space_element_state_change where tenant_id=?",Integer.class,tenant)).isEqualTo(2);
+    assertThat(jdbc.queryForObject("""
+        select count(*) from audit_log where tenant_id=? and actor_id=?
+          and resource_type='SPACE_ELEMENT' and event_type='SPACE_ELEMENT_STATE_CHANGED'
+          and details->>'previousState'='AVAILABLE' and details->>'newState'='OCCUPIED'
+        """,Integer.class,tenant,staff)).isEqualTo(2);
     assertThat(jdbc.queryForObject("select count(*) from realtime_event_outbox where tenant_id=? and event_type='space-element.state.changed.v1'",Integer.class,tenant)).isEqualTo(2);
   }
 

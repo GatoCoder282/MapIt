@@ -755,7 +755,8 @@ export const STRINGS = {
       wrongVenue: 'La reserva corresponde a otro establecimiento. Verifica dónde estás operando.',
       conflict:
         'La reserva no cumple las condiciones de llegada. Consulta el comprobante de nuevo.',
-      request: 'No se pudo consultar el comprobante. Inténtalo de nuevo.',
+      request:
+        'No se pudo completar la operación con el servidor. Revisa la conexión e inténtalo de nuevo.',
       cameraSecure: 'La cámara necesita HTTPS o localhost. Puedes ingresar el código manualmente.',
       cameraDenied:
         'No se concedió acceso a la cámara. Revisa los permisos del navegador o ingresa el código manualmente.',

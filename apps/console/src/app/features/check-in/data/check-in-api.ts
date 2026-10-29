@@ -21,7 +21,12 @@ import { RuntimeConfigStore } from '../../../core/runtime-config';
 export type CheckInScenario =
   'ready' | 'invalid' | 'expired' | 'revoked' | 'cancelled' | 'pending' | 'window' | 'wrongVenue';
 export type CheckInErrorCode =
-  Exclude<CheckInScenario, 'ready'> | 'unavailable' | 'forbidden' | 'venueRequired' | 'conflict';
+  | Exclude<CheckInScenario, 'ready'>
+  | 'unavailable'
+  | 'forbidden'
+  | 'venueRequired'
+  | 'conflict'
+  | 'request';
 export class CheckInError extends Error {
   constructor(readonly code: CheckInErrorCode) {
     super(code);
@@ -222,21 +227,20 @@ export class CheckInApi {
           typeof problem.type === 'string'
             ? problem.type
             : '';
-        const code = kind.includes('window')
-          ? 'window'
-          : kind.includes('revok')
-            ? 'revoked'
+        let code: CheckInErrorCode = 'request';
+        if (error.status === 401 || error.status === 403) code = 'forbidden';
+        else if (error.status === 400 || error.status === 404 || error.status === 422)
+          code = 'invalid';
+        else if (error.status === 410) code = kind.includes('revok') ? 'revoked' : 'expired';
+        else if (error.status === 409) {
+          code = kind.includes('window')
+            ? 'window'
             : kind.includes('cancel')
               ? 'cancelled'
               : kind.includes('payment')
                 ? 'pending'
-                : error.status === 403
-                  ? 'forbidden'
-                  : error.status === 410
-                    ? 'expired'
-                    : error.status === 404
-                      ? 'invalid'
-                      : 'conflict';
+                : 'conflict';
+        }
         throw new CheckInError(code);
       }
       throw error;

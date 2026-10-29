@@ -111,6 +111,34 @@ una migración nueva. Si el archivo cambió en tu rama sin haberse mergeado, en 
 pnpm infra:reset && pnpm db:migrate    # borra los datos locales y reaplica todo
 ```
 
+### Pagos V20–V28 anteriores al merge frente a V23–V31 actuales
+
+Este caso es una renumeración local: los nueve archivos de pagos tienen el mismo
+contenido/checksum, pero main introdujo antes las migraciones de auditoría e historial.
+Flyway no puede deducir esa equivalencia y rechaza el arranque. No lo resuelvas con
+`repair`, desactivando validación o reiniciando la base con pérdida de datos.
+
+Con Docker activo, diagnostica sin modificar:
+
+```bash
+node tools/scripts/reconcile-local-payment-migrations.mjs
+```
+
+La herramienta solo acepta el historial legacy completo con cada checksum idéntico.
+Si corresponde a tu caso, detén el backend y ejecuta:
+
+```bash
+node tools/scripts/reconcile-local-payment-migrations.mjs --apply
+pnpm db:migrate
+```
+
+`--apply` crea primero un respaldo completo en `.tmp/before-payment-history-*.dump`,
+comprueba que el historial no cambió bajo bloqueo, reasigna solo las versiones y nombres
+equivalentes y deja que Flyway ejecute V20–V22 con `outOfOrder` para esa única recuperación.
+Los checksums aplicados se conservan. Después Flyway vuelve a su modo habitual.
+Reinicia el backend para cargar el código y esquema actuales; conserva el respaldo local.
+No uses esta herramienta para otros conflictos de migraciones ni bases remotas.
+
 ### Una consulta no devuelve filas que sé que existen
 
 Es la Row-Level Security haciendo su trabajo (CU-02). Sin `app.tenant_id` fijado en la

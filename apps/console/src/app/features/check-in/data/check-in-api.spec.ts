@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { AuthSession, type SessionUser } from '@mapit/auth';
 import {
@@ -8,7 +9,7 @@ import {
   projectReceipt,
   previewReceipt,
 } from '@mapit/api-client';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { RuntimeConfigStore, type RuntimeConfig } from '../../../core/runtime-config';
 import { CheckInApi, CheckInError, type CheckInScenario } from './check-in-api';
 
@@ -36,6 +37,8 @@ describe('CheckInApi (solo fixture)', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    realLookup.mockReset();
+    realLookup.mockReturnValue(of({ receipt: projectReceipt(previewReceipt()), audit: null }));
     user.set(DEMO_OPERATOR);
     config.set(CONFIG);
     TestBed.configureTestingModule({
@@ -51,6 +54,45 @@ describe('CheckInApi (solo fixture)', () => {
     api = TestBed.inject(CheckInApi);
   });
   afterEach(() => vi.useRealTimers());
+
+  it.each([
+    [0, 'request'],
+    [500, 'request'],
+    [503, 'request'],
+    [400, 'invalid'],
+    [401, 'forbidden'],
+    [403, 'forbidden'],
+    [404, 'invalid'],
+    [409, 'conflict'],
+    [410, 'expired'],
+  ])(
+    'clasifica HTTP %s sin confundir fallos técnicos con llegada inválida',
+    async (status, code) => {
+      config.set({ ...CONFIG, paymentPreviewEnabled: false });
+      realLookup.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: Number(status) })),
+      );
+      await expect(
+        api.arrive(PREVIEW_RECEIPT_TOKEN, PREVIEW_ESTABLISHMENT_ID),
+      ).rejects.toMatchObject({ code });
+    },
+  );
+
+  it('un error interno no se convierte en pago pendiente por el tipo de Problem', async () => {
+    config.set({ ...CONFIG, paymentPreviewEnabled: false });
+    realLookup.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 500,
+            error: { type: 'https://mapit.dev/problems/payment-internal' },
+          }),
+      ),
+    );
+    await expect(api.lookup(PREVIEW_RECEIPT_TOKEN, PREVIEW_ESTABLISHMENT_ID)).rejects.toMatchObject(
+      { code: 'request' },
+    );
+  });
 
   it('no ofrece preview por defecto ni en producción, aunque se habilite el flag', async () => {
     config.set({ ...CONFIG, paymentPreviewEnabled: false });
