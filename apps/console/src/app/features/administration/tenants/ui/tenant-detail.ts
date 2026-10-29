@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
+import { I18nService, LocalizedDatePipe } from '@mapit/i18n';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 import { STRINGS } from '../../../../core/strings';
@@ -13,13 +13,14 @@ import { TenantDetailStore } from '../model/tenant-detail-store';
  */
 @Component({
   selector: 'mapit-tenant-detail',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, LocalizedDatePipe],
   providers: [TenantDetailStore],
   templateUrl: './tenant-detail.html',
   styleUrl: './tenant-detail.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TenantDetail {
+  protected readonly locale = inject(I18nService).locale;
   protected readonly store = inject(TenantDetailStore);
   protected readonly strings = STRINGS;
   protected editing = false;

@@ -14,7 +14,7 @@ import type { Establishment } from '@mapit/api-client';
 import { TimezonePicker } from '@mapit/ui-kit';
 import { LucideBedDouble, LucideChefHat, LucideMartini, LucidePartyPopper } from '@lucide/angular';
 
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 import { SLUG_PATTERN } from '../../../core/patterns';
 import { SpacesApiService } from '../data/spaces-api';
 import { SpacesStore } from '../model/spaces-store';
@@ -84,7 +84,7 @@ type Step1Field = 'name' | 'type';
 
       <main class="wizard-main">
         @if (store.error(); as error) {
-          <p class="message error" role="alert">{{ error }}</p>
+          <p class="message error" role="alert">{{ localizeString(error) }}</p>
         }
 
         @if (modo() === 'loading') {
@@ -314,7 +314,7 @@ type Step1Field = 'name' | 'type';
 
             <div class="dialog-body">
               @if (editError(); as error) {
-                <p class="message error" role="alert">{{ error }}</p>
+                <p class="message error" role="alert">{{ localizeString(error) }}</p>
               }
 
               <label class="field">
@@ -428,7 +428,7 @@ type Step1Field = 'name' | 'type';
               </p>
 
               @if (editError(); as error) {
-                <p class="message error" role="alert">{{ error }}</p>
+                <p class="message error" role="alert">{{ localizeString(error) }}</p>
               }
 
               <label class="field">
@@ -929,6 +929,7 @@ type Step1Field = 'name' | 'type';
   `,
 })
 export class WizardEstablishmentComponent {
+  protected readonly localizeString = localizeString;
   protected readonly store = inject(SpacesStore);
   private readonly api = inject(SpacesApiService);
   private readonly router = inject(Router);

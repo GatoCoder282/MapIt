@@ -19,7 +19,7 @@ import { map } from 'rxjs/operators';
 import { type MapEnginePort, MAP_ENGINE } from '@mapit/map-engine';
 
 import { FloorEditorStore } from '../model/floor-editor-store';
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 
 /**
  * Vista de planta (HU-4.01, F1): composición de sectores sobre el lienzo del piso.
@@ -68,7 +68,7 @@ import { STRINGS } from '../../../core/strings';
           }
           @if (store.error()) {
             <div class="error-toast" role="alert">
-              {{ store.error() }}
+              {{ localizeString(store.error() ?? '') }}
               <button class="btn-icon" (click)="store.clearError()">✕</button>
             </div>
           }
@@ -225,6 +225,7 @@ import { STRINGS } from '../../../core/strings';
   `,
 })
 export class FloorEditorPageComponent implements OnDestroy {
+  protected readonly localizeString = localizeString;
   protected readonly canvasHost = viewChild.required<ElementRef<HTMLDivElement>>('canvasHost');
   protected readonly store = inject(FloorEditorStore);
   protected readonly strings = STRINGS.spaces.floorEditor;

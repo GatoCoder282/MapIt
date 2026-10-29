@@ -1,12 +1,18 @@
 /**
- * Catálogo central de textos visibles de la web pública (español).
+ * Catálogo central de textos visibles de Public Web.
  *
- * Misma convención que en la consola (`apps/console/src/app/core/strings.ts`):
- * objeto tipado `as const`; una errata en la clave no compila. Sin framework
- * i18n: una sola lengua por ahora.
- *
- * Los nombres y direcciones del catálogo se consultan en la API pública.
+ * Español es la fuente canónica y el fallback. La API pública aporta los
+ * nombres y direcciones de establecimientos, que son datos de negocio.
  */
+
+import {
+  createLocalizedCatalog,
+  createLocalizedTextResolver,
+  type DeepPartial,
+  type LocalizedShape,
+} from '@mapit/i18n';
+import { PUBLIC_STRINGS_EN } from './strings.en';
+import { PUBLIC_STRINGS_JA } from './strings.ja';
 
 /** CTAs compartidos entre secciones. */
 const SHARED = {
@@ -14,7 +20,7 @@ const SHARED = {
   seeHowItWorks: 'Ver cómo funciona',
 } as const;
 
-export const STRINGS = {
+const STRINGS_ES = {
   shared: SHARED,
   venueIdentity: {
     company: 'Empresa',
@@ -513,4 +519,13 @@ export const STRINGS = {
   },
 } as const;
 
-export type PublicStrings = typeof STRINGS;
+const CATALOGS = {
+  es: STRINGS_ES,
+  en: PUBLIC_STRINGS_EN,
+  'ja-JP': PUBLIC_STRINGS_JA,
+} satisfies Record<'es' | 'en' | 'ja-JP', DeepPartial<LocalizedShape<typeof STRINGS_ES>>>;
+
+export const STRINGS = createLocalizedCatalog<typeof STRINGS_ES>(CATALOGS, 'es');
+export const localizeString = createLocalizedTextResolver(CATALOGS, 'es');
+
+export type PublicStrings = typeof STRINGS_ES;

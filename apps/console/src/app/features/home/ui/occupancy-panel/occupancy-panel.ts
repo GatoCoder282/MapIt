@@ -1,8 +1,8 @@
-import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { LucideInfo, LucideLayoutGrid } from '@lucide/angular';
 import type { RealtimeConnectionState, SpaceElementState } from '@mapit/realtime';
 
+import { I18nService, LocalizedNumberPipe } from '@mapit/i18n';
 import { STRINGS } from '../../../../core/strings';
 
 /**
@@ -34,12 +34,13 @@ const STATE_ORDER: readonly SpaceElementState[] = [
  */
 @Component({
   selector: 'mapit-occupancy-panel',
-  imports: [DecimalPipe, LucideInfo, LucideLayoutGrid],
+  imports: [LocalizedNumberPipe, LucideInfo, LucideLayoutGrid],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './occupancy-panel.html',
   styleUrl: './occupancy-panel.scss',
 })
 export class OccupancyPanel {
+  protected readonly locale = inject(I18nService).locale;
   /** Conteo por estado. Las cinco claves del contrato; una que falte es 0. */
   readonly counts = input<Readonly<Partial<Record<SpaceElementState, number>>>>({});
   /** Total de elementos del tenant (la suma de los cinco estados). */

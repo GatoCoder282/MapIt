@@ -6,7 +6,7 @@
   </div>
   @if (!loading()) {
     <p class="panel-total">
-      <strong>{{ total() | number }}</strong>
+      <strong>{{ total() | localNumber: locale() }}</strong>
       <span class="muted">{{ strings.occupancyTotalUnit }}</span>
     </p>
   }
@@ -37,7 +37,7 @@
         <li class="state-cell">
           <span class="state-dot" [attr.data-state]="row.state" aria-hidden="true"></span>
           <span class="state-label">{{ row.label }}</span>
-          <span class="state-count">{{ row.count | number }}</span>
+          <span class="state-count">{{ row.count | localNumber: locale() }}</span>
         </li>
       }
     </ul>

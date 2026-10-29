@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { currentLocaleTag } from '@mapit/i18n';
 import type { CustomerReservationHistoryItem } from '@mapit/api-client';
 import { SiteFooter, SiteNav } from '@mapit/ui-kit';
 import { filter } from 'rxjs';
@@ -76,7 +77,7 @@ export class MyReservationsPage {
   }
 
   protected formatRange(reservation: CustomerReservationHistoryItem): string {
-    const formatter = new Intl.DateTimeFormat('es-BO', {
+    const formatter = new Intl.DateTimeFormat(currentLocaleTag(), {
       dateStyle: 'long',
       timeStyle: 'short',
       timeZone: reservation.timezone,

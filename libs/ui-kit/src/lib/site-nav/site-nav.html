@@ -15,9 +15,12 @@
       }}</a>
     </nav>
 
+    <mapit-language-selector class="language-selector-desktop" />
+
     <!-- Botón hamburguesa (mobile) -->
     <button
       class="menu-toggle"
+      data-testid="mobile-menu-toggle"
       type="button"
       [attr.aria-expanded]="menuOpen()"
       aria-controls="mobile-menu"
@@ -31,12 +34,15 @@
   </div>
 
   <!-- Menú mobile -->
-  <div id="mobile-menu" class="mobile-menu" [class.mobile-menu--open]="menuOpen()">
-    <nav class="mobile-nav" [attr.aria-label]="strings.nav.mobileAria">
-      <a href="/#producto" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.product }}</a>
-      <a href="/#como-funciona" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.howItWorks }}</a>
-      <a href="/#negocios" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.businesses }}</a>
-      <a routerLink="/reservas" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.bookings }}</a>
-    </nav>
+  <div id="mobile-menu" class="mobile-menu" [class.mobile-menu--open]="menuOpen()" [inert]="!menuOpen()">
+    <div class="mobile-menu-content">
+      <nav class="mobile-nav" [attr.aria-label]="strings.nav.mobileAria">
+        <a href="/#producto" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.product }}</a>
+        <a href="/#como-funciona" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.howItWorks }}</a>
+        <a href="/#negocios" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.businesses }}</a>
+        <a routerLink="/reservas" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.bookings }}</a>
+      </nav>
+      <mapit-language-selector class="language-selector-mobile" />
+    </div>
   </div>
 </header>

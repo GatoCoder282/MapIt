@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterOutlet } from '@angular/router';
 
 import { AuthSession } from '@mapit/auth';
+import { LanguageSelector } from '@mapit/i18n';
 import { Sidebar, type SidebarNavItem } from './sidebar/sidebar';
 
 import { STRINGS } from '../core/strings';
@@ -14,7 +15,7 @@ import { STRINGS } from '../core/strings';
  */
 @Component({
   selector: 'mapit-staff-shell',
-  imports: [RouterOutlet, Sidebar],
+  imports: [RouterOutlet, Sidebar, LanguageSelector],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

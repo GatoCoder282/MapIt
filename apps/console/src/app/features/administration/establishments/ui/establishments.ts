@@ -1,5 +1,4 @@
-﻿import { DatePipe } from '@angular/common';
-import {
+﻿import {
   ChangeDetectionStrategy,
   Component,
   type ElementRef,
@@ -8,10 +7,11 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { I18nService, LocalizedDatePipe } from '@mapit/i18n';
 import type { Establishment, EstablishmentType } from '@mapit/api-client';
 import { TimezonePicker } from '@mapit/ui-kit';
 import { EstablishmentsStore } from '../model/establishments-store';
-import { STRINGS } from '../../../../core/strings';
+import { localizeString, STRINGS } from '../../../../core/strings';
 
 /**
  * Pantalla de gestión de establecimientos del tenant (CU-04).
@@ -22,7 +22,7 @@ import { STRINGS } from '../../../../core/strings';
  */
 @Component({
   selector: 'mapit-establishments',
-  imports: [DatePipe, TimezonePicker],
+  imports: [LocalizedDatePipe, TimezonePicker],
   providers: [EstablishmentsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -40,7 +40,7 @@ import { STRINGS } from '../../../../core/strings';
 
       @if (!dialogOpen()) {
         @if (store.error(); as error) {
-          <p class="message error" role="alert">{{ error }}</p>
+          <p class="message error" role="alert">{{ localizeString(error) }}</p>
         }
       }
 
@@ -70,7 +70,7 @@ import { STRINGS } from '../../../../core/strings';
                   </p>
                   <small>
                     {{ strings.establishments.list.updatedPrefix }}
-                    {{ item.updatedAt | date: 'short' }}
+                    {{ item.updatedAt | localDate: locale() : 'short' }}
                   </small>
                 </div>
                 <div class="row-actions">
@@ -144,7 +144,7 @@ import { STRINGS } from '../../../../core/strings';
 
           <div class="dialog-body">
             @if (store.error(); as error) {
-              <p class="message error" role="alert">{{ error }}</p>
+              <p class="message error" role="alert">{{ localizeString(error) }}</p>
             }
 
             <label class="field">
@@ -549,6 +549,8 @@ import { STRINGS } from '../../../../core/strings';
   `,
 })
 export class Establishments {
+  protected readonly locale = inject(I18nService).locale;
+  protected readonly localizeString = localizeString;
   protected readonly store = inject(EstablishmentsStore);
   protected readonly strings = STRINGS;
 

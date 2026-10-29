@@ -23,7 +23,7 @@
     <label class="filter">
       <span class="sr-only">{{ strings.filterStatus }}</span>
       <select [attr.aria-label]="strings.filterStatus" (change)="filtroCambiado.emit($any($event.target).value)">
-        @for (option of estadoFiltros; track option.value) {
+        @for (option of estadoFiltros(); track option.value) {
           <option [value]="option.value" [selected]="option.value === filtroEstado()">
             {{ option.label }}
           </option>

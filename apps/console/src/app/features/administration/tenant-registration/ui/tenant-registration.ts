@@ -8,7 +8,7 @@ import {
   Validators,
 } from '@angular/forms';
 import type { BusinessVertical } from '@mapit/api-client';
-import { STRINGS } from '../../../../core/strings';
+import { localizeString, STRINGS } from '../../../../core/strings';
 import { SLUG_PATTERN } from '../../../../core/patterns';
 import { TenantRegistrationStore } from '../model/tenant-registration-store';
 const requiredValidator = (control: AbstractControl): ValidationErrors | null =>
@@ -53,7 +53,7 @@ const emailValidator = (control: AbstractControl): ValidationErrors | null =>
       }
 
       @if (store.error(); as error) {
-        <p class="message error" role="alert">{{ error }}</p>
+        <p class="message error" role="alert">{{ localizeString(error) }}</p>
       }
 
       <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
@@ -243,6 +243,7 @@ const emailValidator = (control: AbstractControl): ValidationErrors | null =>
   `,
 })
 export class TenantRegistration {
+  protected readonly localizeString = localizeString;
   private readonly formBuilder = inject(NonNullableFormBuilder);
   protected readonly store = inject(TenantRegistrationStore);
   protected readonly strings = STRINGS;

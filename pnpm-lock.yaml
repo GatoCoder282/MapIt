@@ -129,6 +129,9 @@ importers:
       '@mapit/feature-flags':
         specifier: workspace:*
         version: link:../../libs/feature-flags
+      '@mapit/i18n':
+        specifier: workspace:*
+        version: link:../../libs/i18n
       '@mapit/logging':
         specifier: workspace:*
         version: link:../../libs/logging
@@ -187,6 +190,9 @@ importers:
       '@mapit/feature-flags':
         specifier: workspace:*
         version: link:../../libs/feature-flags
+      '@mapit/i18n':
+        specifier: workspace:*
+        version: link:../../libs/i18n
       '@mapit/logging':
         specifier: workspace:*
         version: link:../../libs/logging
@@ -212,13 +218,19 @@ importers:
 
   libs/api-client: {}
 
-  libs/auth: {}
+  libs/auth:
+    dependencies:
+      '@mapit/i18n':
+        specifier: workspace:*
+        version: link:../i18n
 
   libs/feature-flags:
     dependencies:
       '@mapit/logging':
         specifier: workspace:*
         version: link:../logging
+
+  libs/i18n: {}
 
   libs/logging: {}
 
@@ -242,6 +254,9 @@ importers:
       '@lucide/angular':
         specifier: ^1.45.0
         version: 1.46.0(@angular/common@22.1.3(@angular/core@22.1.3(@angular/compiler@22.1.3)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.3(@angular/compiler@22.1.3)(rxjs@7.8.2))
+      '@mapit/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@ng-icons/core':
         specifier: ^36.0.0
         version: 36.0.0(@angular-devkit/schematics@22.1.5(chokidar@5.0.0))(@angular/common@22.1.3(@angular/core@22.1.3(@angular/compiler@22.1.3)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.3(@angular/compiler@22.1.3)(rxjs@7.8.2))(@schematics/angular@22.1.5(chokidar@5.0.0))(rxjs@7.8.2)

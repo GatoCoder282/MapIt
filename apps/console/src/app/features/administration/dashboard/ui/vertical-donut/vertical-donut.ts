@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { PieChart } from 'echarts/charts';
 import { NgxEchartsDirective } from 'ngx-echarts';
+import { currentLocaleTag } from '@mapit/i18n';
 
 import { STRINGS } from '../../../../../core/strings';
 import {
@@ -37,9 +38,6 @@ interface PieSlice {
   readonly value: number;
   readonly itemStyle: { readonly color: string };
 }
-
-/** Porcentajes con coma decimal (español) y un decimal como máximo. */
-const PERCENT_FORMAT = new Intl.NumberFormat('es', { maximumFractionDigits: 1 });
 
 /**
  * Opciones de ECharts del donut de tenants por vertical.
@@ -152,7 +150,7 @@ export class VerticalDonut implements OnInit {
 
   /** Porcentaje con coma decimal (español) y un decimal como máximo. */
   protected percent(valor: number): string {
-    return PERCENT_FORMAT.format(valor);
+    return new Intl.NumberFormat(currentLocaleTag(), { maximumFractionDigits: 1 }).format(valor);
   }
 
   ngOnInit(): void {

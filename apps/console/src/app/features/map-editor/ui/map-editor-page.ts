@@ -20,7 +20,7 @@ import { type MapEnginePort, MAP_ENGINE } from '@mapit/map-engine';
 import { ElementLibraryComponent } from './element-library';
 import { ElementPropertiesCardComponent } from './element-properties-card';
 import { MapEditorStore } from '../model/map-editor-store';
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 
 @Component({
   selector: 'mapit-map-editor-page',
@@ -109,7 +109,7 @@ import { STRINGS } from '../../../core/strings';
           }
           @if (store.error()) {
             <div class="error-toast" role="alert">
-              {{ store.error() }}
+              {{ localizeString(store.error() ?? '') }}
               <button class="btn-icon" (click)="store.clearError()" aria-label="Cerrar">
                 <svg
                   width="16"
@@ -597,6 +597,7 @@ import { STRINGS } from '../../../core/strings';
   `,
 })
 export class MapEditorPageComponent implements OnDestroy {
+  protected readonly localizeString = localizeString;
   protected readonly canvasHost = viewChild.required<ElementRef<HTMLDivElement>>('canvasHost');
 
   protected readonly store = inject(MapEditorStore);

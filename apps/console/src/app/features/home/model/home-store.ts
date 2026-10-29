@@ -1,5 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, signal, type Signal } from '@angular/core';
 import { AuthSession } from '@mapit/auth';
+import { currentLocaleTag } from '@mapit/i18n';
 import {
   RealtimeClient,
   type RealtimeConnectionState,
@@ -85,9 +86,11 @@ function weekStart(weeksAgo: number): Date {
   return date;
 }
 
-const WEEK_LABEL_FORMAT = new Intl.DateTimeFormat('es', { day: '2-digit', month: 'short' });
+const weekLabel = (date: Date): string =>
+  new Intl.DateTimeFormat(currentLocaleTag(), { day: '2-digit', month: 'short' }).format(date);
 
-const RELATIVE_FORMAT = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
+const relativeDay = (value: number): string =>
+  new Intl.RelativeTimeFormat(currentLocaleTag(), { numeric: 'auto' }).format(value, 'day');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -113,7 +116,7 @@ function weeklySeries(dates: readonly (string | undefined | null)[], weeks: numb
   }
 
   return starts.map((start, index) => ({
-    label: WEEK_LABEL_FORMAT.format(start),
+    label: weekLabel(start),
     value: counts[index] ?? 0,
   }));
 }
@@ -494,10 +497,7 @@ export class HomeStore {
       .map((item) => ({
         id: item.establishment.id,
         name: item.establishment.name,
-        relative: RELATIVE_FORMAT.format(
-          Math.round((item.date.getTime() - Date.now()) / DAY_MS),
-          'day',
-        ),
+        relative: relativeDay(Math.round((item.date.getTime() - Date.now()) / DAY_MS)),
       }));
   });
 

@@ -1,4 +1,5 @@
 import { CdkDrag, type CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
+import { localizeString } from '../../../core/strings';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FeatureFlagService } from '@mapit/feature-flags';
 import { SpacesStore } from '../model/spaces-store';
@@ -12,7 +13,7 @@ import { SectorListComponent } from './sector-list';
   template: `
     @if (flags.isEnabled('spaces.floors')()) {
       @if (store.error(); as error) {
-        <div class="error-banner" role="alert">{{ error }}</div>
+        <div class="error-banner" role="alert">{{ localizeString(error) }}</div>
       }
 
       @if (store.loading()) {
@@ -326,6 +327,7 @@ import { SectorListComponent } from './sector-list';
   `,
 })
 export class PisoListComponent {
+  protected readonly localizeString = localizeString;
   protected readonly store = inject(SpacesStore);
   protected readonly flags = inject(FeatureFlagService);
 

@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { BusinessVertical, Tenant, TenantStatus } from '@mapit/api-client';
+import { currentLocaleTag } from '@mapit/i18n';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 
 import { DashboardApi } from '../data/dashboard-api';
@@ -46,7 +47,8 @@ const PAUSA_BUSQUEDA_MS = 300;
 /** Orden estable de las verticales: el del contrato. */
 const VERTICALES: readonly BusinessVertical[] = ['RESTAURANT', 'NIGHTCLUB', 'EVENT_HALL', 'HOTEL'];
 
-const SEMANA_FORMAT = new Intl.DateTimeFormat('es', { day: '2-digit', month: 'short' });
+const etiquetaSemana = (date: Date): string =>
+  new Intl.DateTimeFormat(currentLocaleTag(), { day: '2-digit', month: 'short' }).format(date);
 
 /**
  * El único `Date.now()` del store: el "ahora" con el que se mide la vejez de
@@ -97,7 +99,7 @@ function serieSemanal(
   }
 
   return inicios.map((inicio, indice) => ({
-    label: SEMANA_FORMAT.format(inicio),
+    label: etiquetaSemana(inicio),
     value: conteo[indice] ?? 0,
   }));
 }

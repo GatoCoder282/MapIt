@@ -63,7 +63,9 @@
         <p>{{ store.step() === 'confirm' ? strings.booking.confirmHelp : strings.booking.subtitle }}</p>
       </header>
       @if (store.errorMessage()) {
-        <p class="notice notice--error" role="alert" data-testid="booking-error">{{ store.errorMessage() }}</p>
+        <p class="notice notice--error" role="alert" data-testid="booking-error">
+          {{ localizeString(store.errorMessage()) }}
+        </p>
       }
       @if (!store.intervalValid()) {
         <p class="notice" role="status">{{ strings.booking.intervalRequired }}</p>
@@ -76,7 +78,9 @@
             <h2 id="booking-space-heading">{{ strings.booking.selectedSpace }}</h2>
             <p>{{ store.establishmentName() }}</p>
             <mp-public-space [space]="space" />
-            <p>{{ store.date() }} · {{ store.startTime() }}–{{ store.endTime() }} · {{ store.timezone() }}</p>
+            <p>
+              {{ formatDate(store.date()) }} · {{ store.startTime() }}–{{ store.endTime() }} · {{ store.timezone() }}
+            </p>
           </section>
         }
         @if (store.descriptorStatus() === 'error') {

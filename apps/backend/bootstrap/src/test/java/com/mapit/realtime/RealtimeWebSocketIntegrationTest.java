@@ -100,6 +100,7 @@ class RealtimeWebSocketIntegrationTest {
 
   @BeforeEach
   void prepareStaffAndEstablishment() {
+    jdbc.update("delete from realtime_event_outbox");
     jdbc.update(
         "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Staff', 'STAFF', true)",
         user,

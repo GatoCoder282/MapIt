@@ -4,6 +4,9 @@
   "private": true,
   "description": "Autenticación JWT: guards, sesión y renovación de token.",
   "sideEffects": false,
+  "dependencies": {
+    "@mapit/i18n": "workspace:*"
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",

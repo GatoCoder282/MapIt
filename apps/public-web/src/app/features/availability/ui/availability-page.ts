@@ -7,8 +7,9 @@ import {
   untracked,
 } from '@angular/core';
 import { RouterLink, Router, ActivatedRoute } from '@angular/router';
+import { currentLocaleTag } from '@mapit/i18n';
 import { SiteFooter, SiteNav } from '@mapit/ui-kit';
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 import { PublicEstablishmentIdentity } from '../../../core/public-establishment-identity';
 import { PublicSpaceSummary } from '../../../core/public-space';
 import { AvailabilityStore } from '../model/availability-store';
@@ -37,6 +38,7 @@ export class AvailabilityPage {
   readonly endTime = input('');
   protected readonly store = inject(AvailabilityStore);
   protected readonly strings = STRINGS;
+  protected readonly localizeString = localizeString;
   protected readonly states = ['AVAILABLE', 'RESERVED', 'UNAVAILABLE'] as const;
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -54,6 +56,12 @@ export class AvailabilityPage {
   }
   protected value(event: Event): string {
     return (event.target as HTMLInputElement).value;
+  }
+  protected formatDate(date: string): string {
+    return new Intl.DateTimeFormat(currentLocaleTag(), {
+      dateStyle: 'long',
+      timeZone: 'UTC',
+    }).format(new Date(`${date}T12:00:00Z`));
   }
   protected async submit(event: Event): Promise<void> {
     event.preventDefault();

@@ -25,6 +25,13 @@
   }
 }
 
+.auth-page > .language-choice {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+}
+
 /* ── Elementos de fondo: anillos concéntricos tenues ── */
 .bg-decorations {
   position: absolute;

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TemplatesStore } from '../model/templates-store';
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 
 /**
  * Formulario inline de creación/edición de plantillas de elemento (HU-4.02 / MAP-205).
@@ -25,7 +25,7 @@ import { STRINGS } from '../../../core/strings';
       </div>
 
       @if (store.error(); as error) {
-        <p class="message error" role="alert">{{ error }}</p>
+        <p class="message error" role="alert">{{ localizeString(error) }}</p>
       }
 
       <form class="template-grid" (ngSubmit)="save()">
@@ -237,6 +237,7 @@ import { STRINGS } from '../../../core/strings';
   `,
 })
 export class ElementTemplateFormComponent {
+  protected readonly localizeString = localizeString;
   readonly saved = output<void>();
   readonly formClosed = output<void>();
 

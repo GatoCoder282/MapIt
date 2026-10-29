@@ -14,7 +14,7 @@
           [value]="store.filters().resourceType"
           (change)="store.updateFilter('resourceType', $any($event.target).value)"
         >
-          @for (option of resourceOptions; track option.value) {
+          @for (option of resourceOptions(); track option.value) {
             <option [value]="option.value">{{ option.label }}</option>
           }
         </select>
@@ -26,7 +26,7 @@
           [value]="store.filters().eventType"
           (change)="store.updateFilter('eventType', $any($event.target).value)"
         >
-          @for (option of eventOptions; track option.value) {
+          @for (option of eventOptions(); track option.value) {
             <option [value]="option.value">{{ option.label }}</option>
           }
         </select>
@@ -78,7 +78,7 @@
     }
     @case ('error') {
       <div class="state error" role="alert">
-        <p>{{ store.errorMessage() }}</p>
+        <p>{{ localizeString(store.errorMessage()) }}</p>
         <button class="button secondary" type="button" (click)="store.retry()">
           {{ strings.audit.retry }}
         </button>
@@ -106,7 +106,9 @@
               @for (entry of store.entries(); track entry.id) {
                 <tr>
                   <td [attr.data-label]="strings.audit.columns.occurredAt">
-                    <time [attr.datetime]="entry.occurredAt">{{ entry.occurredAt | date: 'medium' }}</time>
+                    <time [attr.datetime]="entry.occurredAt">{{
+                      entry.occurredAt | localDate: locale() : 'medium'
+                    }}</time>
                   </td>
                   <td [attr.data-label]="strings.audit.columns.event">
                     <span class="event-chip">{{ eventLabel(entry.eventType) }}</span>

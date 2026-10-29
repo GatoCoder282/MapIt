@@ -1,8 +1,9 @@
-/**
- * Textos visibles de los componentes de chrome compartidos (nav + footer del
- * sitio público). Viven en la lib porque `ui-kit` no importa de las apps.
- */
-export const SITE_STRINGS = {
+import { createLocalizedCatalog, type LocalizedShape } from '@mapit/i18n';
+import { SITE_STRINGS_EN } from './site-strings.en';
+import { SITE_STRINGS_JA } from './site-strings.ja';
+
+/** Strings compartidos del chrome de navegación y pie del sitio público. */
+const SITE_STRINGS_ES = {
   brand: 'MapIt',
   brandHomeAria: 'MapIt — página de inicio',
   nav: {
@@ -22,4 +23,12 @@ export const SITE_STRINGS = {
   },
 } as const;
 
-export type SiteStrings = typeof SITE_STRINGS;
+const SITE_CATALOGS = {
+  es: SITE_STRINGS_ES,
+  en: SITE_STRINGS_EN,
+  'ja-JP': SITE_STRINGS_JA,
+} satisfies Record<'es' | 'en' | 'ja-JP', LocalizedShape<typeof SITE_STRINGS_ES>>;
+
+export const SITE_STRINGS = createLocalizedCatalog<typeof SITE_STRINGS_ES>(SITE_CATALOGS, 'es');
+
+export type SiteStrings = typeof SITE_STRINGS_ES;
