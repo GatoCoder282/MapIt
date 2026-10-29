@@ -1914,6 +1914,29 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: "#/components/schemas/Problem" }
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/vertical-profile:
+    get:
+      tags: [public-availability]
+      operationId: getPublicVerticalProfile
+      summary: Perfil de vertical de un establecimiento público
+      description: |
+        HU-7.01/7.02. El portal lo pide antes de buscar para adaptar el formulario (turno,
+        noche, evento o estadía). Se resuelve solo por los slugs; no requiere JWT.
+      security: []
+      parameters:
+        - { name: tenantSlug, in: path, required: true, schema: { type: string } }
+        - { name: establishmentSlug, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Perfil de vertical resuelto
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VerticalProfile" }
+        "404":
+          description: Establecimiento no encontrado
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
   /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/availability/map:
     get:
       tags: [public-availability]
@@ -1930,6 +1953,12 @@ paths:
             description: "HH:mm, ambos horarios o ninguno",
             schema: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
           }
+        - name: endDate
+          in: query
+          description: |
+            HU-7.01/7.02. Día local del fin (salida del hotel). Sin él, el fin es el mismo día,
+            o el siguiente si la vertical admite noches y `endTime ≤ startTime`. Requiere horarios.
+          schema: { type: string, format: date }
         - {
             name: endTime,
             in: query,
@@ -2047,6 +2076,8 @@ paths:
                 $ref: "#/components/schemas/PublicReservation"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/VerticalDisabled"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -2271,6 +2302,10 @@ paths:
         Crea una reserva en estado `CREATED` para uno o más elementos disponibles. El
         tenant y el actor se obtienen exclusivamente del JWT. Requiere rol ADMIN, MANAGER
         o STAFF.
+
+        HU-7.01/7.02: la vertical del establecimiento fija la ventana (turno ≤ 6 h el mismo
+        día; noche ≤ 12 h; evento ≤ 24 h; estadía de 1 a 30 noches) y los tipos reservables;
+        si no se cumple, 400. Si la vertical está apagada en Unleash, 403 `vertical-disabled`.
       operationId: createReservation
       requestBody:
         required: true
@@ -4660,10 +4695,12 @@ components:
           timezone,
           date,
           startTime,
+          endDate,
           endTime,
           startsAt,
           endsAt,
           mode,
+          vertical,
           floors,
         ]
       properties:
@@ -4674,10 +4711,16 @@ components:
         timezone: { type: string }
         date: { type: string, format: date }
         startTime: { type: [string, "null"] }
+        endDate:
+          type: string
+          format: date
+          description: Día local del fin del intervalo; igual a `date` en modo `DAY`.
         endTime: { type: [string, "null"] }
         startsAt: { type: string, format: date-time }
         endsAt: { type: string, format: date-time }
         mode: { type: string, enum: [DAY, INTERVAL] }
+        vertical:
+          $ref: "#/components/schemas/VerticalProfile"
         floors:
           type: array
           items: { $ref: "#/components/schemas/PublicMapFloor" }
@@ -4846,10 +4889,16 @@ components:
           pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
           description: Hora local de inicio (HH:mm).
           examples: ["20:00"]
+        endDate:
+          type: [string, "null"]
+          format: date
+          description: |
+            HU-7.01/7.02. Día local del fin (salida del hotel). Sin él, el fin es el mismo día,
+            o el siguiente si la vertical admite noches (discoteca, salón) y `endTime ≤ startTime`.
         endTime:
           type: string
           pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
-          description: Hora local de fin (HH:mm), posterior al inicio.
+          description: Hora local de fin (HH:mm). La ventana válida depende de la vertical.
           examples: ["22:00"]
         spaceElementIds:
           type: array
@@ -4890,6 +4939,7 @@ components:
         - spaceElementIds
         - date
         - startTime
+        - endDate
         - endTime
         - startsAt
         - endsAt
@@ -4925,6 +4975,11 @@ components:
         startTime:
           type: string
           pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          readOnly: true
+        endDate:
+          type: string
+          format: date
+          description: Día local del fin (HU-7.01/7.02); posterior a `date` en estadías y noches.
           readOnly: true
         endTime:
           type: string

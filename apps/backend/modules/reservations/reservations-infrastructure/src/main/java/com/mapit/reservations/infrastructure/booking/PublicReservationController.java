@@ -75,6 +75,7 @@ public class PublicReservationController {
                 establishmentSlug,
                 request.date(),
                 LocalTime.parse(request.startTime(), TIME_FORMAT),
+                request.endDate(),
                 LocalTime.parse(request.endTime(), TIME_FORMAT),
                 request.spaceElementIds(),
                 new CreatePublicReservation.Customer(
@@ -136,6 +137,7 @@ public class PublicReservationController {
   public record PublicReservationCreateRequest(
       @NotNull @DateTimeFormat(iso = ISO.DATE) LocalDate date,
       @NotNull @Pattern(regexp = TIME_REGEX) String startTime,
+      @DateTimeFormat(iso = ISO.DATE) @Nullable LocalDate endDate,
       @NotNull @Pattern(regexp = TIME_REGEX) String endTime,
       @NotEmpty @Size(max = MAX_ELEMENTS_PER_RESERVATION) List<@NotNull UUID> spaceElementIds,
       @Valid @NotNull PublicCustomerRequest customer) {}
@@ -151,6 +153,7 @@ public class PublicReservationController {
       List<UUID> spaceElementIds,
       LocalDate date,
       String startTime,
+      LocalDate endDate,
       String endTime,
       java.time.Instant startsAt,
       java.time.Instant endsAt,
@@ -168,6 +171,7 @@ public class PublicReservationController {
           List.copyOf(reservation.spaceElementIds()),
           result.date(),
           result.startTime().format(TIME_FORMAT),
+          result.endDate(),
           result.endTime().format(TIME_FORMAT),
           reservation.timeRange().startsAt(),
           reservation.timeRange().endsAt(),

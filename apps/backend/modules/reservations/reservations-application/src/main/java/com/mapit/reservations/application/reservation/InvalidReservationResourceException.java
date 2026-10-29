@@ -17,7 +17,7 @@ public final class InvalidReservationResourceException extends RuntimeException 
 
   public static InvalidReservationResourceException notReservable(UUID elementId) {
     return new InvalidReservationResourceException(
-        "El elemento " + elementId + " no admite reservas");
+        "El elemento " + elementId + " no admite reservas en este tipo de establecimiento");
   }
 
   public static InvalidReservationResourceException notActive(UUID elementId) {

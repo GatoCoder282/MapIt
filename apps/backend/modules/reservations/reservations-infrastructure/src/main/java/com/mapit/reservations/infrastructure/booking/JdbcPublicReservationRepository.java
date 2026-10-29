@@ -39,7 +39,7 @@ public class JdbcPublicReservationRepository implements PublicReservationReposit
     return jdbc
         .query(
             """
-            select id, timezone
+            select id, timezone, type
             from establishment
             where tenant_id = ? and slug = ? and deleted_at is null
             """,
@@ -47,7 +47,8 @@ public class JdbcPublicReservationRepository implements PublicReservationReposit
                 new PublicEstablishment(
                     TenantId.of(tenantId),
                     result.getObject("id", UUID.class),
-                    result.getString("timezone")),
+                    result.getString("timezone"),
+                    result.getString("type")),
             tenantId,
             establishmentSlug)
         .stream()
