@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -28,13 +29,19 @@ import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.reservations.domain.reservation.ReservationResourceRepository;
 import com.mapit.reservations.domain.reservation.ReservationStatus;
 import com.mapit.reservations.domain.reservation.ReservationTimeRange;
+import com.mapit.reservations.domain.reservation.ReservationVenue;
 import com.mapit.shared.audit.AuditEvent;
 import com.mapit.shared.audit.AuditEventRecorder;
 import com.mapit.shared.audit.AuditEventType;
 import com.mapit.shared.audit.AuditResourceType;
+import com.mapit.shared.flags.FeatureFlag;
+import com.mapit.shared.flags.FeatureFlagPort;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
+import com.mapit.shared.vertical.Vertical;
+import com.mapit.shared.vertical.VerticalDisabledException;
+import com.mapit.shared.vertical.VerticalGate;
 
 class CreateReservationTest {
 
@@ -60,6 +67,7 @@ class CreateReservationTest {
   private FakeReservations reservations;
   private FakeAuditEvents auditEvents;
   private CreateReservation useCase;
+  private final FakeFlags flags = new FakeFlags();
 
   @BeforeEach
   void setUp() {
@@ -88,7 +96,8 @@ class CreateReservationTest {
             auditEvents,
             tenantContext,
             actorContext,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            new VerticalGate(flags));
   }
 
   @Test
@@ -127,6 +136,114 @@ class CreateReservationTest {
         .hasMessageContaining("Cliente no encontrado");
     assertThat(reservations.saved).isNull();
     assertThat(auditEvents.events).isEmpty();
+  }
+
+  // ── HU-7.01/7.02 · MAP-233: reglas por vertical sobre el mismo caso de uso ──
+
+  @Test
+  void hotelReservaUnaHabitacionPorNochesYRechazaUnaMesa() {
+    resources.vertical = "HOTEL";
+    resources.found = List.of(resource(ELEMENT_A, ESTABLISHMENT, ReservationResource.Kind.ROOM));
+
+    Reservation stay =
+        useCase.execute(
+            new CreateReservation.Command(
+                ESTABLISHMENT,
+                PERSON,
+                List.of(ELEMENT_A),
+                Instant.parse("2026-10-04T19:00:00Z"),
+                Instant.parse("2026-10-06T16:00:00Z")));
+    assertThat(stay.spaceElementIds()).containsExactly(ELEMENT_A);
+
+    resources.found = List.of(resource(ELEMENT_A, ESTABLISHMENT, ReservationResource.Kind.TABLE));
+    assertThatThrownBy(
+            () ->
+                useCase.execute(
+                    new CreateReservation.Command(
+                        ESTABLISHMENT,
+                        PERSON,
+                        List.of(ELEMENT_A),
+                        Instant.parse("2026-10-04T19:00:00Z"),
+                        Instant.parse("2026-10-06T16:00:00Z"))))
+        .isInstanceOf(InvalidReservationResourceException.class)
+        .hasMessageContaining("no admite reservas");
+  }
+
+  @Test
+  void hotelRechazaUnaEstadiaSinNochesAntesDeBloquear() {
+    resources.vertical = "HOTEL";
+    resources.found = List.of(resource(ELEMENT_A, ESTABLISHMENT, ReservationResource.Kind.ROOM));
+
+    assertThatThrownBy(() -> useCase.execute(validCommand()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("noches");
+    assertThat(concurrencyGuard.lockedIds).isEmpty();
+    assertThat(reservations.saved).isNull();
+  }
+
+  @Test
+  void restauranteRechazaUnTurnoQueCruzaElDiaYUnEscenario() {
+    assertThatThrownBy(
+            () ->
+                useCase.execute(
+                    new CreateReservation.Command(
+                        ESTABLISHMENT,
+                        PERSON,
+                        List.of(ELEMENT_A),
+                        Instant.parse("2026-10-05T02:00:00Z"),
+                        Instant.parse("2026-10-05T05:00:00Z"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("mismo día");
+
+    resources.found = List.of(resource(ELEMENT_A, ESTABLISHMENT, ReservationResource.Kind.STAGE));
+    assertThatThrownBy(
+            () ->
+                useCase.execute(
+                    new CreateReservation.Command(
+                        ESTABLISHMENT, PERSON, List.of(ELEMENT_A), STARTS_AT, ENDS_AT)))
+        .isInstanceOf(InvalidReservationResourceException.class);
+  }
+
+  @Test
+  void discotecaAceptaUnaNocheQueCruzaLaMedianoche() {
+    resources.vertical = "NIGHTCLUB";
+    resources.found =
+        List.of(resource(ELEMENT_A, ESTABLISHMENT, ReservationResource.Kind.SECTOR_ZONE));
+
+    Reservation night =
+        useCase.execute(
+            new CreateReservation.Command(
+                ESTABLISHMENT,
+                PERSON,
+                List.of(ELEMENT_A),
+                Instant.parse("2026-10-05T03:00:00Z"),
+                Instant.parse("2026-10-05T08:00:00Z")));
+    assertThat(night.timeRange().endsAt()).isEqualTo(Instant.parse("2026-10-05T08:00:00Z"));
+  }
+
+  @Test
+  void salonReservaVariasButacasNumeradasEnUnaSolaReserva() {
+    resources.vertical = "EVENT_HALL";
+    resources.found =
+        List.of(
+            resource(ELEMENT_A, ESTABLISHMENT, ReservationResource.Kind.SEAT),
+            resource(ELEMENT_B, ESTABLISHMENT, ReservationResource.Kind.SEAT));
+
+    assertThat(useCase.execute(validCommand()).spaceElementIds())
+        .containsExactlyInAnyOrder(ELEMENT_A, ELEMENT_B);
+  }
+
+  @Test
+  void unaVerticalApagadaNoReservaNiCambiaDeVertical() {
+    resources.vertical = "HOTEL";
+    resources.found = List.of(resource(ELEMENT_A, ESTABLISHMENT, ReservationResource.Kind.ROOM));
+    flags.off.add(FeatureFlag.VERTICAL_HOTEL);
+
+    assertThatThrownBy(() -> useCase.execute(validCommand()))
+        .isInstanceOfSatisfying(
+            VerticalDisabledException.class,
+            ex -> assertThat(ex.vertical()).isEqualTo(Vertical.HOTEL));
+    assertThat(reservations.saved).isNull();
   }
 
   @Test
@@ -310,6 +427,7 @@ class CreateReservationTest {
 
   private static final class FakeResources implements ReservationResourceRepository {
     private boolean establishmentExists = true;
+    private String vertical = "RESTAURANT";
     private List<ReservationResource> found = new ArrayList<>();
 
     @Override
@@ -318,9 +436,31 @@ class CreateReservationTest {
     }
 
     @Override
+    public Optional<ReservationVenue> findVenue(TenantId tenantId, UUID establishmentId) {
+      return establishmentExists
+          ? Optional.of(new ReservationVenue(vertical, "America/La_Paz"))
+          : Optional.empty();
+    }
+
+    @Override
     public List<ReservationResource> findAliveByIds(
         TenantId tenantId, Collection<UUID> elementIds) {
       return found;
+    }
+  }
+
+  /** Unleash en memoria: todas las verticales encendidas salvo las que el test apague. */
+  private static final class FakeFlags implements FeatureFlagPort {
+    private final Set<FeatureFlag> off = new HashSet<>();
+
+    @Override
+    public boolean isEnabled(FeatureFlag flag) {
+      return !off.contains(flag);
+    }
+
+    @Override
+    public boolean isEnabled(FeatureFlag flag, boolean defaultValue) {
+      return !off.contains(flag);
     }
   }
 

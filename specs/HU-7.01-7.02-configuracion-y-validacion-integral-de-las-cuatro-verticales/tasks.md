@@ -17,11 +17,11 @@
 
 ## MAP-233 — Aplicar reglas de reservas por turno, evento/noche y estadía
 
-- [ ] Contrato: `endDate` en mapa público, petición y respuesta pública; `403` en las dos creaciones de reserva.
-- [ ] `BookingWindowPolicy` y `PublicReservationTimeRange` con `endDate` y paso nocturno.
-- [ ] `CreateReservation`: gate, ventana y reservables por vertical.
-- [ ] Mapa y lista públicos con reservables por vertical y perfil en la respuesta.
-- [ ] Tests: política por modo (unit); reglas de las cuatro verticales, 409 y 403 (IT).
+- [x] Contrato: `endDate` en mapa público, petición y respuesta pública; `403` en las dos creaciones de reserva.
+- [x] `BookingWindowPolicy` y `PublicReservationTimeRange` con `endDate` y paso nocturno.
+- [x] `CreateReservation`: gate, ventana y reservables por vertical.
+- [x] Mapa y lista públicos con reservables por vertical y perfil en la respuesta.
+- [x] Tests: política por modo (unit); reglas de las cuatro verticales, 409 y 403 (IT).
 
 ## MAP-234 — Adaptar frontend a terminología y formularios de las cuatro verticales
 
@@ -94,3 +94,26 @@
   y el backend sigue respondiendo 400 a un tipo incompatible (RN-4 de HU-2.03).
 - Verificación: `spaces-domain` y `spaces-application` verdes; `ng test console` del editor
   (37 tests, 4 nuevos) verde; ESLint sin avisos.
+
+### MAP-233 — Reglas de reserva por vertical
+
+- `BookingWindow` (interfaz sellada, Strategy): `Hourly` para turno/noche/evento y `Stay` para
+  estadía. El fin semiabierto a las 00:00 cuenta como el mismo día (un turno 20:00–00:00 vale).
+- `CreateReservation` sigue siendo el único servicio para staff y público: resuelve vertical y
+  zona con `ReservationResourceRepository.findVenue`, aplica gate → ventana → bloqueo →
+  reservables de la vertical → solape 409. La ventana se valida antes de bloquear filas.
+- `ReservationResource.isReservable()` (solo «no DECOR») se conserva para pago y llegada, que
+  revalidan una reserva ya creada con las reglas de su vertical.
+- Público: `endDate` opcional en petición y mapa; `PublicReservationTimeRange` pasa al día
+  siguiente solo si la vertical admite noches. Respuestas con `endDate`; el mapa con `vertical`
+  y `selectable` según tipos reservables y flag. Nuevo `GET …/vertical-profile` público para que
+  el portal adapte el formulario antes de buscar.
+- `VerticalProfileView` (shared kernel) es la forma publicada única del perfil para spaces y
+  reservations; bootstrap le aplica el mixin de nulos explícitos.
+- Regresión: `PublicAvailabilityIntegrationTest` tenía una `SEAT` en un restaurante insertada
+  por SQL (el editor nunca la habría permitido); pasa a `SECTOR_ZONE` y conserva el caso de
+  frontera. Los fixtures TS de mapa y reserva incluyen `endDate` y `vertical`.
+- Verificación: `pnpm be:test` verde (incluye `BookingWindowTest` y 6 casos nuevos de
+  `CreateReservationTest`); IT de `reservations.*` y `payments.*` (74) verdes;
+  `VerticalReservationIntegrationTest` (9) y `VerticalProfileIntegrationTest` (6) verdes;
+  `ng test public-web` (119) verde.

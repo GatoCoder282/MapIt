@@ -2,6 +2,7 @@ package com.mapit.reservations.domain.reservation;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.mapit.shared.tenant.TenantId;
@@ -10,6 +11,9 @@ import com.mapit.shared.tenant.TenantId;
 public interface ReservationResourceRepository {
 
   boolean establishmentExists(TenantId tenantId, UUID establishmentId);
+
+  /** Vertical y zona del establecimiento vivo del tenant; vacío si no existe o es ajeno. */
+  Optional<ReservationVenue> findVenue(TenantId tenantId, UUID establishmentId);
 
   List<ReservationResource> findAliveByIds(TenantId tenantId, Collection<UUID> elementIds);
 }

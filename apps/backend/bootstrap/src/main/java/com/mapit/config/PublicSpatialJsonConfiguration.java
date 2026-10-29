@@ -18,6 +18,8 @@ public class PublicSpatialJsonConfiguration {
     module.setMixInAnnotation(SpaceElementResponse.class, NullableFields.class);
     module.setMixInAnnotation(PublicAvailabilityMap.class, NullableFields.class);
     module.setMixInAnnotation(PublicAvailabilityMap.Element.class, NullableFields.class);
+    // HU-7.01/7.02: el perfil declara obligatorios los campos que son nulos según el modo.
+    module.setMixInAnnotation(com.mapit.shared.vertical.VerticalProfileView.class, NullableFields.class);
     module.setMixInAnnotation(com.mapit.reservations.domain.booking.ReservationAccessView.Space.class, NullableFields.class);
     return module;
   }

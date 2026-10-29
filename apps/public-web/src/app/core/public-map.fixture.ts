@@ -1,4 +1,65 @@
-import type { PublicAvailabilityMap, PublicMapElement } from '@mapit/api-client';
+import type { PublicAvailabilityMap, PublicMapElement, VerticalProfile } from '@mapit/api-client';
+
+/** Perfiles sintéticos con las reglas de `VerticalCatalog` (HU-7.01/7.02, spec D4). */
+export function verticalProfileFixture(
+  type: VerticalProfile['establishmentType'] = 'RESTAURANT',
+): VerticalProfile {
+  const hourly = {
+    minNights: null,
+    maxNights: null,
+    defaultStartTime: null,
+    defaultEndTime: null,
+  };
+  switch (type) {
+    case 'HOTEL':
+      return {
+        establishmentType: 'HOTEL',
+        bookingMode: 'STAY',
+        enabled: true,
+        allowedElementTypes: ['ROOM', 'DECOR'],
+        reservableElementTypes: ['ROOM'],
+        allowsOvernight: true,
+        maxDurationMinutes: null,
+        minNights: 1,
+        maxNights: 30,
+        defaultStartTime: '15:00',
+        defaultEndTime: '12:00',
+      };
+    case 'NIGHTCLUB':
+      return {
+        establishmentType: 'NIGHTCLUB',
+        bookingMode: 'NIGHT',
+        enabled: true,
+        allowedElementTypes: ['TABLE', 'BAR', 'SECTOR_ZONE', 'STAGE', 'DECOR'],
+        reservableElementTypes: ['TABLE', 'BAR', 'SECTOR_ZONE'],
+        allowsOvernight: true,
+        maxDurationMinutes: 720,
+        ...hourly,
+      };
+    case 'EVENT_HALL':
+      return {
+        establishmentType: 'EVENT_HALL',
+        bookingMode: 'EVENT',
+        enabled: true,
+        allowedElementTypes: ['TABLE', 'BAR', 'SECTOR_ZONE', 'STAGE', 'SEAT', 'DECOR'],
+        reservableElementTypes: ['TABLE', 'SECTOR_ZONE', 'SEAT'],
+        allowsOvernight: true,
+        maxDurationMinutes: 1440,
+        ...hourly,
+      };
+    default:
+      return {
+        establishmentType: 'RESTAURANT',
+        bookingMode: 'SHIFT',
+        enabled: true,
+        allowedElementTypes: ['TABLE', 'BAR', 'SECTOR_ZONE', 'STAGE', 'DECOR'],
+        reservableElementTypes: ['TABLE', 'BAR', 'SECTOR_ZONE'],
+        allowsOvernight: false,
+        maxDurationMinutes: 360,
+        ...hourly,
+      };
+  }
+}
 
 /** Synthetic data for public selection unit tests only. */
 export function publicMapFixture(): PublicAvailabilityMap {
@@ -24,10 +85,12 @@ export function publicMapFixture(): PublicAvailabilityMap {
     timezone: 'America/La_Paz',
     date: '2030-12-24',
     startTime: '19:00',
+    endDate: '2030-12-24',
     endTime: '21:00',
     startsAt: '2030-12-24T23:00:00Z',
     endsAt: '2030-12-25T01:00:00Z',
     mode: 'INTERVAL',
+    vertical: verticalProfileFixture(),
     floors: [
       {
         id: 'floor-a',
