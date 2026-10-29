@@ -4,7 +4,6 @@
 
 - `pnpm check` reprodujo fallos de Prettier y ESLint; tipos, tests frontend, builds, contrato API y backend pasaron en la primera ejecución.
 - Se corrigieron formato, import de tipo `ElementRef`, callback tipado del mapa, payload E2E tratado como `unknown`, matcher del test de metadata y comparación estricta de capacidad. El test del reporter E2E necesitaba importar `Buffer` desde `node:buffer`; su ejecución con `pnpm exec node --test apps/e2e/tests/payment-live/redacted-reporter.check.mjs` pasó (1/1).
-- `graphify-out/` se excluyó de Prettier porque contiene el grafo y la caché generados por Graphify.
 - `pnpm be:test --rerun-tasks`: exit 0, 87 tareas ejecutadas; recompilación completa sin errores en `PaymentsWiring` ni servicios de pagos. Los XML de pagos registran 70 tests sin fallos y ArchUnit 12 sin fallos. No se alteraron las clases Java para ocultar diagnósticos del editor.
 - Segunda ejecución de `pnpm check`: formato, tipos, tests frontend (275 Console, 107 Public Web y 67 libs), builds, contrato y backend pasaron. Su único fallo fue el import de `Buffer`, corregido durante esa ejecución; `pnpm fe:lint` posterior terminó con exit 0. Estos resultados no acreditan ejecución de integración Docker ni E2E completo en esta revisión.
 - Ejecución final de `pnpm check`: exit 0 en todas las etapas. Evidencia local: `.tmp-payment-check-final.log` (ignorado por Git). Sin commits ni push.
