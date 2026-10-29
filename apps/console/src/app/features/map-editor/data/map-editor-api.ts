@@ -14,6 +14,7 @@ import type {
   SectorLayoutResponse,
   SectorLayoutUpdateRequest,
   SectorDuplicateRequest,
+  VerticalProfile,
 } from '@mapit/api-client';
 
 @Injectable({ providedIn: 'root' })
@@ -23,6 +24,11 @@ export class MapEditorApiService {
 
   listSpaceElementsBySector(sectorId: string): Observable<SpaceElement[]> {
     return this.api.listSpaceElementsBySector({ sectorId });
+  }
+
+  /** HU-7.01/7.02: tipos admitidos y reservables de la vertical del sector. */
+  getSectorVerticalProfile(sectorId: string): Observable<VerticalProfile> {
+    return this.api.getSectorVerticalProfile({ sectorId });
   }
 
   listSectorsByFloor(floorId: string): Observable<Sector[]> {

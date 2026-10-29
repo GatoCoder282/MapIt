@@ -19,6 +19,7 @@ import type {
   Floor,
   ElementTemplate,
   ElementTemplateCreateRequest,
+  VerticalProfile,
 } from '@mapit/api-client';
 import { AuthSession } from '@mapit/auth';
 import {
@@ -282,6 +283,7 @@ export class MapEditorStore {
     };
     this._sectorUpdatedAt.set(sectorMeta?.updatedAt ?? null);
 
+    this.loadVerticalProfile(sectorId);
     this.api
       .listSpaceElementsBySector(sectorId)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -561,6 +563,35 @@ export class MapEditorStore {
 
   clearError(): void {
     this._error.set(null);
+  }
+
+  // ===== VERTICAL (HU-7.01/7.02 · MAP-247) =====
+
+  private readonly _verticalProfile = signal<VerticalProfile | null>(null);
+  /** Perfil de la vertical del establecimiento que contiene el sector abierto. */
+  readonly verticalProfile = this._verticalProfile.asReadonly();
+
+  /**
+   * Si el editor puede ofrecer un tipo. Mientras el perfil no llega (o si falla la carga)
+   * no se filtra: el backend sigue rechazando un tipo incompatible con 400 (RN-4).
+   */
+  isTypeAllowed(type: string): boolean {
+    const profile = this._verticalProfile();
+    return !profile || (profile.allowedElementTypes as readonly string[]).includes(type);
+  }
+
+  private loadVerticalProfile(sectorId: string): void {
+    this._verticalProfile.set(null);
+    this.api
+      .getSectorVerticalProfile(sectorId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => {
+          if (this._sectorId() === sectorId) this._verticalProfile.set(profile);
+        },
+        // Sin perfil el editor se comporta como antes de HU-7.01/7.02.
+        error: () => undefined,
+      });
   }
 
   // ===== PLANTILLAS (HU-4.02) =====
