@@ -25,10 +25,10 @@ class PaymentMigrationUpgradeIntegrationTest {
       .withDatabaseName("mapit").withUsername("mapit").withPassword("upgrade_test_only");
 
   @Test
-  void upgradesAlreadyAppliedV21WithoutRepairOrLosingLegacyArrival() {
+  void upgradesAlreadyAppliedPaymentSchemaWithoutRepairOrLosingLegacyArrival() {
     var config = Flyway.configure().dataSource(DATABASE.getJdbcUrl(), DATABASE.getUsername(), DATABASE.getPassword())
         .locations("classpath:db/migration").placeholders(Map.of("mapitAppDbPassword", "upgrade_runtime_only"));
-    config.target("21").load().migrate();
+    config.target("24").load().migrate();
     var jdbc = new JdbcTemplate(new DriverManagerDataSource(DATABASE.getJdbcUrl(), DATABASE.getUsername(), DATABASE.getPassword()));
     UUID venue = UUID.randomUUID(), actor = UUID.randomUUID(), person = UUID.randomUUID(), reservation = UUID.randomUUID();
     jdbc.update("insert into tenant(id,name,slug,status,vertical) values('upgrade-test','Upgrade','upgrade-test','ACTIVE','RESTAURANT')");
@@ -40,7 +40,8 @@ class PaymentMigrationUpgradeIntegrationTest {
         insert into reservation_access(tenant_id,reservation_id,token_hash,created_at,expires_at,checked_in_at,checked_in_by)
         values('upgrade-test',?,repeat('a',64),now(),now()+interval '1 day',timestamp with time zone '2026-10-25 12:00:00+00',?)
         """, reservation, actor);
-    assertThat(jdbc.queryForObject("select checksum from flyway_schema_history where version='21'", Integer.class)).isEqualTo(2144903075);
+    Integer appliedPaymentMigrationChecksum = jdbc.queryForObject(
+        "select checksum from flyway_schema_history where version='24'", Integer.class);
 
     UUID method = UUID.randomUUID(), payment = UUID.randomUUID(), expired = UUID.randomUUID();
     jdbc.update("""
@@ -55,7 +56,7 @@ class PaymentMigrationUpgradeIntegrationTest {
           values(?,'upgrade-test',?,?,?,'MOCK_GATEWAY','merchant',?,10,'USD',?,now(),now()+interval '1 hour',?)
           """, id, venue, reservation, method, id.toString(), id.equals(expired) ? "EXPIRED" : "PENDING", UUID.randomUUID());
     }
-    config.target("26").load().migrate();
+    config.target("29").load().migrate();
     assertThatThrownBy(() -> jdbc.update("update payment set status='CANCELLED' where id=?", payment))
         .isInstanceOf(DataAccessException.class);
 
@@ -75,7 +76,8 @@ class PaymentMigrationUpgradeIntegrationTest {
         .isEqualTo(Instant.parse("2026-10-25T12:00:00Z").getEpochSecond());
     assertThat(jdbc.queryForObject("select establishment_id from reservation_access where reservation_id=?", UUID.class, reservation)).isEqualTo(venue);
     assertThat(jdbc.queryForObject("select token_hash from reservation_access where reservation_id=?", String.class, reservation)).isEqualTo("a".repeat(64));
-    assertThat(jdbc.queryForObject("select checksum from flyway_schema_history where version='21'", Integer.class)).isEqualTo(2144903075);
+    assertThat(jdbc.queryForObject("select checksum from flyway_schema_history where version='24'", Integer.class))
+        .isEqualTo(appliedPaymentMigrationChecksum);
     assertThat(jdbc.queryForObject("select count(*) from information_schema.columns where table_name='realtime_event_outbox' and column_name='reservation_id'", Integer.class)).isEqualTo(1);
   }
 }

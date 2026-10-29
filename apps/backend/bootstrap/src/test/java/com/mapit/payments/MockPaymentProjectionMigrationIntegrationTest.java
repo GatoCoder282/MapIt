@@ -16,7 +16,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/** V25 se verifica solo en PostgreSQL efímero, incluyendo datos legacy sin enlace textual. */
+/** V28 se verifica solo en PostgreSQL efímero, incluyendo datos legacy sin enlace textual. */
 @Tag("integration")
 @Testcontainers
 class MockPaymentProjectionMigrationIntegrationTest {
@@ -28,7 +28,7 @@ class MockPaymentProjectionMigrationIntegrationTest {
   void backfills_only_matching_configuration_and_policy_and_enforces_composite_link() {
     var configuration = Flyway.configure().dataSource(DATABASE.getJdbcUrl(), DATABASE.getUsername(), DATABASE.getPassword())
         .locations("classpath:db/migration").placeholders(Map.of("mapitAppDbPassword", "projection_runtime_only"));
-    configuration.target("24").load().migrate();
+    configuration.target("27").load().migrate();
     JdbcTemplate jdbc = new JdbcTemplate(new DriverManagerDataSource(
         DATABASE.getJdbcUrl(), DATABASE.getUsername(), DATABASE.getPassword()));
 
@@ -70,7 +70,7 @@ class MockPaymentProjectionMigrationIntegrationTest {
     var migrator = Flyway.configure()
         .dataSource(DATABASE.getJdbcUrl(), "projection_migrator", "projection_migrator_only")
         .locations("classpath:db/migration").placeholders(Map.of("mapitAppDbPassword", "projection_runtime_only"))
-        .target("25").load();
+        .target("28").load();
     migrator.migrate();
     migrator.validate();
 

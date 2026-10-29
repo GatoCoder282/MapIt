@@ -23,7 +23,7 @@ class SpaceElementMetadataMigrationIntegrationTest {
   @Test void upgrade_legado_null_sin_backfill_conserva_geometria_rls_y_restricciones() {
     var config=Flyway.configure().dataSource(DATABASE.getJdbcUrl(),DATABASE.getUsername(),DATABASE.getPassword())
         .locations("classpath:db/migration").placeholders(Map.of("mapitAppDbPassword","metadata_runtime_only"));
-    config.target("27").load().migrate();
+     config.target("30").load().migrate();
     var jdbc=new JdbcTemplate(new DriverManagerDataSource(DATABASE.getJdbcUrl(),DATABASE.getUsername(),DATABASE.getPassword()));
     UUID venue=UUID.randomUUID(),floor=UUID.randomUUID(),sector=UUID.randomUUID(),element=UUID.randomUUID();
     jdbc.update("insert into tenant(id,name,slug,status,vertical) values('metadata-upgrade','Metadata','metadata-upgrade','ACTIVE','RESTAURANT')");

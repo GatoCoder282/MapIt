@@ -19,7 +19,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Verifica que {@code establishment} queda aislada por tenant mediante PostgreSQL RLS (CA-9).
  *
  * <p>Las consultas se ejecutan bajo el rol {@code mapit_rls_test}, sin privilegios, porque el
-<<<<<<< HEAD
  * usuario de la aplicación es superusuario y los superusuarios <strong>ignoran la RLS</strong>.
  * Probar con el usuario normal daría un falso verde: se verían todas las filas y el test no
  * demostraría nada.

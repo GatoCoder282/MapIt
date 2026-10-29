@@ -185,6 +185,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/check-in/ui/check-in').then((m) => m.CheckIn),
       },
       {
+        path: 'audit',
+        canActivate: [roleGuard('ADMIN')],
+        loadComponent: () => import('./features/audit/ui/audit-page').then((m) => m.AuditPage),
+      },
+      {
         path: 'demo-items',
         loadComponent: () => import('./features/demo-items/ui/demo-items').then((m) => m.DemoItems),
       },

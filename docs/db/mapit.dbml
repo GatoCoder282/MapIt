@@ -10,7 +10,8 @@
 //
 //  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
 //  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5),
-//  `realtime_event_outbox` (V11, MAP-103/HUT-01) y el rol de runtime `mapit_app`
+//  `realtime_event_outbox` (V11, MAP-103/HUT-01), `audit_log` (V20, MAP-222)
+//  y el rol de runtime `mapit_app`
 //  (V9, MAP-175: NOSUPERUSER + NOBYPASSRLS;
 //  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
 //  El resto es el diseño previsto; cada tabla llega con su caso de uso.
@@ -203,21 +204,28 @@ Table space_element {
   }
 }
 
-Table space_element_state_change {
-  id               uuid        [pk, note: 'default gen_random_uuid()']
-  tenant_id        text        [not null, ref: > tenant.id]
-  sector_id        uuid        [not null, ref: > sector.id]
-  space_element_id uuid        [not null, ref: > space_element.id]
-  previous_state   text        [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
-  new_state        text        [not null, note: 'AVAILABLE | OCCUPIED | RESERVED | CLEANING | OUT_OF_SERVICE']
-  changed_by       uuid        [not null, ref: > app_user.id]
-  changed_at       timestamptz [not null, default: `now()`]
+Table audit_log {
+  id            uuid        [pk, note: 'default gen_random_uuid()']
+  tenant_id     text        [not null, ref: > tenant.id]
+  actor_id      uuid        [not null, note: 'FK compuesta (tenant_id, actor_id) > app_user(tenant_id, id)']
+  occurred_at   timestamptz [not null]
+  resource_type text        [not null, note: 'RESERVATION | SPACE_ELEMENT']
+  resource_id   uuid        [not null, note: 'Referencia polimórfica al recurso auditado']
+  event_type    text        [not null, note: 'RESERVATION_CREATED | RESERVATION_STATUS_CHANGED | SPACE_ELEMENT_STATE_CHANGED']
+  details       jsonb       [not null, default: `{}`]
 
   Indexes {
-    (tenant_id, id)                               [name: 'space_element_state_change_tenant_id_id_idx']
-    (tenant_id, space_element_id, changed_at, id) [name: 'space_element_state_change_history_idx', type: btree]
+    (tenant_id, id)                                          [name: 'audit_log_tenant_id_id_idx']
+    (tenant_id, occurred_at, id)                             [name: 'audit_log_history_idx', type: btree]
+    (tenant_id, resource_type, resource_id, occurred_at, id) [name: 'audit_log_resource_history_idx', type: btree]
+    (tenant_id, event_type, occurred_at, id)                 [name: 'audit_log_event_history_idx', type: btree]
   }
-  Note: 'MAP-125 / HU-3.01. Auditoría inmutable con RLS; previous_state y new_state deben ser distintos.'
+  Note: '''
+    MAP-222/MAP-223 / HU-5.03. Bitácora general append-only con RLS forzada.
+    El rol runtime solo puede insertar y consultar; UPDATE y DELETE también
+    se bloquean mediante trigger. V20 migra el histórico de HU-3.01 y V21
+    retira su tabla específica después de una copia final idempotente.
+  '''
 }
 
 Table realtime_event_outbox {
@@ -564,8 +572,29 @@ Table establishment_staff_access {
     (tenant_id, id) [unique]
     (tenant_id, establishment_id, user_id) [unique]
   }
-  Note: 'V23. RLS forzada; STAFF falla cerrado sin concesión explícita. ADMIN mantiene administración empresarial.'
+  Note: 'V26. RLS forzada; STAFF falla cerrado sin concesión explícita. ADMIN mantiene administración empresarial.'
 }
 Ref: establishment_staff_access.(tenant_id, establishment_id) > establishment.(tenant_id, id)
 Ref: establishment_staff_access.(tenant_id, user_id) > app_user.(tenant_id, id)
 Ref: establishment_staff_access.(tenant_id, updated_by) > app_user.(tenant_id, id)
+
+Table customer_history_access {
+  id                 uuid        [pk, note: 'default gen_random_uuid()']
+  tenant_id          text        [not null, ref: > tenant.id]
+  person_id          uuid        [not null, note: 'FK compuesta (tenant_id, person_id) a person']
+  link_hash          text        [not null, note: 'SHA-256 del secreto del enlace; nunca texto plano']
+  link_expires_at    timestamptz [not null]
+  consumed_at        timestamptz
+  session_hash       text        [note: 'SHA-256 de una segunda credencial; NULL al revocar']
+  session_expires_at timestamptz
+  revoked_at         timestamptz
+  created_at         timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (tenant_id, id) [name: 'customer_history_access_tenant_id_id_idx']
+    (tenant_id, link_hash) [unique, name: 'customer_history_access_link_hash_idx']
+    (tenant_id, session_hash) [unique, name: 'customer_history_access_session_hash_idx', note: 'Parcial WHERE session_hash IS NOT NULL']
+    (tenant_id, person_id, created_at) [name: 'customer_history_access_cooldown_idx']
+  }
+  Note: 'HU-6.04. FK compuesta a person, RLS forzada; canje único y revocación invalidan los secretos.'
+}

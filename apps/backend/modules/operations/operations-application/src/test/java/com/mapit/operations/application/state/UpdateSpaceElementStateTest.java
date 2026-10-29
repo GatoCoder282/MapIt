@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.LongSupplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,10 @@ import com.mapit.operations.domain.state.OperationalSpaceElement;
 import com.mapit.operations.domain.state.SpaceElementStateChange;
 import com.mapit.operations.domain.state.SpaceElementStateChangeRepository;
 import com.mapit.operations.domain.state.SpaceElementStateRepository;
+import com.mapit.shared.audit.AuditEvent;
+import com.mapit.shared.audit.AuditEventRecorder;
+import com.mapit.shared.audit.AuditEventType;
+import com.mapit.shared.audit.AuditResourceType;
 import com.mapit.shared.realtime.RealtimeEvent;
 import com.mapit.shared.realtime.RealtimeEventPublisher;
 import com.mapit.shared.realtime.SpaceElementState;
@@ -38,19 +43,27 @@ class UpdateSpaceElementStateTest {
 
   private InMemoryRepository repository;
   private InMemoryChanges changes;
+  private InMemoryAuditEvents auditEvents;
   private RecordingPublisher publisher;
   private UpdateSpaceElementState useCase;
 
   @BeforeEach
   void setUp() {
     repository = new InMemoryRepository();
-    changes = new InMemoryChanges();
+    auditEvents = new InMemoryAuditEvents();
+    changes = new InMemoryChanges(() -> auditEvents.events.size());
     publisher = new RecordingPublisher();
     TenantContext tenants = () -> Optional.of(TENANT);
     ActorContext actors = () -> Optional.of(ACTOR);
     useCase =
         new UpdateSpaceElementState(
-            repository, changes, publisher, tenants, actors, Clock.fixed(NOW, ZoneOffset.UTC));
+            repository,
+            changes,
+            auditEvents,
+            publisher,
+            tenants,
+            actors,
+            Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   @Test
@@ -68,11 +81,18 @@ class UpdateSpaceElementStateTest {
     assertThat(result.updatedAt()).isEqualTo(NOW);
     assertThat(repository.saves).isEqualTo(1);
     assertThat(repository.lastTenant).isEqualTo(TENANT);
-    assertThat(changes.entries).singleElement().satisfies(change -> {
-      assertThat(change.previousState()).isEqualTo(SpaceElementState.AVAILABLE);
-      assertThat(change.newState()).isEqualTo(SpaceElementState.OCCUPIED);
-      assertThat(change.changedBy()).isEqualTo(ACTOR);
-      assertThat(change.changedAt()).isEqualTo(NOW);
+    assertThat(auditEvents.events).singleElement().satisfies(event -> {
+      assertThat(event.resourceType()).isEqualTo(AuditResourceType.SPACE_ELEMENT);
+      assertThat(event.resourceId()).isEqualTo(ELEMENT);
+      assertThat(event.eventType()).isEqualTo(AuditEventType.SPACE_ELEMENT_STATE_CHANGED);
+      assertThat(event.actorId()).isEqualTo(ACTOR);
+      assertThat(event.occurredAt()).isEqualTo(NOW);
+      assertThat(event.details())
+          .containsExactlyInAnyOrderEntriesOf(
+              java.util.Map.of(
+                  "previousState", "AVAILABLE",
+                  "newState", "OCCUPIED",
+                  "sectorId", SECTOR.toString()));
     });
   }
 
@@ -89,6 +109,7 @@ class UpdateSpaceElementStateTest {
 
     assertThat(result.updatedAt()).isEqualTo(BEFORE);
     assertThat(repository.saves).isZero();
+    assertThat(auditEvents.events).isEmpty();
     assertThat(changes.entries).isEmpty();
     assertThat(publisher.events).isEmpty();
   }
@@ -174,6 +195,7 @@ class UpdateSpaceElementStateTest {
 
     assertThat(repository.element.state()).isEqualTo(SpaceElementState.OUT_OF_SERVICE);
     assertThat(repository.saves).isZero();
+    assertThat(auditEvents.events).isEmpty();
     assertThat(changes.entries).isEmpty();
     assertThat(publisher.events).isEmpty();
   }
@@ -210,10 +232,10 @@ class UpdateSpaceElementStateTest {
 
   private static final class InMemoryChanges implements SpaceElementStateChangeRepository {
     private final List<SpaceElementStateChange> entries = new ArrayList<>();
+    private final LongSupplier versionCount;
 
-    @Override
-    public void append(SpaceElementStateChange change) {
-      entries.add(change);
+    private InMemoryChanges(LongSupplier versionCount) {
+      this.versionCount = versionCount;
     }
 
     @Override
@@ -228,7 +250,16 @@ class UpdateSpaceElementStateTest {
 
     @Override
     public long countByElement(TenantId tenantId, UUID sectorId, UUID elementId) {
-      return findByElement(tenantId, sectorId, elementId).size();
+      return versionCount.getAsLong();
+    }
+  }
+
+  private static final class InMemoryAuditEvents implements AuditEventRecorder {
+    private final List<AuditEvent> events = new ArrayList<>();
+
+    @Override
+    public void record(AuditEvent event) {
+      events.add(event);
     }
   }
 

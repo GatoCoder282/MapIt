@@ -1,5 +1,11 @@
 # Tasks — MAP-229
 
+## Integración con main (2026-10-28)
+
+- Se integran auditoría e historial de reservas de `origin/main` (`d4731c2`) conservando pagos QR. Las versiones V20–V22 de main se mantienen; las migraciones de esta rama pasan de V20–V28 a V23–V31, con sus pruebas de upgrade actualizadas.
+- Si una BD local ya aplicó las versiones anteriores de pagos, su historial Flyway no coincide con esta numeración. No ejecutar `repair`, borrar datos ni reiniciar volúmenes automáticamente: requiere una estrategia explícita según los datos que deban conservarse.
+- Verificación focal en PostgreSQL efímero: `PaymentMigrationUpgradeIntegrationTest`, `MockPaymentProjectionMigrationIntegrationTest`, `SpaceElementMetadataMigrationIntegrationTest` y `AuditLogMigrationIntegrationTest` pasaron mediante `:bootstrap:integrationTest`.
+
 ## Diagnóstico de errores solicitado el 2026-10-28
 
 - `pnpm check` reprodujo fallos de Prettier y ESLint; tipos, tests frontend, builds, contrato API y backend pasaron en la primera ejecución.

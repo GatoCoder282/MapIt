@@ -22,6 +22,7 @@ public final class ApiPaths {
   public static final String AUTH_ACTIVATE = API_V1 + "/auth/activate";
   public static final String DEMO_ITEMS = API_V1 + "/demo-items/**";
   public static final String ESTABLISHMENTS = API_V1 + "/establishments/**";
+  public static final String AUDIT_LOGS = API_V1 + "/audit-logs";
   public static final String TENANTS = API_V1 + "/tenants";
   public static final String TENANTS_ALL = TENANTS + "/**";
 

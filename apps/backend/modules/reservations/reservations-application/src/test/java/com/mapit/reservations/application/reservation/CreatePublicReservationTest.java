@@ -29,6 +29,7 @@ import com.mapit.reservations.domain.reservation.ReservationRepository;
 import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.reservations.domain.reservation.ReservationResourceRepository;
 import com.mapit.reservations.domain.reservation.ReservationTimeRange;
+import com.mapit.shared.audit.AuditEventRecorder;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
@@ -60,11 +61,26 @@ class CreatePublicReservationTest {
     Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
     TenantContext tenantContext = () -> Optional.of(TENANT);
     ActorContext actorContext = () -> Optional.of(ACTOR);
+    AuditEventRecorder auditEvents = event -> {};
     CreateReservation createReservation =
         new CreateReservation(
-            people, resources, guard, availability, reservations, tenantContext, actorContext, clock);
-    useCase = new CreatePublicReservation(establishments, people, createReservation, clock,
-        new PublicReservationAccessService(new ReservationAccessTestRepository(), establishments, guard, resources, clock));
+            people,
+            resources,
+            guard,
+            availability,
+            reservations,
+            auditEvents,
+            tenantContext,
+            actorContext,
+            clock);
+    useCase =
+        new CreatePublicReservation(
+            establishments,
+            people,
+            createReservation,
+            clock,
+            new PublicReservationAccessService(
+                new ReservationAccessTestRepository(), establishments, guard, resources, clock));
   }
 
   @Test
@@ -240,8 +256,8 @@ class CreatePublicReservationTest {
     }
 
     @Override
-    public java.util.List<Reservation> findAll(com.mapit.shared.tenant.TenantId tenantId) {
-      return java.util.List.of();
+    public List<Reservation> findAll(TenantId tenantId) {
+      return saved != null && saved.tenantId().equals(tenantId) ? List.of(saved) : List.of();
     }
   }
 }

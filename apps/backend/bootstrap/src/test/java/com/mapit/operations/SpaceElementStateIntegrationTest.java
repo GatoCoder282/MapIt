@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -28,6 +29,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import com.mapit.identity.domain.AccessTokenIssuer;
 import com.mapit.identity.domain.AuthenticatedUser;
 import com.mapit.identity.domain.UserRole;
+import com.mapit.operations.infrastructure.audit.JdbcAuditLogRepository;
+import com.mapit.shared.audit.AuditEventRecorder;
 import com.mapit.shared.flags.FeatureFlag;
 import com.mapit.shared.flags.FeatureFlagPort;
 import com.mapit.shared.tenant.TenantId;
@@ -68,6 +71,7 @@ class SpaceElementStateIntegrationTest {
       UUID.fromString("31000000-0000-0000-0000-000000000041");
   private static final UUID ELEMENT_B =
       UUID.fromString("31000000-0000-0000-0000-000000000042");
+  private static final AtomicBoolean FAIL_AUDIT = new AtomicBoolean();
 
   @LocalServerPort private int port;
   @Autowired private JdbcTemplate jdbc;
@@ -89,10 +93,10 @@ class SpaceElementStateIntegrationTest {
 
   @BeforeEach
   void fixtures() {
+    FAIL_AUDIT.set(false);
+    jdbc.execute("truncate table audit_log");
     jdbc.update(
         "delete from realtime_event_outbox where tenant_id in (?, ?)", TENANT_A, TENANT_B);
-    jdbc.update(
-        "delete from space_element_state_change where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from space_element where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from app_user where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from sector where tenant_id in (?, ?)", TENANT_A, TENANT_B);
@@ -178,6 +182,19 @@ class SpaceElementStateIntegrationTest {
   }
 
   @Test
+  void falla_de_auditoria_revierte_el_cambio_de_estado_sin_dejar_evento_huerfano() {
+    FAIL_AUDIT.set(true);
+
+    patch(SECTOR_A, ELEMENT_A, "RESERVED", token(ADMIN_A, UserRole.ADMIN))
+        .expectStatus()
+        .isEqualTo(500);
+
+    FAIL_AUDIT.set(false);
+    assertThat(stateOf(ELEMENT_A)).isEqualTo("AVAILABLE");
+    assertThat(auditCount(ELEMENT_A)).isZero();
+  }
+
+  @Test
   void endpoint_exige_jwt_y_rechaza_roles_no_autorizados() {
     patch(SECTOR_A, ELEMENT_A, "RESERVED", null).expectStatus().isUnauthorized();
     patch(SECTOR_A, ELEMENT_A, "RESERVED", token(UUID.randomUUID(), UserRole.MANAGER))
@@ -227,7 +244,6 @@ class SpaceElementStateIntegrationTest {
     assertThat(outbox.get("previous_state")).isEqualTo("AVAILABLE");
     assertThat(outbox.get("state")).isEqualTo("RESERVED");
 
-    // Repetir el estado no deja eventos nuevos.
     patch(SECTOR_A, ELEMENT_A, "RESERVED", token(ADMIN_A, UserRole.ADMIN))
         .expectStatus()
         .isOk();
@@ -284,7 +300,12 @@ class SpaceElementStateIntegrationTest {
   private long auditCount(UUID elementId) {
     Long count =
         jdbc.queryForObject(
-            "select count(*) from space_element_state_change where space_element_id = ?",
+            """
+            select count(*) from audit_log
+            where resource_type = 'SPACE_ELEMENT'
+              and event_type = 'SPACE_ELEMENT_STATE_CHANGED'
+              and resource_id = ?
+            """,
             Long.class,
             elementId);
     return count == null ? 0 : count;
@@ -356,6 +377,17 @@ class SpaceElementStateIntegrationTest {
 
   @TestConfiguration
   static class TestFlags {
+
+    @Bean
+    @Primary
+    AuditEventRecorder controlledAuditRecorder(JdbcAuditLogRepository delegate) {
+      return event -> {
+        if (FAIL_AUDIT.get()) {
+          throw new IllegalStateException("Fallo de auditoría controlado por la prueba");
+        }
+        delegate.record(event);
+      };
+    }
 
     @Bean
     @Primary

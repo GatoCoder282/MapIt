@@ -137,6 +137,10 @@ public class SecurityConfig {
                                 UserRole.ADMIN.name(),
                                 UserRole.MANAGER.name(),
                                 UserRole.STAFF.name())
+                        // HU-5.03: la bitácora contiene trazabilidad interna del tenant y
+                        // su consulta corresponde exclusivamente al administrador.
+                        .requestMatchers(HttpMethod.GET, ApiPaths.AUDIT_LOGS)
+                        .hasRole(UserRole.ADMIN.name())
                         // CU-12: el listado de reservas del tenant es del mismo staff
                         // operativo que las da de alta. Sin token, 401; con un rol sin
                         // acceso, 403.

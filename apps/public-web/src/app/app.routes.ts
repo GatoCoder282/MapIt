@@ -40,6 +40,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/booking/ui/booking-page').then((m) => m.BookingPage),
   },
   {
+    path: 'mis-reservas/:tenantSlug',
+    loadComponent: () =>
+      import('./features/my-reservations/ui/my-reservations-page').then(
+        (m) => m.MyReservationsPage,
+      ),
+  },
+  {
     // CU-25: el primer ADMIN abre el enlace del correo y define su contraseña.
     // Es pública: aún no existe sesión; el token del enlace es la credencial.
     path: 'activar',

@@ -7,9 +7,6 @@ import com.mapit.shared.tenant.TenantId;
 
 /** Puerto para registrar y consultar la trazabilidad de estados. */
 public interface SpaceElementStateChangeRepository {
-
-  void append(SpaceElementStateChange change);
-
   List<SpaceElementStateChange> findByElement(
       TenantId tenantId, UUID sectorId, UUID elementId);
 
