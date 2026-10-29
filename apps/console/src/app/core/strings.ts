@@ -626,12 +626,52 @@ export const STRINGS = {
         SEAT: 'Asiento',
         ROOM: 'Habitación',
       },
+      /**
+       * HU-7.01/7.02: textos por vertical. Las reglas (ventana, reservables, horas de
+       * check-in) llegan del backend en el perfil; aquí solo se elige cómo nombrarlas.
+       */
+      verticals: {
+        RESTAURANT: {
+          intro: 'Selecciona el cliente, el turno y las mesas que deseas reservar.',
+          startsAtLabel: 'Inicio del turno',
+          endsAtLabel: 'Fin del turno',
+          elementsTitle: 'Mesas y zonas',
+          hint: 'Un turno empieza y termina el mismo día, con un máximo de {hours} h.',
+          elementTypes: {},
+        },
+        NIGHTCLUB: {
+          intro: 'Selecciona el cliente, la noche y las mesas VIP o zonas que deseas reservar.',
+          startsAtLabel: 'Llegada',
+          endsAtLabel: 'Salida',
+          elementsTitle: 'Mesas VIP y zonas',
+          hint: 'La noche puede terminar de madrugada, con un máximo de {hours} h.',
+          elementTypes: { TABLE: 'Mesa VIP', SECTOR_ZONE: 'Zona / pista' },
+        },
+        EVENT_HALL: {
+          intro: 'Selecciona el cliente, el evento y las ubicaciones que deseas reservar.',
+          startsAtLabel: 'Inicio del evento',
+          endsAtLabel: 'Fin del evento',
+          elementsTitle: 'Ubicaciones',
+          hint: 'Puedes reservar varias ubicaciones numeradas; el evento dura hasta {hours} h.',
+          elementTypes: { SEAT: 'Ubicación', SECTOR_ZONE: 'Sección' },
+        },
+        HOTEL: {
+          intro: 'Selecciona el huésped, las fechas de la estadía y las habitaciones.',
+          startsAtLabel: 'Llegada (check-in)',
+          endsAtLabel: 'Salida (check-out)',
+          elementsTitle: 'Habitaciones',
+          hint: 'Check-in desde las {start} y check-out hasta las {end}; de {min} a {max} noches.',
+          elementTypes: {},
+        },
+      },
       errors: {
         loadEstablishments: 'No se pudieron cargar los establecimientos.',
         loadElements: 'No se pudieron cargar los elementos del establecimiento.',
         customerRequired: 'Selecciona o registra un cliente.',
         establishmentRequired: 'Selecciona un establecimiento.',
         invalidInterval: 'La fecha de fin debe ser posterior a la fecha de inicio.',
+        verticalDisabled:
+          'Este tipo de establecimiento no está habilitado para tu empresa: no se pueden crear reservas nuevas.',
         elementsRequired: 'Selecciona al menos un elemento.',
         invalidRequest: 'Revisa el intervalo y los elementos seleccionados.',
         notFound: 'El cliente, establecimiento o algún elemento ya no está disponible.',

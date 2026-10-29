@@ -25,10 +25,10 @@
 
 ## MAP-234 — Adaptar frontend a terminología y formularios de las cuatro verticales
 
-- [ ] `STRINGS.verticals` en Console y Public Web.
-- [ ] Public Web: buscador y reserva por modo (turno, noche, evento, estadía).
-- [ ] Console: asistente con verticales habilitadas; formulario de reserva interna por vertical.
-- [ ] Tests de stores (Vitest).
+- [x] `STRINGS.verticals` en Console y Public Web.
+- [x] Public Web: buscador y reserva por modo (turno, noche, evento, estadía).
+- [x] Console: asistente con verticales habilitadas; formulario de reserva interna por vertical.
+- [x] Tests de stores (Vitest).
 
 ## MAP-248 — Integrar las cuatro verticales con mapa, disponibilidad y reservas
 
@@ -117,3 +117,23 @@
   `CreateReservationTest`); IT de `reservations.*` y `payments.*` (74) verdes;
   `VerticalReservationIntegrationTest` (9) y `VerticalProfileIntegrationTest` (6) verdes;
   `ng test public-web` (119) verde.
+
+### MAP-234 — Terminología y formularios
+
+- `STRINGS.verticals` (Public Web) y `STRINGS.reservations.form.verticals` (Console) solo
+  nombran: los límites (`{hours}`, `{start}`, `{end}`, `{min}`, `{max}`) se rellenan con el
+  perfil del backend, así que cambiar la regla en `VerticalCatalog` no exige tocar textos.
+- Public Web: `AvailabilityStore` pide `GET …/vertical-profile` al entrar y adapta el formulario
+  (hotel: llegada/salida con las horas de check-in/out ocultas; discoteca y salón: aviso de fin
+  al día siguiente). `validVerticalInterval` replica `BookingWindow` para no enviar búsquedas que
+  solo pueden volver con 400; sin perfil conserva la regla anterior del mismo día. El perfil que
+  trae el mapa reemplaza al inicial (refleja la flag en ese momento).
+- Console: el formulario de reserva interna carga el perfil del establecimiento elegido; filtra
+  elementos por `reservableElementTypes` (antes `TYPE_DEFAULTS`, que excluía las zonas de la
+  discoteca), muestra la etiqueta del elemento en vez de solo su tipo, pide días en hotel y
+  traduce el 403. Cambiar de establecimiento limpia el intervalo porque cambia su forma.
+- `ReservationsApi.listReservableElements` ya no decide reservabilidad: solo descarta
+  decoración y fuera de servicio; su test se actualizó en consecuencia.
+- Verificación: `ng test public-web` (131) y specs de reservas de Console (24) verdes;
+  `ng build` de ambas apps sin errores (public-web mantiene el aviso de presupuesto inicial
+  de 400 kB, por debajo del error de 800 kB); ESLint y `pnpm fe:typecheck` limpios.
