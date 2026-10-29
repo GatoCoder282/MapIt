@@ -32,8 +32,8 @@
 
 ## MAP-248 — Integrar las cuatro verticales con mapa, disponibilidad y reservas
 
-- [ ] `endDate` en rutas públicas disponibilidad → reserva → checkout; rango de días en confirmación.
-- [ ] Verificar pago MOCK sin cambios cuando la política lo habilita.
+- [x] `endDate` en rutas públicas disponibilidad → reserva → checkout; rango de días en confirmación.
+- [x] Verificar pago MOCK sin cambios cuando la política lo habilita.
 
 ## MAP-235 — Validar integración, contratos, aislamiento multi-tenant y regresiones
 
@@ -137,3 +137,17 @@
 - Verificación: `ng test public-web` (131) y specs de reservas de Console (24) verdes;
   `ng build` de ambas apps sin errores (public-web mantiene el aviso de presupuesto inicial
   de 400 kB, por debajo del error de 800 kB); ESLint y `pnpm fe:typecheck` limpios.
+
+### MAP-248 — Integración mapa → disponibilidad → reserva → pago
+
+- El enlace «Continuar» lleva `endDate` siempre que el backend resolvió un fin en otro día
+  (salida de hotel o noche de madrugada). Así la página de reserva no depende de volver a
+  deducirlo antes de tener el perfil; sin perfil se acepta un `endDate` explícito.
+- `BookingStore` toma el perfil del mapa, envía `endDate` en `createPublicReservation`, muestra el
+  día de fin resuelto, bloquea la confirmación con la vertical apagada y traduce el 403.
+- Checkout, recibo e historial ya formateaban `startsAt`/`endsAt` con `formatRange`, así que
+  una estadía de varios días se muestra sin cambios. El pago QR MOCK de MAP-229 no cambia.
+- `PublicPaymentFlowIntegrationTest` suma una estadía de hotel: mismo checkout (120 BOB),
+  pago MOCK confirmado y la habitación sigue `AVAILABLE` (pagar no es check-in).
+- Verificación: `ng test public-web` (134) verde; `PublicPaymentFlowIntegrationTest` verde;
+  `ng build public-web`, ESLint y `pnpm fe:typecheck` limpios.
