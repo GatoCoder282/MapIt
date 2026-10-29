@@ -11,9 +11,9 @@
 
 ## MAP-247 — Configurar catálogo de elementos y plantillas para las cuatro verticales
 
-- [ ] `SpaceElementTypePolicy` delega en el catálogo; actualizar su test.
-- [ ] Console: la biblioteca del editor filtra tipos base y plantillas por `allowedElementTypes`.
-- [ ] Tests: política (unit) y biblioteca filtrada (Vitest).
+- [x] `SpaceElementTypePolicy` delega en el catálogo; actualizar su test.
+- [x] Console: la biblioteca del editor filtra tipos base y plantillas por `allowedElementTypes`.
+- [x] Tests: política (unit) y biblioteca filtrada (Vitest).
 
 ## MAP-233 — Aplicar reglas de reservas por turno, evento/noche y estadía
 
@@ -80,3 +80,17 @@
 - Verificación: `pnpm be:test` verde; `VerticalProfileIntegrationTest` (6 casos) verde con
   Testcontainers; `ng test libs` de flags (7) verde; `pnpm fe:typecheck` y ESLint de los
   archivos tocados sin avisos.
+
+### MAP-247 — Catálogo de elementos y plantillas
+
+- Matriz de tipos admitidos y reservables documentada en spec D4/D5. `SpaceElementTypePolicy`
+  deja de declarar la matriz y la traduce desde `VerticalCatalog`; dos tests nuevos fallan si
+  el catálogo nombra un tipo que spaces no conoce o deja una vertical sin tipos.
+- Las plantillas siguen siendo del tenant (MAP-191), sin columna de vertical: se filtran por el
+  tipo que admite la vertical del sector abierto. No se migran datos ni se tocan plantillas
+  existentes; una plantilla `TABLE` sigue existiendo, solo que el editor de un hotel no la ofrece.
+- Console: `MapEditorStore` carga `GET /sectors/{id}/vertical-profile` junto con los elementos;
+  `ElementLibraryComponent` oculta categorías sin tipos admitidos. Si el perfil falla, no filtra
+  y el backend sigue respondiendo 400 a un tipo incompatible (RN-4 de HU-2.03).
+- Verificación: `spaces-domain` y `spaces-application` verdes; `ng test console` del editor
+  (37 tests, 4 nuevos) verde; ESLint sin avisos.

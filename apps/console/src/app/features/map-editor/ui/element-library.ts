@@ -175,8 +175,12 @@ export class ElementLibraryComponent implements OnInit {
   protected readonly categories = computed<LibraryCategory[]>(() => {
     const templates = this.store.templates();
     const labels = this.paletteStrings.categories;
-    return this.categoryOrder.map(({ key, types }) => {
-      const cards: LibraryCard[] = types.flatMap((type) => {
+    // HU-7.01/7.02 (MAP-247): solo los tipos que admite la vertical del sector, y solo las
+    // plantillas de esos tipos. Una categoría sin tipos admitidos desaparece.
+    return this.categoryOrder.flatMap(({ key, types }) => {
+      const allowed = types.filter((type) => this.store.isTypeAllowed(type));
+      if (allowed.length === 0) return [];
+      const cards: LibraryCard[] = allowed.flatMap((type) => {
         const base: LibraryCard = {
           key: `base:${type}`,
           type,
@@ -187,7 +191,7 @@ export class ElementLibraryComponent implements OnInit {
           .map((t) => ({ key: `tpl:${t.id}`, type: t.type, label: t.name }));
         return [base, ...saved];
       });
-      return { key, label: labels[key as keyof typeof labels] ?? key, cards };
+      return [{ key, label: labels[key as keyof typeof labels] ?? key, cards }];
     });
   });
 
