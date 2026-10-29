@@ -60,13 +60,16 @@ Docker Desktop está cerrado. Ábrelo y espera a que diga **Running** abajo a la
 
 ### `port is already allocated` / `address already in use`
 
-Otro programa ocupa el puerto. Dos salidas:
+Otro programa o una instancia anterior ocupa el puerto. `pnpm dev`, `dev:front` y
+`dev:back` comprueban primero los puertos que necesitan, en IPv4 e IPv6. Si están
+ocupados, muestran la aplicación y el puerto y no inician procesos adicionales.
 
-```bash
-pnpm stop        # si es una sesión previa de MapIt
-```
+Si ya hay una sesión funcionando, úsala o pulsa **Ctrl+C en la terminal que la inició**
+antes de ejecutar `pnpm dev` otra vez. `pnpm stop` baja los contenedores Docker;
+**no detiene** los servidores Angular/Java iniciados directamente en el host.
 
-O cambia el puerto en tu `.env` (solo afecta a tu máquina):
+Para un conflicto entre contenedores puedes usar `pnpm stop`. También puedes cambiar
+el puerto en tu `.env` (solo afecta a tu máquina):
 
 ```bash
 POSTGRES_PORT=5434

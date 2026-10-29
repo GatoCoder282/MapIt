@@ -37,3 +37,23 @@
   `.tmp-checkin-check.log`, `.tmp-checkin-flow-green.log`, `.tmp-checkin-api-green.log`,
   `.tmp-checkin-db-validated.log` y `.tmp-checkin-recovery.log`.
   No commits, push ni cambios a migraciones existentes.
+
+## Seguimiento: arranque duplicado a las 22:14 (Bolivia)
+
+- Este log sí era nuevo: Flyway validaba y el fallo ocurría después. Se identificaron
+  listeners MapIt en 4200/4300/8080. El backend 8080 era el dejado activo por el agente
+  durante la verificación anterior. Se detuvieron solo esos tres procesos tras validar
+  PID, nombre y ruta de proyecto; Docker y los datos se conservaron.
+- `dev.mjs` ahora comprueba los puertos solicitados antes de arrancar infraestructura
+  o procesos, tanto en IPv4 como IPv6. Usa el puerto real de backend y pasa los puertos
+  configurados a Angular. El diagnóstico indica qué servicio ocupa cada puerto.
+- `pnpm exec node --test tools/scripts/dev.test.mjs`: 3/3 aprobados. Formato y ESLint
+  focalizados sin errores. `pnpm dev` con instancias existentes devolvió exit 1 esperado,
+  identificó los tres puertos y no lanzó procesos nuevos.
+- Arranque limpio con `pnpm dev`: Console :4200, Public Web :4300 y
+  `/actuator/health` :8080 respondieron HTTP 200. Se detuvo la sesión de prueba con
+  Ctrl+C y se verificó que no quedan listeners en esos tres puertos antes de la entrega.
+- Se corrigió la documentación que sugería que `pnpm stop` detiene procesos host:
+  solo baja Docker; Angular/Java de `pnpm dev` se detienen con Ctrl+C en su terminal.
+- No se repitió `pnpm check` completo para este cambio del lanzador; la verificación
+  global anterior pertenece al arreglo de check-in. Evidencia nueva: `.tmp-dev-clean-start.log`.

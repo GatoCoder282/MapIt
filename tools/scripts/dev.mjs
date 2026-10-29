@@ -16,14 +16,55 @@ import {
   loadEnv,
   applyJavaHome,
   sleep,
+  isPortFree,
+  die,
 } from './_lib.mjs';
 
 loadEnv();
-applyJavaHome();
 
 const mode = process.argv[2] ?? 'all';
 const wantBack = mode === 'all' || mode === 'back';
 const wantFront = mode === 'all' || mode === 'front';
+
+const backendPort = Number(
+  process.env.SERVER_PORT ?? process.env.PORT ?? process.env.BACKEND_PORT ?? 8080,
+);
+const consolePort = Number(process.env.CONSOLE_PORT ?? 4200);
+const publicPort = Number(process.env.PUBLIC_WEB_PORT ?? 4300);
+const services = [
+  ...(wantBack ? [{ name: 'Backend', port: backendPort }] : []),
+  ...(wantFront
+    ? [
+        { name: 'Console', port: consolePort },
+        { name: 'Public Web', port: publicPort },
+      ]
+    : []),
+];
+for (const service of services) {
+  if (!Number.isInteger(service.port) || service.port < 1 || service.port > 65535) {
+    die(
+      `Puerto inválido para ${service.name}: ${service.port}`,
+      'Revisa los puertos configurados en .env.',
+    );
+  }
+}
+const busy = (
+  await Promise.all(
+    services.map(async (service) => {
+      const free = await Promise.all(
+        ['127.0.0.1', '::1'].map((host) => isPortFree(service.port, host)),
+      );
+      return free.every(Boolean) ? null : service;
+    }),
+  )
+).filter(Boolean);
+if (busy.length) {
+  die(
+    `No se inició MapIt: puertos ocupados (${busy.map((service) => `${service.name}: ${service.port}`).join(', ')}).`,
+    'Ya hay otra instancia o aplicación usando esos puertos. Usa la instancia existente o detenla con Ctrl+C en su terminal antes de repetir pnpm dev. No se inició ningún proceso nuevo.',
+  );
+}
+applyJavaHome();
 
 const children = [];
 let cerrando = false;
@@ -76,16 +117,25 @@ if (wantBack) {
 /* ── Frontends ───────────────────────────────────────────── */
 if (wantFront) {
   const apps = [
-    ['console', c.blue, '@mapit/console'],
-    ['public-web', c.magenta, '@mapit/public-web'],
+    ['console', c.blue, '@mapit/console', consolePort],
+    ['public-web', c.magenta, '@mapit/public-web', publicPort],
   ];
-  for (const [nombre, color, pkg] of apps) {
+  for (const [nombre, color, pkg, port] of apps) {
     if (!existsSync(join(ROOT, 'apps', nombre, 'package.json'))) {
       log.warn(`${nombre} no inicializada — omitida`);
       continue;
     }
     log.step(`Frontend: ${nombre}`);
-    children.push(spawnPrefixed(nombre, color, 'pnpm', ['--filter', pkg, 'run', 'start']));
+    children.push(
+      spawnPrefixed(nombre, color, 'pnpm', [
+        '--filter',
+        pkg,
+        'run',
+        'start',
+        '--port',
+        String(port),
+      ]),
+    );
   }
 }
 
@@ -100,9 +150,9 @@ console.log(`
 ${c.gray('─'.repeat(62))}
   ${c.bold('MapIt corriendo')}   ${c.gray('(Ctrl+C para detener)')}
 
-    Console (staff)    ${c.cyan(`http://localhost:${p('CONSOLE_PORT', 4200)}`)}
-    Público            ${c.cyan(`http://localhost:${p('PUBLIC_WEB_PORT', 4300)}`)}
-    API + Swagger      ${c.cyan(`http://localhost:${p('BACKEND_PORT', 8080)}/swagger-ui.html`)}
+    Console (staff)    ${c.cyan(`http://localhost:${consolePort}`)}
+    Público            ${c.cyan(`http://localhost:${publicPort}`)}
+    API + Swagger      ${c.cyan(`http://localhost:${backendPort}/swagger-ui.html`)}
     Feature flags      ${c.cyan(`http://localhost:${p('UNLEASH_PORT', 4242)}`)}
     Correos            ${c.cyan(`http://localhost:${p('MAILPIT_UI_PORT', 8025)}`)}
 ${c.gray('─'.repeat(62))}

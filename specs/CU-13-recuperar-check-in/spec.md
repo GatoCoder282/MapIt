@@ -23,3 +23,15 @@ El adaptador de recepción clasifica cualquier HTTP no reconocido, incluidos
 - Una prueba HTTP/PostgreSQL confirma pago, check-in idempotente, ocupación y auditoría.
 
 Sin cambios de contrato, reglas de horario, autorización o aislamiento tenant.
+
+## Seguimiento: segundo arranque de desarrollo
+
+El log posterior del 2026-10-28 a las 22:14 (Bolivia) sí es nuevo. Flyway valida;
+el arranque falla después. Hay listeners existentes de MapIt en 4200, 4300 y 8080.
+El backend 8080 fue dejado activo por la verificación del agente. Se autoriza corregir
+el lanzador y liberar únicamente esas instancias verificadas.
+
+- `pnpm dev*` detecta puertos ocupados antes de levantar infraestructura o procesos.
+- El diagnóstico identifica aplicación/puerto y explica cómo usar o detener la instancia.
+- La detección incluye IPv4 e IPv6 y solo servicios solicitados por el modo.
+- No se detienen procesos ajenos ni se borra información.

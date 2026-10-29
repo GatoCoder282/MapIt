@@ -10,6 +10,9 @@
 4. Probar validación/rechazos del plan de recuperación; validar el recorrido de pagos
    y llegada en PostgreSQL efímero con la auditoría actual.
 5. Recuperar la base local autorizada y comprobar validación Flyway y preservación.
+6. Seguimiento de arranque: reutilizar `isPortFree` para validar IPv4/IPv6 antes de
+   iniciar cualquier proceso; probar el CLI con listeners TCP efímeros y liberar las
+   tres instancias locales identificadas antes de devolver el control de `pnpm dev`.
 
 ## Patrones de diseño aplicados
 
