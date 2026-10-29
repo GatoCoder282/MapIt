@@ -265,7 +265,7 @@ export const PUBLIC_STRINGS_EN = {
     fullNameLabel: 'Full name',
     emailLabel: 'Email',
     phoneLabel: 'Telephone (optional)',
-    submit: 'Confirm reservation',
+    submit: 'Create reservation',
     submitting: 'Confirming reservation…',
     back: 'Back to availability',
     successTitle: 'Confirmed reservation',

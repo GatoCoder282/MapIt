@@ -7,6 +7,7 @@
 import {
   createLocalizedCatalog,
   createLocalizedTextResolver,
+  type DeepPartial,
   type LocalizedShape,
 } from '@mapit/i18n';
 import { STRINGS_EN } from './strings.en';
@@ -1304,7 +1305,7 @@ const CATALOGS = {
   es: STRINGS_ES,
   en: STRINGS_EN,
   'ja-JP': STRINGS_JA,
-} satisfies Record<'es' | 'en' | 'ja-JP', LocalizedShape<typeof STRINGS_ES>>;
+} satisfies Record<'es' | 'en' | 'ja-JP', DeepPartial<LocalizedShape<typeof STRINGS_ES>>>;
 
 export const STRINGS = createLocalizedCatalog<typeof STRINGS_ES>(CATALOGS, 'es');
 export const localizeString = createLocalizedTextResolver(CATALOGS, 'es');

@@ -263,7 +263,7 @@ export const PUBLIC_STRINGS_JA = {
     fullNameLabel: 'フルネーム',
     emailLabel: '電子メール',
     phoneLabel: '電話（オプション）',
-    submit: '予約を確認する',
+    submit: '予約を作成',
     submitting: '予約を確認中…',
     back: '利用可能状況に戻る',
     successTitle: '予約を確認しました',
