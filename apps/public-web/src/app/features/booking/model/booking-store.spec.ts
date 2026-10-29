@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { PublicAvailabilityMap, PublicReservation, PublicCheckout } from '@mapit/api-client';
 import { of, throwError, Subject } from 'rxjs';
-import { publicMapFixture } from '../../../core/public-map.fixture';
+import { publicMapFixture, verticalProfileFixture } from '../../../core/public-map.fixture';
 import { BookingApi } from '../data/booking-api';
 import { BookingStore } from './booking-store';
 
@@ -261,5 +261,93 @@ describe('BookingStore — resolved selection before customer data', () => {
     expect(store.ownReservation()).toBeNull();
     expect(store.status()).not.toBe('success');
     expect(store.checkoutPath()).toBeNull();
+  });
+
+  describe('integración por vertical (HU-7.01/7.02 · MAP-248)', () => {
+    it('reserva una estadía de hotel con la fecha de salida del enlace', async () => {
+      const hotel = verticalProfileFixture('HOTEL');
+      api.map.mockReturnValue(
+        of({
+          ...publicMapFixture(),
+          startTime: '15:00',
+          endDate: '2030-12-26',
+          endTime: '12:00',
+          vertical: hotel,
+        }),
+      );
+      await store.configure(
+        'tenant-a',
+        'venue-a',
+        'space-a',
+        '2030-12-24',
+        '15:00',
+        '12:00',
+        '',
+        '2030-12-26',
+      );
+
+      expect(api.map).toHaveBeenCalledWith(
+        'tenant-a',
+        'venue-a',
+        '2030-12-24',
+        '15:00',
+        '12:00',
+        '2030-12-26',
+      );
+      expect(store.profile()?.bookingMode).toBe('STAY');
+      expect(store.terms().selected).toBe('Habitación seleccionada');
+      expect(store.displayEndDate()).toBe('2030-12-26');
+
+      store.confirm();
+      fill();
+      await store.submit();
+      expect(api.create).toHaveBeenCalledWith(
+        'tenant-a',
+        'venue-a',
+        expect.objectContaining({ date: '2030-12-24', endDate: '2030-12-26' }),
+      );
+    });
+
+    it('muestra el día de fin que resolvió el backend para una noche', async () => {
+      const night = verticalProfileFixture('NIGHTCLUB');
+      api.map.mockReturnValue(
+        of({
+          ...publicMapFixture(),
+          startTime: '23:00',
+          endDate: '2030-12-25',
+          endTime: '04:00',
+          vertical: night,
+        }),
+      );
+      await store.configure(
+        'tenant-a',
+        'venue-a',
+        'space-a',
+        '2030-12-24',
+        '23:00',
+        '04:00',
+        '',
+        '2030-12-25',
+      );
+
+      expect(store.descriptorStatus()).toBe('ready');
+      expect(store.displayEndDate()).toBe('2030-12-25');
+    });
+
+    it('no deja confirmar si la vertical está apagada y traduce el 403', async () => {
+      const off = { ...verticalProfileFixture('RESTAURANT'), enabled: false };
+      api.map.mockReturnValue(of({ ...publicMapFixture(), vertical: off }));
+      await configure();
+      expect(store.canConfirm()).toBe(false);
+
+      api.map.mockReturnValue(of(publicMapFixture()));
+      api.create.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
+      await configure();
+      await store.resolve();
+      store.confirm();
+      fill();
+      await store.submit();
+      expect(store.errorMessage()).toContain('no acepta reservas');
+    });
   });
 });

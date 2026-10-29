@@ -216,6 +216,28 @@ class PublicPaymentFlowIntegrationTest {
     assertThat(jdbc.queryForObject("select count(*) from realtime_event_outbox where tenant_id=? and event_type='space-element.state.changed.v1'",Integer.class,tenant)).isEqualTo(2);
   }
 
+  /** HU-7.01/7.02 · MAP-248: la vertical solo cambia la ventana; el cobro es el de MAP-229. */
+  @Test void una_estadia_de_hotel_usa_el_mismo_checkout_y_pago_mock_sin_hacer_check_in() {
+    jdbc.update("update establishment set type='HOTEL' where tenant_id=? and id=?",tenant,venue);
+    jdbc.update("update space_element set type='ROOM' where tenant_id=? and id=?",tenant,firstElement);
+    Booking booking=client().post().uri(venuePath()+"/reservations").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("date","2030-06-15","startTime","15:00","endDate","2030-06-17","endTime","12:00",
+            "spaceElementIds",List.of(firstElement),
+            "customer",Map.of("fullName","Huésped de integración","email","guest@example.test")))
+        .exchange().expectStatus().isCreated().expectBody(Booking.class).returnResult().getResponseBody();
+    assertThat(booking).isNotNull();
+    client().get().uri(scope(booking)+"/checkout").header("X-Reservation-Access",booking.accessToken())
+        .exchange().expectStatus().isOk().expectBody()
+        .jsonPath("$.amount").isEqualTo("120.00")
+        .jsonPath("$.reservation.endsAt").isEqualTo("2030-06-17T12:00:00Z")
+        .jsonPath("$.methods[0].provider").isEqualTo("MOCK_GATEWAY");
+    IdResponse attempt=start(booking,UUID.randomUUID());
+    simulate(booking,attempt.id(),UUID.randomUUID());
+    assertThat(reservationStatus(booking)).isEqualTo("CONFIRMED");
+    // Pagar confirma la estadía, pero la habitación no se ocupa hasta el check-in.
+    assertThat(elementStates()).containsOnly("AVAILABLE");
+  }
+
   @Test void catalogo_publico_busca_establecimientos_reales_sin_ratings_inventados() {
     client().get().uri("/api/v1/public/establishments?query="+tenant).exchange().expectStatus().isOk()
         .expectBody().jsonPath("$.length()").isEqualTo(1)

@@ -31,6 +31,7 @@ export class BookingPage {
   readonly date = input('');
   readonly startTime = input('');
   readonly endTime = input('');
+  readonly endDate = input('');
   readonly reservationId = input('');
   protected readonly store = inject(BookingStore);
   protected readonly strings = STRINGS;
@@ -49,6 +50,7 @@ export class BookingPage {
         this.startTime(),
         this.endTime(),
         this.reservationId(),
+        this.endDate(),
       ] as const;
       untracked(() => {
         void this.store.configure(...values);

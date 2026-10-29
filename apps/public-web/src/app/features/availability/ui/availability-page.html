@@ -179,8 +179,11 @@
           <section class="selection-summary" data-testid="availability-selection" aria-live="polite">
             <h3>{{ store.terms().selected }}</h3>
             <p>
-              {{ data.establishmentName }} · {{ data.date }} · {{ data.startTime }}–{{ data.endTime }} ·
-              {{ data.timezone }}
+              {{ data.establishmentName }} · {{ data.date }} {{ data.startTime }} –
+              @if (data.endDate !== data.date) {
+                {{ data.endDate }}
+              }
+              {{ data.endTime }} · {{ data.timezone }}
             </p>
             <mp-public-space [space]="space" [profile]="store.profile()" />
             @if (store.canConfirm()) {
@@ -188,7 +191,12 @@
                 class="primary"
                 data-testid="availability-continue"
                 [routerLink]="['/reservar', tenantSlug(), establishmentSlug(), space.id]"
-                [queryParams]="{ date: store.date(), startTime: store.startTime(), endTime: store.endTime() }"
+                [queryParams]="{
+                  date: store.date(),
+                  startTime: store.startTime(),
+                  endTime: store.endTime(),
+                  endDate: store.linkEndDate(),
+                }"
                 >{{ strings.availability.continue }}</a
               >
             }

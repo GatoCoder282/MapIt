@@ -27,6 +27,7 @@ export class BookingApi {
     date: string,
     startTime: string,
     endTime: string,
+    endDate = '',
   ): Observable<PublicAvailabilityMap> {
     return this.availability.findPublicAvailabilityMap({
       tenantSlug,
@@ -34,6 +35,7 @@ export class BookingApi {
       date,
       startTime,
       endTime,
+      ...(endDate ? { endDate } : {}),
     });
   }
   checkout(scope: ReservationAccessScope): Observable<PublicCheckout> {
