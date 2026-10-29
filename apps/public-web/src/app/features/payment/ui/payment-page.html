@@ -1,0 +1,296 @@
+<div class="payment-shell" data-testid="checkout-page">
+  <header class="payment-header">
+    <a class="wordmark" routerLink="/">{{ strings.brand }}<span aria-hidden="true">.</span></a>
+    <a class="text-link" routerLink="/reservas"><svg lucideArrowLeft aria-hidden="true"></svg>{{ strings.back }}</a>
+  </header>
+  <main class="payment-content">
+    @if (!store.previewEnabled()) {
+      <mp-public-establishment-identity [tenantSlug]="tenantSlug()" [establishmentSlug]="establishmentSlug()" />
+    }
+    @if (store.previewEnabled()) {
+      <div class="preview-banner" data-testid="preview-banner">
+        <strong>{{ strings.simulation }}</strong
+        ><span>{{ strings.simulationNotice }}</span>
+      </div>
+      <div class="preview-controls">
+        <label for="payment-scenario">{{ strings.scenario }}</label>
+        <select
+          id="payment-scenario"
+          data-testid="payment-scenario"
+          [value]="store.scenario()"
+          (change)="changeScenario($event)"
+        >
+          @for (scenario of scenarios; track scenario.value) {
+            <option [value]="scenario.value" [selected]="scenario.value === store.scenario()">
+              {{ scenario.label }}
+            </option>
+          }
+        </select>
+      </div>
+    }
+    <div class="page-heading">
+      <h1>{{ strings.title }}</h1>
+      <p>{{ strings.intro }}</p>
+    </div>
+    @switch (store.pageStatus()) {
+      @case ('loading') {
+        <section class="empty-panel" aria-live="polite" aria-busy="true">
+          <svg lucideClock3 aria-hidden="true"></svg>
+          <p>{{ strings.loading }}</p>
+        </section>
+      }
+      @case ('unavailable') {
+        <section class="empty-panel">
+          <svg lucideCreditCard aria-hidden="true"></svg>
+          <h2>{{ strings.unavailableTitle }}</h2>
+          <p>{{ strings.unavailable }}</p>
+        </section>
+      }
+      @case ('not-found') {
+        <section class="empty-panel">
+          <h2>{{ strings.notFoundTitle }}</h2>
+          <p>{{ strings.notFound }}</p>
+        </section>
+      }
+      @case ('error') {
+        <section class="empty-panel" role="alert">
+          <p>{{ strings.loadError }}</p>
+          <button type="button" class="button" (click)="store.retry()">{{ strings.retry }}</button>
+        </section>
+      }
+      @case ('loaded') {
+        @if (store.reservation(); as reservation) {
+          <div class="checkout-grid">
+            <aside class="reservation-summary" aria-labelledby="summary-heading">
+              <h2 id="summary-heading">{{ strings.summary }}</h2>
+              <h3 class="venue-name">{{ reservation.establishmentName }}</h3>
+              <dl class="reservation-facts">
+                <div>
+                  <dt>{{ strings.date }}</dt>
+                  <dd>{{ store.date() }}</dd>
+                </div>
+                <div>
+                  <dt>{{ strings.time }}</dt>
+                  <dd>{{ store.time() }} · {{ reservation.timezone }}</dd>
+                </div>
+                <div>
+                  <dt>{{ strings.spaces }}</dt>
+                  <dd>
+                    @for (space of reservation.spaces; track space.id) {
+                      <mp-public-space [space]="space" [peers]="reservation.spaces" />
+                    }
+                  </dd>
+                </div>
+                @if (store.expiry()) {
+                  <div>
+                    <dt>{{ strings.expiresAt }}</dt>
+                    <dd data-testid="payment-expiry">{{ store.expiry() }} · {{ reservation.timezone }}</dd>
+                  </div>
+                }
+              </dl>
+              <div class="amount-section">
+                @if (store.total()) {
+                  <div class="amount-row">
+                    <span>{{ strings.total }}</span
+                    ><strong>{{ store.total() }}</strong>
+                  </div>
+                }
+                <div class="deposit-row">
+                  <span>{{ strings.deposit }}</span
+                  ><strong>{{ store.deposit() }}</strong>
+                </div>
+                <p>{{ store.data()?.currency }} · {{ store.total() ? strings.amountNote : strings.unknownTotal }}</p>
+              </div>
+              <dl class="reference-list">
+                @if (store.payment(); as payment) {
+                  <div>
+                    <dt>{{ strings.paymentReference }}</dt>
+                    <dd>{{ payment.externalReference }}</dd>
+                  </div>
+                }
+                <div>
+                  <dt>{{ strings.reservationReference }}</dt>
+                  <dd>{{ reservation.id }}</dd>
+                </div>
+              </dl>
+            </aside>
+            <section class="checkout-main" aria-labelledby="method-heading">
+              @if (store.unavailableMessage(); as message) {
+                <p class="muted" role="status">{{ message }}</p>
+              }
+              @if (store.actionError(); as actionError) {
+                <p role="alert">{{ actionError }}</p>
+              }
+              <h2 id="method-heading">{{ strings.paymentMethod }}</h2>
+              <p class="muted section-intro">{{ strings.methodHelp }}</p>
+              <fieldset class="method-options">
+                <legend class="sr-only">{{ strings.paymentMethod }}</legend>
+                @for (method of store.methods(); track method.id) {
+                  <label class="method-option" [class.selected]="store.selectedMethodId() === method.id">
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      [value]="method.id"
+                      [checked]="store.selectedMethodId() === method.id"
+                      [disabled]="!store.canChooseMethod()"
+                      [attr.data-testid]="method.provider === 'MOCK_GATEWAY' ? 'method-mock' : 'method-static'"
+                      (change)="store.chooseMethod(method.id)"
+                    />
+                    @if (method.provider === 'MOCK_GATEWAY') {
+                      <svg lucideCreditCard aria-hidden="true"></svg>
+                    } @else {
+                      <svg lucideQrCode aria-hidden="true"></svg>
+                    }
+                    <span
+                      >{{ method.displayName
+                      }}<small>{{
+                        method.provider === 'MOCK_GATEWAY'
+                          ? strings.simulation
+                          : strings.scenarios.PENDING_MANUAL_VERIFICATION
+                      }}</small></span
+                    >
+                    @if (store.selectedMethodId() === method.id) {
+                      <svg class="selected-check" lucideCheck aria-hidden="true"></svg>
+                    }
+                  </label>
+                }
+              </fieldset>
+              @if (store.selectedMethod(); as method) {
+                <div class="method-explanation">
+                  @if (method.provider === 'STATIC_BANK_QR') {
+                    <p>{{ strings.manualNote }}</p>
+                    @if (method.staticQrImage; as bankQr) {
+                      <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- Imagen bancaria local en data URI. -->
+                      <img class="bank-qr" [src]="bankQr" [alt]="strings.bankQrAlt" width="224" height="224" />
+                    } @else {
+                      <p class="bank-empty"><svg lucideQrCode aria-hidden="true"></svg>{{ strings.noBankQr }}</p>
+                    }
+                  } @else {
+                    <p>{{ strings.mockNote }}</p>
+                  }
+                </div>
+              }
+              @if (store.historicalAttempt(); as attemptMethod) {
+                <p class="muted" data-testid="historical-method">
+                  {{ strings.historicalMethodLabel }}: {{ attemptMethod.displayName }}
+                </p>
+              }
+              <section
+                class="payment-status"
+                data-testid="payment-status"
+                [attr.data-status]="store.payment()?.status"
+                [class.is-confirmed]="store.payment()?.status === 'CONFIRMED'"
+                [class.needs-attention]="
+                  store.payment()?.status === 'FAILED' ||
+                  store.payment()?.status === 'CANCELLED' ||
+                  store.payment()?.status === 'EXPIRED' ||
+                  store.payment()?.status === 'RECONCILIATION_REQUIRED'
+                "
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <div class="status-icon">
+                  @if (store.payment()?.status === 'CONFIRMED') {
+                    <svg lucideCheck aria-hidden="true"></svg>
+                  } @else {
+                    <svg lucideClock3 aria-hidden="true"></svg>
+                  }
+                </div>
+                <div>
+                  <span class="meta-label">{{ strings.status }}</span>
+                  <h3>{{ store.statusLabel() }}</h3>
+                  <p>{{ store.statusDetail() }}</p>
+                </div>
+              </section>
+              @if (store.payment()?.provider === 'MOCK_GATEWAY') {
+                <p class="preview-banner" role="note">{{ strings.mockNotice }}</p>
+              }
+              @if (store.simulationLink(); as attemptLink) {
+                <section class="attempt-panel" aria-labelledby="attempt-qr-heading">
+                  <h2 id="attempt-qr-heading">{{ strings.attemptQrTitle }}</h2>
+                  <mp-payment-qr data-testid="attempt-qr" [url]="attemptLink" [label]="strings.attemptQrAlt" />
+                  <p class="muted">{{ strings.attemptQrHelp }}</p>
+                </section>
+              }
+              @if (store.receiptPath(); as path) {
+                <a
+                  class="button primary"
+                  data-testid="receipt-link"
+                  [routerLink]="path"
+                  [queryParams]="store.receiptQueryParams()"
+                  ><svg lucideShieldCheck aria-hidden="true"></svg>{{ strings.receipt }}</a
+                >
+              } @else if (store.receiptStatus() === 'loading') {
+                <p role="status" aria-busy="true" data-testid="receipt-issuing">{{ strings.receiptIssuing }}</p>
+              } @else if (store.receiptStatus() === 'error') {
+                <button type="button" class="button primary" data-testid="receipt-retry" (click)="store.issueReceipt()">
+                  {{ strings.receiptRetry }}
+                </button>
+              } @else if (store.simulationLink(); as simulationLink) {
+                <a class="button primary" data-testid="payment-simulation-link" [href]="simulationLink">{{
+                  strings.simulateCta
+                }}</a>
+              } @else if (
+                store.canSimulate() &&
+                (store.payment()?.status === 'PENDING' || store.payment()?.status === 'PENDING_MANUAL_VERIFICATION')
+              ) {
+                <button
+                  class="button primary"
+                  data-testid="simulate-confirm"
+                  type="button"
+                  [disabled]="store.busy()"
+                  (click)="store.simulateConfirmation()"
+                >
+                  {{
+                    store.selectedMethod()?.provider === 'STATIC_BANK_QR'
+                      ? strings.simulateManual
+                      : strings.simulationAction
+                  }}
+                </button>
+              }
+              @if (store.canStart()) {
+                <button
+                  type="button"
+                  class="button primary"
+                  data-testid="start-payment"
+                  [disabled]="store.busy()"
+                  (click)="store.startPayment()"
+                >
+                  {{ strings.startPayment }}
+                </button>
+              }
+              @if (store.busy()) {
+                <p role="status">{{ strings.working }}</p>
+              }
+              <div class="connection-row">
+                <span role="status"
+                  ><svg lucideWifi aria-hidden="true"></svg
+                  >{{ store.connection() === 'reconnecting' ? strings.reconnecting : strings.connected }}</span
+                ><button
+                  class="inline-button"
+                  type="button"
+                  (click)="store.reconnect()"
+                  [disabled]="store.refreshing()"
+                  [attr.aria-busy]="store.refreshing()"
+                  data-testid="refresh-payment"
+                >
+                  {{ store.refreshing() ? strings.refreshing : strings.reconnect }}
+                </button>
+              </div>
+              <details class="share-panel" (toggle)="toggleShare($event)">
+                <summary data-testid="share-checkout">
+                  <svg lucideQrCode aria-hidden="true"></svg>{{ strings.share
+                  }}<svg lucideChevronDown aria-hidden="true"></svg>
+                </summary>
+                <p>{{ strings.shareHelp }}</p>
+                @if (shareOpen()) {
+                  <mp-payment-qr data-testid="checkout-qr" [path]="store.sharePath()" [label]="strings.shareQrAlt" />
+                }
+              </details>
+            </section>
+          </div>
+        }
+      }
+    }
+  </main>
+</div>

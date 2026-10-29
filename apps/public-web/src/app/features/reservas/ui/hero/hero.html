@@ -6,18 +6,27 @@
       </h1>
       <p class="hero-subtitle">{{ strings.reservas.hero.subtitle }}</p>
 
-      <form class="search" role="search" (submit)="$event.preventDefault()">
+      <form class="search" role="search" (submit)="$event.preventDefault(); store.search()">
         <svg class="search-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
           <circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.5" />
           <path d="m10.8 10.8 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
         </svg>
         <input
           type="search"
+          data-testid="catalog-query"
+          maxlength="120"
+          [value]="store.query()"
+          (input)="store.query.set($any($event.target).value)"
           class="search-input"
           placeholder="{{ strings.reservas.hero.searchPlaceholder }}"
           [attr.aria-label]="strings.reservas.hero.searchAria"
         />
-        <button type="submit" class="search-btn" [attr.aria-label]="strings.reservas.hero.searchSubmitAria">
+        <button
+          type="submit"
+          class="search-btn"
+          data-testid="catalog-search"
+          [attr.aria-label]="strings.reservas.hero.searchSubmitAria"
+        >
           <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
             <circle cx="7" cy="7" r="4.4" fill="none" stroke="currentColor" stroke-width="1.6" />
             <path d="m10.4 10.4 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />

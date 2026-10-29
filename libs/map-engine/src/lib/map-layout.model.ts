@@ -14,6 +14,9 @@ export type SpaceElementId = string;
 /** Estados de un elemento del espacio (RF06). */
 export type ElementState = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING' | 'OUT_OF_SERVICE';
 
+/** Disponibilidad de una ventana pública; independiente del estado operativo. */
+export type SpaceAvailability = 'AVAILABLE' | 'RESERVED' | 'UNAVAILABLE';
+
 /**
  * Tipos base de elemento. La genericidad de MapIt vive aquí: una misma base
  * representa una mesa de restaurante, una zona VIP de discoteca, una butaca
@@ -41,6 +44,7 @@ export interface SpaceElement {
   /** Rotación en grados. */
   readonly rotation: number;
   readonly state: ElementState;
+  readonly availability?: SpaceAvailability;
   /** Cuántas personas admite. `null` para elementos no reservables (decoración). */
   readonly capacity: number | null;
   readonly reservable: boolean;

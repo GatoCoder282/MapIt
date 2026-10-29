@@ -24,35 +24,47 @@ export class StaffShell {
   protected readonly session = inject(AuthSession);
   protected readonly menuOpen = signal(false);
 
-  protected readonly navItems: readonly SidebarNavItem[] = [
+  protected readonly navItems = computed<readonly SidebarNavItem[]>(() => [
     { label: STRINGS.staffShell.nav.home, route: '/home', icon: 'home', exact: true },
     { label: STRINGS.staffShell.nav.map, route: '/spaces/setup', icon: 'map' },
     { label: STRINGS.staffShell.nav.businesses, route: '/establishments', icon: 'businesses' },
     { label: STRINGS.staffShell.nav.users, route: '/users', icon: 'users' },
     { label: STRINGS.staffShell.nav.reports, route: '/reports', icon: 'reports' },
+    ...(['ADMIN', 'STAFF'].includes(this.session.user()?.role ?? '')
+      ? [{ label: STRINGS.staffShell.nav.checkIn, route: '/check-in', icon: 'reservations' }]
+      : []),
     {
       label: STRINGS.staffShell.nav.settings,
       icon: 'settings',
       dividerBefore: true,
+      expandedByDefault: true,
       children: [
-        {
-          label: STRINGS.staffShell.nav.templates,
-          route: '/spaces/templates',
-          icon: 'templates',
-        },
+        { label: STRINGS.staffShell.nav.templates, route: '/spaces/templates', icon: 'templates' },
         {
           label: STRINGS.staffShell.nav.reservations,
           route: '/reservations/new',
           icon: 'reservations',
         },
+        ...(this.session.user()?.role === 'ADMIN'
+          ? [
+              {
+                label: STRINGS.staffShell.nav.payments,
+                route: '/administration/settings/payment-methods',
+                icon: 'settings',
+              },
+            ]
+          : []),
       ],
     },
-  ];
+  ]);
 
   protected readonly visibleNavItems = computed(() =>
     this.session.user()?.role === 'ADMIN'
-      ? [...this.navItems, { label: STRINGS.staffShell.nav.audit, route: '/audit', icon: 'audit' }]
-      : this.navItems,
+      ? [
+          ...this.navItems(),
+          { label: STRINGS.staffShell.nav.audit, route: '/audit', icon: 'audit' },
+        ]
+      : this.navItems(),
   );
 
   protected readonly roleLabel = computed(() => {

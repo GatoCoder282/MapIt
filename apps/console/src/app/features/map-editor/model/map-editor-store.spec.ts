@@ -4,8 +4,9 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { MapEditorStore } from './map-editor-store';
 import { MapEditorApiService } from '../data/map-editor-api';
 import { MAP_EDITOR_DEBOUNCE_MS } from './map-editor-store';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import type { SpaceElement, ElementTemplate } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
 
 const MOCK_ELEMENTS: SpaceElement[] = [
   {
@@ -75,6 +76,7 @@ describe('MapEditorStore', () => {
         MapEditorStore,
         { provide: MapEditorApiService, useValue: mockApi },
         { provide: MAP_EDITOR_DEBOUNCE_MS, useValue: 0 },
+        { provide: AuthSession, useValue: { user: () => ({ role: 'ADMIN' }) } },
       ],
     });
 
@@ -84,6 +86,66 @@ describe('MapEditorStore', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('keeps raw metadata separate from server name, saves and clears explicitly without writing on load or drag', () => {
+    mockApi.listSpaceElementsBySector.mockReturnValueOnce(
+      of([{ ...MOCK_ELEMENTS[0]!, name: 'Mesa sin nombre', label: null, capacity: null }]),
+    );
+    store.loadSector('sector-1');
+    expect(store.selectedElement()).toBeNull();
+    expect(store.elements()[0]?.label).toBe('Mesa sin nombre');
+    expect(store.elements()[0]?.capacity).toBeNull();
+    expect(mockApi.updateSpaceElement).not.toHaveBeenCalled();
+    store.selectElement('elem-1');
+    expect(store.selectedMetadata()?.label).toBeNull();
+    store.saveElementMetadata('elem-1', ' Terraza ', '3');
+    expect(mockApi.updateSpaceElement).toHaveBeenCalledWith(
+      'sector-1',
+      'elem-1',
+      expect.objectContaining({ label: 'Terraza', capacity: 3 }),
+    );
+    store.clearElementMetadata('elem-1');
+    expect(mockApi.updateSpaceElement).toHaveBeenCalledWith(
+      'sector-1',
+      'elem-1',
+      expect.objectContaining({ label: null, capacity: null }),
+    );
+    store.dragElement('elem-1', 200, 200);
+    store.flushDebouncedPersist();
+    expect(mockApi.updateSpaceElement).toHaveBeenLastCalledWith(
+      'sector-1',
+      'elem-1',
+      expect.not.objectContaining({ label: expect.anything() as unknown }),
+    );
+  });
+
+  it('rejects invalid capacity and label without a PUT, and displays server-confirmed metadata', () => {
+    const initial = { ...MOCK_ELEMENTS[0]!, name: 'Mesa sin nombre', label: null, capacity: null };
+    mockApi.listSpaceElementsBySector.mockReturnValueOnce(of([initial]));
+    mockApi.updateSpaceElement.mockReturnValueOnce(
+      of({ ...initial, name: 'Terraza', label: 'Terraza', capacity: 4 }),
+    );
+    store.loadSector('sector-1');
+    store.selectElement('elem-1');
+    store.saveElementMetadata('elem-1', 'X'.repeat(121), '4');
+    store.saveElementMetadata('elem-1', 'Terraza', '1.5');
+    expect(mockApi.updateSpaceElement).not.toHaveBeenCalled();
+    store.saveElementMetadata('elem-1', 'Terraza', '4');
+    expect(store.selectedMetadata()?.label).toBe('Terraza');
+    expect(store.selectedElement()?.label).toBe('Terraza');
+    expect(store.selectedElement()?.capacity).toBe(4);
+  });
+
+  it('unlocks metadata editing after an earlier sector save completes', () => {
+    const pending = new Subject<SpaceElement>();
+    mockApi.updateSpaceElement.mockReturnValueOnce(pending.asObservable());
+    store.loadSector('sector-1');
+    store.saveElementMetadata('elem-1', 'Terraza', '4');
+    store.switchSector('sector-2');
+    pending.next({ ...MOCK_ELEMENTS[0]!, label: 'Terraza', capacity: 4 });
+    pending.complete();
+    expect(store.saving()).toBe(false);
   });
 
   it('should load sector and populate layout with mapped elements', () => {

@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 
 import { AuthSession } from '@mapit/auth';
 import { Sidebar } from './sidebar/sidebar';
@@ -31,7 +31,7 @@ const ENFOCABLES_DRAWER = 'a[href], button:not([disabled]), [tabindex]:not([tabi
  */
 @Component({
   selector: 'mapit-admin-shell',
-  imports: [RouterOutlet, RouterLink, LucideLogOut, LucideBell, Sidebar],
+  imports: [RouterOutlet, LucideLogOut, LucideBell, Sidebar],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

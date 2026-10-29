@@ -8,6 +8,7 @@ export {
   type Point,
   type SectorPlacement,
   type Size,
+  type SpaceAvailability,
   type SpaceElement,
   type SpaceElementId,
   type SpaceElementType,

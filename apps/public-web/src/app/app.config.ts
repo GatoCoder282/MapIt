@@ -6,6 +6,8 @@ import { provideRouter, withComponentInputBinding, withViewTransitions } from '@
 
 import { provideFeatureFlags } from '@mapit/feature-flags';
 import { BASE_PATH } from '@mapit/api-client';
+// eslint-disable-next-line no-restricted-imports
+import { provideKonvaMapEngine } from '@mapit/map-engine/adapters/konva/konva-map-engine';
 
 import { routes } from './app.routes';
 
@@ -21,6 +23,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideLogging({ service: 'mapit-public-web' }),
     providePublicRuntimeConfig(),
+    provideKonvaMapEngine(),
     {
       provide: LOGGING_API_URL,
       useFactory: () => {

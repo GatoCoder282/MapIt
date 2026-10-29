@@ -24,9 +24,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Contrato HTTP de extremo a extremo de los elementos espaciales (HU-2.03 / MAP-115):
  * petición → seguridad → controller → service → JPA → Postgres del contenedor, y de vuelta.
  *
- * <p>La ruta aún es pública (igual que el resto de CU-04/CU-05 hasta CU-23/CU-24), así que
- * el tenant activo es el fallback {@code demo} de {@code SecurityTenantContext}. El test
- * de aislamiento RLS entre tenants es {@link SpaceElementTenantIsolationIntegrationTest}.
+ * <p>Las rutas usan JWT ADMIN/MANAGER auténtico; demo es el tenant explícito del fixture,
+ * nunca un fallback anónimo. El aislamiento RLS lo cubre {@link SpaceElementTenantIsolationIntegrationTest}.
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -55,9 +54,17 @@ class SpaceElementApiIntegrationTest {
   @LocalServerPort private int port;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private com.mapit.identity.domain.AccessTokenIssuer tokens;
+  private static final UUID ADMIN = UUID.fromString("80000000-0000-0000-0000-000000000007");
 
   private RestTestClient client() {
-    return RestTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+    return RestTestClient.bindToServer().baseUrl("http://localhost:" + port)
+        .defaultHeader("Authorization", "Bearer " + bearer(com.mapit.identity.domain.UserRole.ADMIN, TENANT)).build();
+  }
+
+  private String bearer(com.mapit.identity.domain.UserRole role, String tenant) {
+    return tokens.issue(new com.mapit.identity.domain.AuthenticatedUser(ADMIN, com.mapit.shared.tenant.TenantId.of(tenant),
+        "metadata@example.test", "Metadata tester", role)).value();
   }
 
   @DynamicPropertySource
@@ -78,6 +85,7 @@ class SpaceElementApiIntegrationTest {
         "insert into tenant (id, name, slug, status, vertical) values (?, ?, ?, 'ACTIVE', 'RESTAURANT') "
             + "on conflict (id) do nothing",
         TENANT, "Demo", "demo");
+    jdbcTemplate.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values(?,?,'metadata@example.test','unused','Metadata tester','ADMIN') on conflict do nothing", ADMIN, TENANT);
     jdbcTemplate.update(
         "insert into establishment (id, tenant_id, name, type, slug) values (?, ?, ?, 'RESTAURANT', 'est-api') "
             + "on conflict (id) do nothing",
@@ -107,6 +115,44 @@ class SpaceElementApiIntegrationTest {
   }
 
   // ===== CA-1 — alta válida =====
+  @Test void metadata_presencia_null_y_permisos_sin_fallback_demo() {
+    String path="/api/v1/sectors/"+SECTOR_ID+"/elements";
+    String body="{\"type\":\"TABLE\",\"x\":10,\"y\":20,\"width\":20,\"height\":20,\"label\":\" Jardín \",\"capacity\":4}";
+    for(String method : List.of("GET","POST","PUT","DELETE")) {
+      String target=method.equals("PUT") || method.equals("DELETE") ? path+"/"+UUID.randomUUID() : path;
+      var raw=RestTestClient.bindToServer().baseUrl("http://localhost:"+port).build();
+      raw.method(org.springframework.http.HttpMethod.valueOf(method)).uri(target).contentType(MediaType.APPLICATION_JSON).body(body)
+          .exchange().expectStatus().isUnauthorized();
+    }
+    for(var role : List.of(com.mapit.identity.domain.UserRole.STAFF,com.mapit.identity.domain.UserRole.SUPER_ADMIN)) {
+      for(String method : List.of("GET","POST","PUT","DELETE")) {
+        String target=method.equals("PUT") || method.equals("DELETE") ? path+"/"+UUID.randomUUID() : path;
+        client().method(org.springframework.http.HttpMethod.valueOf(method)).uri(target)
+            .header("Authorization","Bearer "+bearer(role,TENANT)).contentType(MediaType.APPLICATION_JSON).body(body)
+            .exchange().expectStatus().isForbidden();
+      }
+    }
+    client().post().uri(path).header("Authorization","Bearer invalid").contentType(MediaType.APPLICATION_JSON).body(body)
+        .exchange().expectStatus().isUnauthorized();
+    var created=client().post().uri(path).contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isCreated()
+        .expectBody(ElementoJson.class).returnResult().getResponseBody();
+    assertThat(created).isNotNull();
+    String item=path+"/"+created.id();
+    String geometry="{\"type\":\"TABLE\",\"x\":11,\"y\":20,\"width\":20,\"height\":20}";
+    client().put().uri(item).contentType(MediaType.APPLICATION_JSON).body(geometry).exchange().expectStatus().isOk()
+        .expectBody().jsonPath("$.label").isEqualTo("Jardín").jsonPath("$.capacity").isEqualTo(4).jsonPath("$.name").isEqualTo("Jardín");
+    client().put().uri(item).header("Authorization","Bearer "+bearer(com.mapit.identity.domain.UserRole.MANAGER,TENANT))
+        .contentType(MediaType.APPLICATION_JSON).body(geometry.substring(0,geometry.length()-1)+",\"label\":null,\"capacity\":null}")
+        .exchange().expectStatus().isOk().expectBody().jsonPath("$.label").isEmpty().jsonPath("$.capacity").isEmpty()
+        .jsonPath("$.name").isEqualTo("Mesa sin nombre");
+    client().get().uri(item).header("Authorization","Bearer "+bearer(com.mapit.identity.domain.UserRole.ADMIN,"other-tenant"))
+        .exchange().expectStatus().isNotFound();
+    client().put().uri("/v1/sectors/"+SECTOR_ID+"/elements/"+created.id()).header("Authorization","Bearer invalid")
+        .contentType(MediaType.APPLICATION_JSON).body(geometry).exchange().expectStatus().isUnauthorized();
+    client().put().uri("/v1/sectors/"+SECTOR_ID+"/elements/"+created.id()).contentType(MediaType.APPLICATION_JSON).body(geometry)
+        .exchange().expectStatus().isNotFound();
+    assertThat(jdbcTemplate.queryForObject("select x from space_element where tenant_id=? and id=?",Double.class,TENANT,created.id())).isEqualTo(11);
+  }
 
   @Test
   void arranque_con_la_migracion_aplicada() {

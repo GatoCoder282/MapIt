@@ -112,7 +112,7 @@ public final class RealtimeOutboxDispatcher {
     List<OutboxRow> rows =
         jdbc.query(
             """
-            select event_id, establishment_id, sector_id, payload, attempts
+            select event_id, establishment_id, sector_id, payload, attempts, reservation_id
             from realtime_event_outbox
             where tenant_id = ?
               and published_at is null
@@ -128,7 +128,8 @@ public final class RealtimeOutboxDispatcher {
                     rs.getObject("establishment_id", UUID.class),
                     rs.getObject("sector_id", UUID.class),
                     rs.getString("payload"),
-                    rs.getInt("attempts")),
+                    rs.getInt("attempts"),
+                    rs.getObject("reservation_id", UUID.class)),
             tenantId.value(),
             batchSize);
 
@@ -150,6 +151,9 @@ public final class RealtimeOutboxDispatcher {
           "update realtime_event_outbox set claimed_at = now(), attempts = attempts + 1 where event_id = ? and tenant_id = ?",
           row.eventId(), tenantId.value());
       try {
+        if (row.reservationId() != null) {
+          broker.convertAndSend("/topic/reservations/" + row.reservationId() + "/payments", row.payload());
+        }
         broker.convertAndSend(
             new RealtimeDestination(row.establishmentId(), java.util.Optional.empty()).topic(),
             row.payload());
@@ -211,5 +215,5 @@ public final class RealtimeOutboxDispatcher {
   }
 
   private record OutboxRow(
-      UUID eventId, UUID establishmentId, UUID sectorId, String payload, int attempts) {}
+      UUID eventId, UUID establishmentId, UUID sectorId, String payload, int attempts, UUID reservationId) {}
 }

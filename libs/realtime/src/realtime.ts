@@ -26,6 +26,24 @@ export interface RealtimeEventEnvelope {
   readonly payload: SpaceElementStatePayload;
 }
 
+export interface ReservationPaymentEvent {
+  readonly eventId: string;
+  readonly eventType: 'payment.status.changed' | 'reservation.checked_in';
+  readonly schemaVersion: 1;
+  readonly occurredAt: string;
+  readonly establishmentId: string;
+  readonly reservationId: string;
+  readonly paymentId: string;
+  readonly status:
+    | 'PENDING'
+    | 'PENDING_MANUAL_VERIFICATION'
+    | 'CONFIRMED'
+    | 'FAILED'
+    | 'EXPIRED'
+    | 'CANCELLED'
+    | 'RECONCILIATION_REQUIRED';
+}
+
 export interface RealtimeConfig {
   /** Lee el valor runtime en cada intento de conexión. */
   readonly brokerUrl: () => string;
@@ -98,6 +116,7 @@ export class RealtimeClient {
   private readonly estado = signal<RealtimeConnectionState>('idle');
   private readonly errores = new Subject<unknown>();
   private readonly eventos = new Subject<RealtimeEventEnvelope>();
+  private readonly paymentEventos = new Subject<ReservationPaymentEvent>();
   private readonly topics = new Map<string, TopicState>();
   private client: StompClientLike | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -108,6 +127,7 @@ export class RealtimeClient {
   readonly connectionState: Signal<RealtimeConnectionState> = this.estado.asReadonly();
   readonly errors = this.errores.asObservable();
   readonly events = this.eventos.asObservable();
+  readonly paymentEvents = this.paymentEventos.asObservable();
 
   constructor() {
     effect(() => {
@@ -147,6 +167,20 @@ export class RealtimeClient {
       `${TOPIC_PREFIX}${encodeURIComponent(establishmentId)}`,
       (event) => event.establishmentId === establishmentId,
     );
+  }
+
+  /** Comparte la misma suscripción y transporte; preserva el contrato del stream espacial. */
+  subscribeEstablishmentPayments(establishmentId: string): Observable<ReservationPaymentEvent> {
+    return new Observable((subscriber) => {
+      const room = this.subscribeEstablishment(establishmentId).subscribe();
+      const events = this.paymentEventos
+        .pipe(filter((event) => event.establishmentId === establishmentId))
+        .subscribe(subscriber);
+      return () => {
+        room.unsubscribe();
+        events.unsubscribe();
+      };
+    });
   }
 
   /** Se suscribe a los eventos del sector dentro de un establecimiento. */
@@ -270,6 +304,7 @@ export class RealtimeClient {
     try {
       const parsed: unknown = JSON.parse(message.body);
       if (isRealtimeEventEnvelope(parsed)) this.eventos.next(parsed);
+      else if (isReservationPaymentEvent(parsed)) this.paymentEventos.next(parsed);
       else {
         this.logInvalidMessage();
         this.errores.next(new Error('Envelope STOMP inválido'));
@@ -362,5 +397,31 @@ function isState(value: unknown): value is SpaceElementState {
     value === 'RESERVED' ||
     value === 'CLEANING' ||
     value === 'OUT_OF_SERVICE'
+  );
+}
+
+function isReservationPaymentEvent(value: unknown): value is ReservationPaymentEvent {
+  if (!value || typeof value !== 'object') return false;
+  const event = value as Partial<ReservationPaymentEvent>;
+  return (
+    typeof event.eventId === 'string' &&
+    typeof event.occurredAt === 'string' &&
+    !Number.isNaN(Date.parse(event.occurredAt)) &&
+    event.schemaVersion === 1 &&
+    (event.eventType === 'payment.status.changed' ||
+      event.eventType === 'reservation.checked_in') &&
+    typeof event.establishmentId === 'string' &&
+    typeof event.reservationId === 'string' &&
+    typeof event.paymentId === 'string' &&
+    typeof event.status === 'string' &&
+    [
+      'PENDING',
+      'PENDING_MANUAL_VERIFICATION',
+      'CONFIRMED',
+      'FAILED',
+      'EXPIRED',
+      'CANCELLED',
+      'RECONCILIATION_REQUIRED',
+    ].includes(event.status)
   );
 }

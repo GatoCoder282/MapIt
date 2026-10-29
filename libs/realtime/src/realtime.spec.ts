@@ -154,4 +154,36 @@ describe('RealtimeClient', () => {
     expect(errors).toHaveLength(1);
     expect(client.connectionState()).toBe('connected');
   });
+
+  it('separa pagos de eventos espaciales y comparte la sala sin errores de protocolo', () => {
+    const client = TestBed.inject(RealtimeClient);
+    const errors = vi.fn();
+    const payments = vi.fn();
+    const spaces = vi.fn();
+    client.errors.subscribe(errors);
+    const operational = client.subscribeEstablishment('est-1').subscribe(spaces);
+    const payment = client.subscribeEstablishmentPayments('est-1').subscribe(payments);
+    client.connect();
+    const update = {
+      eventId: 'event-1',
+      eventType: 'payment.status.changed',
+      schemaVersion: 1,
+      occurredAt: '2026-10-25T12:00:00Z',
+      establishmentId: 'est-1',
+      reservationId: 'reservation-1',
+      paymentId: 'payment-1',
+      status: 'CONFIRMED',
+    };
+    clients[0]?.emit('/topic/establishments/est-1', JSON.stringify(update));
+    expect(payments).toHaveBeenCalledWith(update);
+    const cancelled = { ...update, eventId: 'event-cancelled', status: 'CANCELLED' };
+    clients[0]?.emit('/topic/establishments/est-1', JSON.stringify(cancelled));
+    expect(payments).toHaveBeenCalledWith(cancelled);
+    expect(spaces).not.toHaveBeenCalled();
+    expect(errors).not.toHaveBeenCalled();
+    payment.unsubscribe();
+    expect(clients[0]?.subscriptions.has('/topic/establishments/est-1')).toBe(true);
+    operational.unsubscribe();
+    expect(clients[0]?.subscriptions.has('/topic/establishments/est-1')).toBe(false);
+  });
 });

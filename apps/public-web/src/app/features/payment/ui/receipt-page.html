@@ -1,0 +1,137 @@
+<div class="payment-shell" data-testid="receipt-page">
+  <header class="payment-header">
+    <a class="wordmark" routerLink="/">{{ strings.brand }}<span aria-hidden="true">.</span></a
+    ><a class="text-link" routerLink="/reservas"><svg lucideArrowLeft aria-hidden="true"></svg>{{ strings.back }}</a>
+  </header>
+  <main class="payment-content receipt-content">
+    @if (!store.previewEnabled() && tenantSlug() && establishmentSlug()) {
+      <mp-public-establishment-identity [tenantSlug]="tenantSlug()" [establishmentSlug]="establishmentSlug()" />
+    }
+    @if (store.previewEnabled()) {
+      <div class="preview-banner" data-testid="preview-banner">
+        <strong>{{ strings.simulation }}</strong
+        ><span>{{ strings.simulationNotice }}</span>
+      </div>
+    }
+    @switch (store.pageStatus()) {
+      @case ('loading') {
+        <section class="empty-panel" aria-busy="true" aria-live="polite">
+          <p>{{ strings.receiptLoading }}</p>
+        </section>
+      }
+      @case ('unavailable') {
+        <section class="empty-panel">
+          <h1>{{ strings.unavailableTitle }}</h1>
+          <p>{{ strings.unavailable }}</p>
+        </section>
+      }
+      @case ('not-found') {
+        <section class="empty-panel">
+          <h1>{{ strings.receiptInvalidTitle }}</h1>
+          <p>{{ strings.receiptInvalid }}</p>
+        </section>
+      }
+      @case ('error') {
+        <section class="empty-panel" role="alert">
+          <p>{{ strings.loadError }}</p>
+          <button class="button" type="button" (click)="retry()">{{ strings.retry }}</button>
+        </section>
+      }
+      @case ('loaded') {
+        @if (store.receipt(); as receipt) {
+          @if (receipt.payment.provider === 'MOCK_GATEWAY') {
+            <p class="preview-banner" role="note" data-testid="mock-receipt-notice">{{ strings.mockNotice }}</p>
+          }
+          <div class="receipt-heading">
+            <span class="confirmation-mark"><svg lucideCheck aria-hidden="true"></svg></span>
+            <h1>{{ receipt.payment.provider === 'MOCK_GATEWAY' ? strings.mockConfirmed : strings.receiptTitle }}</h1>
+            <p>{{ receipt.payment.provider === 'MOCK_GATEWAY' ? strings.mockReceiptIntro : strings.receiptIntro }}</p>
+          </div>
+          <article class="receipt-document" aria-labelledby="receipt-document-title">
+            <div class="receipt-main">
+              <div class="document-title">
+                <svg lucideShieldCheck aria-hidden="true"></svg>
+                <h2 id="receipt-document-title">{{ strings.receiptDocument }}</h2>
+              </div>
+              <h3 class="venue-name">{{ receipt.reservation.establishmentName }}</h3>
+              <div class="receipt-state">
+                <span>{{ reservationStatus() }}</span
+                ><span
+                  ><svg lucideClock3 aria-hidden="true"></svg
+                  >{{ receipt.checkIn === 'CHECKED_IN' ? strings.checkedIn : strings.notCheckedIn }}</span
+                >
+              </div>
+              <dl class="reservation-facts">
+                <div>
+                  <dt>{{ strings.date }}</dt>
+                  <dd>{{ store.date() }}</dd>
+                </div>
+                <div>
+                  <dt>{{ strings.time }}</dt>
+                  <dd>{{ store.time() }}</dd>
+                </div>
+                <div>
+                  <dt>{{ strings.spaces }}</dt>
+                  <dd>
+                    @for (space of receipt.reservation.spaces; track space.id) {
+                      <mp-public-space [space]="space" [peers]="receipt.reservation.spaces" />
+                    }
+                  </dd>
+                </div>
+              </dl>
+              <div class="receipt-amounts">
+                @if (store.total()) {
+                  <div class="amount-row">
+                    <span>{{ strings.total }}</span
+                    ><strong>{{ store.total() }}</strong>
+                  </div>
+                }
+                <div class="amount-row paid">
+                  <span>{{ strings.paidDeposit }}</span
+                  ><strong>{{ store.paid() }}</strong>
+                </div>
+                @if (store.balance()) {
+                  <div class="amount-row">
+                    <span>{{ strings.balance }}</span
+                    ><strong>{{ store.balance() }}</strong>
+                  </div>
+                }
+              </div>
+              <dl class="reference-list">
+                <div>
+                  <dt>{{ strings.reservationReference }}</dt>
+                  <dd>{{ receipt.reservation.id }}</dd>
+                </div>
+                <div>
+                  <dt>{{ strings.paymentReference }}</dt>
+                  <dd>{{ receipt.payment.externalReference }}</dd>
+                </div>
+              </dl>
+            </div>
+            <div class="receipt-verification">
+              <svg class="verification-icon" lucideQrCode aria-hidden="true"></svg>
+              <h2>{{ strings.receiptQr }}</h2>
+              <mp-payment-qr data-testid="receipt-qr" [path]="receiptPath()" [label]="strings.receiptQr" />
+              <p>{{ strings.receiptQrHelp }}</p>
+              <dl class="reference-list">
+                <div>
+                  <dt>{{ strings.receiptReference }}</dt>
+                  <dd data-testid="receipt-token">{{ receipt.token }}</dd>
+                </div>
+              </dl>
+            </div>
+          </article>
+          <p class="document-note">{{ strings.receiptNote }}</p>
+          @if (store.checkoutPath(); as checkoutPath) {
+            <a
+              class="text-link receipt-back"
+              [routerLink]="checkoutPath"
+              [fragment]="store.checkoutFragment() ?? undefined"
+              ><svg lucideArrowLeft aria-hidden="true"></svg>{{ strings.receiptBack }}</a
+            >
+          }
+        }
+      }
+    }
+  </main>
+</div>

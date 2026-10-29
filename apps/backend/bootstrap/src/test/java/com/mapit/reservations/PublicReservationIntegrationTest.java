@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -507,6 +509,9 @@ class PublicReservationIntegrationTest {
 
   @TestConfiguration
   static class TestFlags {
+    @Bean
+    @Primary
+    Clock reservationClock() { return Clock.fixed(Instant.parse("2026-10-25T12:00:00Z"),ZoneOffset.UTC); }
 
     @Bean
     @Primary

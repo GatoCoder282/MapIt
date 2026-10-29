@@ -11,5 +11,8 @@ public interface SpaceElementStateRepository {
   Optional<OperationalSpaceElement> findAliveById(
       TenantId tenantId, UUID sectorId, UUID elementId);
 
+  Optional<OperationalSpaceElement> lockAliveById(
+      TenantId tenantId, UUID sectorId, UUID elementId);
+
   OperationalSpaceElement save(OperationalSpaceElement element);
 }

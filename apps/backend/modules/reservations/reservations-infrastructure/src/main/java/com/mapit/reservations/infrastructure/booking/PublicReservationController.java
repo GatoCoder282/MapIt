@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -63,7 +64,10 @@ public class PublicReservationController {
   public PublicReservationResponse create(
       @PathVariable @Pattern(regexp = SLUG_REGEX) String tenantSlug,
       @PathVariable @Pattern(regexp = SLUG_REGEX) String establishmentSlug,
-      @Valid @RequestBody PublicReservationCreateRequest request) {
+      @Valid @RequestBody PublicReservationCreateRequest request,
+      HttpServletResponse response) {
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Referrer-Policy", "no-referrer");
     CreatePublicReservation.Result result =
         createPublicReservation.execute(
             new CreatePublicReservation.Command(
@@ -152,7 +156,9 @@ public class PublicReservationController {
       java.time.Instant endsAt,
       String timezone,
       ReservationStatus status,
-      java.time.Instant createdAt) {
+      java.time.Instant createdAt,
+      String accessToken,
+      java.time.Instant accessExpiresAt) {
 
     static PublicReservationResponse from(CreatePublicReservation.Result result) {
       Reservation reservation = result.reservation();
@@ -167,7 +173,11 @@ public class PublicReservationController {
           reservation.timeRange().endsAt(),
           result.establishment().timezone(),
           reservation.status(),
-          reservation.createdAt());
+          reservation.createdAt(),
+          result.access().token(),
+          result.access().expiresAt());
     }
+
+    @Override public String toString() { return "PublicReservationResponse[REDACTED]"; }
   }
 }

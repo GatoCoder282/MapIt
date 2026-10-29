@@ -30,6 +30,12 @@ servers:
     description: Relativo (contenedor)
 
 tags:
+  - { name: public-payments, description: Checkout público mediante capability }
+  - { name: payment-policies, description: Política monetaria del establecimiento }
+  - { name: receipts, description: Comprobantes verificables }
+  - { name: check-ins, description: Llegada autorizada del staff }
+  - name: payments
+    description: Configuración de cobros aislada por tenant, solo administradores
   - name: auth
     description: Autenticación del staff de cada tenant
   - name: users
@@ -64,6 +70,1888 @@ tags:
     description: Acceso temporal y consulta del historial propio en el portal público (HU-6.04)
 
 paths:
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}:
+    {
+      "get":
+        {
+          "tags": ["public-availability"],
+          "operationId": "getPublicEstablishment",
+          "summary": "getPublicEstablishment",
+          "security": [],
+          "parameters":
+            [
+              {
+                "name": "tenantSlug",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$" },
+              },
+              {
+                "name": "establishmentSlug",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$" },
+              },
+            ],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Consulta u operación completada",
+                  "content":
+                    {
+                      "application/json":
+                        { "schema": { "$ref": "#/components/schemas/PublicEstablishmentSummary" } },
+                    },
+                },
+              "400":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "401":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "403":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "404":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "409":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+            },
+        },
+    }
+  /payments:
+    {
+      "get":
+        {
+          "tags": ["payments"],
+          "operationId": "listPayments",
+          "summary": "listPayments",
+          "security": [{ "bearerAuth": [] }],
+          "parameters":
+            [
+              {
+                "name": "establishmentId",
+                "in": "query",
+                "required": true,
+                "schema": { "type": "string", "format": "uuid" },
+              },
+              {
+                "name": "status",
+                "in": "query",
+                "required": false,
+                "schema":
+                  {
+                    "type": "string",
+                    "enum":
+                      [
+                        "PENDING",
+                        "PENDING_MANUAL_VERIFICATION",
+                        "CONFIRMED",
+                        "FAILED",
+                        "EXPIRED",
+                        "RECONCILIATION_REQUIRED",
+                        "CANCELLED",
+                      ],
+                  },
+              },
+              {
+                "name": "limit",
+                "in": "query",
+                "required": false,
+                "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+              },
+              {
+                "name": "offset",
+                "in": "query",
+                "required": false,
+                "schema": { "type": "integer", "minimum": 0, "default": 0 },
+              },
+            ],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Consulta u operación completada",
+                  "content":
+                    {
+                      "application/json":
+                        { "schema": { "$ref": "#/components/schemas/PaymentPage" } },
+                    },
+                },
+              "400":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "401":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "403":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "404":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "409":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+            },
+        },
+    }
+  /establishments/{establishmentId}/staff-access/{userId}:
+    {
+      "put":
+        {
+          "tags": ["establishments"],
+          "operationId": "saveEstablishmentStaffAccess",
+          "summary": "saveEstablishmentStaffAccess",
+          "security": [{ "bearerAuth": [] }],
+          "parameters":
+            [
+              {
+                "name": "establishmentId",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string", "format": "uuid" },
+              },
+              {
+                "name": "userId",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string", "format": "uuid" },
+              },
+            ],
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    { "schema": { "$ref": "#/components/schemas/EstablishmentStaffAccessWrite" } },
+                },
+            },
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Consulta u operación completada",
+                  "content":
+                    {
+                      "application/json":
+                        { "schema": { "$ref": "#/components/schemas/EstablishmentStaffAccess" } },
+                    },
+                },
+              "400":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "401":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "403":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "404":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "409":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+            },
+        },
+    }
+  /establishments/{establishmentId}/staff-access:
+    {
+      "get":
+        {
+          "tags": ["establishments"],
+          "operationId": "listEstablishmentStaffAccess",
+          "summary": "listEstablishmentStaffAccess",
+          "security": [{ "bearerAuth": [] }],
+          "parameters":
+            [
+              {
+                "name": "establishmentId",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string", "format": "uuid" },
+              },
+            ],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Consulta u operación completada",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/EstablishmentStaffAccess" },
+                            },
+                        },
+                    },
+                },
+              "400":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "401":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "403":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "404":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "409":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+            },
+        },
+    }
+  /establishments/accessible:
+    {
+      "get":
+        {
+          "tags": ["establishments"],
+          "operationId": "listAccessibleEstablishments",
+          "summary": "listAccessibleEstablishments",
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Consulta u operación completada",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/AccessibleEstablishment" },
+                            },
+                        },
+                    },
+                },
+              "400":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "401":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "403":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "404":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "409":
+                {
+                  "description": "Solicitud inválida, no autorizada o recurso no disponible",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+            },
+        },
+    }
+  /public/establishments:
+    {
+      "get":
+        {
+          "tags": ["public-availability"],
+          "operationId": "listPublicEstablishments",
+          "summary": "listPublicEstablishments",
+          "security": [],
+          "parameters":
+            [
+              { "name": "query", "in": "query", "schema": { "type": "string", "maxLength": 120 } },
+              {
+                "name": "tenantSlug",
+                "in": "query",
+                "required": false,
+                "schema": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$" },
+              },
+              {
+                "name": "limit",
+                "in": "query",
+                "required": false,
+                "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 },
+              },
+              {
+                "name": "offset",
+                "in": "query",
+                "required": false,
+                "schema": { "type": "integer", "minimum": 0, "default": 0 },
+              },
+            ],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Operación completada",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "type": "array",
+                              "items":
+                                { "$ref": "#/components/schemas/PublicEstablishmentSummary" },
+                            },
+                        },
+                    },
+                },
+              "400":
+                {
+                  "description": "Solicitud no disponible o inválida",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "401":
+                {
+                  "description": "Solicitud no disponible o inválida",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "403":
+                {
+                  "description": "Solicitud no disponible o inválida",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "404":
+                {
+                  "description": "Solicitud no disponible o inválida",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "409":
+                {
+                  "description": "Solicitud no disponible o inválida",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+              "503":
+                {
+                  "description": "Solicitud no disponible o inválida",
+                  "content":
+                    {
+                      "application/problem+json":
+                        { "schema": { "$ref": "#/components/schemas/Problem" } },
+                    },
+                },
+            },
+        },
+    }
+  /establishments/{establishmentId}/payment-readiness:
+    get:
+      tags: [payment-policies]
+      operationId: getPaymentReadiness
+      summary: Diagnóstico de cobro MOCK sin efectos, solo ADMIN
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - {
+            name: establishmentId,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: Preparación del establecimiento autorizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentReadiness" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Establecimiento no encontrado
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /establishments/{establishmentId}/payment-policy:
+    get:
+      {
+        "tags": ["payment-policies"],
+        "operationId": "getPaymentPolicy",
+        "summary": "getPaymentPolicy",
+        "security": [{ "bearerAuth": [] }],
+        "parameters":
+          [
+            {
+              "name": "establishmentId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+          ],
+        "responses":
+          {
+            "200":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/PaymentPolicy" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+    put:
+      {
+        "tags": ["payment-policies"],
+        "operationId": "savePaymentPolicy",
+        "summary": "savePaymentPolicy",
+        "security": [{ "bearerAuth": [] }],
+        "parameters":
+          [
+            {
+              "name": "establishmentId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+          ],
+        "requestBody":
+          {
+            "required": true,
+            "content":
+              {
+                "application/json": { "schema": { "$ref": "#/components/schemas/PaymentPolicy" } },
+              },
+          },
+        "responses":
+          {
+            "200":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/PaymentPolicy" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/reservations/{reservationId}/checkout:
+    get:
+      {
+        "tags": ["public-payments"],
+        "operationId": "getPublicCheckout",
+        "summary": "getPublicCheckout",
+        "security": [],
+        "parameters":
+          [
+            {
+              "name": "tenantSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "establishmentSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "reservationId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+            {
+              "name": "X-Reservation-Access",
+              "in": "header",
+              "required": true,
+              "schema": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+            },
+          ],
+        "responses":
+          {
+            "200":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/PublicCheckout" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/reservations/{reservationId}/payments:
+    post:
+      {
+        "tags": ["public-payments"],
+        "operationId": "startPublicPayment",
+        "summary": "startPublicPayment",
+        "security": [],
+        "parameters":
+          [
+            {
+              "name": "tenantSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "establishmentSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "reservationId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+            {
+              "name": "X-Reservation-Access",
+              "in": "header",
+              "required": true,
+              "schema": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+            },
+          ],
+        "requestBody":
+          {
+            "required": true,
+            "content":
+              {
+                "application/json":
+                  { "schema": { "$ref": "#/components/schemas/StartPaymentRequest" } },
+              },
+          },
+        "responses":
+          {
+            "201":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/PaymentAttempt" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/reservations/{reservationId}/payments/{paymentId}/simulate:
+    post:
+      {
+        "tags": ["public-payments"],
+        "operationId": "simulatePublicPayment",
+        "summary": "simulatePublicPayment",
+        "security": [],
+        "parameters":
+          [
+            {
+              "name": "tenantSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "establishmentSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "reservationId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+            {
+              "name": "paymentId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+            {
+              "name": "X-Reservation-Access",
+              "in": "header",
+              "required": true,
+              "schema": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+            },
+          ],
+        "requestBody":
+          {
+            "required": true,
+            "content":
+              {
+                "application/json":
+                  { "schema": { "$ref": "#/components/schemas/SimulatePaymentRequest" } },
+              },
+          },
+        "responses":
+          {
+            "200":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/PaymentAttempt" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /payments/{paymentId}/verify:
+    post:
+      {
+        "tags": ["payments"],
+        "operationId": "verifyPayment",
+        "summary": "verifyPayment",
+        "security": [{ "bearerAuth": [] }],
+        "parameters":
+          [
+            {
+              "name": "paymentId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+          ],
+        "requestBody":
+          {
+            "required": true,
+            "content":
+              {
+                "application/json":
+                  { "schema": { "$ref": "#/components/schemas/VerifyPaymentRequest" } },
+              },
+          },
+        "responses":
+          {
+            "200":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/PaymentAttempt" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/reservations/{reservationId}/receipt:
+    post:
+      {
+        "tags": ["receipts"],
+        "operationId": "issuePaymentReceipt",
+        "summary": "issuePaymentReceipt",
+        "security": [],
+        "parameters":
+          [
+            {
+              "name": "tenantSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "establishmentSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "reservationId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+            {
+              "name": "X-Reservation-Access",
+              "in": "header",
+              "required": true,
+              "schema": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+            },
+          ],
+        "responses":
+          {
+            "201":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/PaymentReceipt" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/receipts/{token}:
+    get:
+      {
+        "tags": ["receipts"],
+        "operationId": "getPaymentReceipt",
+        "summary": "getPaymentReceipt",
+        "security": [],
+        "parameters":
+          [
+            {
+              "name": "tenantSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "establishmentSlug",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            { "name": "token", "in": "path", "required": true, "schema": { "type": "string" } },
+          ],
+        "responses":
+          {
+            "200":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/PaymentReceipt" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /establishments/{establishmentId}/check-ins/lookup:
+    post:
+      {
+        "tags": ["check-ins"],
+        "operationId": "lookupCheckIn",
+        "summary": "lookupCheckIn",
+        "security": [{ "bearerAuth": [] }],
+        "parameters":
+          [
+            {
+              "name": "establishmentId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+          ],
+        "requestBody":
+          {
+            "required": true,
+            "content":
+              {
+                "application/json":
+                  { "schema": { "$ref": "#/components/schemas/ReceiptTokenRequest" } },
+              },
+          },
+        "responses":
+          {
+            "200":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/CheckInDetails" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /establishments/{establishmentId}/check-ins:
+    post:
+      {
+        "tags": ["check-ins"],
+        "operationId": "registerCheckIn",
+        "summary": "registerCheckIn",
+        "security": [{ "bearerAuth": [] }],
+        "parameters":
+          [
+            {
+              "name": "establishmentId",
+              "in": "path",
+              "required": true,
+              "schema": { "type": "string", "format": "uuid" },
+            },
+          ],
+        "requestBody":
+          {
+            "required": true,
+            "content":
+              {
+                "application/json":
+                  { "schema": { "$ref": "#/components/schemas/ReceiptTokenRequest" } },
+              },
+          },
+        "responses":
+          {
+            "200":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/CheckInDetails" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /public/payments/mock/webhook:
+    post:
+      {
+        "tags": ["public-payments"],
+        "operationId": "receiveMockPaymentWebhook",
+        "summary": "receiveMockPaymentWebhook",
+        "description": "Webhook MOCK firmado, limitado a 16384 bytes incluso sin Content-Length.",
+        "security": [],
+        "parameters":
+          [
+            {
+              "name": "X-Mock-Timestamp",
+              "in": "header",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+            {
+              "name": "X-Mock-Signature",
+              "in": "header",
+              "required": true,
+              "schema": { "type": "string" },
+            },
+          ],
+        "requestBody":
+          {
+            "required": true,
+            "content":
+              {
+                "application/json":
+                  { "schema": { "type": "object", "additionalProperties": true } },
+              },
+          },
+        "responses":
+          {
+            "413":
+              {
+                "description": "El webhook supera el límite de 16384 bytes",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "200":
+              {
+                "description": "Operación completada",
+                "content":
+                  {
+                    "application/json":
+                      { "schema": { "$ref": "#/components/schemas/PaymentAttempt" } },
+                  },
+              },
+            "400":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "401":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "403":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "404":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "409":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+            "503":
+              {
+                "description": "Solicitud no disponible o inválida",
+                "content":
+                  {
+                    "application/problem+json":
+                      { "schema": { "$ref": "#/components/schemas/Problem" } },
+                  },
+              },
+          },
+      }
+  /payment-methods/mock-qr:
+    get:
+      tags: [mock-qr]
+      operationId: listMockQrConfigurations
+      summary: Listar configuraciones QR de prueba del tenant (ADMIN)
+      description: Solo desarrollo/pruebas habilitados. Son configuraciones de simulación independientes de los métodos utilizables por checkout.
+      responses:
+        "200":
+          description: Configuraciones persistidas del tenant autenticado
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MockQrConfiguration" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [mock-qr]
+      operationId: createMockQrConfiguration
+      summary: Crear una configuración QR de prueba por establecimiento (ADMIN)
+      description: El servidor valida el establecimiento del JWT y genera un token sin capacidad financiera. Nunca almacena una imagen bancaria ni inicia un pago.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MockQrConfigurationWrite" }
+      responses:
+        "201":
+          description: Configuración persistida y token de simulación generado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockQrConfiguration" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Ya existe una configuración de prueba para ese establecimiento.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /payment-methods/mock-qr/countries:
+    get:
+      tags: [mock-qr]
+      operationId: listMockQrCountries
+      summary: Obtener catálogo internacional ISO 3166-1 alfa-2
+      description: Nombres en español y códigos ISO. Solo ADMIN en desarrollo/pruebas habilitados.
+      responses:
+        "200":
+          description: Países disponibles para la configuración de prueba
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PaymentCountry" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /payment-methods/mock-qr/{configurationId}:
+    get:
+      tags: [mock-qr]
+      operationId: getMockQrConfiguration
+      summary: Consultar una configuración QR de prueba propia (ADMIN)
+      parameters:
+        - name: configurationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Configuración propia
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockQrConfiguration" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [mock-qr]
+      operationId: updateMockQrConfiguration
+      summary: Editar o activar/desactivar una configuración QR de prueba propia (ADMIN)
+      description: Conserva el token de simulación; no genera cobros ni confirmaciones financieras.
+      parameters:
+        - name: configurationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MockQrConfigurationWrite" }
+      responses:
+        "200":
+          description: Configuración actualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockQrConfiguration" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Ya existe una configuración de prueba para ese establecimiento.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /payment-methods/mock-qr/{configurationId}/regenerate:
+    post:
+      tags: [mock-qr]
+      operationId: regenerateMockQrConfiguration
+      summary: Regenerar el token y URL del QR de prueba propio (ADMIN)
+      description: Solo rota un identificador de simulación. No altera reservas, pagos ni datos bancarios.
+      parameters:
+        - name: configurationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Configuración con nuevo token de simulación
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MockQrConfiguration" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /payment-methods:
+    get:
+      tags: [payments]
+      operationId: listPaymentMethods
+      summary: Listar métodos de cobro del tenant (ADMIN)
+      description: Sin establishmentId lista todas las configuraciones. Con él devuelve las locales si existen; en caso contrario hereda las predeterminadas del tenant, incluyendo métodos deshabilitados.
+      parameters:
+        - name: establishmentId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Métodos sin credenciales secretas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MerchantPaymentMethod" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [payments]
+      operationId: createPaymentMethod
+      summary: Registrar método de cobro (ADMIN)
+      description: QR estático requiere revisión manual. El mock solo se habilita explícitamente en desarrollo o pruebas. Proveedores reales sin adaptador no pueden habilitarse.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentMethodWrite" }
+      responses:
+        "201":
+          description: Método registrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MerchantPaymentMethod" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /payment-methods/{methodId}:
+    put:
+      tags: [payments]
+      operationId: updatePaymentMethod
+      summary: Actualizar método propio de cobro (ADMIN)
+      parameters:
+        - name: methodId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentMethodWrite" }
+      responses:
+        "200":
+          description: Método actualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MerchantPaymentMethod" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: El método ya fue utilizado; crear otro para cambiar moneda, cuenta o QR.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/availability/map:
+    get:
+      tags: [public-availability]
+      operationId: findPublicAvailabilityMap
+      summary: Plano público y disponibilidad segura del intervalo local
+      security: []
+      parameters:
+        - { name: tenantSlug, in: path, required: true, schema: { type: string } }
+        - { name: establishmentSlug, in: path, required: true, schema: { type: string } }
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - {
+            name: startTime,
+            in: query,
+            description: "HH:mm, ambos horarios o ninguno",
+            schema: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+          }
+        - {
+            name: endTime,
+            in: query,
+            description: "HH:mm, ambos horarios o ninguno",
+            schema: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+          }
+      responses:
+        "200":
+          description: Proyección pública readonly, no crea holds
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicAvailabilityMap" }
+        "400":
+          description: Fecha o intervalo inválido
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "404":
+          description: Establecimiento no encontrado
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
   /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/availability:
     get:
       tags: [public-availability]
@@ -2170,6 +4058,608 @@ components:
         reservas. Puede caducar o revocarse mediante la operación de salida.
 
   schemas:
+    PaymentCountry:
+      type: object
+      additionalProperties: false
+      required: [code, name]
+      properties:
+        code: { type: string, pattern: "^[A-Z]{2}$", example: BO }
+        name: { type: string, example: Bolivia }
+    MockQrConfigurationWrite:
+      type: object
+      additionalProperties: false
+      required: [establishmentId, country, bankName, accountHolderName, accountReference, enabled]
+      properties:
+        establishmentId: { type: string, format: uuid }
+        country: { type: string, pattern: "^[A-Z]{2}$", example: BO }
+        bankName: { type: string, minLength: 1, maxLength: 120 }
+        accountHolderName: { type: string, minLength: 1, maxLength: 120 }
+        accountReference: { type: string, minLength: 1, maxLength: 120 }
+        enabled: { type: boolean }
+    MockQrConfiguration:
+      allOf:
+        - $ref: "#/components/schemas/MockQrConfigurationWrite"
+        - type: object
+          required: [id, simulationToken, simulationPath, createdAt, updatedAt]
+          properties:
+            id: { type: string, format: uuid }
+            simulationToken: { type: string, format: uuid }
+            simulationPath:
+              type: string
+              pattern: "^/simulacion/qr/[0-9a-f-]{36}$"
+              description: Ruta de simulación MapIt, sin datos bancarios ni capacidad de realizar o confirmar pagos.
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    PaymentPage:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "total", "limit", "offset"],
+        "properties":
+          {
+            "items":
+              { "type": "array", "items": { "$ref": "#/components/schemas/ManagedPayment" } },
+            "total": { "type": "integer", "minimum": 0 },
+            "limit": { "type": "integer" },
+            "offset": { "type": "integer" },
+          },
+      }
+    ManagedPayment:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          [
+            "id",
+            "reservationId",
+            "establishmentId",
+            "establishmentName",
+            "methodId",
+            "methodName",
+            "provider",
+            "status",
+            "amount",
+            "currency",
+            "createdAt",
+            "expiresAt",
+            "verifiedAt",
+            "verificationSource",
+            "externalReference",
+          ],
+        "properties":
+          {
+            "id": { "type": "string", "format": "uuid" },
+            "reservationId": { "type": "string", "format": "uuid" },
+            "establishmentId": { "type": "string", "format": "uuid" },
+            "establishmentName": { "type": "string" },
+            "methodId": { "type": "string", "format": "uuid" },
+            "methodName": { "type": "string" },
+            "provider": { "type": "string" },
+            "status":
+              {
+                "type": "string",
+                "enum":
+                  [
+                    "PENDING",
+                    "PENDING_MANUAL_VERIFICATION",
+                    "CONFIRMED",
+                    "FAILED",
+                    "EXPIRED",
+                    "RECONCILIATION_REQUIRED",
+                    "CANCELLED",
+                  ],
+              },
+            "amount": { "type": "string" },
+            "currency": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "expiresAt": { "type": "string", "format": "date-time" },
+            "verifiedAt": { "type": ["string", "null"], "format": "date-time" },
+            "verificationSource": { "type": ["string", "null"] },
+            "externalReference": { "type": "string" },
+          },
+      }
+    EstablishmentStaffAccessWrite:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["canCheckIn"],
+        "properties": { "canCheckIn": { "type": "boolean" } },
+      }
+    EstablishmentStaffAccess:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["userId", "fullName", "email", "canCheckIn"],
+        "properties":
+          {
+            "userId": { "type": "string", "format": "uuid" },
+            "fullName": { "type": "string" },
+            "email": { "type": "string" },
+            "canCheckIn": { "type": "boolean" },
+          },
+      }
+    AccessibleEstablishment:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          ["id", "name", "slug", "address", "timezone", "canManagePayments", "canCheckIn"],
+        "properties":
+          {
+            "id": { "type": "string", "format": "uuid" },
+            "name": { "type": "string" },
+            "slug": { "type": "string" },
+            "address": { "type": ["string", "null"] },
+            "timezone": { "type": "string" },
+            "canManagePayments": { "type": "boolean" },
+            "canCheckIn": { "type": "boolean" },
+          },
+      }
+    ReservationCheckout:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          [
+            "id",
+            "establishmentId",
+            "establishmentName",
+            "tenantSlug",
+            "establishmentSlug",
+            "startsAt",
+            "endsAt",
+            "timezone",
+            "status",
+            "spaces",
+          ],
+        "properties":
+          {
+            "id": { "type": "string", "format": "uuid" },
+            "establishmentId": { "type": "string", "format": "uuid" },
+            "establishmentName": { "type": "string" },
+            "tenantSlug": { "type": "string" },
+            "establishmentSlug": { "type": "string" },
+            "startsAt": { "type": "string", "format": "date-time" },
+            "endsAt": { "type": "string", "format": "date-time" },
+            "timezone": { "type": "string" },
+            "status": { "type": "string" },
+            "spaces":
+              { "type": "array", "items": { "$ref": "#/components/schemas/CheckoutSpace" } },
+          },
+      }
+    CheckoutSpace:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "floor", "sector", "state"],
+        "properties":
+          {
+            "type": { "type": "string" },
+            "label": { "type": ["string", "null"], "maxLength": 120 },
+            "capacity": { "type": ["integer", "null"], "minimum": 1 },
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "id": { "type": "string", "format": "uuid" },
+            "name": { "type": "string" },
+            "floor": { "type": "string" },
+            "sector": { "type": "string" },
+            "state": { "type": "string" },
+          },
+      }
+    PublicPaymentMethod:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          ["id", "displayName", "provider", "verification", "staticQrImage", "simulationPath"],
+        "properties":
+          {
+            "id": { "type": "string", "format": "uuid" },
+            "displayName": { "type": "string" },
+            "provider": { "type": "string" },
+            "verification": { "type": "string" },
+            "staticQrImage": { "type": ["string", "null"] },
+            "simulationPath": { "type": ["string", "null"] },
+          },
+      }
+    PaymentAttempt:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          [
+            "id",
+            "status",
+            "provider",
+            "amount",
+            "currency",
+            "totalAmount",
+            "paidAmount",
+            "expiresAt",
+            "externalReference",
+          ],
+        "properties":
+          {
+            "id": { "type": "string", "format": "uuid" },
+            "status":
+              {
+                "type": "string",
+                "enum":
+                  [
+                    "PENDING",
+                    "PENDING_MANUAL_VERIFICATION",
+                    "CONFIRMED",
+                    "FAILED",
+                    "EXPIRED",
+                    "RECONCILIATION_REQUIRED",
+                    "CANCELLED",
+                  ],
+              },
+            "provider": { "type": "string" },
+            "amount": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "currency": { "type": "string" },
+            "totalAmount": { "type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "paidAmount": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "expiresAt": { "type": "string", "format": "date-time" },
+            "externalReference": { "type": "string" },
+          },
+      }
+    PublicCheckout:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          [
+            "reservation",
+            "available",
+            "unavailableReason",
+            "currency",
+            "amount",
+            "totalAmount",
+            "paidAmount",
+            "balanceAmount",
+            "methods",
+            "historicalMethod",
+            "payment",
+          ],
+        "properties":
+          {
+            "reservation": { "$ref": "#/components/schemas/ReservationCheckout" },
+            "available": { "type": "boolean" },
+            "unavailableReason": { "type": ["string", "null"] },
+            "currency": { "type": ["string", "null"] },
+            "amount": { "type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "totalAmount": { "type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "paidAmount": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "balanceAmount": { "type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "methods":
+              { "type": "array", "items": { "$ref": "#/components/schemas/PublicPaymentMethod" } },
+            "historicalMethod":
+              {
+                "anyOf":
+                  [{ "$ref": "#/components/schemas/PublicPaymentMethod" }, { "type": "null" }],
+              },
+            "payment":
+              { "anyOf": [{ "$ref": "#/components/schemas/PaymentAttempt" }, { "type": "null" }] },
+          },
+      }
+    PaymentPolicy:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["enabled", "currency", "depositAmount", "totalAmount", "paymentWindowMinutes"],
+        "properties":
+          {
+            "enabled": { "type": "boolean" },
+            "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+            "depositAmount": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "totalAmount": { "type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "paymentWindowMinutes": { "type": "integer", "minimum": 5, "maximum": 120 },
+          },
+      }
+    StartPaymentRequest:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["methodId", "requestId"],
+        "properties":
+          {
+            "methodId": { "type": "string", "format": "uuid" },
+            "requestId": { "type": "string", "format": "uuid" },
+          },
+      }
+    SimulatePaymentRequest:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["outcome"],
+        "properties":
+          {
+            "outcome":
+              {
+                "type": "string",
+                "enum": ["CONFIRMED", "FAILED", "EXPIRED", "CANCELLED"],
+                "description": "CANCELLED cancela solo el intento, sin cancelar ni confirmar la reserva.",
+              },
+            "eventId": { "type": "string", "minLength": 1, "maxLength": 120 },
+          },
+      }
+    VerifyPaymentRequest:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bankReference"],
+        "properties": { "bankReference": { "type": "string", "minLength": 1, "maxLength": 120 } },
+      }
+    ReceiptTokenRequest:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token"],
+        "properties": { "token": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" } },
+      }
+    PaymentReceipt:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          [
+            "reservation",
+            "payment",
+            "paidAmount",
+            "currency",
+            "totalAmount",
+            "balanceAmount",
+            "checkIn",
+            "expiresAt",
+          ],
+        "properties":
+          {
+            "token": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+            "url": { "type": "string", "format": "uri-reference" },
+            "reservation": { "$ref": "#/components/schemas/ReservationCheckout" },
+            "payment": { "$ref": "#/components/schemas/PaymentAttempt" },
+            "paidAmount": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "currency": { "type": "string" },
+            "totalAmount": { "type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "balanceAmount": { "type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]{1,6})?$" },
+            "checkIn": { "type": "string", "enum": ["NOT_CHECKED_IN", "CHECKED_IN"] },
+            "expiresAt": { "type": "string", "format": "date-time" },
+          },
+      }
+    CheckInAudit:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["actorId", "occurredAt", "establishmentId", "spaceIds"],
+        "properties":
+          {
+            "actorId": { "type": "string", "format": "uuid" },
+            "occurredAt": { "type": "string", "format": "date-time" },
+            "establishmentId": { "type": "string", "format": "uuid" },
+            "spaceIds": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+          },
+      }
+    CheckInDetails:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["receipt", "audit"],
+        "properties":
+          {
+            "receipt": { "$ref": "#/components/schemas/PaymentReceipt" },
+            "audit":
+              { "anyOf": [{ "$ref": "#/components/schemas/CheckInAudit" }, { "type": "null" }] },
+          },
+      }
+    PublicEstablishmentSummary:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          [
+            "id",
+            "name",
+            "type",
+            "address",
+            "tenantSlug",
+            "establishmentSlug",
+            "timezone",
+            "tenantName",
+          ],
+        "properties":
+          {
+            "id": { "type": "string", "format": "uuid" },
+            "name": { "type": "string" },
+            "type": { "type": "string" },
+            "address": { "type": ["string", "null"] },
+            "tenantSlug": { "type": "string" },
+            "establishmentSlug": { "type": "string" },
+            "timezone": { "type": "string" },
+            "tenantName": { "type": "string" },
+          },
+      }
+    PaymentMethodWrite:
+      {
+        "type": "object",
+        "required":
+          [
+            "displayName",
+            "country",
+            "currency",
+            "provider",
+            "bankName",
+            "accountReference",
+            "enabled",
+          ],
+        "properties":
+          {
+            "establishmentId":
+              {
+                "type": ["string", "null"],
+                "format": "uuid",
+                "description": "Nulo para valores predeterminados del tenant.",
+              },
+            "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "country":
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{2}$",
+                "description": "Código ISO 3166-1 alpha-2 reconocido.",
+              },
+            "currency":
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$",
+                "description": "Moneda ISO 4217; el motor respeta sus dígitos fraccionarios.",
+              },
+            "provider":
+              {
+                "type": "string",
+                "enum": ["STATIC_BANK_QR", "MOCK_GATEWAY", "INTEGRATED_GATEWAY"],
+              },
+            "bankName": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "accountReference":
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "Alias no secreto de la cuenta receptora; nunca credenciales.",
+              },
+            "staticQrImage":
+              {
+                "type": ["string", "null"],
+                "maxLength": 350000,
+                "pattern": "^data:image/(png|jpeg);base64,[A-Za-z0-9+/]+=*$",
+                "description": "Imagen propia PNG/JPEG, obligatoria en STATIC_BANK_QR. No confirma pagos.",
+              },
+            "enabled": { "type": "boolean" },
+            "accountHolderName":
+              {
+                "type": ["string", "null"],
+                "maxLength": 120,
+                "description": "Titular real requerido en altas o habilitaciones; null únicamente en legado deshabilitado. Sin credenciales.",
+              },
+          },
+      }
+    MerchantPaymentMethod:
+      allOf:
+        - $ref: "#/components/schemas/PaymentMethodWrite"
+        - type: object
+          required: [id, verification, createdAt, updatedAt]
+          properties:
+            id: { type: string, format: uuid }
+            verification: { type: string, enum: [MANUAL, AUTOMATIC] }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    PaymentReadinessBlocker:
+      type: string
+      enum:
+        [
+          POLICY_MISSING,
+          POLICY_DISABLED,
+          QR_MISSING,
+          QR_DISABLED,
+          MOCK_RUNTIME_DISABLED,
+          METHOD_MISSING,
+          METHOD_DISABLED,
+          METHOD_SUPERSEDED,
+          METHOD_CURRENCY_MISMATCH,
+          METHOD_SCOPE_MISMATCH,
+        ]
+    PaymentReadiness:
+      type: object
+      additionalProperties: false
+      required: [establishmentId, qrEnabled, policy, ready, blockers]
+      properties:
+        establishmentId: { type: string, format: uuid }
+        qrEnabled: { type: boolean }
+        policy:
+          anyOf: [{ $ref: "#/components/schemas/PaymentPolicy" }, { type: "null" }]
+        ready: { type: boolean }
+        blockers:
+          type: array
+          items: { $ref: "#/components/schemas/PaymentReadinessBlocker" }
+    PublicAvailabilityMap:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          establishmentId,
+          establishmentName,
+          tenantSlug,
+          establishmentSlug,
+          timezone,
+          date,
+          startTime,
+          endTime,
+          startsAt,
+          endsAt,
+          mode,
+          floors,
+        ]
+      properties:
+        establishmentId: { type: string, format: uuid }
+        establishmentName: { type: string }
+        tenantSlug: { type: string }
+        establishmentSlug: { type: string }
+        timezone: { type: string }
+        date: { type: string, format: date }
+        startTime: { type: [string, "null"] }
+        endTime: { type: [string, "null"] }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        mode: { type: string, enum: [DAY, INTERVAL] }
+        floors:
+          type: array
+          items: { $ref: "#/components/schemas/PublicMapFloor" }
+    PublicMapFloor:
+      type: object
+      additionalProperties: false
+      required: [id, name, level, canvasWidth, canvasHeight, sectors]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        level: { type: integer }
+        canvasWidth: { type: number }
+        canvasHeight: { type: number }
+        sectors:
+          type: array
+          items: { $ref: "#/components/schemas/PublicMapSector" }
+    PublicMapSector:
+      type: object
+      additionalProperties: false
+      required: [id, name, width, height, x, y, rotation, elements]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        width: { type: number }
+        height: { type: number }
+        x: { type: number }
+        y: { type: number }
+        rotation: { type: number }
+        elements:
+          type: array
+          items: { $ref: "#/components/schemas/PublicMapElement" }
+    PublicMapElement:
+      type: object
+      additionalProperties: false
+      required:
+        [id, type, label, name, capacity, x, y, width, height, rotation, selectable, availability]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR] }
+        label: { type: [string, "null"], maxLength: 120 }
+        name: { type: string }
+        capacity: { type: [integer, "null"], minimum: 1 }
+        x: { type: number }
+        y: { type: number }
+        width: { type: number }
+        height: { type: number }
+        rotation: { type: number }
+        selectable: { type: boolean }
+        availability: { type: string, enum: [AVAILABLE, RESERVED, UNAVAILABLE] }
+
     AuditResourceType:
       type: string
       enum: [RESERVATION, SPACE_ELEMENT]
@@ -2325,6 +4815,8 @@ components:
     PublicReservation:
       type: object
       required:
+        - accessToken
+        - accessExpiresAt
         - id
         - establishmentId
         - spaceElementIds
@@ -2339,6 +4831,8 @@ components:
       additionalProperties: false
       description: Confirmación pública sin datos personales ni auditoría del actor.
       properties:
+        accessToken: { type: string, pattern: "^[A-Za-z0-9_-]{43}$", readOnly: true }
+        accessExpiresAt: { type: string, format: date-time, readOnly: true }
         id:
           type: string
           format: uuid
@@ -3198,6 +5692,14 @@ components:
       type: object
       required: [id, sectorId, type, x, y, width, height, rotation, state, createdAt, updatedAt]
       properties:
+        label: { type: [string, "null"], maxLength: 120 }
+        capacity: { type: [integer, "null"], minimum: 1 }
+        name:
+          {
+            type: string,
+            readOnly: true,
+            description: "Label normalizado o tipo traducido sin nombre, nunca UUID",
+          }
         id:
           type: string
           format: uuid
@@ -3464,6 +5966,8 @@ components:
       type: object
       required: [type, x, y]
       properties:
+        label: { type: [string, "null"], maxLength: 120 }
+        capacity: { type: [integer, "null"], minimum: 1 }
         type:
           type: string
           enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
@@ -3494,8 +5998,11 @@ components:
 
     SpaceElementUpdateRequest:
       type: object
+      description: Metadata omitida conserva valor; null explícito limpia. Geometría sigue reemplazo completo.
       required: [type, x, y]
       properties:
+        label: { type: [string, "null"], maxLength: 120 }
+        capacity: { type: [integer, "null"], minimum: 1 }
         type:
           type: string
           enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]

@@ -26,6 +26,8 @@ export interface RuntimeConfig {
   readonly unleashProxyUrl: string;
   readonly unleashClientKey: string;
   readonly environment: string;
+  readonly paymentPreviewEnabled?: boolean;
+  readonly paymentPublicOrigin?: string;
   readonly logLevel?: LogLevel;
 }
 
@@ -35,6 +37,8 @@ const CONFIG_POR_DEFECTO: RuntimeConfig = {
   unleashProxyUrl: 'http://localhost:3063/proxy',
   unleashClientKey: 'dev-proxy-key-change-me',
   environment: 'development',
+  paymentPreviewEnabled: false,
+  paymentPublicOrigin: 'http://localhost:4300',
 };
 
 export const RUNTIME_CONFIG = new InjectionToken<RuntimeConfig>('mapit.runtime-config');

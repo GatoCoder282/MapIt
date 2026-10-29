@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.mapit.shared.realtime.RealtimeRoomAccessPort;
+import com.mapit.shared.security.EstablishmentAuthorizationPort;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.shared.tenant.TenantScope;
 
@@ -16,7 +17,7 @@ import com.mapit.shared.tenant.TenantScope;
  * Verifica la pertenencia de una sala contra el modelo espacial y su RLS.
  *
  * <p>Regla de acceso: cualquier rol con acceso a la sala de <b>su propio tenant</b> —
- * {@code ADMIN}, {@code MANAGER}, {@code STAFF} y también {@code SUPER_ADMIN}, que ya lee
+ * {@code ADMIN}, {@code MANAGER}, {@code STAFF} con concesión explícita y también {@code SUPER_ADMIN}, que ya lee
  * los mismos datos por HTTP (si los dos caminos no coincidieran, el dashboard en vivo no
  * podría existir para el rol de plataforma). El aislamiento por tenant no se toca: el
  * usuario debe estar activo en el tenant del JWT y el establecimiento o sector debe
@@ -30,10 +31,12 @@ public final class JdbcRealtimeRoomAccessAdapter implements RealtimeRoomAccessPo
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate transactions;
+  private final EstablishmentAuthorizationPort authorization;
 
-  public JdbcRealtimeRoomAccessAdapter(JdbcTemplate jdbc, TransactionTemplate transactions) {
+  public JdbcRealtimeRoomAccessAdapter(JdbcTemplate jdbc, TransactionTemplate transactions, EstablishmentAuthorizationPort authorization) {
     this.jdbc = jdbc;
     this.transactions = transactions;
+    this.authorization = authorization;
   }
 
   @Override
@@ -44,6 +47,7 @@ public final class JdbcRealtimeRoomAccessAdapter implements RealtimeRoomAccessPo
       UUID establishmentId,
       Optional<UUID> sectorId) {
     if (!ROLES_CON_ACCESO_A_SALAS.contains(role)) return false;
+    if (!role.equals("SUPER_ADMIN") && !authorization.canReadOperations(tenantId,userId,establishmentId)) return false;
     Boolean allowed =
         transactions.execute(
             status -> {

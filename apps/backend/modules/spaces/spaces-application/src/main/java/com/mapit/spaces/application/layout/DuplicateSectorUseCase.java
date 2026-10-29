@@ -125,7 +125,7 @@ public class DuplicateSectorUseCase {
             el.x(), el.y(), el.width(), el.height(), el.rotation(),
             SpaceElementState.AVAILABLE,
             now,
-            null))
+            null).withMetadata(el.label(), el.capacity()))
         .map(elements::save)
         .toList();
 

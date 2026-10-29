@@ -1,0 +1,335 @@
+<section class="payment-page" aria-labelledby="payment-title">
+  <header class="page-heading">
+    <div>
+      <h1 id="payment-title">{{ strings.title }}</h1>
+      <p>{{ strings.intro }}</p>
+    </div>
+  </header>
+
+  <div class="mock-notice" role="note">
+    <strong>{{ strings.mockLabel }}</strong>
+    <span>{{ strings.mockHelp }}</span>
+  </div>
+
+  @if (!store.allowed) {
+    <p class="message" role="status">{{ strings.developmentOnly }}</p>
+  } @else {
+    @if (store.loading()) {
+      <p class="message" role="status" aria-live="polite">{{ strings.loading }}</p>
+    }
+    @if (store.error()) {
+      <div class="message error" role="alert">
+        <span>{{ store.error() }}</span>
+        <button class="button secondary" type="button" (click)="store.load()">{{ strings.retry }}</button>
+      </div>
+    }
+    <div class="payment-layout">
+      @if (store.isAdmin() && store.draft().establishmentId) {
+        <section class="readiness-panel" data-testid="readiness-panel" aria-labelledby="readiness-title">
+          <div class="panel-heading">
+            <h2 id="readiness-title">{{ strings.readinessTitle }}</h2>
+            <span class="hint"
+              >{{ strings.readinessVenue }} {{ store.establishmentName(store.draft().establishmentId) }}</span
+            >
+          </div>
+          @if (store.readinessLoading()) {
+            <p role="status">{{ strings.readinessLoading }}</p>
+          }
+          @if (store.readinessError()) {
+            <div class="message error" role="alert">
+              {{ store.readinessError() }}
+              <button type="button" class="button secondary" (click)="store.loadReadiness()">
+                {{ strings.retry }}
+              </button>
+            </div>
+          }
+          @if (store.readiness(); as readiness) {
+            <div class="readiness-facts">
+              <p data-testid="qr-active">
+                <strong>{{ strings.qrActive }}</strong
+                ><span>{{ readiness.qrEnabled ? strings.yes : strings.no }}</span>
+              </p>
+              <p data-testid="charge-ready">
+                <strong>{{ strings.chargeReady }}</strong
+                ><span>{{ readiness.ready ? strings.ready : strings.notReady }}</span>
+              </p>
+            </div>
+            @if (!readiness.policy) {
+              <p class="hint">{{ strings.policyMissing }}</p>
+            }
+            @if (store.blockerLabels().length) {
+              <div data-testid="readiness-blockers">
+                <h3>{{ strings.blockersTitle }}</h3>
+                <ul>
+                  @for (blocker of store.blockerLabels(); track blocker) {
+                    <li>{{ blocker }}</li>
+                  }
+                </ul>
+              </div>
+            }
+            <form
+              class="policy-form"
+              (submit)="$event.preventDefault(); store.savePolicy()"
+              aria-labelledby="policy-title"
+            >
+              <h3 id="policy-title">{{ strings.policyTitle }}</h3>
+              <p class="hint">{{ strings.policyIntro }}</p>
+              <fieldset [disabled]="store.policySaving()">
+                <label class="field"
+                  >{{ strings.policyCurrency
+                  }}<input
+                    data-testid="policy-currency"
+                    name="policyCurrency"
+                    autocomplete="off"
+                    maxlength="3"
+                    required
+                    [value]="store.policyDraft().currency"
+                    (input)="store.setPolicyCurrency($any($event.target).value)"
+                /></label>
+                <label class="field"
+                  >{{ strings.policyDeposit
+                  }}<input
+                    data-testid="policy-deposit"
+                    name="policyDeposit"
+                    inputmode="decimal"
+                    required
+                    [value]="store.policyDraft().depositAmount"
+                    (input)="store.setPolicyDeposit($any($event.target).value)"
+                /></label>
+                <label class="field"
+                  >{{ strings.policyTotal
+                  }}<input
+                    data-testid="policy-total"
+                    name="policyTotal"
+                    inputmode="decimal"
+                    [value]="store.policyDraft().totalAmount"
+                    (input)="store.setPolicyTotal($any($event.target).value)"
+                /></label>
+                <label class="field"
+                  >{{ strings.policyWindow
+                  }}<input
+                    data-testid="policy-window"
+                    type="number"
+                    min="5"
+                    max="120"
+                    step="1"
+                    required
+                    [value]="store.policyDraft().paymentWindowMinutes"
+                    (input)="store.setPolicyWindow($any($event.target).value)"
+                /></label>
+                <div class="policy-choice" role="group" [attr.aria-label]="strings.policyEnabled">
+                  <span>{{ strings.policyEnabled }}</span>
+                  <label
+                    ><input
+                      data-testid="policy-enabled-true"
+                      name="policyEnabled"
+                      type="radio"
+                      [checked]="store.policyDraft().enabled === true"
+                      (change)="store.setPolicyEnabled(true)"
+                    />{{ strings.policyEnable }}</label
+                  >
+                  <label
+                    ><input
+                      data-testid="policy-enabled-false"
+                      name="policyEnabled"
+                      type="radio"
+                      [checked]="store.policyDraft().enabled === false"
+                      (change)="store.setPolicyEnabled(false)"
+                    />{{ strings.policyDisable }}</label
+                  >
+                </div>
+              </fieldset>
+              @if (store.policyError()) {
+                <p class="message error" role="alert">{{ store.policyError() }}</p>
+              }
+              @if (store.policySuccess()) {
+                <p class="message success" role="status">{{ store.policySuccess() }}</p>
+              }
+              <button
+                data-testid="policy-save"
+                class="button primary"
+                type="submit"
+                [disabled]="!store.canSavePolicy()"
+              >
+                {{ strings.policySave }}
+              </button>
+            </form>
+          }
+        </section>
+      }
+      <div class="payment-column">
+        <section class="saved-panel" aria-labelledby="saved-title">
+          <div class="panel-heading">
+            <h2 id="saved-title">{{ strings.savedTitle }}</h2>
+            <button class="button secondary" type="button" (click)="store.startNew()">
+              {{ strings.newConfiguration }}
+            </button>
+          </div>
+          @if (store.configurations().length === 0) {
+            <p class="hint">{{ strings.empty }}</p>
+          } @else {
+            <ul class="saved-list">
+              @for (configuration of store.configurations(); track configuration.id) {
+                <li class="saved-item" [class.is-selected]="configuration.id === store.editingId()">
+                  <button class="saved-main" type="button" (click)="store.selectConfiguration(configuration)">
+                    <strong>{{ store.establishmentName(configuration.establishmentId) }}</strong>
+                    <span>{{ store.countryName(configuration.country) }} · {{ configuration.bankName }}</span>
+                    <span class="badge" [class.badge-off]="!configuration.enabled">
+                      {{ configuration.enabled ? strings.active : strings.inactive }}
+                    </span>
+                  </button>
+                  <div class="saved-actions">
+                    <button class="link-button" type="button" (click)="store.selectConfiguration(configuration)">
+                      {{ strings.edit }}
+                    </button>
+                    <button class="link-button" type="button" (click)="store.toggle(configuration)">
+                      {{ configuration.enabled ? strings.deactivate : strings.activate }}
+                    </button>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <form class="method-editor" aria-labelledby="qr-heading" (submit)="$event.preventDefault(); store.save()">
+          <div class="panel-heading">
+            <h2 id="qr-heading">{{ strings.formTitle }}</h2>
+          </div>
+
+          <fieldset [disabled]="store.loading() || store.saving()">
+            <mapit-payment-search-select
+              inputId="establishmentId"
+              [label]="strings.establishment"
+              [placeholder]="strings.establishmentPlaceholder"
+              [emptyMessage]="strings.noEstablishments"
+              [options]="store.establishmentOptions()"
+              [value]="store.draft().establishmentId"
+              [disabled]="store.loading() || store.saving() || store.establishments().length === 0"
+              (valueChanged)="store.setEstablishment($event)"
+            />
+            @if (!store.loading() && store.establishments().length === 0) {
+              <p class="hint">{{ strings.emptyEstablishments }}</p>
+            }
+
+            <mapit-payment-search-select
+              inputId="country"
+              [label]="strings.country"
+              [placeholder]="strings.countryPlaceholder"
+              [emptyMessage]="strings.noCountries"
+              [options]="store.countryOptions()"
+              [value]="store.draft().country"
+              [disabled]="store.loading() || store.saving() || store.countries().length === 0"
+              (valueChanged)="store.setCountry($event)"
+            />
+
+            <label class="field">
+              <span>{{ strings.bank }}</span>
+              <input
+                name="bankName"
+                required
+                maxlength="120"
+                autocomplete="off"
+                list="bank-suggestions"
+                [placeholder]="strings.bankPlaceholder"
+                [value]="store.draft().bankName"
+                (input)="store.setBankName($any($event.target).value)"
+              />
+              <datalist id="bank-suggestions">
+                @for (bank of store.bankSuggestions(); track bank) {
+                  <option [value]="bank"></option>
+                }
+              </datalist>
+              @if (store.bankSuggestions().length > 0) {
+                <small>{{ strings.bankSuggestions }}</small>
+              }
+            </label>
+
+            <label class="field">
+              <span>{{ strings.accountHolder }}</span>
+              <input
+                name="accountHolderName"
+                required
+                maxlength="120"
+                autocomplete="off"
+                [value]="store.draft().accountHolderName"
+                (input)="store.setAccountHolder($any($event.target).value)"
+              />
+            </label>
+
+            <label class="field">
+              <span>{{ strings.accountReference }}</span>
+              <input
+                name="accountReference"
+                required
+                maxlength="120"
+                autocomplete="off"
+                spellcheck="false"
+                [value]="store.draft().accountReference"
+                (input)="store.setAccountReference($any($event.target).value)"
+              />
+            </label>
+
+            <p class="hint">{{ strings.testDataHint }}</p>
+
+            <label class="enabled-option">
+              <input
+                name="enabled"
+                type="checkbox"
+                [checked]="store.draft().enabled"
+                (change)="store.setEnabled($any($event.target).checked)"
+              />
+              <span>{{ strings.enabled }}</span>
+            </label>
+          </fieldset>
+
+          @if (store.success()) {
+            <p class="message success" role="status">{{ store.success() }}</p>
+          }
+
+          <div class="editor-actions">
+            <button class="button secondary" type="button" (click)="store.reset()">
+              {{ strings.reset }}
+            </button>
+            <button class="button primary" type="submit" [disabled]="!store.canSave()">
+              {{ store.saving() ? strings.saving : strings.save }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <aside class="qr-card" aria-labelledby="qr-preview-title">
+        <h2 id="qr-preview-title">{{ strings.qrTitle }}</h2>
+        <p class="mock-badge">{{ strings.mockLabel }}</p>
+        @if (store.selectedConfiguration()) {
+          @if (store.qr(); as image) {
+            <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- data URL generada en runtime -->
+            <img class="qr-image" [src]="image" [alt]="strings.qrAlt" width="280" height="280" />
+          } @else if (store.qrBusy()) {
+            <p class="hint" role="status">{{ strings.qrGenerating }}</p>
+          }
+          @if (store.qrError(); as qrError) {
+            <p class="message error" role="alert">{{ qrError }}</p>
+          }
+          @if (store.qrUrl(); as qrUrl) {
+            <p class="qr-url">
+              <span>{{ strings.qrUrl }}</span>
+              <code>{{ qrUrl }}</code>
+            </p>
+          }
+          <p class="hint">{{ strings.qrNotice }}</p>
+          <button
+            class="button secondary"
+            type="button"
+            [disabled]="store.regenerating() || store.saving()"
+            (click)="store.regenerate()"
+          >
+            {{ store.regenerating() ? strings.regenerating : strings.regenerate }}
+          </button>
+        } @else {
+          <p class="hint">{{ strings.qrEmpty }}</p>
+        }
+      </aside>
+    </div>
+  }
+</section>

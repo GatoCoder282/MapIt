@@ -57,8 +57,8 @@ import com.mapit.shared.tenant.TenantScope;
 @Import(RealtimeWebSocketIntegrationTest.TestFlags.class)
 class RealtimeWebSocketIntegrationTest {
 
-  // JUnit crea una instancia por test: los actores auditados permanecen en la BD (FK RESTRICT).
   private final UUID user = UUID.randomUUID();
+  private final UUID accessAdmin = UUID.randomUUID();
   private final UUID superAdmin = UUID.randomUUID();
   private final UUID otherSuperAdmin = UUID.randomUUID();
   private final String otherTenant = "rt-" + UUID.randomUUID();
@@ -108,6 +108,8 @@ class RealtimeWebSocketIntegrationTest {
         "insert into establishment (id, tenant_id, name, type, slug) values (?, 'demo', 'Realtime', 'RESTAURANT', ?)",
         establishment,
         "realtime-" + establishment);
+    jdbc.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values(?, 'demo', ?, 'unused', 'Administrador de concesiones', 'ADMIN')", accessAdmin, "realtime-admin-" + accessAdmin + "@example.test");
+    jdbc.update("insert into establishment_staff_access(tenant_id,establishment_id,user_id,can_check_in,updated_at,updated_by) values('demo',?,?,true,now(),?)", establishment, user, accessAdmin);
     client = new WebSocketStompClient(new StandardWebSocketClient());
     client.setMessageConverter(new StringMessageConverter());
     client.start();
@@ -124,6 +126,13 @@ class RealtimeWebSocketIntegrationTest {
     jdbc.update("delete from space_element where id = ?", element);
     jdbc.update("delete from sector where id = ?", sector);
     jdbc.update("delete from floor where id = ?", floor);
+  }
+
+  @Test
+  void revocar_concesion_impide_nuevas_suscripciones_staff() {
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"),user,"STAFF",establishment,Optional.empty())).isTrue();
+    jdbc.update("update establishment_staff_access set can_check_in=false where tenant_id='demo' and establishment_id=? and user_id=?",establishment,user);
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"),user,"STAFF",establishment,Optional.empty())).isFalse();
   }
 
   @Test

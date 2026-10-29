@@ -49,6 +49,18 @@ class SpaceElementTest {
     assertThat(e.audit().createdAt()).isEqualTo(AHORA);
   }
 
+  @Test void metadata_normalizada_nullable_y_copias_no_la_pierden() {
+    var e = unElemento().withMetadata("  Mesa jardín  ", 4);
+    assertThat(e.label()).isEqualTo("Mesa jardín");
+    assertThat(e.capacity()).isEqualTo(4);
+    assertThat(e.update(e.type(), 1.0, 2.0, 80.0, 80.0, 0.0, AHORA, USUARIO).label()).isEqualTo(e.label());
+    assertThat(e.changeState(SpaceElementState.CLEANING, AHORA, USUARIO).capacity()).isEqualTo(4);
+    assertThat(e.softDelete(AHORA, USUARIO).label()).isEqualTo(e.label());
+    assertThat(e.withMetadata("  ", null).label()).isNull();
+    assertThatThrownBy(() -> e.withMetadata("x".repeat(121), 1)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> e.withMetadata(null, 0)).isInstanceOf(IllegalArgumentException.class);
+  }
+
   @Test
   void initialState_nulo_deja_available() {
     SpaceElement e =

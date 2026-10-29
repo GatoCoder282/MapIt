@@ -10,7 +10,10 @@ interface PublicConfig {
   readonly unleashProxyUrl: string;
   readonly unleashClientKey: string;
   readonly environment: string;
+  readonly wsUrl: string;
   readonly logLevel: LogLevel;
+  readonly paymentPreviewEnabled: boolean;
+  readonly paymentPublicOrigin: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -23,7 +26,10 @@ export class PublicRuntimeConfig {
     unleashProxyUrl: 'http://localhost:3063/proxy',
     unleashClientKey: 'dev-proxy-key-change-me',
     environment: 'development',
+    wsUrl: 'ws://localhost:8080/ws',
     logLevel: 'INFO',
+    paymentPreviewEnabled: false,
+    paymentPublicOrigin: null,
   });
   readonly config = this.state.asReadonly();
 

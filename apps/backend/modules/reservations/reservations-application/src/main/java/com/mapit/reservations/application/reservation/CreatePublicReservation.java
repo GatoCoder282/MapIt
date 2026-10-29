@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -29,16 +28,19 @@ public class CreatePublicReservation {
   private final PersonRepository people;
   private final CreateReservation createReservation;
   private final Clock clock;
+  private final PublicReservationAccessService access;
 
   public CreatePublicReservation(
       PublicReservationRepository publicEstablishments,
       PersonRepository people,
       CreateReservation createReservation,
-      Clock clock) {
+      Clock clock,
+      PublicReservationAccessService access) {
     this.publicEstablishments = publicEstablishments;
     this.people = people;
     this.createReservation = createReservation;
     this.clock = clock;
+    this.access = access;
   }
 
   @Transactional
@@ -51,11 +53,11 @@ public class CreatePublicReservation {
             .orElseThrow(PublicEstablishmentNotFoundException::new);
 
     ZoneId zone = ZoneId.of(establishment.timezone());
-    Instant startsAt =
-        ZonedDateTime.of(command.date(), command.startTime(), zone).toInstant();
-    Instant endsAt = ZonedDateTime.of(command.date(), command.endTime(), zone).toInstant();
-    if (!startsAt.isBefore(endsAt)) {
-      throw new IllegalArgumentException("El inicio de la reserva debe ser anterior al fin");
+    var range = com.mapit.reservations.domain.reservation.PublicReservationTimeRange.resolve(command.date(), command.startTime(), command.endTime(), zone);
+    Instant startsAt = range.startsAt();
+    Instant endsAt = range.endsAt();
+    if (!startsAt.isAfter(clock.instant())) {
+      throw new IllegalArgumentException("La reserva pública debe comenzar en el futuro");
     }
 
     Person candidate =
@@ -85,7 +87,8 @@ public class CreatePublicReservation {
         establishment,
         command.date(),
         command.startTime(),
-        command.endTime());
+        command.endTime(),
+        access.issue(reservation));
   }
 
   public record Command(
@@ -122,5 +125,6 @@ public class CreatePublicReservation {
       PublicEstablishment establishment,
       LocalDate date,
       LocalTime startTime,
-      LocalTime endTime) {}
+      LocalTime endTime,
+      PublicReservationAccessService.IssuedAccess access) {}
 }
