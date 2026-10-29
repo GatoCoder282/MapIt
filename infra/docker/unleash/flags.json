@@ -43,15 +43,15 @@
     },
     {
       "name": "vertical.hotel",
-      "description": "Vertical Hotel: reservas por rango de fechas (CU-22). Permission toggle por tenant.",
+      "description": "Vertical Hotel: reservas por rango de fechas (CU-22). Permission toggle por tenant (contexto tenantId). Apagada: altas y reservas nuevas de hoteles responden 403 vertical-disabled.",
       "type": "permission",
-      "enabled": false
+      "enabled": true
     },
     {
       "name": "vertical.event-hall",
-      "description": "Vertical Salón de eventos: butacas numeradas (CU-21). Permission toggle por tenant.",
+      "description": "Vertical Salón de eventos: butacas numeradas (CU-21). Permission toggle por tenant (contexto tenantId). Apagada: altas y reservas nuevas de salones responden 403 vertical-disabled.",
       "type": "permission",
-      "enabled": false
+      "enabled": true
     }
   ]
 }
