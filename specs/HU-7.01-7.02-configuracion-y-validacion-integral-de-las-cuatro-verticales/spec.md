@@ -132,62 +132,62 @@ de la reserva que se cobra. Pagar no implica check-in y el proveedor sigue siend
 
 **Configuración y resolución (MAP-232)**
 
-- **CA-1** Dado un ADMIN del tenant A, cuando crea un establecimiento `HOTEL` y recarga, entonces
-  `GET /establishments/{id}/vertical-profile` devuelve `HOTEL`, modo `STAY` y sus tipos admitidos.
-- **CA-2** Dado el tenant B, cuando pide el perfil de un establecimiento del tenant A, entonces
-  recibe `404`, igual que con un id inexistente.
-- **CA-3** Dada `vertical.hotel` apagada, cuando se crea un establecimiento `HOTEL`, entonces se
-  responde `403` con `type` `…/vertical-disabled`; los establecimientos `HOTEL` existentes conservan
-  su vertical y su perfil indica `enabled: false`.
-- **CA-4** Dado que Unleash no responde, cuando se evalúa una vertical, entonces se usa el valor por
-  defecto del catálogo (`true`) y la vertical persistida no cambia.
-- **CA-5** Dado el portal público, cuando se consulta el mapa de un establecimiento, entonces la
-  respuesta incluye su perfil de vertical resuelto por slug, sin aceptar `tenantId` del cliente.
+- [x] **CA-1:** Dado un ADMIN del tenant A, cuando crea un establecimiento `HOTEL` y recarga, entonces
+      `GET /establishments/{id}/vertical-profile` devuelve `HOTEL`, modo `STAY` y sus tipos admitidos.
+- [x] **CA-2:** Dado el tenant B, cuando pide el perfil de un establecimiento del tenant A, entonces
+      recibe `404`, igual que con un id inexistente.
+- [x] **CA-3:** Dada `vertical.hotel` apagada, cuando se crea un establecimiento `HOTEL`, entonces se
+      responde `403` con `type` `…/vertical-disabled`; los establecimientos `HOTEL` existentes conservan
+      su vertical y su perfil indica `enabled: false`.
+- [x] **CA-4:** Dado que Unleash no responde, cuando se evalúa una vertical, entonces se usa el valor por
+      defecto del catálogo (`true`) y la vertical persistida no cambia.
+- [x] **CA-5:** Dado el portal público, cuando se consulta el mapa de un establecimiento, entonces la
+      respuesta incluye su perfil de vertical resuelto por slug, sin aceptar `tenantId` del cliente.
 
 **Catálogo de elementos y plantillas (MAP-247)**
 
-- **CA-6** Dado el editor de un sector de un hotel, cuando se abre la biblioteca, entonces solo
-  aparecen `ROOM` y `DECOR` y las plantillas de esos tipos.
-- **CA-7** Dado un sector de restaurante, cuando se intenta crear un `ROOM` o un `SEAT` por API,
-  entonces se responde `400` (regla existente, se mantiene).
+- [x] **CA-6:** Dado el editor de un sector de un hotel, cuando se abre la biblioteca, entonces solo
+      aparecen `ROOM` y `DECOR` y las plantillas de esos tipos.
+- [x] **CA-7:** Dado un sector de restaurante, cuando se intenta crear un `ROOM` o un `SEAT` por API,
+      entonces se responde `400` (regla existente, se mantiene).
 
 **Reglas de reserva (MAP-233)**
 
-- **CA-8** Dado un restaurante, cuando se reserva un turno que dura más de 6 h o que cruza el día
-  local, entonces se responde `400`; un turno válido se crea.
-- **CA-9** Dada una discoteca, cuando se reserva de 23:00 a 04:00, entonces la reserva termina al
-  día siguiente; una noche de más de 12 h se rechaza con `400`.
-- **CA-10** Dado un salón de eventos, cuando se reserva un `SEAT`, entonces se crea; si otra
-  reserva solapa la misma butaca, se responde `409`.
-- **CA-11** Dado un hotel, cuando se reserva una `ROOM` del día D al D+2, entonces se crea con dos
-  noches; una estadía solapada da `409`; una estadía que empieza el día de salida de otra no
-  colisiona; 0 noches o más de 30 se rechazan con `400`.
-- **CA-12** Dada cualquier vertical, cuando se reserva un elemento no reservable para ella
-  (`STAGE`, `DECOR`, o un tipo ajeno a la vertical), entonces se responde `400`; y un elemento de
-  otro establecimiento o tenant nunca se reserva.
-- **CA-13** Dada una vertical apagada, cuando se intenta reservar, entonces se responde `403
+- [x] **CA-8:** Dado un restaurante, cuando se reserva un turno que dura más de 6 h o que cruza el día
+      local, entonces se responde `400`; un turno válido se crea.
+- [x] **CA-9:** Dada una discoteca, cuando se reserva de 23:00 a 04:00, entonces la reserva termina al
+      día siguiente; una noche de más de 12 h se rechaza con `400`.
+- [x] **CA-10:** Dado un salón de eventos, cuando se reserva un `SEAT`, entonces se crea; si otra
+      reserva solapa la misma butaca, se responde `409`.
+- [x] **CA-11:** Dado un hotel, cuando se reserva una `ROOM` del día D al D+2, entonces se crea con dos
+      noches; una estadía solapada da `409`; una estadía que empieza el día de salida de otra no
+      colisiona; 0 noches o más de 30 se rechazan con `400`.
+- [x] **CA-12:** Dada cualquier vertical, cuando se reserva un elemento no reservable para ella
+      (`STAGE`, `DECOR`, o un tipo ajeno a la vertical), entonces se responde `400`; y un elemento de
+      otro establecimiento o tenant nunca se reserva.
+- [x] **CA-13:** Dada una vertical apagada, cuando se intenta reservar, entonces se responde `403
 vertical-disabled` tanto en la ruta de staff como en la pública.
 
 **Frontend (MAP-234)**
 
-- **CA-14** Dado el portal público, cuando el establecimiento es un hotel, entonces el buscador
-  pide «Llegada» y «Salida» en vez de fecha y horas; en discoteca habla de «noche», en salón de
-  «evento» y «ubicación», en restaurante de «turno» y «mesa».
-- **CA-15** Dada la Console, cuando se cambia de establecimiento en el formulario de reserva,
-  entonces los textos y campos se actualizan a la vertical del nuevo establecimiento.
-- **CA-16** Ningún texto nuevo está escrito en la plantilla: todo sale de `STRINGS`; ningún
-  elemento se muestra con su UUID como nombre principal.
+- [x] **CA-14:** Dado el portal público, cuando el establecimiento es un hotel, entonces el buscador
+      pide «Llegada» y «Salida» en vez de fecha y horas; en discoteca habla de «noche», en salón de
+      «evento» y «ubicación», en restaurante de «turno» y «mesa».
+- [x] **CA-15:** Dada la Console, cuando se cambia de establecimiento en el formulario de reserva,
+      entonces los textos y campos se actualizan a la vertical del nuevo establecimiento.
+- [x] **CA-16:** Ningún texto nuevo está escrito en la plantilla: todo sale de `STRINGS`; ningún
+      elemento se muestra con su UUID como nombre principal.
 
 **Integración (MAP-248)**
 
-- **CA-17** Para cada vertical, se completa al menos una reserva verificable de punta a punta:
-  mapa → disponibilidad → selección → reserva → confirmación → (pago MOCK cuando la política del
-  establecimiento lo habilita).
+- [x] **CA-17:** Para cada vertical, se completa al menos una reserva verificable de punta a punta:
+      mapa → disponibilidad → selección → reserva → confirmación → (pago MOCK cuando la política del
+      establecimiento lo habilita).
 
 **Validación (MAP-235 / MAP-249)**
 
-- **CA-18** Se ejecutan y registran `pnpm api:check`, `pnpm check`, `pnpm be:test`, `pnpm be:it`,
-  pruebas de frontend y Playwright; lo no verificado se marca como pendiente en `tasks.md`.
+- [x] **CA-18:** Se ejecutan y registran `pnpm api:check`, `pnpm check`, `pnpm be:test`, `pnpm be:it`,
+      pruebas de frontend y Playwright; lo no verificado se marca como pendiente en `tasks.md`.
 
 ## Fuera de alcance
 
