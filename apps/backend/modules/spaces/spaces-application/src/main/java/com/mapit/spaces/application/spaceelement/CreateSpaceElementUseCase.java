@@ -74,7 +74,7 @@ public class CreateSpaceElementUseCase {
                 command.rotation(),
                 initialState,
                 clock.instant(),
-                null));
+                null).withMetadata(command.label(), command.capacity()));
     return SpaceElementResponse.fromDomain(saved);
   }
 

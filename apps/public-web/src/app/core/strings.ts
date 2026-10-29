@@ -1,15 +1,14 @@
 /**
- * Catalogo central de textos visibles de Public Web.
+ * Catálogo central de textos visibles de Public Web.
  *
- * Espanol es la fuente canonica y el fallback. Los catalogos de ingles y
- * japones viven en archivos adyacentes con las mismas claves.
- *
- * Los datos mock de establecimientos son contenido de negocio, no chrome.
+ * Español es la fuente canónica y el fallback. La API pública aporta los
+ * nombres y direcciones de establecimientos, que son datos de negocio.
  */
 
 import {
   createLocalizedCatalog,
   createLocalizedTextResolver,
+  type DeepPartial,
   type LocalizedShape,
 } from '@mapit/i18n';
 import { PUBLIC_STRINGS_EN } from './strings.en';
@@ -23,6 +22,19 @@ const SHARED = {
 
 const STRINGS_ES = {
   shared: SHARED,
+  venueIdentity: {
+    company: 'Empresa',
+    local: 'Establecimiento',
+    code: 'Código del local',
+    loading: 'Cargando establecimiento…',
+    error: 'No se pudo consultar la información actual del establecimiento.',
+    retry: 'Reintentar',
+    missingAddress: 'Sin dirección registrada',
+    timezone: 'Zona horaria',
+    pagination: 'Páginas de establecimientos',
+    previous: 'Anterior',
+    next: 'Siguiente',
+  },
 
   landing: {
     hero: {
@@ -196,9 +208,188 @@ const STRINGS_ES = {
       action: 'Explorar establecimientos',
     },
   },
+  qrSimulation: {
+    mock: 'QR de prueba — No procesa dinero real',
+    title: 'Simulación de pago',
+    intro:
+      'Este código QR pertenece a una demostración de MapIt. Al escanearlo no se cobra dinero ni se confirma una reserva.',
+    whatHappens:
+      'Solo una acción explícita envía el resultado de prueba. Confirmar el pago no registra tu llegada ni ocupa el espacio.',
+    tokenLabel: 'Identificador de simulación',
+    invalid: 'Este enlace de simulación no es válido o está incompleto.',
+    back: 'Volver a MapIt',
+    attemptIntro:
+      'Este QR corresponde al cobro de una reserva concreta. No procesa dinero real y no confirma nada por sí solo.',
+    unavailable: 'La simulación no está habilitada en este entorno. El intento no fue modificado.',
+    confirmAction: 'Confirmar pago',
+    cancelAction: 'Cancelar pago',
+    attemptResult: {
+      CONFIRMED: 'Pago de prueba confirmado. Confirmar el pago no registra tu llegada.',
+      CANCELLED: 'Intento cancelado sin cobro. La reserva no fue cancelada.',
+      EXPIRED: 'El intento de pago expiró sin cobro.',
+      FAILED: 'La simulación marcó el intento como fallido.',
+      RECONCILIATION_REQUIRED: 'El pago de prueba requiere revisión. No inicies otro pago.',
+    },
+  },
+  payment: {
+    brand: 'MapIt',
+    back: 'Volver a establecimientos',
+    title: 'Completa tu anticipo',
+    intro: 'Revisa tu reserva y elige cómo realizar el pago.',
+    simulation: 'SIMULACIÓN',
+    simulationNotice: 'Vista de demostración. No se cobra dinero ni se confirma una reserva real.',
+    scenario: 'Escenario de demostración',
+    scenarios: {
+      loading: 'Cargando',
+      error: 'Error de conexión',
+      PENDING: 'Pago pendiente',
+      PENDING_MANUAL_VERIFICATION: 'Verificación manual',
+      CONFIRMED: 'Pago confirmado',
+      CANCELLED: 'Pago cancelado',
+      FAILED: 'Pago fallido',
+      EXPIRED: 'Pago expirado',
+      RECONCILIATION_REQUIRED: 'Requiere conciliación',
+    },
+    summary: 'Tu reserva',
+    expiresAt: 'Vencimiento del intento',
+    mockNotice: 'Simulado — sin dinero real',
+    mockConfirmed: 'Pago de prueba confirmado',
+    mockReceiptIntro:
+      'Tu reserva está confirmada mediante una simulación, sin dinero real. Consultar este comprobante no registra tu llegada.',
+    attemptQrTitle: 'QR de este intento de pago',
+    refreshing: 'Actualizando estado…',
+    receiptIssuing: 'Preparando tu comprobante…',
+    receiptRetry: 'Reintentar comprobante',
+    reservationReference: 'Referencia de reserva',
+    date: 'Fecha',
+    time: 'Horario',
+    spaces: 'Espacios seleccionados',
+    total: 'Total de la reserva',
+    deposit: 'Anticipo a pagar',
+    paidDeposit: 'Anticipo verificado',
+    balance: 'Saldo pendiente',
+    currency: 'Moneda',
+    amountNote: 'El anticipo se descuenta del total de tu reserva.',
+    paymentMethod: 'Método de pago',
+    methodHelp: 'El método seleccionado determina cómo se verifica el pago.',
+    methods: { mock: 'Pasarela de demostración', static: 'QR bancario del establecimiento' },
+    mockNote: 'La pasarela simulada permite revisar los estados sin usar una cuenta bancaria.',
+    manualNote:
+      'El establecimiento debe verificar el ingreso antes de confirmar el pago. Una captura no confirma la operación.',
+    noBankQr: 'Este establecimiento no tiene un QR bancario cargado.',
+    bankQrAlt: 'QR bancario proporcionado por el establecimiento',
+    simulationAction: 'Simular confirmación',
+    simulateManual: 'Simular revisión del establecimiento',
+    simulateCta: 'Simular pago',
+    attemptQrAlt: 'QR de simulación de este pago',
+    attemptQrHelp:
+      'Este QR abre la simulación de este cobro en otro dispositivo. No es un QR bancario ni realiza un cobro.',
+    historicalMethodLabel: 'Método de este intento de pago',
+    status: 'Estado del pago',
+    paymentReference: 'Referencia de pago',
+    statusDetails: {
+      PENDING: 'El pago todavía no se ha recibido. La reserva permanece pendiente de confirmación.',
+      PENDING_MANUAL_VERIFICATION:
+        'El establecimiento está pendiente de comprobar el ingreso. No vuelvas a pagar si ya realizaste la transferencia.',
+      CONFIRMED: 'El anticipo está verificado. Puedes consultar tu comprobante.',
+      CANCELLED:
+        'Cancelaste este intento sin cobro. Tu reserva no fue cancelada; un nuevo intento depende del plazo y la disponibilidad.',
+      FAILED: 'La operación no se completó. Revisa el método antes de intentarlo de nuevo.',
+      EXPIRED: 'El intento de pago venció. Consulta la disponibilidad antes de iniciar otro cobro.',
+      RECONCILIATION_REQUIRED:
+        'El ingreso necesita revisión del establecimiento. No realices otro pago mientras se resuelve.',
+    },
+    receipt: 'Ver comprobante',
+    retry: 'Volver a intentar',
+    loading: 'Consultando tu reserva…',
+    loadError: 'No pudimos consultar el pago. Revisa tu conexión y vuelve a intentarlo.',
+    unavailableTitle: 'El pago en línea aún no está disponible',
+    unavailable:
+      'La integración de pagos de este establecimiento todavía no está habilitada. Contacta con el establecimiento para continuar.',
+    unavailableReasons: {
+      PAYMENT_PENDING:
+        'Ya hay un cobro en curso para esta reserva. No inicies otro pago; espera a que se actualice su estado.',
+      PAYMENT_POLICY_DISABLED:
+        'El establecimiento aún no habilitó el cobro de esta reserva. Contacta con el establecimiento para continuar.',
+      PAYMENT_METHOD_UNAVAILABLE:
+        'No hay un método de cobro disponible para esta reserva. Contacta con el establecimiento.',
+      PAYMENT_WINDOW_EXPIRED:
+        'El plazo para pagar esta reserva terminó. Contacta con el establecimiento antes de realizar otro pago.',
+      PAYMENT_RECONCILIATION_REQUIRED:
+        'El ingreso requiere conciliación. No realices otro pago y contacta con el establecimiento.',
+      RESERVATION_NOT_PAYABLE:
+        'El estado actual de la reserva no admite un nuevo cobro. Contacta con el establecimiento.',
+    },
+    notFoundTitle: 'No encontramos esta reserva',
+    notFound:
+      'El enlace no corresponde a una reserva disponible. Comprueba la dirección o contacta con el establecimiento.',
+    reconnect: 'Actualizar estado',
+    reconnecting: 'Conectando las actualizaciones…',
+    connected: 'Actualizaciones conectadas',
+    notStarted: 'Cobro por iniciar',
+    startHelp:
+      'Genera el cobro con el método seleccionado. El importe lo determina el establecimiento.',
+    startPayment: 'Generar cobro',
+    working: 'Procesando…',
+    actionError: 'No pudimos completar la operación. Actualiza el estado antes de reintentar.',
+    receiptIssueError:
+      'El pago está verificado, pero no pudimos obtener el comprobante. Inténtalo de nuevo.',
+    unknownTotal:
+      'El establecimiento no ha definido el importe total. El anticipo mostrado es el único importe de cobro confirmado.',
+    checkedIn: 'Llegada registrada',
+    share: 'Abrir este pago en otro dispositivo',
+    shareHelp: 'Este QR abre la pantalla de MapIt. No es un QR bancario ni realiza un cobro.',
+    shareQrAlt: 'QR del enlace seguro a esta pantalla de pago',
+    qrError: 'No pudimos generar el QR. Puedes usar el enlace de esta página.',
+    qrLoading: 'Preparando el QR…',
+    receiptTitle: 'Tu reserva está confirmada',
+    receiptIntro: 'Conserva este comprobante y preséntalo al llegar al establecimiento.',
+    receiptDocument: 'Comprobante digital MapIt',
+    receiptNote: 'Este comprobante no es una factura fiscal ni un recibo emitido por el banco.',
+    receiptQr: 'QR de verificación de la reserva',
+    receiptQrHelp: 'El personal autorizado consulta la reserva antes de registrar tu llegada.',
+    receiptReference: 'Referencia segura del comprobante',
+    notCheckedIn: 'Llegada pendiente',
+    receiptInvalidTitle: 'Comprobante no disponible',
+    receiptInvalid:
+      'El enlace es inválido o el pago no está verificado. Contacta con el establecimiento.',
+    receiptLoading: 'Consultando el comprobante…',
+    receiptBack: 'Volver al pago',
+    statusLabels: {
+      CREATED: 'Pendiente de confirmación',
+      CONFIRMED: 'Confirmada',
+      ACTIVE: 'En curso',
+      CANCELLED: 'Cancelada',
+      RELEASED: 'Finalizada',
+    },
+  },
+  publicSpace: {
+    skipToContent: 'Ir al contenido',
+    position: 'Posición en el sector',
+    capacity: 'Capacidad informada',
+  },
   availability: {
     title: 'Consulta disponibilidad',
-    subtitle: 'Elige una fecha para ver qué espacios puedes reservar.',
+    subtitle: 'Elige fecha y horario antes de seleccionar tu espacio.',
+    intervalRequired:
+      'Elige una fecha y las horas de inicio y fin. La hora de fin debe ser posterior a la de inicio.',
+    startTime: 'Hora de inicio',
+    endTime: 'Hora de fin',
+    floor: 'Piso',
+    sector: 'Sector',
+    mapTitle: 'Plano del sector',
+    mapHelp:
+      'Puedes elegir en el plano o en la lista. Desplaza el plano para ver todos los espacios.',
+    mapMissing: 'El plano no está disponible. Puedes elegir un espacio de la lista.',
+    legend: 'La disponibilidad corresponde al horario elegido, no a la ocupación en tiempo real.',
+    states: {
+      AVAILABLE: 'Disponible',
+      RESERVED: 'Reservado para este horario',
+      UNAVAILABLE: 'No disponible',
+    },
+    listTitle: 'Elige un espacio',
+    selected: 'Espacio seleccionado',
+    continue: 'Continuar',
     selectedVenue: 'Establecimiento',
     dateLabel: 'Fecha de reserva',
     search: 'Buscar espacios',
@@ -218,11 +409,25 @@ const STRINGS_ES = {
       STAGE: 'Escenario',
       SEAT: 'Butaca',
       ROOM: 'Habitación',
+      DECOR: 'Decoración',
     },
   },
   booking: {
     title: 'Completa tu reserva',
     subtitle: 'Revisa la fecha y tus datos para confirmar el espacio.',
+    confirmTitle: 'Confirma tu selección',
+    confirmHelp:
+      'Revisa el espacio y el horario antes de introducir tus datos. Seleccionar no crea una reserva.',
+    confirm: 'Confirmar espacio',
+    descriptorLoading: 'Comprobando el espacio y su horario…',
+    descriptorError: 'No pudimos comprobar el espacio. Vuelve a consultar su disponibilidad.',
+    chooseAgain: 'Volver a elegir espacio',
+    intervalRequired:
+      'Este enlace no incluye un horario completo. Elige fecha, inicio y fin para continuar.',
+    ownLoading: 'Consultando los espacios de tu reserva…',
+    ownUnavailable: 'No pudimos consultar tu reserva',
+    ownRetry: 'Consultar mi reserva',
+    detailsBack: 'Revisar selección',
     selectedSpace: 'Espacio seleccionado',
     elementCode: 'Código',
     dateLabel: 'Fecha de reserva',
@@ -232,15 +437,18 @@ const STRINGS_ES = {
     fullNameLabel: 'Nombre completo',
     emailLabel: 'Correo electrónico',
     phoneLabel: 'Teléfono (opcional)',
-    submit: 'Confirmar reserva',
-    submitting: 'Confirmando reserva…',
+    submit: 'Crear reserva',
+    submitting: 'Creando reserva…',
     back: 'Volver a disponibilidad',
-    successTitle: 'Reserva confirmada',
-    successMessage: 'Guarda estos datos para presentarlos al llegar al establecimiento.',
+    successTitle: 'Reserva registrada',
+    successMessage:
+      'La reserva fue creada. Consulta las condiciones de pago para completar su confirmación.',
+    continuePayment: 'Continuar al pago',
     reservationCode: 'Código de reserva',
     when: 'Fecha y hora',
     timezone: 'Zona horaria',
     newReservation: 'Hacer otra reserva',
+    viewHistory: 'Ver mis reservas',
     fieldRequired: 'Completa este campo.',
     dateInvalid: 'Elige una fecha válida.',
     timeInvalid: 'La hora de fin debe ser posterior a la de inicio.',
@@ -255,13 +463,67 @@ const STRINGS_ES = {
       generic: 'No pudimos confirmar la reserva. Revisa tu conexión e inténtalo de nuevo.',
     },
   },
+  publicCatalog: {
+    title: 'Establecimientos',
+    loading: 'Buscando establecimientos…',
+    empty: 'No encontramos establecimientos con esa búsqueda.',
+    error: 'No pudimos cargar los establecimientos. Inténtalo de nuevo.',
+    retry: 'Reintentar',
+    timezone: 'Zona horaria',
+    types: {
+      RESTAURANT: 'Restaurante',
+      NIGHTCLUB: 'Discoteca',
+      EVENT_HALL: 'Salón de eventos',
+      HOTEL: 'Hotel',
+    },
+  },
+  myReservations: {
+    title: 'Mis reservas',
+    intro: 'Recibe un enlace en tu correo para consultar tus reservas. No necesitas una cuenta.',
+    back: 'Volver a establecimientos',
+    emailLabel: 'Correo electrónico',
+    invalidEmail: 'Ingresa un correo válido.',
+    request: 'Enviar enlace',
+    requesting: 'Enviando solicitud…',
+    sent: 'Si el correo está registrado, recibirás un enlace para acceder a tus reservas.',
+    exchanging: 'Verificando el enlace…',
+    logout: 'Salir de mis reservas',
+    upcoming: 'Próximas',
+    past: 'Pasadas',
+    upcomingEmpty: 'Todavía no hay reservas próximas.',
+    pastEmpty: 'Todavía no hay reservas pasadas.',
+    loading: 'Cargando tus reservas…',
+    loadMore: 'Cargar más',
+    retry: 'Volver a intentar',
+    dates: 'Horario',
+    spaces: 'Espacios reservados',
+    spaceCode: 'Código de espacio',
+    timezone: 'Zona horaria',
+    status: 'Estado',
+    statusLabels: {
+      CREATED: 'Creada',
+      CONFIRMED: 'Confirmada',
+      ACTIVE: 'En curso',
+      RELEASED: 'Finalizada',
+      CANCELLED: 'Cancelada',
+    },
+    errors: {
+      request: 'No pudimos solicitar el enlace. Revisa tu conexión e inténtalo de nuevo.',
+      rateLimit: 'Hay demasiadas solicitudes. Espera unos minutos e inténtalo de nuevo.',
+      linkInvalid: 'El enlace no es válido, ya fue usado o caducó. Solicita uno nuevo.',
+      expired: 'Tu acceso caducó. Solicita un nuevo enlace para consultar tus reservas.',
+      revoke:
+        'Se borraron tus datos de este dispositivo, pero no pudimos confirmar el cierre remoto. El acceso caducará automáticamente.',
+      history: 'No pudimos cargar esta sección. Revisa tu conexión e inténtalo de nuevo.',
+    },
+  },
 } as const;
 
 const CATALOGS = {
   es: STRINGS_ES,
   en: PUBLIC_STRINGS_EN,
   'ja-JP': PUBLIC_STRINGS_JA,
-} satisfies Record<'es' | 'en' | 'ja-JP', LocalizedShape<typeof STRINGS_ES>>;
+} satisfies Record<'es' | 'en' | 'ja-JP', DeepPartial<LocalizedShape<typeof STRINGS_ES>>>;
 
 export const STRINGS = createLocalizedCatalog<typeof STRINGS_ES>(CATALOGS, 'es');
 export const localizeString = createLocalizedTextResolver(CATALOGS, 'es');

@@ -1,52 +1,97 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
-
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  effect,
+  inject,
+  input,
+  untracked,
+  viewChild,
+} from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { currentLocaleTag } from '@mapit/i18n';
 import { SiteFooter, SiteNav } from '@mapit/ui-kit';
-
 import { localizeString, STRINGS } from '../../../core/strings';
+import { PublicEstablishmentIdentity } from '../../../core/public-establishment-identity';
+import { PublicSpaceSummary } from '../../../core/public-space';
 import { BookingStore } from '../model/booking-store';
 
-/** Formulario público para reservar un espacio concreto de un establecimiento. */
 @Component({
   selector: 'mp-booking-page',
-  imports: [RouterLink, SiteNav, SiteFooter],
-  providers: [BookingStore],
+  imports: [RouterLink, SiteNav, SiteFooter, PublicEstablishmentIdentity, PublicSpaceSummary],
   templateUrl: './booking-page.html',
   styleUrl: './booking-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BookingPage {
-  protected readonly tenantSlug = input.required<string>();
-  protected readonly establishmentSlug = input.required<string>();
-  protected readonly elementId = input.required<string>();
-  protected readonly date = input('');
+  readonly tenantSlug = input.required<string>();
+  readonly establishmentSlug = input.required<string>();
+  readonly elementId = input.required<string>();
+  readonly date = input('');
+  readonly startTime = input('');
+  readonly endTime = input('');
+  readonly reservationId = input('');
   protected readonly store = inject(BookingStore);
   protected readonly strings = STRINGS;
   protected readonly localizeString = localizeString;
-  protected readonly minimumDate = new Date().toLocaleDateString('en-CA');
-
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
   constructor() {
     effect(() => {
-      this.store.reset();
-      this.store.initialize(this.date());
+      const values = [
+        this.tenantSlug(),
+        this.establishmentSlug(),
+        this.elementId(),
+        this.date(),
+        this.startTime(),
+        this.endTime(),
+        this.reservationId(),
+      ] as const;
+      untracked(() => {
+        void this.store.configure(...values);
+      });
+    });
+    effect(() => {
+      const reservation = this.store.reservation();
+      const current = this.reservationId();
+      if (reservation && reservation.id !== current)
+        untracked(() => {
+          void this.router.navigate([], {
+            relativeTo: this.route,
+            queryParamsHandling: 'merge',
+            queryParams: { reservationId: reservation.id },
+            replaceUrl: true,
+          });
+        });
     });
   }
-
-  protected submit(event: Event): void {
-    event.preventDefault();
-    this.store.submit(this.tenantSlug(), this.establishmentSlug(), this.elementId());
+  protected confirm(): void {
+    this.store.confirm();
+    afterNextRender(() => this.heading()?.nativeElement.focus(), { injector: this.injector });
   }
-
+  protected async submit(event: Event): Promise<void> {
+    event.preventDefault();
+    await this.store.submit();
+    afterNextRender(
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLInputElement>('input[aria-invalid="true"]')
+          ?.focus(),
+      { injector: this.injector },
+    );
+  }
   protected value(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }
-
-  protected formatWhen(date: string, startTime: string, endTime: string): string {
-    const day = new Intl.DateTimeFormat(currentLocaleTag(), {
+  protected formatDate(date: string): string {
+    return new Intl.DateTimeFormat(currentLocaleTag(), {
       dateStyle: 'long',
       timeZone: 'UTC',
     }).format(new Date(`${date}T12:00:00Z`));
-    return `${day} · ${startTime}–${endTime}`;
   }
 }

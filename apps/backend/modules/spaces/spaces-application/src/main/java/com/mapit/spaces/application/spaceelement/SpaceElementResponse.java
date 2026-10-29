@@ -15,7 +15,7 @@ public record SpaceElementResponse(
     double rotation,
     String state,
     Instant createdAt,
-    Instant updatedAt) {
+    Instant updatedAt, @org.jspecify.annotations.Nullable String label, @org.jspecify.annotations.Nullable Integer capacity, String name) {
 
   /** Mapeo dominio → respuesta en un único punto (la auditoría ya vive en la entidad). */
   public static SpaceElementResponse fromDomain(
@@ -32,6 +32,6 @@ public record SpaceElementResponse(
         element.rotation(),
         element.state().name(),
         audit.createdAt(),
-        audit.updatedAt());
+        audit.updatedAt(), element.label(), element.capacity(), com.mapit.shared.spaces.SpaceDisplayName.format(element.type().name(), element.label()));
   }
 }

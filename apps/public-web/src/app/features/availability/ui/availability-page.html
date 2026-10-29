@@ -1,73 +1,158 @@
+<a class="skip-link" href="#availability-main">{{ strings.publicSpace.skipToContent }}</a>
 <mapit-ui-site-nav />
-
-<main class="page">
+<main id="availability-main" class="page" tabindex="-1">
   <div class="content">
-    <a class="back" routerLink="/reservas">{{ strings.availability.back }}</a>
-
+    <a class="back" routerLink="/reservas" [queryParams]="{ tenantSlug: tenantSlug() }">{{
+      strings.availability.back
+    }}</a>
+    <mp-public-establishment-identity [tenantSlug]="tenantSlug()" [establishmentSlug]="establishmentSlug()" />
     <header class="heading">
       <h1>{{ strings.availability.title }}</h1>
       <p>{{ strings.availability.subtitle }}</p>
-      <p class="venue">
-        <span>{{ strings.availability.selectedVenue }}</span>
-        <strong>{{ establishmentSlug() }}</strong>
-      </p>
     </header>
-
     <form class="search-panel" (submit)="submit($event)">
-      <label for="availability-date">{{ strings.availability.dateLabel }}</label>
-      <div class="search-row">
-        <input
-          id="availability-date"
-          type="date"
-          [min]="minimumDate"
-          [value]="date()"
-          (input)="setDate($event)"
-          required
-        />
-        <button type="submit" [disabled]="store.status() === 'loading'">
-          {{ store.status() === 'loading' ? strings.availability.searching : strings.availability.search }}
-        </button>
-      </div>
-    </form>
-
-    <section class="results" aria-labelledby="results-title" aria-live="polite">
-      @if (store.status() === 'loading') {
-        <p class="notice" role="status">{{ strings.availability.searching }}</p>
-      } @else if (store.status() === 'error') {
-        <div class="notice notice--error" role="alert">
-          <p>{{ strings.availability.error }}</p>
-          <button class="secondary" type="button" (click)="retry()">
-            {{ strings.availability.retry }}
-          </button>
+      <div class="interval-fields">
+        <div>
+          <label for="availability-date">{{ strings.availability.dateLabel }}</label>
+          <input
+            id="availability-date"
+            name="date"
+            type="date"
+            autocomplete="off"
+            required
+            [value]="store.date()"
+            (input)="store.setDate(value($event))"
+          />
         </div>
-      } @else if (store.status() === 'loaded') {
-        <h2 id="results-title">{{ strings.availability.resultsTitle }}</h2>
-        <p class="result-date">{{ strings.availability.resultDatePrefix }} {{ formatDate(store.date()) }}</p>
-        @if (store.elements().length === 0) {
-          <p class="notice">{{ strings.availability.empty }}</p>
+        <div>
+          <label for="availability-start">{{ strings.availability.startTime }}</label>
+          <input
+            id="availability-start"
+            name="startTime"
+            type="time"
+            autocomplete="off"
+            required
+            [value]="store.startTime()"
+            (input)="store.setStartTime(value($event))"
+          />
+        </div>
+        <div>
+          <label for="availability-end">{{ strings.availability.endTime }}</label>
+          <input
+            id="availability-end"
+            name="endTime"
+            type="time"
+            autocomplete="off"
+            required
+            [value]="store.endTime()"
+            (input)="store.setEndTime(value($event))"
+          />
+        </div>
+      </div>
+      <button class="primary" type="submit" [disabled]="store.status() === 'loading'">
+        {{ store.status() === 'loading' ? strings.availability.searching : strings.availability.search }}
+      </button>
+    </form>
+    @if (store.failure()) {
+      <p class="notice notice--error" role="alert">{{ localizeString(store.failure()) }}</p>
+    }
+    <section class="results" aria-labelledby="results-title" [attr.aria-busy]="store.status() === 'loading'">
+      <h2 id="results-title">{{ strings.availability.resultsTitle }}</h2>
+      @if (store.status() === 'loading') {
+        <p role="status">{{ strings.availability.searching }}</p>
+      }
+      @if (store.status() === 'error') {
+        <button class="secondary" type="button" (click)="store.search()">{{ strings.availability.retry }}</button>
+      }
+      @if (store.response(); as data) {
+        <p class="result-date" role="status">
+          {{ formatDate(data.date) }} · {{ data.startTime }}–{{ data.endTime }} · {{ data.timezone }}
+        </p>
+        <p class="notice">{{ strings.availability.legend }}</p>
+        <ul class="availability-legend" [attr.aria-label]="strings.availability.legend">
+          @for (state of states; track state) {
+            <li [attr.data-availability]="state">{{ strings.availability.states[state] }}</li>
+          }
+        </ul>
+        @if (store.floors().length) {
+          <div class="location-selectors">
+            <div>
+              <label for="availability-floor">{{ strings.availability.floor }}</label>
+              <select
+                id="availability-floor"
+                name="floor"
+                [value]="store.floorId()"
+                (change)="store.selectFloor(value($event))"
+              >
+                @for (floor of store.floors(); track floor.id) {
+                  <option [value]="floor.id">{{ floor.name }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label for="availability-sector">{{ strings.availability.sector }}</label>
+              <select
+                id="availability-sector"
+                name="sector"
+                [value]="store.sectorId()"
+                [disabled]="!store.floor()?.sectors.length"
+                (change)="store.selectSector(value($event))"
+              >
+                @for (sector of store.floor()?.sectors ?? []; track sector.id) {
+                  <option [value]="sector.id">{{ sector.name }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        }
+        @if (store.layout(); as layout) {
+          <mp-public-map [layout]="layout" [selectedId]="store.selectedElementId()" (selected)="store.select($event)" />
         } @else {
-          <ul class="element-list">
-            @for (element of store.elements(); track element.id) {
-              <li>
-                <span class="element-type">{{ typeLabel(element.type) }}</span>
-                <span class="element-code">
-                  <span>{{ strings.availability.elementCode }}</span>
-                  <code>{{ element.id }}</code>
-                </span>
-                <a
-                  class="book"
-                  [routerLink]="['/reservar', tenantSlug(), establishmentSlug(), element.id]"
-                  [queryParams]="{ date: store.date() }"
-                >
-                  {{ strings.availability.book }}
-                </a>
-              </li>
+          <p class="notice">{{ strings.availability.mapMissing }}</p>
+        }
+        <h3 id="space-list-heading">{{ strings.availability.listTitle }}</h3>
+        <ul class="element-list" aria-labelledby="space-list-heading">
+          @for (space of store.spaces(); track space.id) {
+            <li>
+              <button
+                class="space-option"
+                type="button"
+                [attr.data-testid]="'space-' + space.id"
+                [attr.aria-pressed]="store.selectedElementId() === space.id"
+                [disabled]="!space.selectable || space.availability !== 'AVAILABLE'"
+                (click)="store.select(space.id)"
+              >
+                <mp-public-space [space]="space" />
+                <span class="space-state" [attr.data-availability]="space.availability">{{
+                  strings.availability.states[space.availability!]
+                }}</span>
+              </button>
+            </li>
+          } @empty {
+            <li class="notice">{{ strings.availability.empty }}</li>
+          }
+        </ul>
+        @if (store.selectedSpace(); as space) {
+          <section class="selection-summary" data-testid="availability-selection" aria-live="polite">
+            <h3>{{ strings.availability.selected }}</h3>
+            <p>
+              {{ data.establishmentName }} · {{ formatDate(data.date) }} · {{ data.startTime }}–{{ data.endTime }} ·
+              {{ data.timezone }}
+            </p>
+            <mp-public-space [space]="space" />
+            @if (store.canConfirm()) {
+              <a
+                class="primary"
+                data-testid="availability-continue"
+                [routerLink]="['/reservar', tenantSlug(), establishmentSlug(), space.id]"
+                [queryParams]="{ date: store.date(), startTime: store.startTime(), endTime: store.endTime() }"
+                >{{ strings.availability.continue }}</a
+              >
             }
-          </ul>
+          </section>
         }
       }
     </section>
   </div>
 </main>
-
 <mapit-ui-site-footer />

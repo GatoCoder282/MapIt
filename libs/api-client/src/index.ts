@@ -11,3 +11,6 @@ export const API_CLIENT_VERSION = '0.1.0';
 
 // La aplicación consume únicamente la API pública de la librería, nunca imports profundos.
 export * from './lib/generated';
+export * from './lib/payment-preview';
+export * from './lib/decimal-money';
+export * from './lib/payment-presentation';

@@ -57,16 +57,15 @@ import com.mapit.shared.tenant.TenantScope;
 @Import(RealtimeWebSocketIntegrationTest.TestFlags.class)
 class RealtimeWebSocketIntegrationTest {
 
-  private static final UUID USER = UUID.fromString("00000000-0000-0000-0000-000000000011");
-  private static final UUID SUPER =
-      UUID.fromString("00000000-0000-0000-0000-000000000013");
-  private static final UUID OTRO_SUPER =
-      UUID.fromString("00000000-0000-0000-0000-000000000014");
-  private static final UUID ESTABLISHMENT =
-      UUID.fromString("00000000-0000-0000-0000-000000000012");
-  private static final UUID FLOOR = UUID.fromString("00000000-0000-0000-0000-000000000021");
-  private static final UUID SECTOR = UUID.fromString("00000000-0000-0000-0000-000000000031");
-  private static final UUID ELEMENT = UUID.fromString("00000000-0000-0000-0000-000000000041");
+  private final UUID user = UUID.randomUUID();
+  private final UUID accessAdmin = UUID.randomUUID();
+  private final UUID superAdmin = UUID.randomUUID();
+  private final UUID otherSuperAdmin = UUID.randomUUID();
+  private final String otherTenant = "rt-" + UUID.randomUUID();
+  private final UUID establishment = UUID.randomUUID();
+  private final UUID floor = UUID.randomUUID();
+  private final UUID sector = UUID.randomUUID();
+  private final UUID element = UUID.randomUUID();
 
   @Container
   private static final PostgreSQLContainer<?> POSTGRES =
@@ -103,13 +102,15 @@ class RealtimeWebSocketIntegrationTest {
   void prepareStaffAndEstablishment() {
     jdbc.update("delete from realtime_event_outbox");
     jdbc.update(
-        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Staff', 'STAFF', true) on conflict (id) do update set email = excluded.email, password_hash = excluded.password_hash, full_name = excluded.full_name, role = excluded.role, active = excluded.active",
-        USER,
-        "realtime-" + USER + "@example.test");
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Staff', 'STAFF', true)",
+        user,
+        "realtime-" + user + "@example.test");
     jdbc.update(
-        "insert into establishment (id, tenant_id, name, type, slug) values (?, 'demo', 'Realtime', 'RESTAURANT', ?) on conflict (id) do update set name = excluded.name, type = excluded.type, slug = excluded.slug",
-        ESTABLISHMENT,
-        "realtime-" + ESTABLISHMENT);
+        "insert into establishment (id, tenant_id, name, type, slug) values (?, 'demo', 'Realtime', 'RESTAURANT', ?)",
+        establishment,
+        "realtime-" + establishment);
+    jdbc.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values(?, 'demo', ?, 'unused', 'Administrador de concesiones', 'ADMIN')", accessAdmin, "realtime-admin-" + accessAdmin + "@example.test");
+    jdbc.update("insert into establishment_staff_access(tenant_id,establishment_id,user_id,can_check_in,updated_at,updated_by) values('demo',?,?,true,now(),?)", establishment, user, accessAdmin);
     client = new WebSocketStompClient(new StandardWebSocketClient());
     client.setMessageConverter(new StringMessageConverter());
     client.start();
@@ -120,12 +121,19 @@ class RealtimeWebSocketIntegrationTest {
     client.stop();
   }
 
-  /** Limpia las entidades reversibles; audit_log es append-only y permanece como historial. */
+  /** La bitácora es inmutable: solo se eliminan los elementos del mapa, no sus actores. */
   @AfterEach
   void removeMapFixtures() {
-    jdbc.update("delete from space_element where id = ?", ELEMENT);
-    jdbc.update("delete from sector where id = ?", SECTOR);
-    jdbc.update("delete from floor where id = ?", FLOOR);
+    jdbc.update("delete from space_element where id = ?", element);
+    jdbc.update("delete from sector where id = ?", sector);
+    jdbc.update("delete from floor where id = ?", floor);
+  }
+
+  @Test
+  void revocar_concesion_impide_nuevas_suscripciones_staff() {
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"),user,"STAFF",establishment,Optional.empty())).isTrue();
+    jdbc.update("update establishment_staff_access set can_check_in=false where tenant_id='demo' and establishment_id=? and user_id=?",establishment,user);
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"),user,"STAFF",establishment,Optional.empty())).isFalse();
   }
 
   @Test
@@ -134,9 +142,9 @@ class RealtimeWebSocketIntegrationTest {
         tokenIssuer
             .issue(
                 new AuthenticatedUser(
-                    USER,
+                    user,
                     TenantId.of("demo"),
-                    "realtime-" + USER + "@example.test",
+                    "realtime-" + user + "@example.test",
                     "Realtime Staff",
                     UserRole.STAFF))
             .value();
@@ -151,13 +159,13 @@ class RealtimeWebSocketIntegrationTest {
                     new StompSessionHandlerAdapter() {})
             .get(10, TimeUnit.SECONDS);
     assertThat(session.isConnected()).isTrue();
-    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), USER, "STAFF", ESTABLISHMENT, Optional.empty()))
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), user, "STAFF", establishment, Optional.empty()))
         .isTrue();
 
     CountDownLatch received = new CountDownLatch(1);
     AtomicReference<String> receivedPayload = new AtomicReference<>();
     session.subscribe(
-        "/topic/establishments/" + ESTABLISHMENT,
+        "/topic/establishments/" + establishment,
         new StompFrameHandler() {
           @Override
           public java.lang.reflect.Type getPayloadType(StompHeaders headers) {
@@ -176,7 +184,7 @@ class RealtimeWebSocketIntegrationTest {
     TimeUnit.SECONDS.sleep(2);
     assertThat(session.isConnected()).isTrue();
 
-    UUID element = UUID.randomUUID();
+    UUID eventElement = UUID.randomUUID();
     transactions.executeWithoutResult(
         status -> {
           jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, "demo");
@@ -185,9 +193,9 @@ class RealtimeWebSocketIntegrationTest {
                   UUID.randomUUID(),
                   Instant.now(),
                   TenantId.of("demo"),
-                  ESTABLISHMENT,
+                  establishment,
                   Optional.empty(),
-                  element,
+                  eventElement,
                   Optional.of(SpaceElementState.AVAILABLE),
                   SpaceElementState.OCCUPIED,
                   1));
@@ -208,34 +216,37 @@ class RealtimeWebSocketIntegrationTest {
   @Test
   void super_admin_suscribe_a_su_tenant_y_el_aislamiento_se_mantiene() {
     jdbc.update(
-        "insert into tenant (id, name, slug, vertical, status) values ('otro', 'Otro', 'otro', 'RESTAURANT', 'ACTIVE') on conflict (id) do update set name = excluded.name, slug = excluded.slug, vertical = excluded.vertical, status = excluded.status");
+        "insert into tenant (id, name, slug, vertical, status) values (?, 'Otro', ?, 'RESTAURANT', 'ACTIVE')",
+        otherTenant,
+        otherTenant);
     jdbc.update(
-        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Super', 'SUPER_ADMIN', true) on conflict (id) do update set tenant_id = excluded.tenant_id, email = excluded.email, password_hash = excluded.password_hash, full_name = excluded.full_name, role = excluded.role, active = excluded.active",
-        SUPER,
-        "realtime-" + SUPER + "@example.test");
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'demo', ?, 'unused', 'Realtime Super', 'SUPER_ADMIN', true)",
+        superAdmin,
+        "realtime-" + superAdmin + "@example.test");
     jdbc.update(
-        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, 'otro', ?, 'unused', 'Otro Super', 'SUPER_ADMIN', true) on conflict (id) do update set tenant_id = excluded.tenant_id, email = excluded.email, password_hash = excluded.password_hash, full_name = excluded.full_name, role = excluded.role, active = excluded.active",
-        OTRO_SUPER,
-        "realtime-" + OTRO_SUPER + "@example.test");
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role, active) values (?, ?, ?, 'unused', 'Otro Super', 'SUPER_ADMIN', true)",
+        otherSuperAdmin,
+        otherTenant,
+        "realtime-" + otherSuperAdmin + "@example.test");
 
     // SUPER_ADMIN de su propio tenant: permitido, ya lee estos mismos datos por HTTP.
-    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), SUPER, "SUPER_ADMIN", ESTABLISHMENT, Optional.empty()))
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), superAdmin, "SUPER_ADMIN", establishment, Optional.empty()))
         .isTrue();
     // Los roles operativos siguen permitidos.
-    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), USER, "ADMIN", ESTABLISHMENT, Optional.empty()))
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), user, "ADMIN", establishment, Optional.empty()))
         .isTrue();
-    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), USER, "MANAGER", ESTABLISHMENT, Optional.empty()))
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), user, "MANAGER", establishment, Optional.empty()))
         .isTrue();
     // SUPER_ADMIN de otro tenant: denegado; el check de tenant se mantiene para cualquier rol.
-    assertThat(roomAccess.canSubscribe(TenantId.of("otro"), OTRO_SUPER, "SUPER_ADMIN", ESTABLISHMENT, Optional.empty()))
+    assertThat(roomAccess.canSubscribe(TenantId.of(otherTenant), otherSuperAdmin, "SUPER_ADMIN", establishment, Optional.empty()))
         .isFalse();
     // Usuario inactivo: denegado.
-    jdbc.update("update app_user set active = false where id = ?", SUPER);
-    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), SUPER, "SUPER_ADMIN", ESTABLISHMENT, Optional.empty()))
+    jdbc.update("update app_user set active = false where id = ?", superAdmin);
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), superAdmin, "SUPER_ADMIN", establishment, Optional.empty()))
         .isFalse();
-    jdbc.update("update app_user set active = true where id = ?", SUPER);
+    jdbc.update("update app_user set active = true where id = ?", superAdmin);
     // Rol ajeno al catálogo (llegaría falsificado en el JWT): denegado.
-    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), SUPER, "DESARROLLADOR", ESTABLISHMENT, Optional.empty()))
+    assertThat(roomAccess.canSubscribe(TenantId.of("demo"), superAdmin, "DESARROLLADOR", establishment, Optional.empty()))
         .isFalse();
   }
 
@@ -244,26 +255,26 @@ class RealtimeWebSocketIntegrationTest {
       throws Exception {
     jdbc.update(
         "insert into floor (id, tenant_id, establishment_id, name, level, slug) values (?, 'demo', ?, 'Piso RT', 1, ?)",
-        FLOOR,
-        ESTABLISHMENT,
-        "rt-floor-" + FLOOR);
+        floor,
+        establishment,
+        "rt-floor-" + floor);
     jdbc.update(
         "insert into sector (id, tenant_id, floor_id, name, slug, max_capacity) values (?, 'demo', ?, 'Sector RT', ?, 10)",
-        SECTOR,
-        FLOOR,
-        "rt-sector-" + SECTOR);
+        sector,
+        floor,
+        "rt-sector-" + sector);
     jdbc.update(
         "insert into space_element (id, tenant_id, sector_id, type, state, x, y) values (?, 'demo', ?, 'TABLE', 'AVAILABLE', 1, 1)",
-        ELEMENT,
-        SECTOR);
+        element,
+        sector);
 
     String token =
         tokenIssuer
             .issue(
                 new AuthenticatedUser(
-                    USER,
+                    user,
                     TenantId.of("demo"),
-                    "realtime-" + USER + "@example.test",
+                    "realtime-" + user + "@example.test",
                     "Realtime Staff",
                     UserRole.STAFF))
             .value();
@@ -281,7 +292,7 @@ class RealtimeWebSocketIntegrationTest {
     CountDownLatch received = new CountDownLatch(1);
     AtomicReference<String> receivedPayload = new AtomicReference<>();
     session.subscribe(
-        "/topic/establishments/" + ESTABLISHMENT,
+        "/topic/establishments/" + establishment,
         new StompFrameHandler() {
           @Override
           public java.lang.reflect.Type getPayloadType(StompHeaders headers) {
@@ -301,7 +312,7 @@ class RealtimeWebSocketIntegrationTest {
 
     RestTestClient http = RestTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
     http.patch()
-        .uri("/api/v1/sectors/{sectorId}/elements/{elementId}/state", SECTOR, ELEMENT)
+        .uri("/api/v1/sectors/{sectorId}/elements/{elementId}/state", sector, element)
         .contentType(MediaType.APPLICATION_JSON)
         .header("Authorization", "Bearer " + token)
         .body("{\"state\":\"OCCUPIED\"}")
@@ -321,9 +332,9 @@ class RealtimeWebSocketIntegrationTest {
     String envelope = receivedPayload.get().replace(" ", "");
     assertThat(envelope)
         .contains("space-element.state.changed.v1")
-        .contains(ESTABLISHMENT.toString())
-        .contains(SECTOR.toString())
-        .contains(ELEMENT.toString())
+        .contains(establishment.toString())
+        .contains(sector.toString())
+        .contains(element.toString())
         .contains("\"previousState\":\"AVAILABLE\"")
         .contains("\"state\":\"OCCUPIED\"")
         .contains("\"aggregateVersion\":1");

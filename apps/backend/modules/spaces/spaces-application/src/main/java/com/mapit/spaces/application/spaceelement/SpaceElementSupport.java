@@ -49,15 +49,13 @@ public class SpaceElementSupport {
             .findAliveById(tenantId, sector.floorId())
             .orElseThrow(
                 () ->
-                    new IllegalStateException(
-                        "Sector " + sectorId + " apunta a un piso inexistente o dado de baja"));
+                     new SectorNotFoundException(sectorId.value()));
     var establishment =
         establishmentRepository
             .findAliveById(tenantId, floor.establishmentId())
             .orElseThrow(
                 () ->
-                    new IllegalStateException(
-                        "Piso " + floor.id() + " apunta a un establecimiento inexistente"));
+                     new SectorNotFoundException(sectorId.value()));
     return establishment.type();
   }
 

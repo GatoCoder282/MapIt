@@ -16,4 +16,8 @@ public record CreateSpaceElementCommand(
     Double width,
     Double height,
     Double rotation,
-    String initialState) {}
+    String initialState, @org.jspecify.annotations.Nullable String label, @org.jspecify.annotations.Nullable Integer capacity) {
+  public CreateSpaceElementCommand(UUID sectorId, String type, Double x, Double y, Double width, Double height, Double rotation, String initialState) {
+    this(sectorId, type, x, y, width, height, rotation, initialState, null, null);
+  }
+}

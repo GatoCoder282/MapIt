@@ -20,6 +20,7 @@ import type {
   ElementTemplate,
   ElementTemplateCreateRequest,
 } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
 import {
   type MapLayout,
   type SpaceElement as MapSpaceElement,
@@ -48,12 +49,12 @@ export function mapApiElementToLayoutElement(el: SpaceElement): MapSpaceElement 
   return {
     id: el.id,
     type: el.type,
-    label: `${el.type} ${el.id.slice(0, 6)}`,
+    label: el.name ?? el.label ?? STRINGS.spaces.elements.types[el.type] + ' sin nombre',
     position: { x: el.x, y: el.y },
     size: { width: el.width ?? defaults.size.width, height: el.height ?? defaults.size.height },
     rotation: el.rotation ?? 0,
     state: el.state,
-    capacity: defaults.capacity,
+    capacity: el.capacity ?? null,
     reservable: defaults.reservable,
     attributes: {},
   };
@@ -88,6 +89,7 @@ interface ActiveDragCoords {
 @Injectable({ providedIn: 'root' })
 export class MapEditorStore {
   private readonly api = inject(MapEditorApiService);
+  private readonly session = inject(AuthSession);
   private readonly strings = STRINGS.spaces.editor;
   private readonly destroyRef = inject(DestroyRef);
   private readonly debounceMs = inject(MAP_EDITOR_DEBOUNCE_MS);
@@ -102,6 +104,13 @@ export class MapEditorStore {
   readonly layout: Signal<MapLayout> = this._layout.asReadonly();
 
   readonly elements = computed(() => this._layout().elements);
+  private readonly _metadata = signal<Record<string, SpaceElement>>({});
+  readonly selectedMetadata = computed(() => this._metadata()[this._selectedId() ?? ''] ?? null);
+  readonly canEditMetadata = computed(() =>
+    ['ADMIN', 'MANAGER'].includes(this.session.user()?.role ?? ''),
+  );
+  private readonly _metadataError = signal<string | null>(null);
+  readonly metadataError = this._metadataError.asReadonly();
   readonly sectorSize = computed(() => this._layout().size);
   readonly sectorName = computed(() => this._layout().name);
 
@@ -259,6 +268,8 @@ export class MapEditorStore {
     if (this._sectorId() === sectorId) return;
 
     this._sectorId.set(sectorId);
+    this._metadata.set({});
+    this._selectedId.set(null);
     this._loading.set(true);
     this._error.set(null);
 
@@ -276,6 +287,8 @@ export class MapEditorStore {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (elements: SpaceElement[]) => {
+          if (this._sectorId() !== sectorId) return;
+          this._metadata.set(Object.fromEntries(elements.map((el) => [el.id, el])));
           const layoutElements = elements.map(mapApiElementToLayoutElement);
           this._layout.set({
             floorId: '',
@@ -293,6 +306,69 @@ export class MapEditorStore {
           this._loading.set(false);
         },
       });
+  }
+
+  saveElementMetadata(id: string, labelInput: string, capacityInput: string): void {
+    const raw = this._metadata()[id];
+    const element = this._layout().elements.find((item) => item.id === id);
+    const sectorId = this._sectorId();
+    if (!this.canEditMetadata() || !raw || !element || !sectorId || this._saving()) return;
+    const label = labelInput.trim() || null;
+    const capacity = capacityInput.trim() ? Number(capacityInput.trim()) : null;
+    if (
+      (label && label.length > 120) ||
+      (capacity !== null && (!Number.isSafeInteger(capacity) || capacity < 1))
+    ) {
+      this._metadataError.set(this.strings.metadataInvalid);
+      return;
+    }
+    this._metadataError.set(null);
+    this._saving.set(true);
+    this.api
+      .updateSpaceElement(sectorId, id, {
+        type: element.type,
+        x: element.position.x,
+        y: element.position.y,
+        width: element.size.width,
+        height: element.size.height,
+        rotation: element.rotation,
+        label,
+        capacity,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (saved) => {
+          if (this._sectorId() !== sectorId) {
+            this._saving.set(false);
+            return;
+          }
+          this.pendingSave = null;
+          this._metadata.update((items) => ({ ...items, [id]: saved }));
+          this._layout.update((layout) => ({
+            ...layout,
+            elements: layout.elements.map((el) =>
+              el.id === id
+                ? {
+                    ...el,
+                    label: mapApiElementToLayoutElement(saved).label,
+                    capacity: saved.capacity ?? null,
+                  }
+                : el,
+            ),
+          }));
+          this._saving.set(false);
+        },
+        error: () => {
+          this._saving.set(false);
+          if (this._sectorId() === sectorId) {
+            this._metadataError.set(this.strings.errors.saveFailed);
+          }
+        },
+      });
+  }
+
+  clearElementMetadata(id: string): void {
+    this.saveElementMetadata(id, '', '');
   }
 
   dragElement(id: SpaceElementId, x: number, y: number): void {
@@ -444,7 +520,10 @@ export class MapEditorStore {
       .updateSpaceElement(sectorId, element.id, request)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
+        next: (saved) => {
+          this._metadata.update((items) =>
+            items[element.id] ? { ...items, [element.id]: saved } : items,
+          );
           this._saving.set(false);
           this.pendingSave = null;
         },
@@ -592,6 +671,7 @@ export class MapEditorStore {
       .subscribe({
         next: (created) => {
           this._saving.set(false);
+          this._metadata.update((items) => ({ ...items, [created.id]: created }));
           this._layout.update((current) => ({
             ...current,
             elements: [...current.elements, mapApiElementToLayoutElement(created)],
@@ -624,6 +704,11 @@ export class MapEditorStore {
       .subscribe({
         next: () => {
           this._saving.set(false);
+          this._metadata.update((items) => {
+            const updated = { ...items };
+            delete updated[elementId];
+            return updated;
+          });
           this._layout.update((current) => ({
             ...current,
             elements: current.elements.filter((el) => el.id !== elementId),

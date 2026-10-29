@@ -9,6 +9,19 @@ import { type Routes } from '@angular/router';
  */
 export const routes: Routes = [
   {
+    path: 'pago/:tenantSlug/:establishmentSlug/:reservationId',
+    loadComponent: () => import('./features/payment/ui/payment-page').then((m) => m.PaymentPage),
+  },
+  {
+    path: 'simulacion/qr/:token',
+    loadComponent: () =>
+      import('./features/payment/ui/simulation-page').then((m) => m.SimulationPage),
+  },
+  {
+    path: 'comprobante/:token',
+    loadComponent: () => import('./features/payment/ui/receipt-page').then((m) => m.ReceiptPage),
+  },
+  {
     path: '',
     pathMatch: 'full',
     loadComponent: () => import('./features/landing/landing').then((m) => m.Landing),
@@ -25,6 +38,13 @@ export const routes: Routes = [
   {
     path: 'reservar/:tenantSlug/:establishmentSlug/:elementId',
     loadComponent: () => import('./features/booking/ui/booking-page').then((m) => m.BookingPage),
+  },
+  {
+    path: 'mis-reservas/:tenantSlug',
+    loadComponent: () =>
+      import('./features/my-reservations/ui/my-reservations-page').then(
+        (m) => m.MyReservationsPage,
+      ),
   },
   {
     // CU-25: el primer ADMIN abre el enlace del correo y define su contraseña.

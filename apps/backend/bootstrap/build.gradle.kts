@@ -40,6 +40,8 @@ dependencies {
     testImplementation(libs.archunit.junit5)
     testImplementation(libs.bundles.testcontainers)
     testImplementation(libs.spring.boot.testcontainers)
+    // Ya existe en runtime; el test de actualización V21 → V22 usa su API directamente.
+    testImplementation(libs.flyway.core)
 }
 
 // Flyway se configura desde el .env de la raíz del monorepo.

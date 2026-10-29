@@ -249,4 +249,7 @@ h2 {
   .cta {
     transition: none;
   }
+  .cta:active {
+    transform: none;
+  }
 }

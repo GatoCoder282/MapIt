@@ -84,7 +84,8 @@ test.describe('CU-25 — onboarding del primer ADMIN', () => {
     await page.getByLabel(/correo electr/i).fill(adminEmail);
     await page.locator('#password').fill('S3cur3?P4ss!');
     await page.getByRole('button', { name: /iniciar sesi/i }).click();
-    await expect(page).toHaveURL(/\/home|\/admin/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
   test('un enlace sin parámetros avisa claramente', async ({ page }) => {

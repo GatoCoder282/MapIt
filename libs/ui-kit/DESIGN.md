@@ -250,17 +250,18 @@ El lenguaje de formas equilibra lo "técnico" con la accesibilidad moderna.
 
 ## Resuelto en la implementación
 
-- **Índigo canónico:** `primary #1c2edb` (heredado del login en producción) como color de
-  texto/acento y `primary-container #3d4ef2` como relleno de botones. El antiguo
-  `#3b82f6` de `_tokens.scss` queda retirado. Sin violetas: los acentos violeta de las
-  referencias externas se traducen siempre al índigo de Marca.
+- **Azul canónico vigente:** `primary #2563eb` para acciones y acentos,
+  `primary-hover #1d4ed8` y `primary-container #dbeafe`. Coincide con los tokens de
+  `_tokens.scss` y el encabezado de este documento; las referencias índigo anteriores
+  quedan retiradas sin introducir cambios de paleta en esta entrega.
 - **Fuentes:** Manrope (titulares) e Inter (UI) instaladas vía `@fontsource-variable/*`
-  en `apps/console`, servidas localmente sin dependencia externa.
+  en `apps/console`, servidas localmente sin dependencia externa. El flujo de pagos
+  público reutiliza sus archivos WOFF2 latinos y licencias OFL en assets locales.
 - **Fondo base:** se adopta `#F7F8FA` como lienzo (Level 0), según la sección de
   elevación. Los tonos azulados `#f9f9ff`/`#f0f3ff` quedan como superficies de apoyo
   (`surface-low`), no como fondo de página.
 - **Editor de mapas (HU-4.01 v2):** el acento de interacción del lienzo es `#2563EB`
-  (tokens `--mapit-editor-*`), distinto del índigo de marca y sin conflicto semántico con
+  (tokens `--mapit-editor-*`), coherente con la marca vigente y sin conflicto semántico con
   los estados operativos (`--mapit-state-*` siguen gobernando trazo/badge, no relleno).
   Spec completa en `apps/console/design/`.
 

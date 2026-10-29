@@ -33,6 +33,9 @@ public class SpaceElementJpaEntity {
   @Column(name = "type", nullable = false)
   private String type;
 
+  @Column(name = "label") private String label;
+  @Column(name = "capacity") private Integer capacity;
+
   @Column(name = "state", nullable = false)
   private String state;
 
@@ -93,7 +96,7 @@ public class SpaceElementJpaEntity {
 
   static SpaceElementJpaEntity fromDomain(SpaceElement element) {
     AuditTrail audit = element.audit();
-    return new SpaceElementJpaEntity(
+    var entity = new SpaceElementJpaEntity(
         element.id().value(),
         element.tenantId().value(),
         element.sectorId(),
@@ -107,6 +110,9 @@ public class SpaceElementJpaEntity {
         audit.createdAt(),
         audit.updatedAt(),
         audit.deletedAt());
+    entity.label = element.label();
+    entity.capacity = element.capacity();
+    return entity;
   }
 
   SpaceElement toDomain() {
@@ -122,6 +128,6 @@ public class SpaceElementJpaEntity {
         height,
         rotation,
         SpaceElementState.valueOf(state),
-        audit);
+        audit, label, capacity);
   }
 }

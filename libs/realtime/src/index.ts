@@ -17,6 +17,7 @@ export {
   type RealtimeConfig,
   type RealtimeConnectionState,
   type RealtimeEventEnvelope,
+  type ReservationPaymentEvent,
   type SpaceElementState,
   type SpaceElementStatePayload,
   type StompClientFactory,

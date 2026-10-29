@@ -31,21 +31,30 @@ export class StaffShell {
     { label: STRINGS.staffShell.nav.businesses, route: '/establishments', icon: 'businesses' },
     { label: STRINGS.staffShell.nav.users, route: '/users', icon: 'users' },
     { label: STRINGS.staffShell.nav.reports, route: '/reports', icon: 'reports' },
+    ...(['ADMIN', 'STAFF'].includes(this.session.user()?.role ?? '')
+      ? [{ label: STRINGS.staffShell.nav.checkIn, route: '/check-in', icon: 'reservations' }]
+      : []),
     {
       label: STRINGS.staffShell.nav.settings,
       icon: 'settings',
       dividerBefore: true,
+      expandedByDefault: true,
       children: [
-        {
-          label: STRINGS.staffShell.nav.templates,
-          route: '/spaces/templates',
-          icon: 'templates',
-        },
+        { label: STRINGS.staffShell.nav.templates, route: '/spaces/templates', icon: 'templates' },
         {
           label: STRINGS.staffShell.nav.reservations,
           route: '/reservations/new',
           icon: 'reservations',
         },
+        ...(this.session.user()?.role === 'ADMIN'
+          ? [
+              {
+                label: STRINGS.staffShell.nav.payments,
+                route: '/administration/settings/payment-methods',
+                icon: 'settings',
+              },
+            ]
+          : []),
       ],
     },
   ]);

@@ -169,6 +169,22 @@ export const routes: Routes = [
           import('./features/reservations/ui/reservation-form').then((m) => m.ReservationForm),
       },
       {
+        path: 'payment-methods',
+        pathMatch: 'full',
+        redirectTo: 'administration/settings/payment-methods',
+      },
+      {
+        path: 'administration/settings/payment-methods',
+        canActivate: [roleGuard('ADMIN')],
+        loadComponent: () =>
+          import('./features/payments/ui/payment-methods').then((m) => m.PaymentMethods),
+      },
+      {
+        path: 'check-in',
+        canActivate: [roleGuard('ADMIN', 'STAFF')],
+        loadComponent: () => import('./features/check-in/ui/check-in').then((m) => m.CheckIn),
+      },
+      {
         path: 'audit',
         canActivate: [roleGuard('ADMIN')],
         loadComponent: () => import('./features/audit/ui/audit-page').then((m) => m.AuditPage),

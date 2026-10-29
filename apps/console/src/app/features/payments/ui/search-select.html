@@ -1,0 +1,65 @@
+<div class="search-select" (focusout)="leave($event)">
+  <label [for]="inputId()">{{ label() }}</label>
+  <div class="control">
+    <input
+      #searchInput
+      type="text"
+      role="combobox"
+      [id]="inputId()"
+      [name]="inputId()"
+      [placeholder]="placeholder()"
+      [value]="display()"
+      [disabled]="disabled()"
+      [attr.aria-expanded]="open()"
+      [attr.aria-controls]="open() ? inputId() + '-listbox' : null"
+      [attr.aria-activedescendant]="activeId()"
+      aria-autocomplete="list"
+      aria-required="true"
+      autocomplete="off"
+      spellcheck="false"
+      required
+      (focus)="open.set(true)"
+      (click)="open.set(true)"
+      (input)="search(searchInput.value)"
+      (keydown)="keydown($event)"
+    />
+    <svg
+      class="chevron"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  </div>
+  @if (open() && !disabled()) {
+    <div class="dropdown">
+      <div class="options" [id]="inputId() + '-listbox'" role="listbox" [attr.aria-label]="label()">
+        @for (option of filtered(); track option.value; let index = $index) {
+          <button
+            type="button"
+            role="option"
+            tabindex="-1"
+            [id]="inputId() + '-option-' + index"
+            [attr.aria-selected]="option.value === value()"
+            [class.active]="index === activeIndex()"
+            (mousedown)="$event.preventDefault()"
+            (click)="choose(option)"
+          >
+            <span>{{ option.label }}</span>
+            @if (option.description) {
+              <small>{{ option.description }}</small>
+            }
+          </button>
+        }
+      </div>
+      @if (filtered().length === 0) {
+        <p class="empty" role="status">{{ emptyMessage() }}</p>
+      }
+    </div>
+  }
+</div>

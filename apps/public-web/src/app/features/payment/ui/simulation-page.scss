@@ -1,0 +1,41 @@
+:host {
+  display: block;
+}
+.simulation-content {
+  display: grid;
+  gap: 1.5rem;
+}
+.simulation-token {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+  font-size: 0.75rem;
+}
+.simulation-token code {
+  font-family: var(--mapit-font-mono);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  color: var(--mapit-color-text);
+}
+.attempt-actions {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 340px;
+  margin: 1.5rem auto 0.25rem;
+}
+.attempt-result {
+  margin: 1.25rem auto 0;
+  max-width: 46ch;
+  font-weight: 600;
+  color: var(--mapit-color-text);
+}
+.simulation-summary {
+  width: min(100%, 32rem);
+  margin: 1.5rem auto;
+  padding: 1.25rem;
+  text-align: left;
+  border: 1px solid var(--mapit-color-border);
+  border-radius: 12px;
+  background: var(--mapit-color-surface);
+  overflow-wrap: anywhere;
+}

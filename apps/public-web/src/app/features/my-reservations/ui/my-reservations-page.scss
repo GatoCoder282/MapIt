@@ -1,0 +1,241 @@
+:host {
+  display: block;
+}
+
+.page {
+  min-height: 62vh;
+  padding: 2rem 1.5rem 5rem;
+  background: var(--mapit-color-canvas, #f7f8fa);
+}
+
+.content {
+  width: min(100%, 820px);
+  margin: 0 auto;
+}
+
+.back {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  color: var(--mapit-color-primary-hover, #1d4ed8);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+}
+
+.heading {
+  margin: 2rem 0 1.75rem;
+}
+
+.heading h1 {
+  margin: 0;
+  color: var(--mapit-color-text);
+  font-family: var(--mapit-font-display);
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  line-height: 1.15;
+}
+
+.heading p {
+  max-width: 62ch;
+  margin: 0.75rem 0 0;
+  color: var(--mapit-color-text-muted);
+  line-height: 1.6;
+}
+
+.access-form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 580px;
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: var(--mapit-color-surface, #fff);
+  box-shadow: var(--mapit-shadow, 0 4px 12px rgb(0 0 0 / 5%));
+}
+
+label {
+  color: var(--mapit-color-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--mapit-color-border-input, #d1d5db);
+  border-radius: 8px;
+  color: var(--mapit-color-text);
+  font: inherit;
+}
+
+.primary,
+.secondary {
+  min-height: 48px;
+  width: fit-content;
+  padding: 0.65rem 1.2rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: var(--mapit-color-accent);
+  color: #fff;
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--mapit-color-primary);
+}
+
+.secondary {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: var(--mapit-color-primary-hover, #1d4ed8);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--mapit-color-canvas, #f7f8fa);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.back:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--mapit-color-focus-ring, rgb(61 78 242 / 20%));
+  outline-offset: 3px;
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--mapit-color-error, #ba1a1a);
+}
+
+.field-error,
+.notice--error {
+  color: var(--mapit-color-error, #ba1a1a);
+}
+
+.field-error {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.notice {
+  margin: 0 0 1.5rem;
+  line-height: 1.6;
+  color: var(--mapit-color-text-muted);
+}
+
+.notice--error {
+  color: var(--mapit-color-error, #ba1a1a);
+}
+
+.notice--error p {
+  margin: 0 0 0.75rem;
+}
+
+.session-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.periods {
+  display: grid;
+  gap: 2.5rem;
+}
+
+.period h2 {
+  margin: 0 0 1rem;
+  color: var(--mapit-color-text);
+  font-family: var(--mapit-font-display);
+  font-size: 1.5rem;
+}
+
+.reservation-list {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reservation {
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: var(--mapit-color-surface, #fff);
+  box-shadow: var(--mapit-shadow, 0 4px 12px rgb(0 0 0 / 5%));
+}
+
+.reservation-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+
+.reservation h3 {
+  margin: 0;
+  color: var(--mapit-color-text);
+  font-family: var(--mapit-font-display);
+  font-size: 1.2rem;
+}
+
+.status {
+  color: var(--mapit-color-primary-hover, #1d4ed8);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status--cancelled {
+  color: var(--mapit-color-error, #ba1a1a);
+}
+
+dl {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0 0;
+}
+
+dt {
+  color: var(--mapit-color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+dd {
+  margin: 0.25rem 0 0;
+  color: var(--mapit-color-text);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.space-code {
+  display: block;
+}
+
+.load-more {
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 560px) {
+  .page {
+    padding: 1rem 1rem 3.5rem;
+  }
+
+  .access-form,
+  .reservation {
+    padding: 1.25rem;
+  }
+}

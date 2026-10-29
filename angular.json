@@ -67,7 +67,8 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "port": 4200
+            "port": 4200,
+            "prebundle": false
           },
           "configurations": {
             "production": {
@@ -143,7 +144,8 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "port": 4300
+            "port": 4300,
+            "prebundle": false
           },
           "configurations": {
             "production": {

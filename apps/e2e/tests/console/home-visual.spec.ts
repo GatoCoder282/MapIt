@@ -1,21 +1,23 @@
 import { test, expect } from '@playwright/test';
+import { companyAdminFixture } from './company-admin-fixture';
 
 /**
  * Test visual del dashboard home para verificar el layout contra la referencia.
  */
 test.describe('Home Dashboard Visual', () => {
+  let company: Awaited<ReturnType<typeof companyAdminFixture>>;
+  test.beforeAll(async ({ request }) => {
+    company = await companyAdminFixture(request);
+  });
   test.beforeEach(async ({ page }) => {
-    // Login como super admin. El login de la consola vive bajo el slug del
-    // tenant: `/login` es el interstitial que pide el enlace de la empresa.
-    await page.goto('/empresa/platform/login');
-    await page.fill('input[type="email"]', 'superadmin@mapit.local');
-    await page.fill('input[type="password"]', 'super-admin-dev');
+    // ADMIN real de la empresa creada por este test.
+    await page.goto('/empresa/' + company.slug + '/login');
+    await page.fill('input[type="email"]', company.email);
+    await page.fill('input[type="password"]', company.password);
     await page.click('button[type="submit"]');
 
-    // El SUPER_ADMIN aterriza en su panel de plataforma; el dashboard de staff
-    // está en /home, así que se va explícitamente.
-    await page.waitForURL(/\/admin\/tenants/);
-    await page.goto('/home');
+    await page.waitForURL(/\/home/);
+    await expect(page).toHaveURL(/\/home/);
     await expect(page.locator('h1')).toContainText('Gestiona, analiza y haz crecer');
   });
 
@@ -75,11 +77,10 @@ test.describe('Home Dashboard Visual', () => {
     await expect(page.locator('.hero')).toBeVisible();
     await expect(page.locator('.hero-decor')).toBeVisible();
 
-    // KPIs section: negocios, reservas y % de ocupación (más tenants
-    // registrados para el SUPER_ADMIN, que es quien entra en este test).
+    // KPIs de empresa: negocios, reservas y ocupación.
     await expect(page.locator('.kpis')).toBeVisible();
     const kpiCards = page.locator('.kpi');
-    await expect(kpiCards).toHaveCount(4);
+    await expect(kpiCards).toHaveCount(3);
     await expect(page.getByTestId('home-kpi-ocupacion')).toBeVisible();
 
     // Panel de ocupación en vivo: los cinco estados con su color

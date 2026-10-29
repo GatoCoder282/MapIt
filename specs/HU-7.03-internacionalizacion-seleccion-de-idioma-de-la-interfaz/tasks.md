@@ -42,7 +42,7 @@
 - Issue: MAP-240, `HU-7.03 — Internacionalización y selección de idioma de la interfaz`; épica MAP-10.
 - Subtareas leídas: MAP-250 (selector/fallback compartido), MAP-251 (catálogos de Console y Public Web), MAP-252 (persistencia/fallback/regresión de vertical).
 - Decisión de idioma: el usuario confirmó español (`es`), inglés (`en`) y japonés (`ja-JP`) para esta implementación. La issue no adjunta la lista de evaluación; no se afirma que exista una rúbrica externa verificada.
-- Base actual: `origin/main` en `4ba7a8d` (`MAP-226 — Tests de integración de auditoría`).
+- Base integrada: `origin/main` en `65f5206` (`Feat/matiasmv05/map-229-hu-6.03-integracion de pago qr (#52)`).
 - Rama: `feat/GatoCoder282/MAP-240-hu-7-03-internacionalizacion-seleccion-de-idioma-de-la-interfaz`.
 - El generador `pnpm new:spec` solo admite `CU-XX` y `specs/_template` no existe en este checkout; los tres archivos se preparan manualmente en el orden exigido por `specs/AGENTS.md`.
 
@@ -56,15 +56,16 @@
 
 ### Verificación
 
-- `pnpm check` pasó completo después de configurar un shim temporal que permite al script encontrar Corepack pnpm: formato, ESLint, typecheck, 310 tests frontend, builds, contrato API y backend build/tests/ArchUnit.
+- `pnpm check` pasó completo después de integrar `origin/main`: formato, ESLint, typecheck, 497 tests frontend, builds, contrato API y backend build/tests/ArchUnit.
 - `pnpm --filter @mapit/e2e run typecheck` pasó.
-- `pnpm --filter @mapit/e2e exec playwright test tests/console/language.spec.ts tests/public-web/language.spec.ts --reporter=line` pasó: 4/4 (Console desktop/tablet, Public Web desktop/móvil).
-- `node tools/scripts/gradle.mjs :bootstrap:integrationTest --tests "com.mapit.realtime.RealtimeWebSocketIntegrationTest"` pasó tras reparar fixtures obsoletos: V21 retiró `space_element_state_change` y el `audit_log` append-only impide borrar usuarios referenciados; el test ahora conserva/upsertea las identidades.
+- `pnpm --filter @mapit/e2e exec playwright test tests/console/language.spec.ts tests/public-web/language.spec.ts --reporter=line` pasó después del merge: 4/4 (Console desktop/tablet, Public Web desktop/móvil).
+- `pnpm be:it` pasó completa después del merge: 87 tareas Gradle, incluyendo `RealtimeWebSocketIntegrationTest` con los fixtures actualizados para V21 y `audit_log` append-only.
 - El setup local creó `.env` y levantó Postgres/Unleash. La migración local se omitió porque el volumen ya existente tiene un checksum distinto en V12; no se reparó ni borró la base. Los E2E de idioma no dependen del backend.
 - El primer E2E completo de CI encontró que el ajuste responsive ocultaba la campana en Console tablet, contradiciendo una expectativa existente. Se eliminó esa regla de ocultamiento; se mantiene visible la campana/avatar y se oculta solo el texto del usuario en viewports pequeños.
-- CI run `40632262062`: el E2E completo pasó; el job de integración reportó 3 fallas en `RealtimeWebSocketIntegrationTest` por fixtures incompatibles con V21. Los fixtures ya quedaron corregidos y la clase pasa localmente; el nuevo run de CI verificará el arreglo.
-- Se detuvieron los frontends y contenedores iniciados para las pruebas; los volúmenes locales se conservaron.
+- CI run `40632262062`: el E2E completo pasó; el job de integración reportó 3 fallas en `RealtimeWebSocketIntegrationTest` por fixtures incompatibles con V21. Se integraron los cambios de `main`, se corrigieron los fixtures y la suite completa de integración pasó localmente; el próximo run de CI verificará el merge.
+- `pnpm api:gen` y `pnpm api:check` pasaron tras integrar los cambios de contrato de `main`.
+- Los frontends y contenedores iniciados para las pruebas se detuvieron al finalizar; los volúmenes locales se conservaron.
 
 ### PR y evidencia
 
-PR [#51](https://github.com/GatoCoder282/MapIt/pull/51) abierto hacia `main`. El nuevo run tras el ajuste de fixtures y la captura requerida de Checks en verde siguen pendientes.
+PR [#51](https://github.com/GatoCoder282/MapIt/pull/51) abierto hacia `main`; la rama integra `origin/main` (`65f5206`). El run de CI posterior al merge y la captura requerida de Checks en verde siguen pendientes.

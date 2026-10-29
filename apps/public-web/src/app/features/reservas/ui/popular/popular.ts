@@ -1,21 +1,21 @@
-﻿import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { NgOptimizedImage } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { RevealOnScroll } from '@mapit/ui-kit';
 
-import { ESTABLISHMENTS } from '../../establishments.data';
+// eslint-disable-next-line no-restricted-imports -- UI anidada del mismo feature reservas comparte su ViewModel.
+import { CatalogStore } from '../../model/catalog-store';
 import { STRINGS } from '../../../../core/strings';
 
-/** Grid de establecimientos populares con datos mock (ver establishments.data.ts). */
+/** Catálogo real; no inventa valoraciones, cupos ni disponibilidad. */
 @Component({
   selector: 'mp-reservas-popular',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgOptimizedImage, RevealOnScroll, RouterLink],
+  imports: [RevealOnScroll, RouterLink],
   templateUrl: './popular.html',
   styleUrl: './popular.scss',
 })
 export class ReservasPopular {
   protected readonly strings = STRINGS;
-  protected readonly establishments = ESTABLISHMENTS;
+  protected readonly store = inject(CatalogStore);
 }

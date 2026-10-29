@@ -1,0 +1,128 @@
+<div class="payment-shell" data-testid="qr-simulation-page">
+  <header class="payment-header">
+    <a class="wordmark" routerLink="/">{{ brand }}<span aria-hidden="true">.</span></a
+    ><a class="text-link" routerLink="/"><svg lucideArrowLeft aria-hidden="true"></svg>{{ strings.back }}</a>
+  </header>
+  <main class="payment-content simulation-content">
+    <div class="preview-banner" role="note">
+      <strong>{{ strings.mock }}</strong>
+    </div>
+    @if (attempt(); as attemptLink) {
+      <section class="empty-panel" aria-labelledby="attempt-title">
+        <svg lucideQrCode aria-hidden="true"></svg>
+        <h1 id="attempt-title">{{ strings.title }}</h1>
+        <p>{{ strings.attemptIntro }}</p>
+        <p class="simulation-token">
+          <span>{{ paymentStrings.paymentReference }}</span>
+          <code>{{ attemptLink.paymentId }}</code>
+        </p>
+        <p>{{ strings.whatHappens }}</p>
+        @if (verified() && checkout(); as data) {
+          <section
+            class="simulation-summary"
+            [attr.aria-label]="paymentStrings.summary"
+            data-testid="simulation-summary"
+          >
+            <h2>{{ data.reservation.establishmentName }}</h2>
+            <dl class="reservation-facts">
+              <div>
+                <dt>{{ paymentStrings.reservationReference }}</dt>
+                <dd>{{ data.reservation.id }}</dd>
+              </div>
+              <div>
+                <dt>{{ paymentStrings.date }}</dt>
+                <dd>{{ date() }}</dd>
+              </div>
+              <div>
+                <dt>{{ paymentStrings.time }}</dt>
+                <dd>{{ time() }} · {{ data.reservation.timezone }}</dd>
+              </div>
+              <div>
+                <dt>{{ paymentStrings.spaces }}</dt>
+                <dd>
+                  @for (space of data.reservation.spaces; track space.id) {
+                    <span class="space-row"
+                      >{{ space.name }}<small>{{ space.floor }} · {{ space.sector }}</small></span
+                    >
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt>{{ paymentStrings.deposit }}</dt>
+                <dd>{{ amount() }} · {{ data.payment?.currency }}</dd>
+              </div>
+              @if (expiry()) {
+                <div>
+                  <dt>{{ paymentStrings.expiresAt }}</dt>
+                  <dd>{{ expiry() }} · {{ data.reservation.timezone }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
+        @if (checkoutState() === 'loading') {
+          <p role="status">{{ paymentStrings.loading }}</p>
+        } @else if (checkoutState() === 'error') {
+          <p role="alert">{{ paymentStrings.loadError }}</p>
+        } @else if (checkoutState() === 'invalid') {
+          <p role="alert">{{ strings.invalid }}</p>
+        } @else if (result(); as outcome) {
+          <div class="attempt-result" role="status" data-testid="simulation-result">
+            <h2>{{ outcome === 'CONFIRMED' ? paymentStrings.mockConfirmed : paymentStrings.scenarios[outcome] }}</h2>
+            <p>{{ strings.attemptResult[outcome] }}</p>
+          </div>
+        } @else if (canSimulate()) {
+          <div class="attempt-actions">
+            <button
+              type="button"
+              class="button primary"
+              data-testid="simulate-confirm"
+              [disabled]="busy()"
+              (click)="simulate(outcomes.CONFIRMED)"
+            >
+              {{ strings.confirmAction }}
+            </button>
+            <button
+              type="button"
+              class="button"
+              data-testid="simulate-cancel"
+              [disabled]="busy()"
+              (click)="simulate(outcomes.CANCELLED)"
+            >
+              {{ strings.cancelAction }}
+            </button>
+          </div>
+          @if (busy()) {
+            <p role="status">{{ paymentStrings.working }}</p>
+          }
+          @if (actionError()) {
+            <p role="alert">{{ paymentStrings.actionError }}</p>
+          }
+        } @else if (verified() && !allowed()) {
+          <p role="note">{{ strings.unavailable }}</p>
+        }
+        @if (verified() && checkoutLink(); as backLink) {
+          <a class="text-link" [href]="backLink">
+            <svg lucideArrowLeft aria-hidden="true"></svg>{{ paymentStrings.receiptBack }}
+          </a>
+        }
+      </section>
+    } @else if (valid() && !hasAttemptContext()) {
+      <section class="empty-panel" aria-labelledby="simulation-title">
+        <svg lucideQrCode aria-hidden="true"></svg>
+        <h1 id="simulation-title">{{ strings.title }}</h1>
+        <p>{{ strings.intro }}</p>
+        <p>{{ strings.whatHappens }}</p>
+        <p class="simulation-token">
+          <span>{{ strings.tokenLabel }}</span>
+          <code>{{ token() }}</code>
+        </p>
+      </section>
+    } @else {
+      <section class="empty-panel">
+        <h1>{{ strings.title }}</h1>
+        <p role="alert">{{ strings.invalid }}</p>
+      </section>
+    }
+  </main>
+</div>

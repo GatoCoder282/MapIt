@@ -26,6 +26,20 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 25)   # macOS
 export JAVA_HOME=/usr/lib/jvm/temurin-25-jdk       # Linux
 ```
 
+### El editor muestra métodos inexistentes, pero `pnpm check` pasa
+
+En VS Code o Kiro, revisa `java.import.gradle.java.home` en la configuración de usuario
+y del workspace. La importación de Gradle necesita un **JDK 25**, aunque la terminal ya
+tenga `JAVA_HOME` correcto. Un valor antiguo como `jre-1.8` deja al editor con un modelo
+de dependencias desactualizado: aparecen métodos, constructores o paquetes inexistentes
+que sí están en el código fuente.
+
+Selecciona la carpeta del JDK 25 instalado (no su subcarpeta `bin`), ejecuta
+**Java: Reload Projects** para los módulos del backend y **Java: Rebuild Projects**.
+Si el servidor sigue usando el modelo anterior, ejecuta **Developer: Reload Window**.
+Abre un archivo Java y espera a que el servidor termine de importar y compilar en modo
+estándar antes de evaluar el panel Problems.
+
 ### `pnpm: command not found` después de `corepack enable`
 
 La terminal guarda el `PATH` de cuando se abrió. **Ciérrala y ábrela de nuevo.**
@@ -46,13 +60,16 @@ Docker Desktop está cerrado. Ábrelo y espera a que diga **Running** abajo a la
 
 ### `port is already allocated` / `address already in use`
 
-Otro programa ocupa el puerto. Dos salidas:
+Otro programa o una instancia anterior ocupa el puerto. `pnpm dev`, `dev:front` y
+`dev:back` comprueban primero los puertos que necesitan, en IPv4 e IPv6. Si están
+ocupados, muestran la aplicación y el puerto y no inician procesos adicionales.
 
-```bash
-pnpm stop        # si es una sesión previa de MapIt
-```
+Si ya hay una sesión funcionando, úsala o pulsa **Ctrl+C en la terminal que la inició**
+antes de ejecutar `pnpm dev` otra vez. `pnpm stop` baja los contenedores Docker;
+**no detiene** los servidores Angular/Java iniciados directamente en el host.
 
-O cambia el puerto en tu `.env` (solo afecta a tu máquina):
+Para un conflicto entre contenedores puedes usar `pnpm stop`. También puedes cambiar
+el puerto en tu `.env` (solo afecta a tu máquina):
 
 ```bash
 POSTGRES_PORT=5434
@@ -96,6 +113,34 @@ una migración nueva. Si el archivo cambió en tu rama sin haberse mergeado, en 
 ```bash
 pnpm infra:reset && pnpm db:migrate    # borra los datos locales y reaplica todo
 ```
+
+### Pagos V20–V28 anteriores al merge frente a V23–V31 actuales
+
+Este caso es una renumeración local: los nueve archivos de pagos tienen el mismo
+contenido/checksum, pero main introdujo antes las migraciones de auditoría e historial.
+Flyway no puede deducir esa equivalencia y rechaza el arranque. No lo resuelvas con
+`repair`, desactivando validación o reiniciando la base con pérdida de datos.
+
+Con Docker activo, diagnostica sin modificar:
+
+```bash
+node tools/scripts/reconcile-local-payment-migrations.mjs
+```
+
+La herramienta solo acepta el historial legacy completo con cada checksum idéntico.
+Si corresponde a tu caso, detén el backend y ejecuta:
+
+```bash
+node tools/scripts/reconcile-local-payment-migrations.mjs --apply
+pnpm db:migrate
+```
+
+`--apply` crea primero un respaldo completo en `.tmp/before-payment-history-*.dump`,
+comprueba que el historial no cambió bajo bloqueo, reasigna solo las versiones y nombres
+equivalentes y deja que Flyway ejecute V20–V22 con `outOfOrder` para esa única recuperación.
+Los checksums aplicados se conservan. Después Flyway vuelve a su modo habitual.
+Reinicia el backend para cargar el código y esquema actuales; conserva el respaldo local.
+No uses esta herramienta para otros conflictos de migraciones ni bases remotas.
 
 ### Una consulta no devuelve filas que sé que existen
 

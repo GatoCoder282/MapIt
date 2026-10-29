@@ -112,7 +112,6 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     });
     expect(est.status()).toBe(201);
     const estBody = (await est.json()) as { id: string };
-
     const floors = await request.get(`${API}/establishments/${estBody.id}/floors`, asTenant);
     const floorList = (await floors.json()) as FloorListItem[];
     let floorId = floorList[0]?.id;

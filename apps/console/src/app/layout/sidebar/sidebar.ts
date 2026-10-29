@@ -1,6 +1,8 @@
 import { NgOptimizedImage, NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
 import {
   LucideBuilding2,
   LucideCalendarPlus,
@@ -26,6 +28,7 @@ export interface SidebarNavItem {
   icon: string;
   exact?: boolean;
   dividerBefore?: boolean;
+  expandedByDefault?: boolean;
   children?: readonly SidebarNavItem[];
 }
 
@@ -74,22 +77,38 @@ export class Sidebar {
   readonly drawerClose = output<void>();
   readonly closeLabel = input.required<string>();
 
-  protected readonly openGroups = signal<ReadonlySet<string>>(new Set());
+  private readonly router = inject(Router);
+  private readonly routeUrl = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+  protected readonly openGroups = signal<ReadonlyMap<string, boolean>>(new Map());
 
-  protected isGroupOpen(label: string): boolean {
-    return this.openGroups().has(label);
+  protected isGroupOpen(item: SidebarNavItem): boolean {
+    return (
+      this.openGroups().get(item.label) ??
+      (item.expandedByDefault === true || this.containsActiveRoute(item))
+    );
   }
 
-  protected toggleGroup(label: string): void {
+  protected toggleGroup(item: SidebarNavItem): void {
+    const expanded = this.isGroupOpen(item);
     this.openGroups.update((open) => {
-      const next = new Set(open);
-      if (next.has(label)) {
-        next.delete(label);
-      } else {
-        next.add(label);
-      }
+      const next = new Map(open);
+      next.set(item.label, !expanded);
       return next;
     });
+  }
+
+  private containsActiveRoute(item: SidebarNavItem): boolean {
+    const url = this.routeUrl().split(/[?#]/)[0] ?? '';
+    return (
+      (!!item.route && (url === item.route || (!item.exact && url.startsWith(item.route + '/')))) ||
+      !!item.children?.some((child) => this.containsActiveRoute(child))
+    );
   }
 
   protected onLinkClick(): void {

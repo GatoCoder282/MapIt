@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  linkedSignal,
+} from '@angular/core';
 import type { SpaceElement } from '@mapit/map-engine';
 import { LucideRefreshCw } from '@lucide/angular';
 
@@ -22,6 +29,60 @@ import { STRINGS } from '../../../core/strings';
         </span>
         <span class="props-title">{{ element().label }}</span>
       </header>
+
+      @if (store.canEditMetadata()) {
+        <div class="props-section metadata-editor" data-testid="element-metadata">
+          <h4>{{ strings.metadataTitle }}</h4>
+          <label
+            >{{ strings.metadataLabel }}
+            <input
+              data-testid="element-metadata-label"
+              type="text"
+              maxlength="120"
+              [value]="metadataDraft().label"
+              (input)="setLabel($event)"
+            />
+          </label>
+          <label
+            >{{ strings.metadataCapacity }}
+            <input
+              data-testid="element-metadata-capacity"
+              type="number"
+              min="1"
+              step="1"
+              [value]="metadataDraft().capacity"
+              (input)="setCapacity($event)"
+            />
+          </label>
+          @if (store.metadataError()) {
+            <p role="alert" data-testid="element-metadata-error">{{ store.metadataError() }}</p>
+          }
+          <div class="metadata-actions">
+            <button
+              data-testid="element-metadata-clear"
+              type="button"
+              [disabled]="store.saving()"
+              (click)="store.clearElementMetadata(element().id)"
+            >
+              {{ strings.metadataClear }}
+            </button>
+            <button
+              data-testid="element-metadata-save"
+              type="button"
+              [disabled]="store.saving()"
+              (click)="
+                store.saveElementMetadata(
+                  element().id,
+                  metadataDraft().label,
+                  metadataDraft().capacity
+                )
+              "
+            >
+              {{ strings.metadataSave }}
+            </button>
+          </div>
+        </div>
+      }
 
       <div class="props-section">
         <h4>{{ strings.position }}</h4>
@@ -93,7 +154,7 @@ import { STRINGS } from '../../../core/strings';
 
       <div class="props-section props-meta">
         <span class="state-badge" [attr.data-state]="element().state">{{ element().state }}</span>
-        <span>{{ element().capacity ?? strings.notReservable }}</span>
+        <span>{{ element().capacity ?? strings.capacityUnknown }}</span>
       </div>
 
       <button class="btn-delete" (click)="onDelete()">
@@ -151,6 +212,52 @@ import { STRINGS } from '../../../core/strings';
       margin: 0 0 6px;
       font: var(--mapit-text-metadata);
       color: var(--mapit-editor-panel-muted);
+    }
+
+    .metadata-editor {
+      display: grid;
+      gap: 8px;
+    }
+    .metadata-editor label {
+      display: grid;
+      gap: 4px;
+      font: var(--mapit-text-metadata);
+      color: var(--mapit-editor-panel-muted);
+    }
+    .metadata-editor input {
+      min-height: 40px;
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--mapit-color-border-input);
+      border-radius: var(--mapit-radius-input);
+      font: var(--mapit-text-body);
+      color: var(--mapit-editor-panel-text);
+    }
+    .metadata-editor input:focus-visible {
+      outline: 2px solid var(--mapit-editor-selection);
+      outline-offset: 2px;
+    }
+    .metadata-editor p {
+      margin: 0;
+      color: var(--mapit-color-error);
+    }
+    .metadata-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .metadata-actions button {
+      min-height: 40px;
+      padding: 6px 8px;
+      border: 1px solid var(--mapit-color-border);
+      border-radius: var(--mapit-radius-input);
+      background: var(--mapit-color-surface);
+      color: var(--mapit-color-primary);
+      cursor: pointer;
+    }
+    .metadata-actions button:focus-visible {
+      outline: 2px solid var(--mapit-color-primary);
+      outline-offset: 2px;
     }
 
     .chips {
@@ -263,6 +370,23 @@ export class ElementPropertiesCardComponent {
   protected readonly strings = STRINGS.spaces.editor;
   protected readonly floorStrings = STRINGS.spaces.floorEditor;
   protected readonly Math = Math;
+  protected readonly metadataDraft = linkedSignal(() => ({
+    label: this.store.selectedMetadata()?.label ?? '',
+    capacity: this.store.selectedMetadata()?.capacity?.toString() ?? '',
+  }));
+
+  protected setLabel(event: Event): void {
+    this.metadataDraft.update((draft) => ({
+      ...draft,
+      label: (event.target as HTMLInputElement).value,
+    }));
+  }
+  protected setCapacity(event: Event): void {
+    this.metadataDraft.update((draft) => ({
+      ...draft,
+      capacity: (event.target as HTMLInputElement).value,
+    }));
+  }
 
   protected readonly currentX = computed(() =>
     Math.round(this.store.selectedElementPosition()?.x ?? this.element().position.x),

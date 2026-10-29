@@ -2,8 +2,10 @@ package com.mapit.config;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -43,5 +45,16 @@ public class RealtimeWebSocketConfig implements WebSocketMessageBrokerConfigurer
   @Override
   public void configureClientInboundChannel(ChannelRegistration registration) {
     registration.interceptors(interceptor);
+  }
+
+  @Override
+  public void configureClientOutboundChannel(ChannelRegistration registration) {
+    registration.interceptors(new org.springframework.messaging.support.ChannelInterceptor() {
+      @Override
+      public @Nullable Message<?> preSend(
+          org.springframework.messaging.Message<?> message, org.springframework.messaging.MessageChannel channel) {
+        return interceptor.authorizeOutbound(message);
+      }
+    });
   }
 }

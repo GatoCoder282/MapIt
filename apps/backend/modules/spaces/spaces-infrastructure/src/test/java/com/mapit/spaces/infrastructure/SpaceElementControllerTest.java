@@ -80,11 +80,27 @@ class SpaceElementControllerTest {
             new UpdateSpaceElementUseCase(elements, support, tenantContext, clock),
             new SpaceElementQueryService(elements, support, tenantContext),
             new DeleteSpaceElementUseCase(
-                elements, (tenant, element) -> false, tenantContext, clock));
-    client = RestTestClient.bindToController(controller).build();
+                 elements, (tenant, element) -> false, tenantContext, clock), new tools.jackson.databind.ObjectMapper(), () -> Optional.of(UUID.randomUUID()));
+    client = RestTestClient.bindToController(controller).configureServer(builder -> builder.addFilters((request,response,chain) -> {
+      var http = (org.springframework.mock.web.MockHttpServletRequest) request;
+      if (!"anonymous".equals(http.getHeader("X-Test-Identity"))) {
+        http.setUserPrincipal(() -> "unit-admin"); http.addUserRole("ADMIN");
+      }
+      chain.doFilter(request,response);
+    })).build();
   }
 
   // ===== POST /sectors/{id}/elements =====
+  @Test void anonimo_no_usa_tenant_demo_y_metadata_estricta() {
+    client.post().uri("/api/v1/sectors/{s}/elements", SECTOR_A).header("X-Test-Identity","anonymous")
+        .contentType(MediaType.APPLICATION_JSON).body("{\"type\":\"TABLE\",\"x\":1,\"y\":1,\"width\":80,\"height\":80}")
+        .exchange().expectStatus().isUnauthorized();
+    for(String capacity : new String[]{"0","1.5","\"4\"","2147483648"}) {
+      client.post().uri("/api/v1/sectors/{s}/elements", SECTOR_A).contentType(MediaType.APPLICATION_JSON)
+          .body("{\"type\":\"TABLE\",\"x\":1,\"y\":1,\"width\":80,\"height\":80,\"capacity\":"+capacity+"}")
+          .exchange().expectStatus().isBadRequest();
+    }
+  }
 
   @Test
   void alta_valida_devuelve_201_y_el_elemento() {

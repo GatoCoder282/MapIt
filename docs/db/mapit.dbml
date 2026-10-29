@@ -182,6 +182,8 @@ Table element_template {
 }
 
 Table space_element {
+  label varchar(120) [note: 'Opcional, trim y no vacío; sin backfill. name se deriva, no se persiste.']
+  capacity integer [note: 'Opcional, >0; sin defaults por tipo.']
   id         uuid             [pk, note: 'default gen_random_uuid()']
   tenant_id  text             [not null, ref: > tenant.id]
   sector_id  uuid             [not null, ref: > sector.id, note: 'ON DELETE RESTRICT — sin orfandad']
@@ -227,6 +229,7 @@ Table audit_log {
 }
 
 Table realtime_event_outbox {
+  reservation_id uuid [note: 'Sala pública restringida a capability; null para eventos operativos']
   event_id          uuid        [pk]
   tenant_id         text        [not null, ref: > tenant.id]
   event_type        text        [not null]
@@ -280,6 +283,9 @@ Table person {
 }
 
 Table reservation {
+  confirmed_payment_id uuid
+  checked_in_at timestamptz
+  checked_in_by uuid
   id               uuid        [pk, note: 'default gen_random_uuid()']
   tenant_id        text        [not null, ref: > tenant.id]
   establishment_id uuid        [not null, ref: > establishment.id]
@@ -294,6 +300,7 @@ Table reservation {
 
   Indexes {
     (tenant_id, id) [unique, name: 'reservation_tenant_id_id_unique']
+    (tenant_id, id, establishment_id) [unique, name: 'reservation_tenant_id_id_establishment_unique']
     (tenant_id, establishment_id, starts_at, id) [name: 'reservation_tenant_establishment_starts_idx']
     (tenant_id, person_id, starts_at, id) [name: 'reservation_tenant_person_starts_idx']
   }
@@ -312,4 +319,282 @@ Table reservation_space_element {
     (tenant_id, space_element_id, reservation_id) [name: 'reservation_space_element_resource_idx']
   }
   Note: 'MAP-209. Asociación de uno o más elementos por reserva con FKs multi-tenant y RLS forzada.'
+}
+
+
+// MAP-229 — configuración y motor independiente de pagos, todas las tablas con RLS forzada.
+Table merchant_payment_method {
+  account_holder_name varchar(120) [note: 'Titular público confirmado; NULL legado sin inventar datos.']
+  mock_qr_configuration_id uuid [note: 'FK nullable; solo proyecciones locales MOCK de configuración QR']
+  superseded_at timestamptz [note: 'Cierra una proyección histórica sin alterar pagos asociados']
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  establishment_id uuid
+  display_name varchar(120) [not null]
+  country char(2) [not null]
+  currency char(3) [not null]
+  provider text [not null, note: 'STATIC_BANK_QR | MOCK_GATEWAY | INTEGRATED_GATEWAY']
+  bank_name varchar(120) [not null]
+  account_reference varchar(120) [not null, note: 'Alias no secreto']
+  static_qr_image text [note: 'PNG/JPEG data URI, máximo 350000 caracteres']
+  enabled boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  created_by uuid [not null]
+  updated_by uuid [not null]
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, establishment_id)
+    (tenant_id, mock_qr_configuration_id) [unique, note: 'PARCIAL: mock_qr_configuration_id IS NOT NULL AND superseded_at IS NULL']
+  }
+}
+Ref: merchant_payment_method.(tenant_id, establishment_id) > establishment.(tenant_id, id)
+Ref: merchant_payment_method.(tenant_id, created_by) > app_user.(tenant_id, id)
+Ref: merchant_payment_method.(tenant_id, updated_by) > app_user.(tenant_id, id)
+
+Table mock_qr_configuration {
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  establishment_id uuid [not null]
+  country char(2) [not null, note: 'ISO 3166-1 alfa-2 en mayúsculas']
+  bank_name varchar(120) [not null]
+  account_holder_name varchar(120) [not null]
+  account_reference varchar(120) [not null, note: 'Alias no secreto']
+  enabled boolean [not null]
+  simulation_token uuid [not null, note: 'Solo construye /simulacion/qr/{token}; no autoriza pagos']
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  created_by uuid [not null]
+  updated_by uuid [not null]
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, establishment_id) [unique]
+    (tenant_id, establishment_id, id) [unique, note: 'Clave compuesta para la FK de la proyección MOCK']
+    (tenant_id, simulation_token) [unique]
+  }
+  Note: 'RLS forzada. Configuración de demostración, separada del checkout; sin datos en el QR.'
+}
+Ref: mock_qr_configuration.(tenant_id, establishment_id) > establishment.(tenant_id, id)
+Ref: mock_qr_configuration.(tenant_id, created_by) > app_user.(tenant_id, id)
+Ref: mock_qr_configuration.(tenant_id, updated_by) > app_user.(tenant_id, id)
+Ref: merchant_payment_method.(tenant_id, establishment_id, mock_qr_configuration_id) > mock_qr_configuration.(tenant_id, establishment_id, id)
+
+Table payment {
+  request_id uuid [not null]
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  establishment_id uuid [not null]
+  reservation_id uuid [not null]
+  method_id uuid [not null]
+  provider text [not null]
+  merchant_reference varchar(120) [not null]
+  external_reference varchar(120) [not null]
+  amount numeric(24,6) [not null, note: 'Positivo y snapshot backend; fracción según moneda']
+  currency char(3) [not null]
+  status text [not null, note: 'PENDING | PENDING_MANUAL_VERIFICATION | CONFIRMED | FAILED | EXPIRED | CANCELLED | RECONCILIATION_REQUIRED; CANCELLED solo termina el intento, no cancela la reserva']
+  created_at timestamptz [not null]
+  expires_at timestamptz [not null]
+  verified_at timestamptz
+  verified_by uuid
+  verification_source text
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, provider, external_reference) [unique]
+    (tenant_id, reservation_id, request_id) [unique]
+    (tenant_id, reservation_id, id) [unique]
+  }
+}
+Ref: payment.(tenant_id, reservation_id, establishment_id) > reservation.(tenant_id, id, establishment_id)
+Ref: payment.(tenant_id, method_id) > merchant_payment_method.(tenant_id, id)
+Ref: payment.(tenant_id, verified_by) > app_user.(tenant_id, id)
+
+Table payment_request_alias {
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  reservation_id uuid [not null]
+  request_id uuid [not null]
+  payment_id uuid [not null]
+  created_at timestamptz [not null]
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, reservation_id, request_id) [unique]
+    (tenant_id, reservation_id, payment_id)
+  }
+  Note: 'RLS forzada; append-only: conserva cada clave idempotente asociada al pago.'
+}
+Ref: payment_request_alias.(tenant_id, reservation_id, payment_id) > payment.(tenant_id, reservation_id, id)
+
+Table payment_webhook_event {
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  payment_id uuid [not null]
+  provider text [not null]
+  event_id varchar(120) [not null]
+  outcome text [not null]
+  received_at timestamptz [not null]
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, provider, event_id) [unique]
+  }
+  Note: 'Append-only para mapit_app; sin payload crudo ni secretos'
+}
+Ref: payment_webhook_event.(tenant_id, payment_id) > payment.(tenant_id, id)
+
+Table payment_verification {
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  payment_id uuid [not null]
+  actor_id uuid
+  source text [not null]
+  reference varchar(120) [not null]
+  created_at timestamptz [not null]
+  Indexes {
+    (tenant_id, id) [unique]
+  }
+  Note: 'Append-only; actor/origen de verificación sin credenciales'
+}
+Ref: payment_verification.(tenant_id, payment_id) > payment.(tenant_id, id)
+Ref: payment_verification.(tenant_id, actor_id) > app_user.(tenant_id, id)
+
+// HU-6.02/6.03: credenciales opacas, política explícita, cotización inmutable y auditoría.
+Table reservation_access {
+  confirmed_payment_id uuid [note: 'Legado V21; fuente operativa en reservation desde V22']
+  checked_in_at timestamptz [note: 'Legado V21; fuente operativa en reservation desde V22']
+  checked_in_by uuid [note: 'Legado V21; fuente operativa en reservation desde V22']
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  establishment_id uuid [not null]
+  reservation_id uuid [not null]
+  token_hash char(64) [not null]
+  created_at timestamptz [not null]
+  expires_at timestamptz [not null]
+  revoked_at timestamptz
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, reservation_id) [unique]
+    (tenant_id, token_hash) [unique]
+  }
+  Note: 'RLS forzada. Nunca persiste token claro.'
+}
+Ref: reservation_access.(tenant_id, reservation_id, establishment_id) > reservation.(tenant_id, id, establishment_id)
+Ref: reservation.(tenant_id, confirmed_payment_id) > payment.(tenant_id, id)
+Ref: reservation.(tenant_id, checked_in_by) > app_user.(tenant_id, id)
+
+Table reservation_event {
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  establishment_id uuid [not null]
+  reservation_id uuid [not null]
+  event_type text [not null]
+  previous_state text [not null]
+  new_state text [not null]
+  actor_id uuid
+  payment_id uuid
+  source text [not null]
+  occurred_at timestamptz [not null]
+  Indexes { (tenant_id, id) [unique] }
+  Note: 'RLS forzada. Historial append-only para rol runtime.'
+}
+Ref: reservation_event.(tenant_id, reservation_id, establishment_id) > reservation.(tenant_id, id, establishment_id)
+Ref: reservation_event.(tenant_id, actor_id) > app_user.(tenant_id, id)
+Ref: reservation_event.(tenant_id, payment_id) > payment.(tenant_id, id)
+
+Table payment_policy {
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  establishment_id uuid [not null]
+  enabled boolean [not null]
+  currency char(3) [not null]
+  deposit_amount numeric(24,6) [not null]
+  total_amount numeric(24,6)
+  payment_window_minutes int [not null]
+  updated_at timestamptz [not null]
+  updated_by uuid [not null]
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, establishment_id) [unique]
+  }
+  Note: 'RLS forzada. Sin importes predeterminados; total opcional.'
+}
+Ref: payment_policy.(tenant_id, establishment_id) > establishment.(tenant_id, id)
+Ref: payment_policy.(tenant_id, updated_by) > app_user.(tenant_id, id)
+
+Table reservation_payment_quote {
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  establishment_id uuid [not null]
+  reservation_id uuid [not null]
+  deposit_amount numeric(24,6) [not null]
+  deposit_currency char(3) [not null]
+  total_amount numeric(24,6)
+  total_currency char(3)
+  payment_window_minutes int [not null]
+  created_at timestamptz [not null]
+  expires_at timestamptz [not null]
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, reservation_id) [unique]
+  }
+  Note: 'RLS forzada; snapshot monetario de servidor por reserva.'
+}
+Ref: reservation_payment_quote.(tenant_id, reservation_id, establishment_id) > reservation.(tenant_id, id, establishment_id)
+
+Table payment_receipt {
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  establishment_id uuid [not null]
+  reservation_id uuid [not null]
+  payment_id uuid [not null]
+  token_hash char(64) [not null]
+  created_at timestamptz [not null]
+  expires_at timestamptz [not null]
+  revoked_at timestamptz
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, token_hash) [unique]
+  }
+  Note: 'RLS forzada; comprobante verificable sin valor fiscal.'
+}
+Ref: payment_receipt.(tenant_id, reservation_id, establishment_id) > reservation.(tenant_id, id, establishment_id)
+Ref: payment_receipt.(tenant_id, payment_id) > payment.(tenant_id, id)
+
+
+Table establishment_staff_access {
+  id uuid [pk]
+  tenant_id text [not null, ref: > tenant.id]
+  establishment_id uuid [not null]
+  user_id uuid [not null]
+  can_check_in boolean [not null, default: false]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  updated_by uuid [not null]
+  Indexes {
+    (tenant_id, id) [unique]
+    (tenant_id, establishment_id, user_id) [unique]
+  }
+  Note: 'V26. RLS forzada; STAFF falla cerrado sin concesión explícita. ADMIN mantiene administración empresarial.'
+}
+Ref: establishment_staff_access.(tenant_id, establishment_id) > establishment.(tenant_id, id)
+Ref: establishment_staff_access.(tenant_id, user_id) > app_user.(tenant_id, id)
+Ref: establishment_staff_access.(tenant_id, updated_by) > app_user.(tenant_id, id)
+
+Table customer_history_access {
+  id                 uuid        [pk, note: 'default gen_random_uuid()']
+  tenant_id          text        [not null, ref: > tenant.id]
+  person_id          uuid        [not null, note: 'FK compuesta (tenant_id, person_id) a person']
+  link_hash          text        [not null, note: 'SHA-256 del secreto del enlace; nunca texto plano']
+  link_expires_at    timestamptz [not null]
+  consumed_at        timestamptz
+  session_hash       text        [note: 'SHA-256 de una segunda credencial; NULL al revocar']
+  session_expires_at timestamptz
+  revoked_at         timestamptz
+  created_at         timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (tenant_id, id) [name: 'customer_history_access_tenant_id_id_idx']
+    (tenant_id, link_hash) [unique, name: 'customer_history_access_link_hash_idx']
+    (tenant_id, session_hash) [unique, name: 'customer_history_access_session_hash_idx', note: 'Parcial WHERE session_hash IS NOT NULL']
+    (tenant_id, person_id, created_at) [name: 'customer_history_access_cooldown_idx']
+  }
+  Note: 'HU-6.04. FK compuesta a person, RLS forzada; canje único y revocación invalidan los secretos.'
 }
