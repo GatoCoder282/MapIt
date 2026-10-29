@@ -12,6 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import type { Establishment } from '@mapit/api-client';
 import { TimezonePicker } from '@mapit/ui-kit';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import { LucideBedDouble, LucideChefHat, LucideMartini, LucidePartyPopper } from '@lucide/angular';
 
 import { STRINGS } from '../../../core/strings';
@@ -188,6 +189,10 @@ type Step1Field = 'name' | 'type';
                     role="radio"
                     [attr.aria-checked]="establishmentType() === option.value"
                     [attr.aria-invalid]="invalid().has('type') || null"
+                    [disabled]="!flags.isVerticalEnabled(option.value)"
+                    [attr.title]="
+                      flags.isVerticalEnabled(option.value) ? null : strings.wizard.typeDisabledHint
+                    "
                     (click)="establishmentType.set(option.value)"
                   >
                     @switch (option.value) {
@@ -205,6 +210,9 @@ type Step1Field = 'name' | 'type';
                       }
                     }
                     <span>{{ option.label }}</span>
+                    @if (!flags.isVerticalEnabled(option.value)) {
+                      <span class="type-disabled">{{ strings.wizard.typeDisabledHint }}</span>
+                    }
                   </button>
                 }
               </div>
@@ -669,6 +677,18 @@ type Step1Field = 'name' | 'type';
       box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
     }
 
+    .type-card:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      border-color: var(--mapit-color-border);
+    }
+
+    .type-disabled {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--mapit-color-text-muted);
+    }
+
     .type-icon {
       width: 28px;
       height: 28px;
@@ -930,6 +950,7 @@ type Step1Field = 'name' | 'type';
 })
 export class WizardEstablishmentComponent {
   protected readonly store = inject(SpacesStore);
+  protected readonly flags = inject(FeatureFlagService);
   private readonly api = inject(SpacesApiService);
   private readonly router = inject(Router);
 
