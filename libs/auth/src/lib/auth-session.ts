@@ -1,7 +1,7 @@
-import { DestroyRef, Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { AUTH_SESSION_INVALID, AUTH_STORAGE_WARNING } from './auth-strings';
+import { AUTH_STRINGS } from './auth-strings';
 
 export interface SessionUser {
   id: string;
@@ -24,7 +24,6 @@ interface StoredSession extends SessionResponse {
 
 const SESSION_KEY = 'mapit.auth.session';
 const SLUG_KEY = 'mapit.auth.tenant';
-const STORAGE_WARNING = AUTH_STORAGE_WARNING;
 const validSlug = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-z0-9][a-z0-9-]{1,62}$/.test(value);
 
@@ -58,12 +57,14 @@ function validSession(value: unknown): value is StoredSession {
 export class AuthSession {
   private readonly router = inject(Router);
   private readonly currentUser = signal<SessionUser | null>(null);
-  private readonly storageWarning = signal('');
+  private readonly storageWarningVisible = signal(false);
   private current: StoredSession | null = null;
   private tenantSlug: string | null = null;
   private expiryTimer: ReturnType<typeof setTimeout> | undefined;
   readonly user = this.currentUser.asReadonly();
-  readonly warning = this.storageWarning.asReadonly();
+  readonly warning = computed(() =>
+    this.storageWarningVisible() ? AUTH_STRINGS.storageWarning : '',
+  );
 
   constructor() {
     this.restore();
@@ -72,7 +73,7 @@ export class AuthSession {
 
   start(response: SessionResponse, tenantSlug: string, remember: boolean): void {
     const candidate: unknown = { ...response, tenantSlug };
-    if (!validSession(candidate)) throw new Error(AUTH_SESSION_INVALID);
+    if (!validSession(candidate)) throw new Error(AUTH_STRINGS.sessionInvalid);
     // Seleccionar campos explícitos impide persistir datos ajenos al contrato.
     const { id, tenantId, email, fullName, role } = candidate.user;
     this.current = {
@@ -84,7 +85,7 @@ export class AuthSession {
     };
     this.tenantSlug = tenantSlug;
     this.currentUser.set(this.current.user);
-    this.storageWarning.set('');
+    this.storageWarningVisible.set(false);
     this.removeStoredSessions();
     this.withStorage(remember ? 'localStorage' : 'sessionStorage', (storage) => {
       storage.setItem(SESSION_KEY, JSON.stringify(this.current));
@@ -167,7 +168,7 @@ export class AuthSession {
     try {
       action(globalThis[name]);
     } catch {
-      this.storageWarning.set(STORAGE_WARNING);
+      this.storageWarningVisible.set(true);
     }
   }
 }

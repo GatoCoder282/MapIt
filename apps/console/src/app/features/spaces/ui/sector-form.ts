@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { localizeString } from '../../../core/strings';
 import { SpacesStore } from '../model/spaces-store';
 
 /** Formulario inline de creación de sector (CU-05 · MAP-70). */
@@ -27,7 +28,7 @@ import { SpacesStore } from '../model/spaces-store';
       </div>
 
       @if (store.error(); as error) {
-        <p class="message error" role="alert">{{ error }}</p>
+        <p class="message error" role="alert">{{ localizeString(error) }}</p>
       }
 
       <label class="name-field">
@@ -246,6 +247,7 @@ import { SpacesStore } from '../model/spaces-store';
   `,
 })
 export class SectorFormComponent {
+  protected readonly localizeString = localizeString;
   readonly floorId = input.required<string>();
   readonly saved = output<void>();
   readonly formClosed = output<void>();

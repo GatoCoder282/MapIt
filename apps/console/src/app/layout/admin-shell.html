@@ -1,6 +1,6 @@
 <div class="shell">
   <mapit-sidebar
-    [nav]="navItems"
+    [nav]="navItems()"
     [navLabel]="strings.shell.brandArea"
     [navAriaLabel]="strings.shell.navLandmarkLabel"
     [drawerOpen]="menuOpen()"
@@ -19,6 +19,8 @@
       >
         ☰
       </button>
+
+      <mapit-language-selector />
 
       @if (session.user(); as user) {
         <div class="user-block">

@@ -69,11 +69,11 @@
             </div>
             <div class="field">
               <dt>{{ strings.tenantDetail.fieldCreatedAt }}</dt>
-              <dd>{{ tenant.createdAt | date: 'medium' }}</dd>
+              <dd>{{ tenant.createdAt | localDate: locale() : 'medium' }}</dd>
             </div>
             <div class="field">
               <dt>{{ strings.tenantDetail.fieldUpdatedAt }}</dt>
-              <dd>{{ tenant.updatedAt | date: 'medium' }}</dd>
+              <dd>{{ tenant.updatedAt | localDate: locale() : 'medium' }}</dd>
             </div>
           </dl>
 

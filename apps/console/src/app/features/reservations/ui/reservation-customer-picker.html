@@ -5,7 +5,7 @@
   </header>
 
   @if (store.error(); as error) {
-    <p class="message error" role="alert">{{ error }}</p>
+    <p class="message error" role="alert">{{ localizeString(error) }}</p>
   }
 
   @if (store.selected(); as selected) {

@@ -1,4 +1,4 @@
-﻿import { ChangeDetectionStrategy, Component } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
 
 import { RevealOnScroll } from '@mapit/ui-kit';
 
@@ -14,5 +14,5 @@ import { STRINGS } from '../../../../core/strings';
 })
 export class ReservasSteps {
   protected readonly strings = STRINGS;
-  protected readonly steps = STRINGS.reservas.steps.items;
+  protected readonly steps = computed(() => STRINGS.reservas.steps.items);
 }

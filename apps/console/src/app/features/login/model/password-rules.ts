@@ -32,23 +32,27 @@ const RUN = /(.)\1{3,}/;
 const RUN_UP = /(?:0123|1234|2345|3456|4567|5678|6789|abcd|bcde|cdef|defg|qwer|wert|erty|asdf)/i;
 const SYMBOL = /[!-/:-@[-`{-~]/;
 
-const TEXT = STRINGS.login.passwordStrength;
+export function passwordRules(): readonly PasswordRule[] {
+  const text = STRINGS.login.passwordStrength;
+  return [
+    { id: 'length', label: text.length, test: (v) => v.length >= 8 },
+    {
+      id: 'case',
+      label: text.casing,
+      test: (v) => /[a-z]/.test(v) && /[A-Z]/.test(v),
+    },
+    { id: 'digit', label: text.digit, test: (v) => /\d/.test(v) },
+    { id: 'symbol', label: text.symbol, test: (v) => SYMBOL.test(v) },
+  ];
+}
 
-export const PASSWORD_RULES: readonly PasswordRule[] = [
-  { id: 'length', label: TEXT.length, test: (v) => v.length >= 8 },
-  {
-    id: 'case',
-    label: TEXT.casing,
-    test: (v) => /[a-z]/.test(v) && /[A-Z]/.test(v),
-  },
-  { id: 'digit', label: TEXT.digit, test: (v) => /\d/.test(v) },
-  { id: 'symbol', label: TEXT.symbol, test: (v) => SYMBOL.test(v) },
-];
-
-export const STRENGTH_LABELS = TEXT.labels;
+export function passwordStrengthLabels(): readonly string[] {
+  return STRINGS.login.passwordStrength.labels;
+}
 
 export function evaluatePassword(value: string): PasswordStrengthResult {
-  const rules = PASSWORD_RULES.map((rule) => ({ ...rule, met: rule.test(value) }));
+  const labels = passwordStrengthLabels();
+  const rules = passwordRules().map((rule) => ({ ...rule, met: rule.test(value) }));
   const passed = rules.filter((r) => r.met).length;
   const guessable =
     value.length > 0 && (COMMON.test(value) || RUN.test(value) || RUN_UP.test(value));
@@ -59,7 +63,7 @@ export function evaluatePassword(value: string): PasswordStrengthResult {
   return {
     score,
     max: rules.length,
-    label: STRENGTH_LABELS[Math.min(score, STRENGTH_LABELS.length - 1)] ?? 'Vacía',
+    label: labels[Math.min(score, labels.length - 1)] ?? STRINGS.login.passwordStrength.labels[0],
     rules,
     guessable,
   };

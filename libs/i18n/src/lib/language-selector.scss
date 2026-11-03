@@ -1,0 +1,55 @@
+:host {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+:host(.language-selector-desktop) {
+  display: none;
+  margin-left: auto;
+
+  @media (min-width: 1024px) {
+    display: inline-flex;
+  }
+}
+
+:host(.language-selector-mobile) {
+  margin: 0 16px 16px;
+
+  @media (min-width: 1024px) {
+    display: none;
+  }
+}
+
+.language-selector {
+  display: inline-flex;
+  min-width: 0;
+}
+
+select {
+  max-width: 100%;
+  min-height: 2.25rem;
+  padding: 0.25rem 1.75rem 0.25rem 0.6rem;
+  border: 1px solid var(--mapit-border, #cbd5e1);
+  border-radius: 0.5rem;
+  background: var(--mapit-surface, #fff);
+  color: var(--mapit-text, #172033);
+  font: inherit;
+  cursor: pointer;
+}
+
+select:focus-visible {
+  outline: 2px solid var(--mapit-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

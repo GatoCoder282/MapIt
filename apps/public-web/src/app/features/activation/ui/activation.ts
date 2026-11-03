@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { LanguageSelector } from '@mapit/i18n';
 
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 import { PublicRuntimeConfig } from '../../../core/runtime-config';
 import { ActivationStore } from '../model/activation-store';
 
@@ -10,9 +12,11 @@ import { ActivationStore } from '../model/activation-store';
  */
 @Component({
   selector: 'mp-activation',
+  imports: [RouterLink, LanguageSelector],
   providers: [ActivationStore],
   template: `
     <main class="page">
+      <mapit-language-selector class="language-choice" />
       <section class="card" aria-labelledby="activation-title">
         @if (store.success(); as slug) {
           <div class="success" role="status">
@@ -24,7 +28,7 @@ import { ActivationStore } from '../model/activation-store';
           <p class="intro">{{ strings.activation.intro }}</p>
 
           @if (store.message()) {
-            <p class="message" role="alert">{{ store.message() }}</p>
+            <p class="message" role="alert">{{ localizeString(store.message()) }}</p>
           }
 
           @if (store.hasLinkParams()) {
@@ -88,11 +92,17 @@ import { ActivationStore } from '../model/activation-store';
   `,
   styles: `
     .page {
+      position: relative;
       min-height: 100dvh;
       display: grid;
       place-items: center;
       padding: var(--mapit-space-6, 1.5rem);
       background: var(--mapit-color-canvas, #f7f8fa);
+    }
+    .language-choice {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
     }
     .card {
       width: min(26rem, 100%);
@@ -190,6 +200,7 @@ export class Activation {
   private readonly runtime = inject(PublicRuntimeConfig);
   protected readonly store = inject(ActivationStore);
   protected readonly strings = STRINGS;
+  protected readonly localizeString = localizeString;
 
   protected loginUrl(slug: string): string {
     return `${this.runtime.config().consoleBaseUrl}/empresa/${slug}/login`;

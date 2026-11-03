@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import type { OnInit } from '@angular/core';
 import type { Person, SpaceElement } from '@mapit/api-client';
 
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 import { ReservationFormStore } from '../model/reservation-form-store';
 import { ReservationCustomerPicker } from './reservation-customer-picker';
 
@@ -16,6 +16,7 @@ import { ReservationCustomerPicker } from './reservation-customer-picker';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReservationForm implements OnInit {
+  protected readonly localizeString = localizeString;
   protected readonly store = inject(ReservationFormStore);
   protected readonly strings = STRINGS.reservations.form;
 

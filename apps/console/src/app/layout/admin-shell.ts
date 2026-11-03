@@ -9,6 +9,7 @@ import {
 import { RouterOutlet } from '@angular/router';
 
 import { AuthSession } from '@mapit/auth';
+import { LanguageSelector } from '@mapit/i18n';
 import { Sidebar } from './sidebar/sidebar';
 import { LucideBell, LucideLogOut } from '@lucide/angular';
 
@@ -31,7 +32,7 @@ const ENFOCABLES_DRAWER = 'a[href], button:not([disabled]), [tabindex]:not([tabi
  */
 @Component({
   selector: 'mapit-admin-shell',
-  imports: [RouterOutlet, LucideLogOut, LucideBell, Sidebar],
+  imports: [RouterOutlet, LucideLogOut, LucideBell, Sidebar, LanguageSelector],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,12 +42,12 @@ export class AdminShell {
   protected readonly session = inject(AuthSession);
   protected readonly menuOpen = signal(false);
 
-  protected readonly navItems: readonly NavItem[] = [
+  protected readonly navItems = computed<readonly NavItem[]>(() => [
     { label: STRINGS.shell.nav.dashboard, route: '/admin/dashboard', icon: 'dashboard' },
     { label: STRINGS.shell.nav.tenants, route: '/admin/tenants', icon: 'tenants' },
     { label: STRINGS.shell.nav.settings, route: '/admin/settings', icon: 'settings' },
     { label: STRINGS.shell.nav.profile, route: '/admin/profile', icon: 'profile' },
-  ];
+  ]);
 
   protected readonly roleLabel = computed(() => {
     const role = this.session.user()?.role;

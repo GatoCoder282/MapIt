@@ -18,6 +18,7 @@
     "@mapit/api-client": "workspace:*",
     "@mapit/auth": "workspace:*",
     "@mapit/feature-flags": "workspace:*",
+    "@mapit/i18n": "workspace:*",
     "@mapit/logging": "workspace:*",
     "@mapit/map-engine": "workspace:*",
     "@mapit/realtime": "workspace:*",

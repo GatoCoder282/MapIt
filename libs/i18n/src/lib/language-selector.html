@@ -1,0 +1,10 @@
+<label class="language-selector">
+  <span class="visually-hidden">{{ strings.selectorLabel }}</span>
+  <select data-testid="language-select" [attr.aria-label]="strings.selectorLabel" (change)="changeLanguage($event)">
+    @for (language of languages; track language.code) {
+      <option [value]="language.code" [selected]="language.code === i18n.language()">
+        {{ language.nativeName }}
+      </option>
+    }
+  </select>
+</label>

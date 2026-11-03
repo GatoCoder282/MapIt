@@ -14,6 +14,7 @@ import {
   LucideUsers,
 } from '@lucide/angular';
 import type { BusinessVertical, Tenant } from '@mapit/api-client';
+import { currentLocaleTag } from '@mapit/i18n';
 
 import { STRINGS } from '../../../../../core/strings';
 import { mapitVerticalVar } from '../../../../../core/theme/echarts-theme';
@@ -29,15 +30,16 @@ const DIAS_SIN_CAMBIO = 30;
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
-/** Fecha de alta en español: "05 oct 2026". */
-const FECHA_FORMAT = new Intl.DateTimeFormat('es', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-});
+/** Fecha de alta según el idioma activo. */
+const formatDate = (date: Date): string =>
+  new Intl.DateTimeFormat(currentLocaleTag(), {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
 
-/** Cifras en español: separador de miles con punto y decimal con coma. */
-const NUMERO_FORMAT = new Intl.NumberFormat('es');
+const formatNumber = (value: number): string =>
+  new Intl.NumberFormat(currentLocaleTag()).format(value);
 
 /** Diferencia en días de calendario (no en horas: "ayer" es ayer). */
 function diasDeCalendario(desde: Date, hasta: Date): number {
@@ -84,7 +86,7 @@ export function tiempoRelativo(iso: string | undefined | null, ahora: number): s
 export function fechaAlta(iso: string | undefined | null): string {
   const fecha = iso ? new Date(iso) : null;
   if (!fecha || Number.isNaN(fecha.getTime())) return STRINGS.platformPanel.noData;
-  return FECHA_FORMAT.format(fecha);
+  return formatDate(fecha);
 }
 
 /**
@@ -159,11 +161,13 @@ export class PlatformTenantsTable {
   );
 
   /** Filtro de estado: las tres opciones del contrato. */
-  protected readonly estadoFiltros: readonly { value: PlatformEstadoFiltro; label: string }[] = [
+  protected readonly estadoFiltros = computed<
+    readonly { value: PlatformEstadoFiltro; label: string }[]
+  >(() => [
     { value: 'TODOS', label: this.strings.filterAll },
     { value: 'ACTIVE', label: this.strings.filterActive },
     { value: 'SUSPENDED', label: this.strings.filterSuspended },
-  ];
+  ]);
 
   /** Índice de la primera fila que se ve (base 1). */
   protected readonly desde = computed(() => this.pagina() * FILAS_POR_PAGINA + 1);
@@ -176,7 +180,7 @@ export class PlatformTenantsTable {
     this.strings.showing
       .replace('{from}', String(this.desde()))
       .replace('{to}', String(Math.max(this.desde(), this.hasta())))
-      .replace('{total}', NUMERO_FORMAT.format(this.totalElementos())),
+      .replace('{total}', formatNumber(this.totalElementos())),
   );
 
   /**

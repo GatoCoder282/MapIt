@@ -3,7 +3,7 @@ import { ElementTypeIconComponent } from '@mapit/ui-kit';
 import { TemplatesStore } from '../model/templates-store';
 import { ElementTemplateFormComponent } from './element-template-form';
 import type { ElementTemplate } from '@mapit/api-client';
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 
 @Component({
   selector: 'mapit-element-template-list',
@@ -34,7 +34,7 @@ import { STRINGS } from '../../../core/strings';
       </div>
 
       @if (store.error(); as error) {
-        <p class="message error" role="alert">{{ error }}</p>
+        <p class="message error" role="alert">{{ localizeString(error) }}</p>
       }
 
       @if (loading()) {
@@ -274,6 +274,7 @@ import { STRINGS } from '../../../core/strings';
   `,
 })
 export class ElementTemplateListPageComponent {
+  protected readonly localizeString = localizeString;
   protected readonly store = inject(TemplatesStore);
   protected readonly strings = STRINGS.spaces.templates;
   protected readonly typeStrings = STRINGS.spaces.elements.types;

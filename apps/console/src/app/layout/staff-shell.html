@@ -20,9 +20,11 @@
         ☰
       </button>
 
+      <mapit-language-selector />
+
       @if (session.user(); as user) {
         <div class="user-block">
-          <button class="notification-btn" type="button" aria-label="Notificaciones">
+          <button class="notification-btn" type="button" [attr.aria-label]="strings.shell.notifications">
             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -34,7 +36,7 @@
             <span class="user-name">{{ user.fullName }}</span>
             <span class="user-role">{{ roleLabel() }}</span>
           </span>
-          <button class="user-menu-toggle" type="button" aria-label="Menú de usuario">
+          <button class="user-menu-toggle" type="button" [attr.aria-label]="strings.shell.userMenu">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
               <polyline points="6 9 12 15 18 9" />
             </svg>

@@ -5,6 +5,7 @@ import {
   LucideTrendingDown,
   LucideTrendingUp,
 } from '@lucide/angular';
+import { currentLocaleTag } from '@mapit/i18n';
 
 import { GrowthChart } from '../../../../core/charts/growth-chart/growth-chart';
 import { STRINGS } from '../../../../core/strings';
@@ -14,14 +15,14 @@ import { PlatformKpiCard } from './kpi-card/kpi-card';
 import { PlatformTenantsTable } from './tenants-table/tenants-table';
 import { VerticalDonut } from './vertical-donut/vertical-donut';
 
-/** Cifras en español: separador de miles con punto y decimal con coma. */
-const NUMERO_FORMAT = new Intl.NumberFormat('es');
+const formatNumber = (value: number): string =>
+  new Intl.NumberFormat(currentLocaleTag()).format(value);
 
-/** Porcentajes con signo explícito ("+20 %", "−20 %") y coma decimal. */
-const PORCENTAJE_FORMAT = new Intl.NumberFormat('es', {
-  maximumFractionDigits: 1,
-  signDisplay: 'exceptZero',
-});
+const formatPercentage = (value: number): string =>
+  new Intl.NumberFormat(currentLocaleTag(), {
+    maximumFractionDigits: 1,
+    signDisplay: 'exceptZero',
+  }).format(value);
 
 /**
  * Panel de control de la plataforma (SUPER_ADMIN).
@@ -70,7 +71,7 @@ export class AdminDashboard implements OnInit {
    * que aparente un dato medido.
    */
   private readonly cifra = (valor: number): string =>
-    this.store.fallandoResumen() ? this.strings.noValue : NUMERO_FORMAT.format(valor);
+    this.store.fallandoResumen() ? this.strings.noValue : formatNumber(valor);
 
   /** Pie de una tarjeta: "Sin datos" si la fuente falló. */
   private readonly pie = (texto: string): string =>
@@ -120,7 +121,7 @@ export class AdminDashboard implements OnInit {
     if (valor === null) {
       return this.pie(this.strings.kpiNewNoBase.replace('{n}', this.altasSemana()));
     }
-    return this.pie(this.strings.kpiNewVsLastWeek.replace('{n}', PORCENTAJE_FORMAT.format(valor)));
+    return this.pie(this.strings.kpiNewVsLastWeek.replace('{n}', formatPercentage(valor)));
   });
 
   /** ¿La variación es positiva? (el 0 no es una variación) */

@@ -6,7 +6,7 @@
     </header>
 
     <div class="grid">
-      @for (category of categories; track category.title; let i = $index) {
+      @for (category of categories(); track category.title; let i = $index) {
         <a class="card" href="#{{ category.title.toLowerCase() }}" mapitReveal [mapitRevealDelay]="i * 60">
           <span class="icon-bubble" aria-hidden="true">
             @switch ($index) {

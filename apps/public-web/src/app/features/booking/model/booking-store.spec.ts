@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { PublicAvailabilityMap, PublicReservation, PublicCheckout } from '@mapit/api-client';
+import { I18nService, provideI18n } from '@mapit/i18n';
 import { of, throwError, Subject } from 'rxjs';
 import { publicMapFixture } from '../../../core/public-map.fixture';
 import { BookingApi } from '../data/booking-api';
@@ -65,18 +66,22 @@ describe('BookingStore — resolved selection before customer data', () => {
     checkout: ReturnType<typeof vi.fn>;
   };
   let store: BookingStore;
+  let i18n: I18nService;
   const configure = () =>
     store.configure('tenant-a', 'venue-a', 'space-a', '2030-12-24', '19:00', '21:00');
   beforeEach(() => {
+    localStorage.clear();
     api = {
       create: vi.fn(() => of(reservation)),
       map: vi.fn(() => of(publicMapFixture())),
       checkout: vi.fn(() => of(checkout())),
     };
     TestBed.configureTestingModule({
-      providers: [BookingStore, { provide: BookingApi, useValue: api }],
+      providers: [provideI18n(), BookingStore, { provide: BookingApi, useValue: api }],
     });
     store = TestBed.inject(BookingStore);
+    i18n = TestBed.inject(I18nService);
+    i18n.initialize();
   });
   afterEach(() => TestBed.resetTestingModule());
   const fill = () => {
@@ -125,6 +130,20 @@ describe('BookingStore — resolved selection before customer data', () => {
     expect(store.checkoutPath()).toContain(reservation.id);
     await store.submit();
     expect(api.create).toHaveBeenCalledOnce();
+  });
+  it('changing the interface language does not change the tenant or reservation payload', async () => {
+    await ready();
+    i18n.setLanguage('ja-JP');
+
+    await store.submit();
+
+    expect(api.create).toHaveBeenCalledWith('tenant-a', 'venue-a', {
+      date: '2030-12-24',
+      startTime: '19:00',
+      endTime: '21:00',
+      spaceElementIds: new Set(['space-a']),
+      customer: { fullName: 'Ana Pérez', email: 'ana@example.com', phone: '+591 70000000' },
+    });
   });
   it.each(['RESERVED', 'UNAVAILABLE'] as const)(
     'rejects %s including a forged selectable flag',

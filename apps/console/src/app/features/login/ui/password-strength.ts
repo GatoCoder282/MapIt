@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import gsap from 'gsap';
 
-import { evaluatePassword, STRENGTH_LABELS } from '../model/password-rules';
+import { evaluatePassword, passwordStrengthLabels } from '../model/password-rules';
 import { STRINGS } from '../../../core/strings';
 
 /**
@@ -33,7 +33,7 @@ import { STRINGS } from '../../../core/strings';
         <div
           class="meter"
           role="meter"
-          aria-label="Fortaleza de la contraseña"
+          [attr.aria-label]="strings.login.passwordStrength.ariaLabel"
           [attr.aria-valuemin]="0"
           [attr.aria-valuemax]="result().max"
           [attr.aria-valuenow]="result().score"
@@ -48,7 +48,7 @@ import { STRINGS } from '../../../core/strings';
 
         <div class="meter-footer">
           <span class="label-stack" aria-hidden="true">
-            @for (text of labels; track text) {
+            @for (text of labels(); track text) {
               <span
                 [class.active]="text === result().label"
                 [class]="'tone-' + tone() + ' label'"
@@ -255,7 +255,7 @@ export class PasswordStrength {
   readonly value = input.required<string>();
 
   protected readonly strings = STRINGS;
-  protected readonly labels = STRENGTH_LABELS;
+  protected readonly labels = computed(() => passwordStrengthLabels());
   protected readonly result = computed(() => evaluatePassword(this.value()));
   protected readonly announcement = signal('');
 

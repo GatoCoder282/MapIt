@@ -13,7 +13,7 @@ import { forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import type { Establishment, Floor, Sector } from '@mapit/api-client';
 
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 import { SpacesApiService } from '../data/spaces-api';
 import { SpacesStore } from '../model/spaces-store';
 import { FeatureFlagService } from '@mapit/feature-flags';
@@ -559,6 +559,7 @@ interface SummaryData {
   `,
 })
 export class WizardSummaryComponent {
+  protected readonly localizeString = localizeString;
   readonly establishmentId = input.required<string>();
 
   private readonly api = inject(SpacesApiService);

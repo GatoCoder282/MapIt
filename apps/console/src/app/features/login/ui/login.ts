@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { STRINGS } from '../../../core/strings';
+import { LanguageSelector } from '@mapit/i18n';
+import { localizeString, STRINGS } from '../../../core/strings';
 import { LoginStore } from '../model/login-store';
 
 @Component({
   selector: 'mapit-login',
-  imports: [FormsModule],
+  imports: [FormsModule, LanguageSelector],
   providers: [LoginStore],
   templateUrl: './login.html',
   styleUrl: './login.scss',
@@ -14,4 +15,5 @@ import { LoginStore } from '../model/login-store';
 export class Login {
   protected readonly store = inject(LoginStore);
   protected readonly strings = STRINGS;
+  protected readonly localizeString = localizeString;
 }

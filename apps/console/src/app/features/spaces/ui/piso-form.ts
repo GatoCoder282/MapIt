@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { localizeString } from '../../../core/strings';
 import { FeatureFlagService } from '@mapit/feature-flags';
 import { SpacesStore } from '../model/spaces-store';
 
@@ -33,7 +34,7 @@ import { SpacesStore } from '../model/spaces-store';
         </header>
 
         @if (store.error(); as error) {
-          <p class="message error" role="alert">{{ error }}</p>
+          <p class="message error" role="alert">{{ localizeString(error) }}</p>
         }
 
         <form (submit)="save($event)">
@@ -208,6 +209,7 @@ import { SpacesStore } from '../model/spaces-store';
   `,
 })
 export class PisoFormComponent {
+  protected readonly localizeString = localizeString;
   protected readonly store = inject(SpacesStore);
   protected readonly flags = inject(FeatureFlagService);
 

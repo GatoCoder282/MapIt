@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
+import { LanguageSelector } from '@mapit/i18n';
 import { SITE_STRINGS } from '../site-strings';
 
 /**
@@ -12,7 +13,7 @@ import { SITE_STRINGS } from '../site-strings';
 @Component({
   selector: 'mapit-ui-site-nav',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgOptimizedImage, RouterLink, RouterLinkActive],
+  imports: [NgOptimizedImage, RouterLink, RouterLinkActive, LanguageSelector],
   templateUrl: './site-nav.html',
   styleUrl: './site-nav.scss',
   host: { class: 'site-nav-host' },

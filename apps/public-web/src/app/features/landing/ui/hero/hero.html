@@ -3,27 +3,26 @@
     <!-- Contenido izquierdo -->
     <div class="hero-content">
       <!-- Badge -->
-      <div class="hero-badge" aria-label="Categoría">
+      <div class="hero-badge" [attr.aria-label]="strings.landing.hero.categoryAria">
         <span class="badge-dot" aria-hidden="true"></span>
-        Gestión espacial en tiempo real
+        {{ strings.landing.hero.badge }}
       </div>
 
       <!-- Título principal -->
       <h1 id="hero-title" class="hero-title">
-        Mapea tu negocio.<br />
-        <span class="hero-title-accent">Opéralo en tiempo real.</span>
+        {{ strings.landing.hero.titleA }}<br />
+        <span class="hero-title-accent">{{ strings.landing.hero.titleB }}</span>
       </h1>
 
       <!-- Descripción -->
       <p class="hero-description">
-        Convierte tu espacio físico en un mapa digital interactivo para gestionar disponibilidad, reservas y operación
-        desde un solo lugar.
+        {{ strings.landing.hero.description }}
       </p>
 
       <!-- CTAs -->
       <div class="hero-ctas">
         <a href="#contacto" class="btn-primary">
-          Solicitar acceso
+          {{ strings.landing.hero.primaryCta }}
           <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="btn-arrow">
             <path
               fill-rule="evenodd"
@@ -44,7 +43,7 @@
             <circle cx="12" cy="12" r="10" />
             <polygon points="10 8 16 12 10 16 10 8" />
           </svg>
-          Ver cómo funciona
+          {{ strings.landing.hero.secondaryCta }}
         </a>
       </div>
 
@@ -55,7 +54,7 @@
             <circle cx="8" cy="8" r="3" />
             <path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
           </svg>
-          En tiempo real
+          {{ strings.landing.hero.features[0] }}
         </div>
         <div class="feature-badge" role="listitem">
           <svg
@@ -70,7 +69,7 @@
             <rect x="2" y="3" width="5" height="10" rx="1" />
             <rect x="9" y="3" width="5" height="10" rx="1" />
           </svg>
-          Multi-negocio
+          {{ strings.landing.hero.features[1] }}
         </div>
         <div class="feature-badge" role="listitem">
           <svg
@@ -84,16 +83,16 @@
           >
             <path d="M3 8l3 3 7-7" />
           </svg>
-          Fácil de usar
+          {{ strings.landing.hero.features[2] }}
         </div>
       </div>
     </div>
 
     <!-- Mockup del producto -->
-    <div class="hero-visual" aria-label="Vista previa de la aplicación MapIt" role="img">
+    <div class="hero-visual" [attr.aria-label]="strings.landing.hero.visualAria" role="img">
       <img
         ngSrc="assets/img/mockup_app.png"
-        alt="Vista previa de la aplicación MapIt"
+        [alt]="strings.landing.hero.visualAlt"
         class="app-mockup-img"
         width="2100"
         height="630"

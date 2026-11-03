@@ -54,7 +54,7 @@
       </button>
     </form>
     @if (store.failure()) {
-      <p class="notice notice--error" role="alert">{{ store.failure() }}</p>
+      <p class="notice notice--error" role="alert">{{ localizeString(store.failure()) }}</p>
     }
     <section class="results" aria-labelledby="results-title" [attr.aria-busy]="store.status() === 'loading'">
       <h2 id="results-title">{{ strings.availability.resultsTitle }}</h2>
@@ -66,7 +66,7 @@
       }
       @if (store.response(); as data) {
         <p class="result-date" role="status">
-          {{ data.date }} · {{ data.startTime }}–{{ data.endTime }} · {{ data.timezone }}
+          {{ formatDate(data.date) }} · {{ data.startTime }}–{{ data.endTime }} · {{ data.timezone }}
         </p>
         <p class="notice">{{ strings.availability.legend }}</p>
         <ul class="availability-legend" [attr.aria-label]="strings.availability.legend">
@@ -136,7 +136,7 @@
           <section class="selection-summary" data-testid="availability-selection" aria-live="polite">
             <h3>{{ strings.availability.selected }}</h3>
             <p>
-              {{ data.establishmentName }} · {{ data.date }} · {{ data.startTime }}–{{ data.endTime }} ·
+              {{ data.establishmentName }} · {{ formatDate(data.date) }} · {{ data.startTime }}–{{ data.endTime }} ·
               {{ data.timezone }}
             </p>
             <mp-public-space [space]="space" />

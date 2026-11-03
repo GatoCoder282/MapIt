@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { currentLocaleTag } from '@mapit/i18n';
 import type { PublicReservation, ReservationCheckout } from '@mapit/api-client';
 import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { STRINGS } from '../../../core/strings';
@@ -40,7 +41,7 @@ export class BookingStore {
   readonly ownWhen = computed(() => {
     const reservation = this.ownReservation();
     return reservation
-      ? new Intl.DateTimeFormat('es-BO', {
+      ? new Intl.DateTimeFormat(currentLocaleTag(), {
           dateStyle: 'long',
           timeStyle: 'short',
           hourCycle: 'h23',

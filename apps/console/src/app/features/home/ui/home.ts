@@ -1,4 +1,3 @@
-import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, type OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
@@ -16,6 +15,7 @@ import {
   LucideZap,
 } from '@lucide/angular';
 import { AuthSession } from '@mapit/auth';
+import { currentLocaleTag, I18nService, LocalizedNumberPipe } from '@mapit/i18n';
 
 import { HomeStore } from '../model/home-store';
 import { GrowthChart } from '../../../core/charts/growth-chart/growth-chart';
@@ -28,7 +28,7 @@ import { STRINGS } from '../../../core/strings';
   selector: 'mapit-home',
   imports: [
     RouterLink,
-    DecimalPipe,
+    LocalizedNumberPipe,
     GrowthChart,
     KpiCard,
     OccupancyPanel,
@@ -120,7 +120,7 @@ import { STRINGS } from '../../../core/strings';
             <mapit-kpi-card
               data-testid="home-kpi-negocios"
               [label]="strings.adminDashboardHome.kpiBusinesses"
-              [value]="(store.totalEstablishments() | number) ?? ''"
+              [value]="(store.totalEstablishments() | localNumber: locale()) ?? ''"
               icon="building"
               [delta]="store.weekGrowthPercent()"
               [deltaLabel]="strings.adminDashboardHome.kpiVsLastWeek"
@@ -140,7 +140,7 @@ import { STRINGS } from '../../../core/strings';
               <mapit-kpi-card
                 data-testid="home-kpi-tenants"
                 [label]="strings.adminDashboardHome.tenantsTotal"
-                [value]="(store.tenantPage()?.totalElements ?? 0 | number) ?? ''"
+                [value]="(store.tenantPage()?.totalElements ?? 0 | localNumber: locale()) ?? ''"
                 icon="landmark"
                 [context]="strings.adminDashboardHome.kpiInPlatform"
               />
@@ -155,7 +155,7 @@ import { STRINGS } from '../../../core/strings';
               [value]="
                 store.reservations() === null
                   ? strings.adminDashboardHome.noValue
-                  : ((store.totalReservations() | number) ?? '')
+                  : ((store.totalReservations() | localNumber: locale()) ?? '')
               "
               icon="calendar"
               [delta]="store.reservationsWeekGrowthPercent()"
@@ -184,7 +184,7 @@ import { STRINGS } from '../../../core/strings';
               [context]="
                 store.porcentajeOcupacion() === null
                   ? strings.adminDashboardHome.noData
-                  : (store.elementosOperativos() | number) +
+                  : (store.elementosOperativos() | localNumber: locale()) +
                     ' ' +
                     strings.adminDashboardHome.kpiOccupancyOperable
               "
@@ -352,7 +352,7 @@ import { STRINGS } from '../../../core/strings';
             [peopleTotal]="
               store.people() === null
                 ? strings.adminDashboardHome.noValue
-                : ((store.totalPeople() | number) ?? '')
+                : ((store.totalPeople() | localNumber: locale()) ?? '')
             "
             [peopleDelta]="store.peopleWeekGrowthPercent()"
             [peopleNewThisWeek]="store.newPeopleThisWeek()"
@@ -1066,6 +1066,7 @@ import { STRINGS } from '../../../core/strings';
 })
 export class Home implements OnInit {
   protected readonly session = inject(AuthSession);
+  protected readonly locale = inject(I18nService).locale;
   protected readonly strings = STRINGS;
   protected readonly store = inject(HomeStore);
 
@@ -1076,11 +1077,6 @@ export class Home implements OnInit {
    * resuelve en `en-US` ("62.5"). Aquí el separador importa: se formatea con
    * `Intl` explícito para que el KPI diga "62,5 %" y no "62.5 %".
    */
-  private readonly occupancyFormat = new Intl.NumberFormat('es', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-
   /**
    * Número real de KPI de la fila: 3 para el resto de roles y 4 para el
    * SUPER_ADMIN (que además ve "Tenants registrados"). La rejilla se adapta
@@ -1101,7 +1097,10 @@ export class Home implements OnInit {
     const percent = this.store.porcentajeOcupacion();
     return percent === null
       ? STRINGS.adminDashboardHome.noValue
-      : `${this.occupancyFormat.format(percent)} %`;
+      : `${new Intl.NumberFormat(currentLocaleTag(), {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        }).format(percent)} %`;
   });
 
   /** El nombre accesible del gráfico nombra el periodo que se está mirando. */

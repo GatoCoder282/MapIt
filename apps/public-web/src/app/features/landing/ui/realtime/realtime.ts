@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
 
 import { STRINGS } from '../../../../core/strings';
 
@@ -10,5 +10,5 @@ import { STRINGS } from '../../../../core/strings';
 })
 export class LandingRealtime {
   protected readonly strings = STRINGS;
-  protected readonly devices = STRINGS.landing.realtime.devices;
+  protected readonly devices = computed(() => STRINGS.landing.realtime.devices);
 }
