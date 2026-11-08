@@ -6,7 +6,6 @@ import {
   type MockQrConfigurationWrite,
   type PaymentCountry,
   type PaymentReadiness,
-  EstablishmentsService,
   MockQrService,
   PaymentPoliciesService,
 } from '@mapit/api-client';
@@ -15,6 +14,7 @@ import { of, Subject, throwError } from 'rxjs';
 
 import { RuntimeConfigStore } from '../../../core/runtime-config';
 import { STRINGS } from '../../../core/strings';
+import { EstablishmentContext } from '../../../core/establishment-context';
 import { PaymentMethodsStore } from './payment-methods-store';
 
 const { encode } = vi.hoisted(() => ({
@@ -59,7 +59,8 @@ describe('PaymentMethodsStore', () => {
   const configurations: MockQrConfiguration[] = [{ ...CONFIGURATION }];
   const listConfigurations = vi.fn(() => of(configurations));
   const listCountries = vi.fn(() => of([BOLIVIA, PERU]));
-  const listEstablishments = vi.fn(() => of([ESTABLISHMENT, OTHER_ESTABLISHMENT]));
+  const active = signal<AccessibleEstablishment | null>(ESTABLISHMENT);
+  const contextStatus = signal<'idle' | 'loading' | 'ready' | 'error'>('ready');
   const createConfiguration = vi.fn(
     (request: { mockQrConfigurationWrite: MockQrConfigurationWrite }) =>
       of(saved('55555555-5555-4555-8555-555555555555', request.mockQrConfigurationWrite)),
@@ -104,7 +105,7 @@ describe('PaymentMethodsStore', () => {
           },
         },
         { provide: MockQrService, useValue: api.qr },
-        { provide: EstablishmentsService, useValue: api.establishments },
+        { provide: EstablishmentContext, useValue: { active, status: contextStatus } },
         {
           provide: PaymentPoliciesService,
           useValue: { getPaymentReadiness: getReadiness, savePaymentPolicy: savePolicy },
@@ -117,7 +118,6 @@ describe('PaymentMethodsStore', () => {
 
   function apiStub(): {
     qr: Record<string, unknown>;
-    establishments: Record<string, unknown>;
   } {
     return {
       qr: {
@@ -127,18 +127,18 @@ describe('PaymentMethodsStore', () => {
         updateMockQrConfiguration: updateConfiguration,
         regenerateMockQrConfiguration: regenerateConfiguration,
       },
-      establishments: { listAccessibleEstablishments: listEstablishments },
     };
   }
 
   beforeEach(() => {
     user.set({ ...USER });
+    active.set(ESTABLISHMENT);
+    contextStatus.set('ready');
     configurations.splice(0, configurations.length, { ...CONFIGURATION });
     encode.mockReset();
     encode.mockResolvedValue('data:image/png;base64,qr');
     listConfigurations.mockClear();
     listCountries.mockClear();
-    listEstablishments.mockClear();
     createConfiguration.mockClear();
     updateConfiguration.mockClear();
     regenerateConfiguration.mockClear();
@@ -166,6 +166,21 @@ describe('PaymentMethodsStore', () => {
     store.setPolicyWindow('15');
     store.setPolicyEnabled(true);
     expect(store.canSavePolicy()).toBe(true);
+    getReadiness.mockImplementationOnce(({ establishmentId }: { establishmentId: string }) =>
+      of({
+        establishmentId,
+        qrEnabled: true,
+        policy: {
+          enabled: true,
+          currency: 'KWD',
+          depositAmount: '1.234',
+          totalAmount: null,
+          paymentWindowMinutes: 15,
+        },
+        ready: true,
+        blockers: [],
+      }),
+    );
     await store.savePolicy();
     expect(savePolicy).toHaveBeenCalledWith({
       establishmentId: ESTABLISHMENT.id,
@@ -178,6 +193,9 @@ describe('PaymentMethodsStore', () => {
       },
     });
     expect(getReadiness).toHaveBeenCalledTimes(2);
+    expect(store.policySaving()).toBe(false);
+    expect(store.busy()).toBe(false);
+    expect(store.dirty()).toBe(false);
   });
 
   it('shows policySaved success message after a successful save and reloads readiness', async () => {
@@ -287,7 +305,8 @@ describe('PaymentMethodsStore', () => {
     );
     setup();
     await vi.waitFor(() => expect(store.readiness()?.blockers).toContain('POLICY_DISABLED'));
-    store.setEstablishment(OTHER_ESTABLISHMENT.id);
+    active.set(OTHER_ESTABLISHMENT);
+    TestBed.tick();
     await vi.waitFor(() => expect(store.readiness()?.establishmentId).toBe(OTHER_ESTABLISHMENT.id));
     expect(savePolicy).not.toHaveBeenCalled();
   });
@@ -311,12 +330,16 @@ describe('PaymentMethodsStore', () => {
     store.setPolicyWindow('30');
     store.setPolicyEnabled(true);
     const firstSave = store.savePolicy();
-    store.setEstablishment(OTHER_ESTABLISHMENT.id);
+    active.set(OTHER_ESTABLISHMENT);
+    TestBed.tick();
     await vi.waitFor(() => expect(store.readiness()?.establishmentId).toBe(OTHER_ESTABLISHMENT.id));
+    expect(store.busy()).toBe(true);
     store.setPolicyCurrency('KWD');
     store.setPolicyDeposit('1.234');
     store.setPolicyWindow('15');
     store.setPolicyEnabled(false);
+    await store.savePolicy();
+    expect(savePolicy).toHaveBeenCalledTimes(1);
     pending.next({});
     pending.complete();
     await firstSave;
@@ -334,16 +357,107 @@ describe('PaymentMethodsStore', () => {
     });
   });
 
+  it('does not apply old readiness to an A-to-B-to-A policy save continuation', async () => {
+    getReadiness.mockImplementation(({ establishmentId }: { establishmentId: string }) =>
+      of({
+        establishmentId,
+        qrEnabled: true,
+        policy: null,
+        ready: false,
+        blockers: ['POLICY_MISSING'],
+      }),
+    );
+    setup();
+    await vi.waitFor(() => expect(store.readiness()).not.toBeNull());
+    const staleReadiness = new Subject<PaymentReadiness>();
+    getReadiness.mockImplementationOnce(() => staleReadiness.asObservable());
+    store.setPolicyCurrency('USD');
+    store.setPolicyDeposit('10.00');
+    store.setPolicyWindow('30');
+    store.setPolicyEnabled(true);
+    const saving = store.savePolicy();
+    await vi.waitFor(() => expect(getReadiness).toHaveBeenCalledTimes(2));
+
+    active.set(OTHER_ESTABLISHMENT);
+    TestBed.tick();
+    await vi.waitFor(() => expect(store.readiness()?.establishmentId).toBe(OTHER_ESTABLISHMENT.id));
+    active.set(ESTABLISHMENT);
+    TestBed.tick();
+    await vi.waitFor(() => expect(store.readiness()?.establishmentId).toBe(ESTABLISHMENT.id));
+    store.setPolicyCurrency('KWD');
+    store.setPolicyDeposit('1.234');
+    store.setPolicyWindow('15');
+    store.setPolicyEnabled(true);
+
+    staleReadiness.next({
+      establishmentId: ESTABLISHMENT.id,
+      qrEnabled: true,
+      policy: {
+        enabled: true,
+        currency: 'USD',
+        depositAmount: '10.00',
+        totalAmount: null,
+        paymentWindowMinutes: 30,
+      },
+      ready: true,
+      blockers: [],
+    });
+    staleReadiness.complete();
+    await saving;
+    expect(store.policySuccess()).toBeNull();
+    expect(store.dirty()).toBe(true);
+    expect(store.busy()).toBe(false);
+  });
+
+  it('initializes the new active configuration while a previous scope write is pending', async () => {
+    getReadiness.mockImplementation(({ establishmentId }: { establishmentId: string }) =>
+      of({
+        establishmentId,
+        qrEnabled: true,
+        policy: null,
+        ready: false,
+        blockers: ['POLICY_MISSING'],
+      }),
+    );
+    setup();
+    await vi.waitFor(() => expect(store.selectedConfiguration()?.id).toBe(CONFIGURATION.id));
+    const pending = new Subject<MockQrConfiguration>();
+    updateConfiguration.mockImplementationOnce(() => pending.asObservable());
+    const writing = store.toggle(store.configurations()[0]!);
+
+    const configurationB: MockQrConfiguration = {
+      ...CONFIGURATION,
+      id: '77777777-7777-4777-8777-777777777777',
+      establishmentId: OTHER_ESTABLISHMENT.id,
+      simulationToken: '88888888-8888-4888-8888-888888888888',
+      simulationPath: '/simulacion/qr/88888888-8888-4888-8888-888888888888',
+    };
+    configurations.splice(0, configurations.length, configurationB);
+    active.set(OTHER_ESTABLISHMENT);
+    TestBed.tick();
+    await vi.waitFor(() => expect(store.selectedConfiguration()?.id).toBe(configurationB.id));
+    await vi.waitFor(() => expect(store.readiness()?.establishmentId).toBe(OTHER_ESTABLISHMENT.id));
+    await vi.waitFor(() => expect(store.qrUrl()).toContain(configurationB.simulationToken));
+    expect(store.busy()).toBe(true);
+
+    pending.next(CONFIGURATION);
+    pending.complete();
+    await writing;
+    expect(store.configurations()).toEqual([configurationB]);
+    expect(store.selectedConfiguration()?.id).toBe(configurationB.id);
+    expect(store.busy()).toBe(false);
+  });
+
   it('never offers policy writes to manager or platform role', async () => {
     user.set({ ...USER, role: 'MANAGER' });
     setup();
-    await vi.waitFor(() => expect(store.configurations()).toHaveLength(1));
+    await vi.waitFor(() => expect(store.configurations()).toEqual([]));
     expect(getReadiness).not.toHaveBeenCalled();
     await store.savePolicy();
     expect(savePolicy).not.toHaveBeenCalled();
   });
 
-  it('carga establecimientos accesibles, países y configuraciones persistidas', async () => {
+  it('carga países y configuraciones persistidas únicamente para el activo', async () => {
     setup();
     await vi.waitFor(() => expect(store.configurations()).toHaveLength(1));
 
@@ -363,25 +477,23 @@ describe('PaymentMethodsStore', () => {
     );
   });
 
-  it('rechaza texto libre o identificadores que no pertenecen al catálogo del tenant', async () => {
+  it('mantiene validación de país y campos al guardar una configuración del activo', async () => {
     setup();
     await vi.waitFor(() => expect(store.countries()).toHaveLength(2));
 
     store.startNew();
-    store.setEstablishment('Centro');
     store.setCountry('BO');
     store.setBankName('Banco de prueba');
     store.setAccountHolder('Titular de prueba');
     store.setAccountReference('Referencia');
-    expect(store.canSave()).toBe(false);
+    expect(store.canSave()).toBe(true);
     await store.save();
-    expect(createConfiguration).not.toHaveBeenCalled();
+    expect(createConfiguration).toHaveBeenCalledTimes(1);
 
-    store.setEstablishment(ESTABLISHMENT.id);
     store.setCountry('XX');
     expect(store.canSave()).toBe(false);
     await store.save();
-    expect(createConfiguration).not.toHaveBeenCalled();
+    expect(createConfiguration).toHaveBeenCalledTimes(1);
 
     store.setCountry('BO');
     expect(store.canSave()).toBe(true);
@@ -390,8 +502,10 @@ describe('PaymentMethodsStore', () => {
   it('guarda una configuración nueva con establecimiento real y código ISO', async () => {
     setup();
     await vi.waitFor(() => expect(store.configurations()).toHaveLength(1));
+    active.set(OTHER_ESTABLISHMENT);
+    TestBed.tick();
+    await vi.waitFor(() => expect(store.configurations()).toEqual([]));
     store.startNew();
-    store.setEstablishment(OTHER_ESTABLISHMENT.id);
     store.setCountry('PE');
     store.setBankName(' Banco de prueba ');
     store.setAccountHolder(' Titular ');
@@ -410,7 +524,7 @@ describe('PaymentMethodsStore', () => {
         enabled: false,
       },
     });
-    expect(store.configurations()).toHaveLength(2);
+    expect(store.configurations()).toHaveLength(1);
     expect(store.success()).toBe(STRINGS.paymentMethods.success);
     expect(store.error()).toBeNull();
   });
@@ -419,7 +533,6 @@ describe('PaymentMethodsStore', () => {
     setup();
     await vi.waitFor(() => expect(store.configurations()).toHaveLength(1));
     store.startNew();
-    store.setEstablishment(ESTABLISHMENT.id);
     store.setCountry('BO');
     store.setBankName(' ');
 
@@ -493,6 +606,85 @@ describe('PaymentMethodsStore', () => {
     TestBed.resetTestingModule();
     setup('development', unavailable);
     await vi.waitFor(() => expect(store.error()).toBe(STRINGS.paymentMethods.unavailable));
+  });
+
+  it('waits for the global context and filters configurations before choosing one', async () => {
+    contextStatus.set('loading');
+    configurations.push({
+      ...CONFIGURATION,
+      id: 'foreign',
+      establishmentId: OTHER_ESTABLISHMENT.id,
+    });
+    setup();
+    expect(listConfigurations).not.toHaveBeenCalled();
+
+    contextStatus.set('ready');
+    TestBed.tick();
+    await vi.waitFor(() => expect(store.configurations()).toHaveLength(1));
+    expect(store.selectedConfiguration()?.establishmentId).toBe(ESTABLISHMENT.id);
+    expect(store.draft().establishmentId).toBe(ESTABLISHMENT.id);
+  });
+
+  it('starts an active-scoped new draft when the active establishment has no configuration', async () => {
+    configurations.splice(0, configurations.length);
+    setup();
+    await vi.waitFor(() => expect(store.loading()).toBe(false));
+    expect(store.configurations()).toEqual([]);
+    expect(store.draft().establishmentId).toBe(ESTABLISHMENT.id);
+    expect(store.editingId()).toBeNull();
+  });
+
+  it('reloads readiness when starting a new configuration from the UI', async () => {
+    setup();
+    await vi.waitFor(() => expect(store.readiness()).not.toBeNull());
+    store.startNew();
+    await vi.waitFor(() => expect(getReadiness).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(store.readiness()?.establishmentId).toBe(ESTABLISHMENT.id));
+    expect(store.draft().establishmentId).toBe(ESTABLISHMENT.id);
+    expect(store.dirty()).toBe(false);
+  });
+
+  it('rejects a foreign configuration and exposes QR/policy dirty and write busy state', async () => {
+    setup();
+    await vi.waitFor(() => expect(store.configurations()).toHaveLength(1));
+    expect(store.dirty()).toBe(false);
+    store.setBankName('edited');
+    expect(store.dirty()).toBe(true);
+    store.reset();
+    await vi.waitFor(() => expect(store.dirty()).toBe(false));
+
+    const foreign = { ...CONFIGURATION, id: 'foreign', establishmentId: OTHER_ESTABLISHMENT.id };
+    await store.selectConfiguration(foreign);
+    await store.toggle(foreign);
+    expect(regenerateConfiguration).not.toHaveBeenCalled();
+    expect(updateConfiguration).not.toHaveBeenCalled();
+
+    const pending = new Subject<MockQrConfiguration>();
+    createConfiguration.mockImplementationOnce(() => pending.asObservable());
+    store.startNew();
+    store.setCountry('BO');
+    store.setBankName('Banco');
+    store.setAccountHolder('Titular');
+    store.setAccountReference('cuenta');
+    const saving = store.save();
+    expect(store.busy()).toBe(true);
+    expect(store.dirty()).toBe(true);
+    await store.save();
+    expect(createConfiguration).toHaveBeenCalledTimes(1);
+    pending.next(
+      saved('55555555-5555-4555-8555-555555555555', {
+        establishmentId: ESTABLISHMENT.id,
+        country: 'BO',
+        bankName: 'Banco',
+        accountHolderName: 'Titular',
+        accountReference: 'cuenta',
+        enabled: true,
+      }),
+    );
+    pending.complete();
+    await saving;
+    expect(store.busy()).toBe(false);
+    expect(store.dirty()).toBe(false);
   });
 });
 

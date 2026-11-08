@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const RESERVATION_ID = '40000000-0000-0000-0000-000000000001';
 const ELEMENT_ID = '20000000-0000-0000-0000-000000000001';
@@ -86,7 +88,11 @@ test.describe('Reserva pública', () => {
     });
   });
 
-  test('registra una reserva anónima y muestra el código y espacio elegido', async ({ page }) => {
+  test('registra una reserva anónima y muestra el código y espacio elegido', async ({
+    page,
+  }, testInfo) => {
+    if (!testInfo.project.name.includes('mobile'))
+      await page.setViewportSize({ width: 1672, height: 941 });
     let payload: unknown;
     await page.route(`**${API_SCOPE}/reservations/${RESERVATION_ID}/checkout`, (route) => {
       expect(route.request().headers()['x-reservation-access']).toBe(ACCESS_TOKEN);
@@ -158,21 +164,51 @@ test.describe('Reserva pública', () => {
 
     await page.goto(BOOKING_URL);
     await expect(page.getByTestId('booking-descriptor')).toContainText('Mesa Terraza');
-    await expect(page.getByLabel('Nombre completo')).toHaveCount(0);
-    await page.getByTestId('booking-confirm').click();
+    await expect(page.getByLabel('Nombre completo')).toBeVisible();
+    expect(payload).toBeUndefined();
+    await page.getByTestId('booking-submit').click();
+    await expect(page.getByLabel('Nombre completo')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.getByLabel('Correo electrónico')).toHaveAttribute('aria-invalid', 'true');
+    expect(payload).toBeUndefined();
     await page.getByLabel('Nombre completo').fill('Ana Pérez');
     await page.getByLabel('Correo electrónico').fill('ana@example.com');
-    await page.getByLabel('Teléfono (opcional)').fill('+591 70000000');
-    await page.getByRole('button', { name: 'Crear reserva', exact: true }).click();
+    await page.getByLabel('Prefijo de país').selectOption('+591');
+    await page.getByLabel('Número de celular').fill('70000000');
+    await expect(page.getByTestId('booking-descriptor')).toContainText('Empresa de prueba');
+    await expect(page.getByTestId('booking-descriptor')).toContainText('Av. Principal 123');
+    await expect(page.getByTestId('booking-descriptor')).toContainText('2 horas');
+    const dimensions = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
+    const output = join(process.cwd(), 'screenshots', 'booking-confirmation-redesign');
+    await mkdir(output, { recursive: true });
+    await page.evaluate(async () => {
+      window.scrollTo(0, 0);
+      await document.fonts.ready;
+      await Promise.all(
+        document
+          .getAnimations()
+          .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+          .map((animation) => animation.finished.catch(() => undefined)),
+      );
+    });
+    await page.screenshot({
+      path: join(output, `${testInfo.project.name}.png`),
+      fullPage: testInfo.project.name.includes('mobile'),
+    });
+    await page.getByRole('button', { name: 'Confirmar reserva', exact: true }).click();
 
-    await expect(page.getByRole('heading', { name: 'Reserva registrada' })).toBeVisible();
+    await expect(page.getByTestId('checkout-page')).toBeVisible();
+    await expect(page).toHaveURL(new RegExp('/pago/demo/la-bahia/' + RESERVATION_ID));
     await expect(page.getByText(RESERVATION_ID)).toBeVisible();
-    await expect(page.getByTestId('booking-own-space')).toContainText('Mesa Terraza');
-    await expect(page.getByTestId('booking-own-space')).toContainText('Planta baja · Terraza');
+    await expect(page.getByTestId('checkout-summary')).toContainText('Mesa Terraza');
+    await expect(page.getByTestId('checkout-summary')).toContainText('Planta baja · Terraza');
     await expect(page.getByText(/19:00.*21:00/)).toBeVisible();
     await page.reload();
     await expect(page.getByText(RESERVATION_ID, { exact: true })).toBeVisible();
-    await expect(page.getByTestId('booking-own-space')).toContainText('Mesa Terraza');
+    await expect(page.getByTestId('checkout-summary')).toContainText('Mesa Terraza');
     await expect(page).not.toHaveURL(/login/);
     expect(payload).toMatchObject({
       date: DATE,
@@ -204,18 +240,18 @@ test.describe('Reserva pública', () => {
     );
 
     await page.goto(BOOKING_URL);
-    await page.getByTestId('booking-confirm').click();
     await page.getByLabel('Nombre completo').fill('Ana Pérez');
     await page.getByLabel('Correo electrónico').fill('ana@example.com');
-    await page.getByLabel('Teléfono (opcional)').fill('+591 70000000');
-    await page.getByRole('button', { name: 'Crear reserva', exact: true }).click();
+    await page.getByLabel('Número de celular').fill('+591 70000000');
+    await page.getByRole('button', { name: 'Confirmar reserva', exact: true }).click();
 
     await expect(page.getByTestId('booking-error')).toContainText('ya no está disponible');
-    await expect(page.getByTestId('booking-confirm')).toBeEnabled();
-    await page.getByTestId('booking-confirm').click();
+    await expect(page.getByTestId('booking-submit')).toBeEnabled();
     await expect(page.getByLabel('Nombre completo')).toHaveValue('Ana Pérez');
     await expect(page.getByLabel('Correo electrónico')).toHaveValue('ana@example.com');
-    await expect(page.getByLabel('Teléfono (opcional)')).toHaveValue('+591 70000000');
-    await expect(page.getByRole('button', { name: 'Crear reserva', exact: true })).toBeEnabled();
+    await expect(page.getByLabel('Número de celular')).toHaveValue('+591 70000000');
+    await expect(
+      page.getByRole('button', { name: 'Confirmar reserva', exact: true }),
+    ).toBeEnabled();
   });
 });

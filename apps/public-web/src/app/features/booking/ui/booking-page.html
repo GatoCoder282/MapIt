@@ -1,17 +1,9 @@
 <a class="skip-link" href="#booking-main">{{ strings.publicSpace.skipToContent }}</a>
-<mapit-ui-site-nav />
 <main id="booking-main" class="page" tabindex="-1">
   <div class="content">
-    <mp-public-establishment-identity [tenantSlug]="tenantSlug()" [establishmentSlug]="establishmentSlug()" />
-    <a
-      class="back"
-      [routerLink]="['/disponibilidad', tenantSlug(), establishmentSlug()]"
-      [queryParams]="{ date: store.date(), startTime: store.startTime(), endTime: store.endTime() }"
-      >{{ strings.booking.chooseAgain }}</a
-    >
     @if (store.step() === 'done') {
       <section class="success" aria-labelledby="booking-success-title">
-        <h1 id="booking-success-title">
+        <h1 id="booking-success-title" tabindex="-1">
           {{
             store.reservation() || store.ownReservation()
               ? strings.booking.successTitle
@@ -55,13 +47,12 @@
           >
         }
       </section>
+      <details class="venue-details">
+        <summary>{{ strings.availability.establishmentDetails }}</summary>
+        <mp-public-establishment-identity [tenantSlug]="tenantSlug()" [establishmentSlug]="establishmentSlug()" />
+      </details>
     } @else {
-      <header class="heading">
-        <h1 #heading tabindex="-1">
-          {{ store.step() === 'confirm' ? strings.booking.confirmTitle : strings.booking.title }}
-        </h1>
-        <p>{{ store.step() === 'confirm' ? strings.booking.confirmHelp : strings.booking.subtitle }}</p>
-      </header>
+      <mp-reservation-header [activeStep]="3" [autofocus]="true" />
       @if (store.errorMessage()) {
         <p class="notice notice--error" role="alert" data-testid="booking-error">
           {{ localizeString(store.errorMessage()) }}
@@ -69,111 +60,264 @@
       }
       @if (!store.intervalValid()) {
         <p class="notice" role="status">{{ strings.booking.intervalRequired }}</p>
+        <a class="secondary" [routerLink]="['/disponibilidad', tenantSlug(), establishmentSlug()]">{{
+          strings.booking.back
+        }}</a>
       } @else {
-        @if (store.descriptorStatus() === 'loading') {
-          <p role="status">{{ strings.booking.descriptorLoading }}</p>
-        }
-        @if (store.descriptor(); as space) {
-          <section class="selection-summary" data-testid="booking-descriptor" aria-labelledby="booking-space-heading">
-            <h2 id="booking-space-heading">{{ strings.booking.selectedSpace }}</h2>
-            <p>{{ store.establishmentName() }}</p>
-            <mp-public-space [space]="space" />
-            <p>
-              {{ formatDate(store.date()) }} · {{ store.startTime() }}–{{ store.endTime() }} · {{ store.timezone() }}
-            </p>
-          </section>
-        }
-        @if (store.descriptorStatus() === 'error') {
-          <p class="notice notice--error" role="alert">{{ strings.booking.descriptorError }}</p>
-        }
-        @if (store.descriptorStatus() === 'unavailable') {
-          <p class="notice" role="status">{{ strings.booking.errors.unavailable }}</p>
-        }
-        @if (store.step() === 'confirm') {
-          <button
-            class="primary"
-            type="button"
-            data-testid="booking-confirm"
-            [disabled]="!store.canConfirm()"
-            (click)="confirm()"
-          >
-            {{ strings.booking.confirm }}
-          </button>
-          @if (store.descriptorStatus() === 'error') {
-            <button class="back" type="button" data-testid="booking-check" (click)="store.resolve()">
-              {{ strings.availability.retry }}
-            </button>
-          }
-        } @else {
-          <button
-            class="back"
-            type="button"
-            data-testid="booking-details-back"
-            [disabled]="store.status() === 'submitting'"
-            (click)="store.review()"
-          >
-            {{ strings.booking.detailsBack }}
-          </button>
-          <form class="booking-form" (submit)="submit($event)" novalidate>
-            <fieldset [disabled]="store.status() === 'submitting'">
-              <legend>{{ strings.booking.customerTitle }}</legend>
-              <label for="booking-name">{{ strings.booking.fullNameLabel }}</label>
-              <input
-                id="booking-name"
-                name="name"
-                type="text"
-                autocomplete="name"
-                maxlength="120"
-                [value]="store.fullName()"
-                (input)="store.setFullName(value($event))"
-                [attr.aria-invalid]="store.fullNameError() ? 'true' : null"
-                [attr.aria-describedby]="store.fullNameError() ? 'booking-name-error' : null"
-              />
-              @if (store.fullNameError()) {
-                <p id="booking-name-error" class="field-error" role="alert">{{ store.fullNameError() }}</p>
-              }
-              <label for="booking-email">{{ strings.booking.emailLabel }}</label>
-              <input
-                id="booking-email"
-                name="email"
-                type="email"
-                autocomplete="email"
-                spellcheck="false"
-                maxlength="254"
-                [value]="store.email()"
-                (input)="store.setEmail(value($event))"
-                [attr.aria-invalid]="store.emailError() ? 'true' : null"
-                [attr.aria-describedby]="store.emailError() ? 'booking-email-error' : null"
-              />
-              @if (store.emailError()) {
-                <p id="booking-email-error" class="field-error" role="alert">{{ store.emailError() }}</p>
-              }
-              <label for="booking-phone">{{ strings.booking.phoneLabel }}</label>
-              <input
-                id="booking-phone"
-                name="phone"
-                type="tel"
-                autocomplete="tel"
-                maxlength="32"
-                [value]="store.phone()"
-                (input)="store.setPhone(value($event))"
-                [attr.aria-invalid]="store.phoneError() ? 'true' : null"
-                [attr.aria-describedby]="store.phoneError() ? 'booking-phone-error' : null"
-              />
-              @if (store.phoneError()) {
-                <p id="booking-phone-error" class="field-error" role="alert">{{ store.phoneError() }}</p>
-              }
-            </fieldset>
-            <button
-              class="primary"
-              type="submit"
-              [disabled]="store.status() === 'submitting'"
-              [attr.aria-busy]="store.status() === 'submitting'"
+        <form id="booking-form" class="booking-form" (submit)="submit($event)" novalidate>
+          <div class="confirmation-grid">
+            <section class="contact-card" aria-labelledby="contact-title">
+              <header class="card-heading">
+                <span class="icon-tile"><svg lucideUser aria-hidden="true"></svg></span>
+                <div>
+                  <h2 id="contact-title">{{ strings.booking.contactTitle }}</h2>
+                  <p>{{ strings.booking.contactIntro }}</p>
+                </div>
+              </header>
+              <fieldset [disabled]="store.status() === 'submitting' || !store.canConfirm()">
+                <legend class="sr-only">{{ strings.booking.customerTitle }}</legend>
+                <div class="field-group">
+                  <label for="booking-name"
+                    >{{ strings.booking.fullNameLabel }}
+                    <span class="field-note" aria-hidden="true">{{ strings.booking.required }}</span></label
+                  >
+                  <input
+                    id="booking-name"
+                    name="name"
+                    type="text"
+                    autocomplete="name"
+                    maxlength="120"
+                    required
+                    [value]="store.fullName()"
+                    (input)="store.setFullName(value($event))"
+                    [attr.aria-invalid]="store.fullNameError() ? 'true' : null"
+                    [attr.aria-describedby]="store.fullNameError() ? 'booking-name-error' : null"
+                  />
+                  @if (store.fullNameError()) {
+                    <p id="booking-name-error" class="field-error" role="alert">{{ store.fullNameError() }}</p>
+                  }
+                </div>
+                <div class="field-group">
+                  <label for="booking-email"
+                    >{{ strings.booking.emailLabel }}
+                    <span class="field-note" aria-hidden="true">{{ strings.booking.required }}</span></label
+                  >
+                  <input
+                    id="booking-email"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    spellcheck="false"
+                    maxlength="254"
+                    required
+                    [value]="store.email()"
+                    (input)="store.setEmail(value($event))"
+                    [attr.aria-invalid]="store.emailError() ? 'true' : null"
+                    [attr.aria-describedby]="store.emailError() ? 'booking-email-error' : null"
+                  />
+                  @if (store.emailError()) {
+                    <p id="booking-email-error" class="field-error" role="alert">{{ store.emailError() }}</p>
+                  }
+                </div>
+                <div class="field-group phone-field">
+                  <label for="booking-phone"
+                    >{{ strings.booking.phoneLabel }}
+                    <span class="optional-badge">{{ strings.booking.optional }}</span></label
+                  >
+                  <div class="phone-input">
+                    <select
+                      name="phoneCountry"
+                      autocomplete="tel-country-code"
+                      [attr.aria-label]="strings.booking.countryCode"
+                      [value]="store.phoneCountry()"
+                      (change)="store.setPhoneCountry(value($event))"
+                    >
+                      @for (prefix of store.phoneCountries; track prefix) {
+                        <option [value]="prefix">{{ prefix }}</option>
+                      }
+                    </select>
+                    <input
+                      id="booking-phone"
+                      name="phone"
+                      type="tel"
+                      autocomplete="tel-national"
+                      maxlength="32"
+                      [placeholder]="strings.booking.phonePlaceholder"
+                      [value]="store.phoneNumber()"
+                      (input)="store.setPhone(value($event))"
+                      [attr.aria-invalid]="store.phoneError() ? 'true' : null"
+                      [attr.aria-describedby]="
+                        store.phoneError() ? 'booking-phone-error booking-phone-hint' : 'booking-phone-hint'
+                      "
+                    />
+                  </div>
+                  <small id="booking-phone-hint">{{ strings.booking.phoneHint }}</small>
+                  @if (store.phoneError()) {
+                    <p id="booking-phone-error" class="field-error" role="alert">{{ store.phoneError() }}</p>
+                  }
+                </div>
+              </fieldset>
+            </section>
+            <section
+              class="reservation-summary"
+              data-testid="booking-descriptor"
+              aria-labelledby="booking-space-heading"
+              [attr.aria-busy]="store.descriptorStatus() === 'loading'"
             >
-              {{ store.status() === 'submitting' ? strings.booking.submitting : strings.booking.submit }}
-            </button>
-          </form>
-        }
+              <header class="card-heading">
+                <span class="icon-tile"><svg lucideCalendarDays aria-hidden="true"></svg></span>
+                <h2 id="booking-space-heading">{{ strings.booking.summaryTitle }}</h2>
+              </header>
+              <dl class="summary-section business-summary">
+                @if (store.venue(); as venue) {
+                  <div>
+                    <dt>{{ strings.venueIdentity.company }}</dt>
+                    <dd>{{ venue.tenantName }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ strings.venueIdentity.local }}</dt>
+                    <dd>{{ store.establishmentName() || venue.name }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ strings.booking.address }}</dt>
+                    <dd>{{ venue.address || strings.venueIdentity.missingAddress }}</dd>
+                  </div>
+                } @else {
+                  <div>
+                    <dt>{{ strings.venueIdentity.local }}</dt>
+                    <dd>{{ store.establishmentName() }}</dd>
+                  </div>
+                }
+              </dl>
+              @if (store.venueStatus() === 'error') {
+                <p class="metadata-notice" role="status">
+                  {{ strings.venueIdentity.error }}
+                  <button type="button" class="text-button" (click)="store.loadVenue()">
+                    {{ strings.venueIdentity.retry }}
+                  </button>
+                </p>
+              }
+              <dl class="summary-section">
+                <div>
+                  <dt>{{ strings.booking.dateLabel }}</dt>
+                  <dd class="summary-date">{{ formatDate(store.date()) }}</dd>
+                </div>
+                <div>
+                  <dt>{{ strings.booking.schedule }}</dt>
+                  <dd>
+                    {{ store.startTime() }} – {{ store.endTime() }}
+                    <a
+                      class="edit-link"
+                      [routerLink]="
+                        store.status() === 'submitting' ? null : ['/disponibilidad', tenantSlug(), establishmentSlug()]
+                      "
+                      [queryParams]="{ date: store.date(), startTime: store.startTime(), endTime: store.endTime() }"
+                      [attr.aria-disabled]="store.status() === 'submitting' ? 'true' : null"
+                      [class.link-disabled]="store.status() === 'submitting'"
+                      ><svg lucidePencil aria-hidden="true"></svg>{{ strings.booking.editTime }}</a
+                    >
+                  </dd>
+                </div>
+                <div>
+                  <dt>{{ strings.booking.duration }}</dt>
+                  <dd>{{ store.duration() }}</dd>
+                </div>
+              </dl>
+              @if (store.descriptor(); as space) {
+                <dl class="summary-section space-summary">
+                  <div>
+                    <dt>{{ strings.booking.selectedSpace }}</dt>
+                    <dd>
+                      {{ space.name }}
+                      <a
+                        class="edit-link"
+                        [routerLink]="
+                          store.status() === 'submitting'
+                            ? null
+                            : ['/elegir-espacio', tenantSlug(), establishmentSlug()]
+                        "
+                        [queryParams]="{
+                          date: store.date(),
+                          startTime: store.startTime(),
+                          endTime: store.endTime(),
+                          elementId: elementId(),
+                        }"
+                        [attr.aria-disabled]="store.status() === 'submitting' ? 'true' : null"
+                        [class.link-disabled]="store.status() === 'submitting'"
+                        ><svg lucidePencil aria-hidden="true"></svg>{{ strings.booking.editSpace }}</a
+                      >
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{{ strings.availability.floor }}</dt>
+                    <dd>{{ space.floor }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ strings.availability.sector }}</dt>
+                    <dd>{{ space.sector }}</dd>
+                  </div>
+                  @if (space.capacity !== null && space.capacity !== undefined) {
+                    <div>
+                      <dt>{{ strings.publicSpace.capacity }}</dt>
+                      <dd>{{ space.capacity }}</dd>
+                    </div>
+                  }
+                </dl>
+              }
+              @if (store.descriptorStatus() === 'loading') {
+                <p class="notice" role="status">{{ strings.booking.descriptorLoading }}</p>
+              }
+              @if (store.descriptorStatus() === 'error') {
+                <p class="notice notice--error" role="alert">{{ strings.booking.descriptorError }}</p>
+                <button class="secondary" type="button" data-testid="booking-check" (click)="store.resolve()">
+                  {{ strings.availability.retry }}
+                </button>
+              }
+              @if (store.descriptorStatus() === 'unavailable') {
+                <p class="notice notice--error" role="alert">{{ strings.booking.errors.unavailable }}</p>
+              }
+            </section>
+          </div>
+          <footer class="confirmation-actions">
+            <div class="ready-copy">
+              <svg lucideCheckCircle2 aria-hidden="true"></svg>
+              <div>
+                <h2>
+                  {{
+                    store.status() === 'submitting'
+                      ? strings.booking.submitting
+                      : store.canConfirm()
+                        ? strings.booking.readyTitle
+                        : store.descriptorStatus() === 'unavailable'
+                          ? strings.booking.errors.unavailable
+                          : strings.booking.descriptorLoading
+                  }}
+                </h2>
+                <p>{{ strings.booking.readyHint }}</p>
+              </div>
+            </div>
+            <div class="action-buttons">
+              <button
+                type="button"
+                class="secondary"
+                data-testid="booking-back"
+                [disabled]="store.status() === 'submitting'"
+                (click)="back()"
+              >
+                {{ strings.booking.goBack }}</button
+              ><button
+                class="primary"
+                type="submit"
+                data-testid="booking-submit"
+                [disabled]="store.status() === 'submitting' || !store.canConfirm()"
+                [attr.aria-busy]="store.status() === 'submitting'"
+              >
+                {{ store.status() === 'submitting' ? strings.booking.submitting : strings.booking.submit
+                }}<svg lucideArrowRight aria-hidden="true"></svg>
+              </button>
+            </div>
+          </footer>
+        </form>
       }
     }
   </div>

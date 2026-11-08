@@ -1,12 +1,8 @@
 <div class="payment-shell" data-testid="checkout-page">
   <header class="payment-header">
-    <a class="wordmark" routerLink="/">{{ strings.brand }}<span aria-hidden="true">.</span></a>
     <a class="text-link" routerLink="/reservas"><svg lucideArrowLeft aria-hidden="true"></svg>{{ strings.back }}</a>
   </header>
   <main class="payment-content">
-    @if (!store.previewEnabled()) {
-      <mp-public-establishment-identity [tenantSlug]="tenantSlug()" [establishmentSlug]="establishmentSlug()" />
-    }
     @if (store.previewEnabled()) {
       <div class="preview-banner" data-testid="preview-banner">
         <strong>{{ strings.simulation }}</strong
@@ -28,10 +24,12 @@
         </select>
       </div>
     }
-    <div class="page-heading">
-      <h1>{{ strings.title }}</h1>
-      <p>{{ strings.intro }}</p>
-    </div>
+    @if (store.pageStatus() !== 'loaded') {
+      <div class="page-heading">
+        <h1>{{ strings.title }}</h1>
+        <p>{{ strings.intro }}</p>
+      </div>
+    }
     @switch (store.pageStatus()) {
       @case ('loading') {
         <section class="empty-panel" aria-live="polite" aria-busy="true">
@@ -60,62 +58,43 @@
       }
       @case ('loaded') {
         @if (store.reservation(); as reservation) {
-          <div class="checkout-grid">
-            <aside class="reservation-summary" aria-labelledby="summary-heading">
-              <h2 id="summary-heading">{{ strings.summary }}</h2>
-              <h3 class="venue-name">{{ reservation.establishmentName }}</h3>
-              <dl class="reservation-facts">
-                <div>
-                  <dt>{{ strings.date }}</dt>
-                  <dd>{{ store.date() }}</dd>
-                </div>
-                <div>
-                  <dt>{{ strings.time }}</dt>
-                  <dd>{{ store.time() }} · {{ reservation.timezone }}</dd>
-                </div>
-                <div>
-                  <dt>{{ strings.spaces }}</dt>
-                  <dd>
-                    @for (space of reservation.spaces; track space.id) {
-                      <mp-public-space [space]="space" [peers]="reservation.spaces" />
-                    }
-                  </dd>
-                </div>
-                @if (store.expiry()) {
-                  <div>
-                    <dt>{{ strings.expiresAt }}</dt>
-                    <dd data-testid="payment-expiry">{{ store.expiry() }} · {{ reservation.timezone }}</dd>
-                  </div>
-                }
-              </dl>
-              <div class="amount-section">
-                @if (store.total()) {
-                  <div class="amount-row">
-                    <span>{{ strings.total }}</span
-                    ><strong>{{ store.total() }}</strong>
-                  </div>
-                }
-                <div class="deposit-row">
-                  <span>{{ strings.deposit }}</span
-                  ><strong>{{ store.deposit() }}</strong>
-                </div>
-                <p>{{ store.data()?.currency }} · {{ store.total() ? strings.amountNote : strings.unknownTotal }}</p>
-              </div>
-              <dl class="reference-list">
-                @if (store.payment(); as payment) {
-                  <div>
-                    <dt>{{ strings.paymentReference }}</dt>
-                    <dd>{{ payment.externalReference }}</dd>
-                  </div>
-                }
-                <div>
-                  <dt>{{ strings.reservationReference }}</dt>
-                  <dd>{{ reservation.id }}</dd>
-                </div>
-              </dl>
-            </aside>
+          <div class="checkout-grid" [class.qr-checkout]="store.qrPending()">
             <section class="checkout-main" aria-labelledby="method-heading">
-              @if (store.unavailableMessage(); as message) {
+              <div class="venue-identity">
+                <span class="venue-icon"><svg lucideStore aria-hidden="true"></svg></span>
+                <div>
+                  <h2>{{ store.venue()?.tenantName || reservation.establishmentName }}</h2>
+                  <p><svg lucideMapPin aria-hidden="true"></svg>{{ reservation.establishmentName }}</p>
+                </div>
+              </div>
+              <div class="page-heading">
+                <h1>
+                  {{ strings.titleLead }} <span>{{ strings.titleAccent }}</span>
+                </h1>
+                <p>{{ strings.intro }}</p>
+              </div>
+              <ol class="payment-steps">
+                @for (step of strings.checkoutSteps; track $index) {
+                  <li
+                    [class.current]="store.checkoutStep() === $index + 1"
+                    [class.complete]="store.checkoutStep() > $index + 1"
+                    [attr.aria-current]="store.checkoutStep() === $index + 1 ? 'step' : null"
+                  >
+                    <span class="step-number">
+                      @if (store.checkoutStep() > $index + 1) {
+                        <svg lucideCheck aria-hidden="true"></svg>
+                      } @else {
+                        {{ $index + 1 }}
+                      }</span
+                    ><span>{{ step }}</span>
+                  </li>
+                }
+              </ol>
+              @if (
+                !(store.qrPending() && store.data()?.unavailableReason === 'PAYMENT_PENDING') &&
+                  store.unavailableMessage();
+                as message
+              ) {
                 <p class="muted" role="status">{{ message }}</p>
               }
               @if (store.actionError(); as actionError) {
@@ -125,52 +104,39 @@
               <p class="muted section-intro">{{ strings.methodHelp }}</p>
               <fieldset class="method-options">
                 <legend class="sr-only">{{ strings.paymentMethod }}</legend>
-                @for (method of store.methods(); track method.id) {
-                  <label class="method-option" [class.selected]="store.selectedMethodId() === method.id">
+                @for (method of store.displayedMethods(); track method.id) {
+                  <label
+                    class="method-option"
+                    [class.selected]="store.qrPending() || store.selectedMethodId() === method.id"
+                  >
                     <input
                       type="radio"
                       name="payment-method"
                       [value]="method.id"
-                      [checked]="store.selectedMethodId() === method.id"
+                      [checked]="store.qrPending() || store.selectedMethodId() === method.id"
                       [disabled]="!store.canChooseMethod()"
                       [attr.data-testid]="method.provider === 'MOCK_GATEWAY' ? 'method-mock' : 'method-static'"
                       (change)="store.chooseMethod(method.id)"
                     />
-                    @if (method.provider === 'MOCK_GATEWAY') {
-                      <svg lucideCreditCard aria-hidden="true"></svg>
-                    } @else {
-                      <svg lucideQrCode aria-hidden="true"></svg>
-                    }
+                    <svg lucideQrCode aria-hidden="true"></svg>
                     <span
                       >{{ method.displayName
-                      }}<small>{{
+                      }}<small [class.sr-only]="store.qrPending()">{{
                         method.provider === 'MOCK_GATEWAY'
-                          ? strings.simulation
+                          ? strings.simulationMethod
                           : strings.scenarios.PENDING_MANUAL_VERIFICATION
                       }}</small></span
                     >
-                    @if (store.selectedMethodId() === method.id) {
+                    @if (store.qrPending() || store.selectedMethodId() === method.id) {
                       <svg class="selected-check" lucideCheck aria-hidden="true"></svg>
                     }
                   </label>
                 }
               </fieldset>
-              @if (store.selectedMethod(); as method) {
-                <div class="method-explanation">
-                  @if (method.provider === 'STATIC_BANK_QR') {
-                    <p>{{ strings.manualNote }}</p>
-                    @if (method.staticQrImage; as bankQr) {
-                      <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- Imagen bancaria local en data URI. -->
-                      <img class="bank-qr" [src]="bankQr" [alt]="strings.bankQrAlt" width="224" height="224" />
-                    } @else {
-                      <p class="bank-empty"><svg lucideQrCode aria-hidden="true"></svg>{{ strings.noBankQr }}</p>
-                    }
-                  } @else {
-                    <p>{{ strings.mockNote }}</p>
-                  }
-                </div>
+              @if (!store.qrPending() && store.selectedMethod()?.provider === 'STATIC_BANK_QR') {
+                <p class="method-explanation">{{ strings.manualNote }}</p>
               }
-              @if (store.historicalAttempt(); as attemptMethod) {
+              @if (!store.qrPending() && store.historicalAttempt(); as attemptMethod) {
                 <p class="muted" data-testid="historical-method">
                   {{ strings.historicalMethodLabel }}: {{ attemptMethod.displayName }}
                 </p>
@@ -193,24 +159,62 @@
                   @if (store.payment()?.status === 'CONFIRMED') {
                     <svg lucideCheck aria-hidden="true"></svg>
                   } @else {
-                    <svg lucideClock3 aria-hidden="true"></svg>
+                    <svg lucideInfo aria-hidden="true"></svg>
                   }
                 </div>
                 <div>
-                  <span class="meta-label">{{ strings.status }}</span>
-                  <h3>{{ store.statusLabel() }}</h3>
-                  <p>{{ store.statusDetail() }}</p>
+                  <span class="meta-label" [class.sr-only]="store.qrPending()">{{ strings.status }}</span>
+                  <h3>{{ store.qrPending() ? strings.paymentInstructions : store.statusLabel() }}</h3>
+                  <p>
+                    {{
+                      store.qrPending()
+                        ? store.payment()?.provider === 'STATIC_BANK_QR'
+                          ? strings.bankQrInstructions
+                          : strings.attemptQrHelp
+                        : store.statusDetail()
+                    }}
+                  </p>
                 </div>
               </section>
-              @if (store.payment()?.provider === 'MOCK_GATEWAY') {
-                <p class="preview-banner" role="note">{{ strings.mockNotice }}</p>
-              }
-              @if (store.simulationLink(); as attemptLink) {
-                <section class="attempt-panel" aria-labelledby="attempt-qr-heading">
-                  <h2 id="attempt-qr-heading">{{ strings.attemptQrTitle }}</h2>
-                  <mp-payment-qr data-testid="attempt-qr" [url]="attemptLink" [label]="strings.attemptQrAlt" />
-                  <p class="muted">{{ strings.attemptQrHelp }}</p>
+
+              @if (store.qrPending()) {
+                <section class="attempt-panel" aria-labelledby="attempt-qr-heading" data-testid="payment-qr-panel">
+                  <h2 id="attempt-qr-heading">
+                    <span class="qr-title-icon"><svg lucideScanLine aria-hidden="true"></svg></span
+                    >{{ store.bankQr() ? strings.scanBankQr : strings.attemptQrTitle }}
+                  </h2>
+                  <div class="payment-qr-code">
+                    @if (store.bankQr(); as bankQr) {
+                      <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- QR bancario local en data URI. -->
+                      <img
+                        class="bank-qr"
+                        data-testid="bank-payment-qr"
+                        [src]="bankQr"
+                        [alt]="strings.bankQrAlt"
+                        width="224"
+                        height="224"
+                      />
+                    } @else if (store.simulationLink(); as attemptLink) {
+                      <mp-payment-qr data-testid="attempt-qr" [url]="attemptLink" [label]="strings.attemptQrAlt" />
+                    } @else {
+                      <p role="status">{{ strings.noBankQr }}</p>
+                    }
+                  </div>
+                  <p class="muted">
+                    {{ store.payment()?.provider === 'STATIC_BANK_QR' ? strings.bankQrHelp : strings.mockNotice }}
+                  </p>
                 </section>
+                <button
+                  type="button"
+                  class="button primary verify-payment"
+                  data-testid="verify-payment"
+                  (click)="store.reconnect()"
+                  [disabled]="store.refreshing()"
+                  [attr.aria-busy]="store.refreshing()"
+                >
+                  <svg lucideCheckCircle2 aria-hidden="true"></svg
+                  >{{ store.refreshing() ? strings.refreshing : strings.verifyPayment }}
+                </button>
               }
               @if (store.receiptPath(); as path) {
                 <a
@@ -227,7 +231,7 @@
                   {{ strings.receiptRetry }}
                 </button>
               } @else if (store.simulationLink(); as simulationLink) {
-                <a class="button primary" data-testid="payment-simulation-link" [href]="simulationLink">{{
+                <a class="simulation-link" data-testid="payment-simulation-link" [href]="simulationLink">{{
                   strings.simulateCta
                 }}</a>
               } @else if (
@@ -256,12 +260,13 @@
                   [disabled]="store.busy()"
                   (click)="store.startPayment()"
                 >
-                  {{ strings.startPayment }}
+                  <svg lucideCreditCard aria-hidden="true"></svg>{{ strings.startPayment }}
                 </button>
               }
               @if (store.busy()) {
                 <p role="status">{{ strings.working }}</p>
               }
+
               <div class="connection-row">
                 <span role="status"
                   ><svg lucideWifi aria-hidden="true"></svg
@@ -288,6 +293,90 @@
                 }
               </details>
             </section>
+            <aside class="reservation-summary" aria-labelledby="summary-heading" data-testid="checkout-summary">
+              <div class="summary-cover">
+                <span class="cover-wordmark">{{ strings.brand }}</span>
+                <h2 id="summary-heading"><svg lucideCalendarDays aria-hidden="true"></svg>{{ strings.summary }}</h2>
+              </div>
+              <div class="summary-body">
+                <dl class="reservation-facts">
+                  <div>
+                    <dt><svg lucideCalendarDays aria-hidden="true"></svg>{{ strings.date }}</dt>
+                    <dd>{{ store.date() }}</dd>
+                  </div>
+                  <div>
+                    <dt><svg lucideClock3 aria-hidden="true"></svg>{{ strings.time }}</dt>
+                    <dd>
+                      {{ store.time() }} <span class="timezone">· {{ reservation.timezone }}</span>
+                    </dd>
+                  </div>
+                  <div class="space-fact">
+                    <dt><svg lucideArmchair aria-hidden="true"></svg>{{ strings.spaces }}</dt>
+                    <dd>
+                      @for (space of reservation.spaces; track space.id) {
+                        <mp-public-space [space]="space" [peers]="reservation.spaces" />
+                      }
+                    </dd>
+                  </div>
+                  @if (store.expiry()) {
+                    <div>
+                      <dt><svg lucideClock3 aria-hidden="true"></svg>{{ strings.expiresAt }}</dt>
+                      <dd data-testid="payment-expiry">{{ store.expiry() }} · {{ reservation.timezone }}</dd>
+                    </div>
+                  }
+                </dl>
+                <div class="amount-section">
+                  @if (store.total()) {
+                    <div class="amount-row">
+                      <span>{{ strings.total }}</span
+                      ><strong>{{ store.total() }}</strong>
+                    </div>
+                  }
+                  <div class="deposit-row">
+                    <span>{{ strings.deposit }}</span
+                    ><strong data-testid="payment-amount">{{ store.deposit() || '—' }}</strong>
+                  </div>
+                  @if (store.deposit()) {
+                    <div class="amount-note">
+                      <svg lucideInfo aria-hidden="true"></svg>
+                      <div>
+                        <strong>{{ strings.important }}</strong>
+                        <p>{{ store.total() ? strings.amountNote : strings.unknownTotal }}</p>
+                      </div>
+                    </div>
+                  }
+                </div>
+                <dl class="reference-list">
+                  @if (store.payment(); as payment) {
+                    <div>
+                      <dt>{{ strings.paymentReference }}</dt>
+                      <dd>{{ payment.externalReference }}</dd>
+                    </div>
+                  }
+                  <div class="reservation-reference">
+                    <dt>{{ strings.reservationReference }}</dt>
+                    <dd>{{ reservation.id }}</dd>
+                    <button
+                      type="button"
+                      class="copy-button"
+                      [attr.aria-label]="strings.copyReference"
+                      (click)="copyReference()"
+                    >
+                      <svg lucideCopy aria-hidden="true"></svg>
+                    </button>
+                  </div>
+                </dl>
+                <p class="copy-feedback" role="status">
+                  {{
+                    copyStatus() === 'copied'
+                      ? strings.referenceCopied
+                      : copyStatus() === 'error'
+                        ? strings.copyError
+                        : ''
+                  }}
+                </p>
+              </div>
+            </aside>
           </div>
         }
       }

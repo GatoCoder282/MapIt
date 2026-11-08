@@ -81,9 +81,34 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     page,
     request,
   }) => {
-    // 1. Login del staff por la UI (la consola exige JWT). Patrón del repo:
-    // hasta 3 intentos; el servidor recién activado a veces rechaza el primero.
+    // 1. Datos por API con el token DEL TENANT NUEVO (las rutas spaces van por
+    // claim JWT; un request sin token caería en el tenant demo y la UI no lo vería).
+    const loginApi = await request.post(`${API}/auth/login`, {
+      data: { tenantSlug: slug, email, password },
+    });
+    expect(loginApi.ok()).toBeTruthy();
+    const session = (await loginApi.json()) as {
+      accessToken: string;
+      user: { id: string; tenantId: string };
+    };
+    const { accessToken } = session;
+    const asTenant = { headers: { Authorization: `Bearer ${accessToken}` } };
+
+    const est = await request.post(`${API}/establishments`, {
+      ...asTenant,
+      data: { name: `Sede E2E ${run}`, type: 'RESTAURANT', slug },
+    });
+    expect(est.status()).toBe(201);
+    const estBody = (await est.json()) as { id: string };
+
+    // 2. Login real por UI con la sede creada y autorizada para este usuario.
     await page.goto(`/empresa/${slug}/login`);
+    await page.evaluate(
+      ({ tenantId, userId, establishmentId }) => {
+        localStorage.setItem(`mapit.establishment.${tenantId}.${userId}`, establishmentId);
+      },
+      { tenantId: session.user.tenantId, userId: session.user.id, establishmentId: estBody.id },
+    );
     await expect(page.getByRole('button', { name: /iniciar sesi/i })).toBeVisible();
     for (let attempt = 0; attempt < 3; attempt++) {
       await page.getByLabel(/correo electr/i).fill(email);
@@ -97,21 +122,7 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     }
     await expect(page).toHaveURL(/\/home/);
 
-    // 2. Datos por API con el token DEL TENANT NUEVO (las rutas spaces van por
-    // claim JWT; un request sin token caería en el tenant demo y la UI no lo vería).
-    const loginApi = await request.post(`${API}/auth/login`, {
-      data: { tenantSlug: slug, email, password },
-    });
-    expect(loginApi.ok()).toBeTruthy();
-    const { accessToken } = (await loginApi.json()) as { accessToken: string };
-    const asTenant = { headers: { Authorization: `Bearer ${accessToken}` } };
-
-    const est = await request.post(`${API}/establishments`, {
-      ...asTenant,
-      data: { name: `Sede E2E ${run}`, type: 'RESTAURANT', slug },
-    });
-    expect(est.status()).toBe(201);
-    const estBody = (await est.json()) as { id: string };
+    // 3. Seed floors and sectors.
     const floors = await request.get(`${API}/establishments/${estBody.id}/floors`, asTenant);
     const floorList = (await floors.json()) as FloorListItem[];
     let floorId = floorList[0]?.id;

@@ -1,78 +1,70 @@
 :host {
   display: block;
-  background: #f9faff;
 }
-
 .inner {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 0 24px 64px;
+  max-width: calc(var(--reservas-width) + 32px);
+  margin: auto;
+  padding: 0 24px 20px;
 }
-
 .banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  flex-wrap: wrap;
-  padding: 40px 48px;
-  border-radius: 20px;
-  background:
-    radial-gradient(420px 260px at 80% 20%, rgb(255 255 255 / 0.12), transparent 60%),
-    linear-gradient(100deg, #1d4ed8 0%, #1e3a8a 100%);
-  color: #ffffff;
-
-  @media (max-width: 720px) {
-    padding: 32px 24px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  padding: 32px 60px;
+  border-radius: 36px;
+  background: linear-gradient(115deg, var(--mapit-color-primary), var(--mapit-color-primary-hover));
+  color: var(--mapit-color-on-primary);
 }
-
 h2 {
-  margin: 0 0 6px;
-  font-family: var(--mapit-font-display);
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  margin: 0 0 8px;
+  font: 800 clamp(25px, 2.6vw, 32px)/1.2 var(--mapit-font-display);
+  letter-spacing: -0.03em;
 }
-
 .cta-subtitle {
   margin: 0;
-  font-size: 14px;
-  color: rgb(255 255 255 / 0.82);
+  font-size: 15px;
+  line-height: 1.5;
 }
-
 .cta-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 24px;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #1d4ed8;
-  font-size: 14px;
-  font-weight: 600;
+  justify-content: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 14px 28px;
+  border-radius: 99px;
+  background: var(--mapit-color-surface);
+  color: var(--mapit-color-text);
   text-decoration: none;
+  font-size: 14px;
+  font-weight: 750;
   white-space: nowrap;
-  transition:
-    transform var(--mapit-duration-fast) var(--mapit-ease-out),
-    box-shadow var(--mapit-duration-fast) var(--mapit-ease-out);
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgb(0 0 0 / 0.2);
-  }
-
-  &:focus-visible {
-    outline: 2px solid #ffffff;
-    outline-offset: 3px;
+}
+.cta-btn:hover {
+  background: var(--mapit-color-primary-container);
+}
+.cta-btn:focus-visible {
+  outline: 2px solid var(--mapit-color-on-primary);
+  outline-offset: 4px;
+}
+@media (max-width: 850px) {
+  .banner {
+    padding: 30px;
+    flex-wrap: wrap;
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
+@media (max-width: 480px) {
+  .inner {
+    padding-inline: 20px;
+  }
+  .banner {
+    border-radius: var(--reservas-radius);
+    padding: 28px 24px;
+  }
   .cta-btn {
-    transition: none;
+    width: 100%;
+    font-size: 12px;
+    padding-inline: 14px;
   }
 }

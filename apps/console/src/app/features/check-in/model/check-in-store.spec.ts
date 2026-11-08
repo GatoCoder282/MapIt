@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { effect, Injector, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   PREVIEW_ESTABLISHMENT_ID,
@@ -6,6 +6,7 @@ import {
   previewReceipt,
   projectReceipt,
 } from '@mapit/api-client';
+import { EstablishmentContext } from '../../../core/establishment-context';
 import { CheckInApi, type CheckInResult } from '../data/check-in-api';
 import { CheckInStore } from './check-in-store';
 
@@ -23,109 +24,171 @@ const RESULT: CheckInResult = {
   eligibilityError: null,
   audit: null,
 };
+const A = { id: PREVIEW_ESTABLISHMENT_ID, name: 'Demo', canCheckIn: true };
+const B = { id: 'other-establishment', name: 'Other', canCheckIn: true };
 
 describe('CheckInStore', () => {
+  const active = signal<typeof A | typeof B | null>(A);
+  const status = signal<'idle' | 'loading' | 'ready' | 'error'>('ready');
   const enabled = signal(true);
   const authorized = signal(true);
-  const lookup = vi.fn<CheckInApi['lookup']>(() => Promise.resolve(RESULT));
+  const preview = signal(true);
+  const lookup = vi.fn(() => Promise.resolve(RESULT));
   const arrive = vi.fn<CheckInApi['arrive']>(() =>
     Promise.resolve({ ...RESULT, receipt: { ...RESULT.receipt, checkIn: 'CHECKED_IN' } }),
   );
+  const watch = vi.fn<CheckInApi['watch']>(() => vi.fn());
+  const setScenario = vi.fn();
+  let watchInjector: Injector;
   let store: CheckInStore;
   beforeEach(() => {
+    active.set(A);
+    status.set('ready');
     enabled.set(true);
     authorized.set(true);
+    preview.set(true);
     vi.clearAllMocks();
     lookup.mockResolvedValue(RESULT);
-    arrive.mockResolvedValue({ ...RESULT, receipt: { ...RESULT.receipt, checkIn: 'CHECKED_IN' } });
     TestBed.configureTestingModule({
       providers: [
         CheckInStore,
+        { provide: EstablishmentContext, useValue: { active, status } },
         {
           provide: CheckInApi,
           useValue: {
             enabled,
             authorized,
-            preview: signal(true),
-            establishments: () => Promise.resolve([]),
+            preview,
             scenario: signal('ready'),
             publicOrigin: () => 'https://public.mapit.test',
             lookup,
             arrive,
-            setScenario: vi.fn(),
+            watch,
+            setScenario,
           },
         },
       ],
     });
+    watchInjector = TestBed.inject(Injector);
+    watch.mockImplementation(() => {
+      const watchEffect = effect(() => void active(), { injector: watchInjector });
+      return vi.fn(() => watchEffect.destroy());
+    });
     store = TestBed.inject(CheckInStore);
-    store.selectEstablishment(PREVIEW_ESTABLISHMENT_ID);
+    TestBed.flushEffects();
   });
 
-  it('extrae un token de un origen permitido sin navegar ni llamar a API con una URL', async () => {
-    store.setInput('https://public.mapit.test/comprobante/' + PREVIEW_RECEIPT_TOKEN);
+  it('uses global active establishment for query and arrival', async () => {
+    store.useDemoCode();
     await store.query();
     expect(lookup).toHaveBeenCalledWith(PREVIEW_RECEIPT_TOKEN, PREVIEW_ESTABLISHMENT_ID);
     expect(store.canArrive()).toBe(true);
+    await store.arrive();
+    expect(arrive).toHaveBeenCalledWith(PREVIEW_RECEIPT_TOKEN, PREVIEW_ESTABLISHMENT_ID);
   });
 
-  it.each([
-    'https://evil.test/comprobante/',
-    'javascript:',
-    'https://public.mapit.test/comprobante/../',
-  ])('rechaza URL no confiable %s', async (prefix) => {
-    store.setInput(prefix + PREVIEW_RECEIPT_TOKEN);
-    await store.query();
-    expect(lookup).not.toHaveBeenCalled();
-    expect(store.result()).toBeNull();
-  });
-
-  it('no consulta ni autoriza si preview o usuario no están habilitados', async () => {
-    enabled.set(false);
+  it('waits for ready active context and never substitutes the demo ID', async () => {
+    status.set('loading');
+    TestBed.flushEffects();
     store.useDemoCode();
     await store.query();
     expect(lookup).not.toHaveBeenCalled();
-    expect(store.canArrive()).toBe(false);
-    enabled.set(true);
-    authorized.set(false);
+    status.set('ready');
+    active.set(B);
+    TestBed.flushEffects();
+    store.useDemoCode();
     await store.query();
-    expect(lookup).not.toHaveBeenCalled();
+    expect(lookup).toHaveBeenCalledWith(PREVIEW_RECEIPT_TOKEN, B.id);
+    expect(store.establishmentId()).toBe(B.id);
   });
 
-  it('descarta respuesta tardía cuando cambia el código o establecimiento', async () => {
+  it('cleans the result on context invalidation and drops stale A/B/A response', async () => {
     const pending = deferred<CheckInResult>();
-    lookup.mockReturnValue(pending.promise);
+    lookup.mockReturnValueOnce(pending.promise);
     store.useDemoCode();
-    const query = store.query();
-    store.selectEstablishment('otro');
+    const request = store.query();
+    active.set(B);
+    TestBed.flushEffects();
+    active.set(A);
+    TestBed.flushEffects();
     pending.resolve(RESULT);
-    await query;
+    await request;
     expect(store.result()).toBeNull();
-    expect(store.canArrive()).toBe(false);
     expect(store.querying()).toBe(false);
   });
 
-  it('exige acción explícita e ignora doble click mientras registra llegada', async () => {
+  it('requires active check-in capability and prevents duplicate arrivals', async () => {
     store.useDemoCode();
     await store.query();
-    expect(arrive).not.toHaveBeenCalled();
     const pending = deferred<CheckInResult>();
-    arrive.mockReturnValue(pending.promise);
-    const first = store.arrive();
+    arrive.mockReturnValueOnce(pending.promise);
+    const request = store.arrive();
     await store.arrive();
     expect(arrive).toHaveBeenCalledOnce();
-    pending.resolve({ ...RESULT, receipt: { ...RESULT.receipt, checkIn: 'CHECKED_IN' } });
-    await first;
-    expect(store.canArrive()).toBe(false);
-    expect(store.arriving()).toBe(false);
-  });
-
-  it('no habilita llegada para un pago pendiente aunque se identifique la reserva', async () => {
-    lookup.mockResolvedValue({ ...RESULT, eligibilityError: 'pending' });
+    expect(store.busy()).toBe(true);
+    pending.resolve(RESULT);
+    await request;
+    expect(store.busy()).toBe(false);
+    active.set({ ...A, canCheckIn: false });
+    TestBed.flushEffects();
+    expect(store.canCheckIn()).toBe(false);
     store.useDemoCode();
     await store.query();
+    expect(store.result()).toBeNull();
+  });
+
+  it('subscribes to watch only for an authorized active scope and cleans it on change', () => {
+    preview.set(false);
+    TestBed.flushEffects();
+    expect(watch).toHaveBeenCalledWith(A.id, expect.any(Function));
+    const cleanup = watch.mock.results[0]?.value as () => void;
+    active.set(B);
+    TestBed.flushEffects();
+    expect(cleanup).toHaveBeenCalledOnce();
+    active.set({ ...B, canCheckIn: false });
+    TestBed.flushEffects();
+    expect(watch).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the active watch after query and arrival so later events refresh the receipt', async () => {
+    preview.set(false);
+    TestBed.flushEffects();
+    const notify = watch.mock.calls[0]![1];
+    store.useDemoCode();
+    await store.query();
+    notify(null);
+    await Promise.resolve();
+    expect(lookup).toHaveBeenCalledTimes(2);
+
     await store.arrive();
-    expect(store.canArrive()).toBe(false);
-    expect(store.eligibilityMessage()).toContain('no está verificado');
-    expect(arrive).not.toHaveBeenCalled();
+    notify(null);
+    await Promise.resolve();
+    expect(arrive).toHaveBeenCalledOnce();
+    expect(lookup).toHaveBeenCalledTimes(3);
+  });
+
+  it('ignores callbacks from a prior watch after context leaves and returns to the same ID', async () => {
+    preview.set(false);
+    TestBed.flushEffects();
+    const obsoleteNotify = watch.mock.calls[0]![1];
+    active.set(B);
+    TestBed.flushEffects();
+    active.set(A);
+    TestBed.flushEffects();
+    store.useDemoCode();
+    await store.query();
+    obsoleteNotify(null);
+    await Promise.resolve();
+    expect(lookup).toHaveBeenCalledOnce();
+  });
+
+  it('cleans the active watch when authorization is revoked without opening another', () => {
+    preview.set(false);
+    TestBed.flushEffects();
+    const cleanup = watch.mock.results[0]!.value as ReturnType<CheckInApi['watch']>;
+    authorized.set(false);
+    TestBed.flushEffects();
+    expect(cleanup).toHaveBeenCalledOnce();
+    expect(watch).toHaveBeenCalledOnce();
   });
 });

@@ -34,6 +34,7 @@ describe('PaymentStore', () => {
   let previewAllowed: ReturnType<typeof signal<boolean>>;
   let store: PaymentStore;
   let real: {
+    establishment: ReturnType<typeof vi.fn>;
     checkout: ReturnType<typeof vi.fn>;
     watch: ReturnType<typeof vi.fn>;
     issueReceipt: ReturnType<typeof vi.fn>;
@@ -63,6 +64,13 @@ describe('PaymentStore', () => {
   beforeEach(() => {
     previewAllowed = signal(true);
     real = {
+      establishment: vi.fn(() =>
+        of({
+          tenantSlug: scope.tenantSlug,
+          establishmentSlug: scope.establishmentSlug,
+          tenantName: 'Empresa pública',
+        }),
+      ),
       checkout: vi.fn(() => of(projectCheckout(response()))),
       watch: vi.fn(() => () => undefined),
       issueReceipt: vi.fn(() => of(projectReceipt(previewReceipt()))),
@@ -115,6 +123,38 @@ describe('PaymentStore', () => {
     expect(real.checkout).toHaveBeenCalledWith(scope);
   });
 
+  it('advances payment progress from a new charge to a verified receipt', async () => {
+    previewAllowed.set(false);
+    real.checkout.mockReturnValue(of({ ...projectCheckout(response()), payment: null }));
+    await store.load(scope);
+    expect(store.checkoutStep()).toBe(1);
+    expect(store.venue()?.tenantName).toBe('Empresa pública');
+    real.checkout.mockReturnValue(of(projectCheckout(response('PENDING'))));
+    await store.refresh();
+    expect(store.checkoutStep()).toBe(1);
+    const receipt = new Subject<ReturnType<typeof projectReceipt>>();
+    real.issueReceipt.mockReturnValue(receipt);
+    real.checkout.mockReturnValue(of(projectCheckout(response('CONFIRMED'))));
+    await store.refresh();
+    expect(store.checkoutStep()).toBe(2);
+    receipt.next(projectReceipt(previewReceipt()));
+    receipt.complete();
+    await Promise.resolve();
+    expect(store.checkoutStep()).toBe(3);
+  });
+  it('does not display venue metadata from another scope', async () => {
+    previewAllowed.set(false);
+    real.establishment.mockReturnValue(
+      of({
+        tenantSlug: 'other',
+        establishmentSlug: scope.establishmentSlug,
+        tenantName: 'Other company',
+      }),
+    );
+    await store.load(scope);
+    expect(store.venue()).toBeNull();
+    expect(store.pageStatus()).toBe('loaded');
+  });
   it('reutiliza clave ante fallo de red y genera otra tras intento fallido persistido', async () => {
     api.allowed.mockReturnValue(false);
     const initial = { ...projectCheckout(response()), payment: null };
@@ -318,6 +358,36 @@ describe('PaymentStore', () => {
     expect(store.payment()?.status).toBe('CONFIRMED');
   });
 
+  it('shows the static QR from the pending attempt snapshot and hides it after expiry', async () => {
+    previewAllowed.set(false);
+    const checkout = projectCheckout(response('PENDING_MANUAL_VERIFICATION'));
+    checkout.payment!.provider = 'STATIC_BANK_QR';
+    const snapshot = {
+      id: 'saved-bank',
+      displayName: 'QR bancario',
+      provider: 'STATIC_BANK_QR',
+      verification: 'MANUAL',
+      staticQrImage: 'data:image/png;base64,c25hcHNob3Q=',
+      simulationPath: null,
+    };
+    real.checkout.mockReturnValue(of({ ...checkout, methods: [], historicalMethod: snapshot }));
+    await store.load(scope);
+    expect(store.qrPending()).toBe(true);
+    expect(store.bankQr()).toBe(snapshot.staticQrImage);
+    expect(store.displayedMethods()).toEqual([snapshot]);
+    real.checkout.mockReturnValue(
+      of({
+        ...checkout,
+        methods: [],
+        historicalMethod: snapshot,
+        payment: { ...checkout.payment!, status: 'EXPIRED' },
+      }),
+    );
+    await store.refresh();
+    expect(store.qrPending()).toBe(false);
+    expect(store.bankQr()).toBeNull();
+    expect(store.receiptPath()).toBeNull();
+  });
   it('expone el enlace del intento solo para MOCK pendiente con simulación permitida', async () => {
     api.allowed.mockReturnValue(false);
     TestBed.inject(ReservationAccess).save(scope, 'a'.repeat(43), null);
@@ -340,6 +410,9 @@ describe('PaymentStore', () => {
     real.checkout.mockReturnValue(of(withPath));
     await store.load(scope);
     const link = store.simulationLink();
+    expect(store.qrPending()).toBe(true);
+    expect(store.displayedMethods().map((method) => method.id)).toEqual(['historical-mock']);
+    expect(store.bankQr()).toBeNull();
     expect(link).toMatch(
       /^http:\/\/localhost:4500\/simulacion\/qr\/30000000-0000-0000-0000-000000000003\?/,
     );
@@ -349,6 +422,7 @@ describe('PaymentStore', () => {
     real.simulationAllowed.mockReturnValue(false);
     await store.load(scope);
     expect(store.simulationLink()).toBeNull();
+    expect(store.qrPending()).toBe(false);
   });
 
   it('en preview no hay enlace de intento ni método histórico y el cobro real inicia igual', async () => {

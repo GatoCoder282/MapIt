@@ -5,9 +5,13 @@ export const SITE_STRINGS_EN = {
   nav: {
     aria: 'Main navigation',
     product: 'Product',
+    about: 'About MapIt',
     howItWorks: 'How it works',
     businesses: 'Business',
     bookings: 'Reservations',
+    login: 'Sign in',
+    join: 'Join MapIt',
+    requestAccess: 'Request access',
     openMenu: 'Open navigation menu',
     closeMenu: 'Close navigation menu',
     mobileAria: 'Mobile navigation',
@@ -15,6 +19,6 @@ export const SITE_STRINGS_EN = {
   footer: {
     navAria: 'Footer Navigation',
     socialAria: 'Social networks',
-    copyright: '© 2026 MapIt. All rights reserved.',
+    copyright: `© ${new Date().getFullYear()} MapIt. All rights reserved.`,
   },
 } as const;

@@ -5,9 +5,13 @@ export const SITE_STRINGS_JA = {
   nav: {
     aria: 'メインナビゲーション',
     product: '製品',
+    about: 'MapItについて',
     howItWorks: '仕組み',
     businesses: 'ビジネス',
     bookings: '予約',
+    login: 'ログイン',
+    join: 'MapItに参加',
+    requestAccess: 'アクセスを申請',
     openMenu: 'ナビゲーションメニューを開く',
     closeMenu: 'ナビゲーションメニューを閉じる',
     mobileAria: 'モバイルナビゲーション',
@@ -15,6 +19,6 @@ export const SITE_STRINGS_JA = {
   footer: {
     navAria: 'フッターナビゲーション',
     socialAria: 'ソーシャルネットワーク',
-    copyright: '© 2026 MapIt。無断転載を禁じます。',
+    copyright: `© ${new Date().getFullYear()} MapIt。無断転載を禁じます。`,
   },
 } as const;

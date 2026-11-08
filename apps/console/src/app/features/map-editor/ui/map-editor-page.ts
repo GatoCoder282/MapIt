@@ -21,10 +21,12 @@ import { ElementLibraryComponent } from './element-library';
 import { ElementPropertiesCardComponent } from './element-properties-card';
 import { MapEditorStore } from '../model/map-editor-store';
 import { localizeString, STRINGS } from '../../../core/strings';
+import { confirmOperationalExit } from '../../../core/operational-exit-guard';
 
 @Component({
   selector: 'mapit-map-editor-page',
   imports: [ElementLibraryComponent, ElementPropertiesCardComponent],
+  providers: [MapEditorStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="editor-page">
@@ -56,6 +58,7 @@ import { localizeString, STRINGS } from '../../../core/strings';
               <select
                 id="floor-select"
                 [value]="store.selectedFloorId()"
+                [disabled]="store.busy() || store.loading()"
                 (change)="onFloorChange($event)"
                 class="floor-select"
                 aria-label="{{ strings.selectFloor }}"
@@ -72,6 +75,7 @@ import { localizeString, STRINGS } from '../../../core/strings';
               <select
                 id="sector-select"
                 [value]="store.sectorId()"
+                [disabled]="store.busy() || store.loading()"
                 (change)="onSectorChange($event)"
                 class="sector-select"
                 aria-label="{{ strings.selectSector }}"
@@ -87,6 +91,8 @@ import { localizeString, STRINGS } from '../../../core/strings';
           @if (store.selectedId()) {
             <button
               class="btn-save-template"
+              type="button"
+              [disabled]="store.busy() || store.loading()"
               (click)="openSaveTemplateDialog()"
               [attr.aria-label]="strings.saveAsTemplate"
             >
@@ -142,6 +148,8 @@ import { localizeString, STRINGS } from '../../../core/strings';
                   (keydown.space)="selectElement(element.id)"
                   role="option"
                   [attr.aria-selected]="isSelected(element.id)"
+                  [attr.aria-disabled]="store.busy() || store.loading()"
+                  [class.disabled]="store.busy() || store.loading()"
                   tabindex="0"
                 >
                   <span class="element-type" [attr.data-type]="element.type">{{
@@ -168,6 +176,7 @@ import { localizeString, STRINGS } from '../../../core/strings';
                   type="number"
                   min="20"
                   #sectorWidthInput
+                  [disabled]="store.busy() || store.loading()"
                   [value]="store.sectorSize().width"
                   class="size-input"
                 />
@@ -178,12 +187,15 @@ import { localizeString, STRINGS } from '../../../core/strings';
                   type="number"
                   min="20"
                   #sectorHeightInput
+                  [disabled]="store.busy() || store.loading()"
                   [value]="store.sectorSize().height"
                   class="size-input"
                 />
               </label>
               <button
                 class="btn-secondary"
+                type="button"
+                [disabled]="store.busy() || store.loading()"
                 (click)="
                   onApplySectorSize(sectorWidthInput.valueAsNumber, sectorHeightInput.valueAsNumber)
                 "
@@ -194,7 +206,9 @@ import { localizeString, STRINGS } from '../../../core/strings';
           </div>
 
           <div class="sidebar-section">
-            <mapit-element-library />
+            <div [attr.inert]="store.busy() || store.loading() ? '' : null">
+              <mapit-element-library />
+            </div>
           </div>
         </aside>
 
@@ -423,6 +437,11 @@ import { localizeString, STRINGS } from '../../../core/strings';
       background: var(--mapit-color-primary-bg);
     }
 
+    .element-item.disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
     .element-type {
       display: inline-flex;
       align-items: center;
@@ -610,6 +629,35 @@ export class MapEditorPageComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly strings = STRINGS.spaces.editor;
   protected readonly Math = Math;
+  private readonly propertiesCard = viewChild(ElementPropertiesCardComponent);
+  private readonly sectorWidthInput = viewChild<ElementRef<HTMLInputElement>>('sectorWidthInput');
+  private readonly sectorHeightInput = viewChild<ElementRef<HTMLInputElement>>('sectorHeightInput');
+  private observedSectorId: string | null = null;
+  private approvedSectorId: string | null = null;
+
+  canDeactivate(): boolean {
+    return confirmOperationalExit(this.store.busy(), this.hasUnsavedChanges());
+  }
+
+  private confirmCurrentResourceExit(): boolean {
+    if (this.store.loading()) return false;
+    return this.canDeactivate();
+  }
+
+  private hasUnsavedChanges(): boolean {
+    return (
+      this.store.dirty() ||
+      (this.propertiesCard()?.dirty() ?? false) ||
+      this.hasUnappliedSectorSize()
+    );
+  }
+
+  private hasUnappliedSectorSize(): boolean {
+    const width = this.sectorWidthInput()?.nativeElement.valueAsNumber;
+    const height = this.sectorHeightInput()?.nativeElement.valueAsNumber;
+    const size = this.store.sectorSize();
+    return width !== undefined && (width !== size.width || height !== size.height);
+  }
 
   // Flag para garantizar montaje inicial infalible
   private isCanvasMounted = false;
@@ -635,12 +683,6 @@ export class MapEditorPageComponent implements OnDestroy {
     { initialValue: undefined },
   );
 
-  // establishmentId as signal from query params
-  readonly establishmentId = toSignal(
-    this.route.queryParamMap.pipe(map((params) => params.get('establishmentId') || undefined)),
-    { initialValue: undefined },
-  );
-
   // Initialize layout sync effect in injection context (constructor)
   private readonly layoutSyncEffect = runInInjectionContext(this.injector, () =>
     effect(() => {
@@ -655,18 +697,13 @@ export class MapEditorPageComponent implements OnDestroy {
         } else {
           this.port.load(layout);
         }
+        this.port.setEditable(untracked(() => !this.store.busy() && !this.store.loading()));
       });
     }),
   );
 
-  // Load floors when establishmentId changes
-  private readonly floorsLoadEffect = runInInjectionContext(this.injector, () =>
-    effect(() => {
-      const establishmentId = this.establishmentId();
-      if (establishmentId) {
-        this.store.loadFloorsByEstablishment(establishmentId);
-      }
-    }),
+  private readonly editabilityEffect = runInInjectionContext(this.injector, () =>
+    effect(() => this.port.setEditable(!this.store.busy() && !this.store.loading())),
   );
 
   // Load sectors when floorId changes
@@ -684,10 +721,21 @@ export class MapEditorPageComponent implements OnDestroy {
     effect(() => {
       const id = this.sectorId();
       const name = this.sectorName();
-      if (id) {
-        // untracked previene el bucle infinito de dependencias
-        untracked(() => this.store.loadSector(id, name));
+      if (!id) return;
+      const previousId = this.observedSectorId;
+      if (previousId && previousId !== id && this.approvedSectorId !== id) {
+        if (!this.confirmCurrentResourceExit()) {
+          void this.router.navigate(['/spaces/editor', previousId], {
+            queryParams: { sectorName: this.store.sectorName() },
+            replaceUrl: true,
+          });
+          return;
+        }
       }
+      this.approvedSectorId = null;
+      this.observedSectorId = id;
+      // untracked previene el bucle infinito de dependencias
+      untracked(() => this.store.loadSector(id, name));
     }),
   );
 
@@ -700,10 +748,12 @@ export class MapEditorPageComponent implements OnDestroy {
         });
 
         this.port.onDragEnd((payload) => {
+          if (this.store.busy() || this.store.loading()) return;
           this.store.dragElement(payload.id, payload.x, payload.y);
         });
 
         this.port.onDragMove((payload) => {
+          if (this.store.busy() || this.store.loading()) return;
           this.ngZone.run(() => {
             this.store.updateElementPositionLocal(payload.id, payload.x, payload.y);
             this.cdr.markForCheck();
@@ -711,19 +761,23 @@ export class MapEditorPageComponent implements OnDestroy {
         });
 
         this.port.onRotateEnd((payload) => {
+          if (this.store.busy() || this.store.loading()) return;
           this.store.rotateElement(payload.id, payload.rotation);
         });
 
         this.port.onResizeEnd((payload) => {
+          if (this.store.busy() || this.store.loading()) return;
           this.store.resizeElement(payload.id, payload.x, payload.y, payload.width, payload.height);
         });
 
         this.port.onElementClick((payload) => {
-          this.store.selectElement(payload.id);
+          const id = payload.id;
+          if (id) this.ngZone.run(() => this.selectElement(id));
         });
 
         // HU-4.01: drop de plantillas/estructuras desde la biblioteca lateral (F4).
         this.port.onExternalDrop?.(({ key, x, y }) => {
+          if (this.store.busy() || this.store.loading()) return;
           this.ngZone.run(() => {
             this.store.createElementFromDrop(key, x, y);
             this.cdr.markForCheck();
@@ -742,10 +796,16 @@ export class MapEditorPageComponent implements OnDestroy {
   }
 
   protected onSectorChange(event: Event): void {
+    if (this.store.busy() || this.store.loading()) return;
     const target = event.target as HTMLSelectElement;
     const sectorId = target.value;
-    if (sectorId) {
+    if (sectorId && sectorId !== this.store.sectorId()) {
+      if (!this.confirmCurrentResourceExit()) {
+        target.value = this.store.sectorId() ?? '';
+        return;
+      }
       const sector = this.store.sectors().find((s) => s.id === sectorId);
+      this.approvedSectorId = sectorId;
       void this.router.navigate(['/spaces/editor', sectorId], {
         queryParams: { sectorName: sector?.name },
       });
@@ -753,14 +813,21 @@ export class MapEditorPageComponent implements OnDestroy {
   }
 
   protected onFloorChange(event: Event): void {
+    if (this.store.busy() || this.store.loading()) return;
     const target = event.target as HTMLSelectElement;
     const floorId = target.value;
-    if (floorId) {
+    if (floorId && floorId !== this.store.selectedFloorId()) {
+      if (!this.confirmCurrentResourceExit()) {
+        target.value = this.store.selectedFloorId() ?? '';
+        return;
+      }
       this.store.selectFloor(floorId);
     }
   }
 
   protected selectElement(id: string): void {
+    if (this.store.busy() || this.store.loading()) return;
+    if (id !== this.store.selectedId() && !this.confirmCurrentResourceExit()) return;
     this.store.selectElement(id);
     this.port.layout(); // trigger selection in port if needed
   }
@@ -771,12 +838,18 @@ export class MapEditorPageComponent implements OnDestroy {
 
   /** HU-4.01: dimensiones del sector (RN-6: las edita la vista de sector). */
   protected onApplySectorSize(width: number, height: number): void {
-    if (Number.isFinite(width) && Number.isFinite(height)) {
+    if (
+      !this.store.busy() &&
+      !this.store.loading() &&
+      Number.isFinite(width) &&
+      Number.isFinite(height)
+    ) {
       this.store.saveSectorDimensions(width, height);
     }
   }
 
   protected openSaveTemplateDialog(): void {
+    if (this.store.busy() || this.store.loading()) return;
     const name = window.prompt(this.strings.templateNameLabel, '');
     if (name !== null) {
       this.store.saveAsTemplate(name);

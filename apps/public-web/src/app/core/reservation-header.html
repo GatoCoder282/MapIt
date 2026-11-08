@@ -1,0 +1,55 @@
+<header class="heading">
+  <div class="heading-copy">
+    <h1 #title tabindex="-1">
+      {{ strings.availability.heroTitle }} <span>{{ strings.availability.heroAccent }}</span>
+    </h1>
+    <p class="heading-intro">{{ strings.availability.heroSubtitle }}</p>
+  </div>
+  <div class="heading-art" aria-hidden="true">
+    <svg viewBox="0 0 620 185" fill="none">
+      <path d="M0 185C75 85 153 85 223 133C298 183 344 20 445 62C511 90 554 143 620 88V185Z" fill="#e5efff" />
+      <path
+        d="M191 146C272 100 304 210 366 137S473 166 528 62"
+        stroke="#0064ff"
+        stroke-width="2"
+        stroke-dasharray="8 7"
+        stroke-linecap="round"
+      />
+      <path d="M530 29C516 29 508 39 508 49C508 64 530 80 530 80S552 64 552 49C552 38 544 29 530 29Z" fill="#1672ff" />
+      <circle cx="530" cy="48" r="8" fill="white" />
+    </svg>
+    <img
+      ngSrc="assets/img/availability/calendar-check.png"
+      alt=""
+      width="1536"
+      height="1024"
+      priority
+      [style.width.px]="compact() ? 215 : null"
+      [style.top.px]="compact() ? 10 : null"
+    />
+  </div>
+</header>
+
+<ol class="booking-steps">
+  <li [class.current]="activeStep() === 1" [attr.aria-current]="activeStep() === 1 ? 'step' : null">
+    <svg lucideCalendarDays aria-hidden="true"></svg>
+    <span
+      ><strong>{{ strings.availability.stepAvailability }}</strong
+      ><small>{{ strings.availability.stepAvailabilityHint }}</small></span
+    >
+  </li>
+  <li [class.current]="activeStep() === 2" [attr.aria-current]="activeStep() === 2 ? 'step' : null">
+    <svg lucideArmchair aria-hidden="true"></svg
+    ><span
+      ><strong>{{ strings.availability.stepSpace }}</strong
+      ><small>{{ strings.availability.stepSpaceHint }}</small></span
+    >
+  </li>
+  <li [class.current]="activeStep() === 3" [attr.aria-current]="activeStep() === 3 ? 'step' : null">
+    <svg lucideCheckCircle2 aria-hidden="true"></svg
+    ><span
+      ><strong>{{ strings.availability.stepConfirm }}</strong
+      ><small>{{ strings.availability.stepConfirmHint }}</small></span
+    >
+  </li>
+</ol>

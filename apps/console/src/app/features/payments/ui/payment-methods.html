@@ -1,335 +1,853 @@
 <section class="payment-page" aria-labelledby="payment-title">
-  <header class="page-heading">
-    <div>
-      <h1 id="payment-title">{{ strings.title }}</h1>
-      <p>{{ strings.intro }}</p>
-    </div>
-  </header>
-
-  <div class="mock-notice" role="note">
-    <strong>{{ strings.mockLabel }}</strong>
-    <span>{{ strings.mockHelp }}</span>
-  </div>
-
-  @if (!store.allowed) {
-    <p class="message" role="status">{{ strings.developmentOnly }}</p>
-  } @else {
-    @if (store.loading()) {
-      <p class="message" role="status" aria-live="polite">{{ strings.loading }}</p>
+  <nav class="breadcrumb" [attr.aria-label]="copy.administration">
+    <span>{{ copy.administration }}</span
+    ><span aria-hidden="true">›</span>
+    @if (screen() === 'list') {
+      <span aria-current="page">{{ copy.title }}</span>
+    } @else {
+      <button class="text-button" type="button" [disabled]="busy()" (click)="cancel()">{{ copy.title }}</button>
     }
-    @if (store.error()) {
-      <div class="message error" role="alert">
-        <span>{{ store.error() }}</span>
-        <button class="button secondary" type="button" (click)="store.load()">{{ strings.retry }}</button>
+  </nav>
+
+  @if (active(); as venue) {
+    @if (!catalog.canManage()) {
+      <h1 id="payment-title">{{ copy.title }}</h1>
+      <p class="message error" role="alert">{{ copy.denied }}</p>
+    } @else if (screen() === 'list' || screen() === 'policies') {
+      <header class="page-heading">
+        <div>
+          <h1 #viewHeading id="payment-title" tabindex="-1">{{ copy.title }}</h1>
+          <p>{{ copy.intro }}</p>
+        </div>
+      </header>
+      <div class="active-venue" [attr.aria-label]="copy.activeVenue" role="group" [attr.title]="venue.address || null">
+        <span class="method-icon"><svg lucideStore aria-hidden="true"></svg></span>
+        <span
+          >{{ copy.activeVenue }} · <strong>{{ venue.name }}</strong></span
+        >
       </div>
-    }
-    <div class="payment-layout">
-      @if (store.isAdmin() && store.draft().establishmentId) {
-        <section class="readiness-panel" data-testid="readiness-panel" aria-labelledby="readiness-title">
-          <div class="panel-heading">
-            <h2 id="readiness-title">{{ strings.readinessTitle }}</h2>
-            <span class="hint"
-              >{{ strings.readinessVenue }} {{ store.establishmentName(store.draft().establishmentId) }}</span
-            >
-          </div>
-          @if (store.readinessLoading()) {
-            <p role="status">{{ strings.readinessLoading }}</p>
-          }
-          @if (store.readinessError()) {
-            <div class="message error" role="alert">
-              {{ store.readinessError() }}
-              <button type="button" class="button secondary" (click)="store.loadReadiness()">
-                {{ strings.retry }}
+      <div class="payment-layout" [class.with-summary]="screen() === 'list'">
+        <div class="payment-main">
+          <div class="list-toolbar">
+            <div class="list-views">
+              <button
+                type="button"
+                class="button"
+                [class.primary]="screen() === 'list'"
+                [class.secondary]="screen() !== 'list'"
+                [attr.aria-pressed]="screen() === 'list'"
+                [disabled]="busy()"
+                (click)="screen() === 'policies' && cancel()"
+              >
+                {{ copy.title }}
               </button>
+              @if (store.allowed) {
+                <button
+                  type="button"
+                  class="button"
+                  [class.primary]="screen() === 'policies'"
+                  [class.secondary]="screen() !== 'policies'"
+                  [attr.aria-pressed]="screen() === 'policies'"
+                  [disabled]="busy()"
+                  (click)="show('policies')"
+                >
+                  {{ copy.policies }}
+                </button>
+              }
             </div>
-          }
-          @if (store.readiness(); as readiness) {
-            <div class="readiness-facts">
-              <p data-testid="qr-active">
-                <strong>{{ strings.qrActive }}</strong
-                ><span>{{ readiness.qrEnabled ? strings.yes : strings.no }}</span>
-              </p>
-              <p data-testid="charge-ready">
-                <strong>{{ strings.chargeReady }}</strong
-                ><span>{{ readiness.ready ? strings.ready : strings.notReady }}</span>
-              </p>
-            </div>
-            @if (!readiness.policy) {
-              <p class="hint">{{ strings.policyMissing }}</p>
+            @if (screen() === 'list') {
+              <button class="button primary" type="button" [disabled]="busy() || catalog.loading()" (click)="start()">
+                <svg lucidePlus aria-hidden="true"></svg>{{ copy.add }}
+              </button>
             }
-            @if (store.blockerLabels().length) {
-              <div data-testid="readiness-blockers">
-                <h3>{{ strings.blockersTitle }}</h3>
-                <ul>
-                  @for (blocker of store.blockerLabels(); track blocker) {
-                    <li>{{ blocker }}</li>
+          </div>
+          @if (screen() === 'policies') {
+            <section class="readiness-panel" data-testid="readiness-panel" aria-labelledby="readiness-title">
+              <div class="panel-heading">
+                <h2 id="readiness-title">{{ copy.mockReadiness }}</h2>
+                <span class="hint"
+                  >{{ strings.readinessVenue }} {{ store.establishmentName(store.draft().establishmentId) }}</span
+                >
+              </div>
+              @if (store.readinessLoading()) {
+                <p role="status">{{ strings.readinessLoading }}</p>
+              }
+              @if (store.readinessError()) {
+                <div class="message error" role="alert">
+                  {{ store.readinessError() }}
+                  <button type="button" class="button secondary" (click)="store.loadReadiness()">
+                    {{ strings.retry }}
+                  </button>
+                </div>
+              }
+              @if (store.readiness(); as readiness) {
+                <div class="readiness-facts">
+                  <p data-testid="qr-active">
+                    <strong>{{ strings.qrActive }}</strong
+                    ><span>{{ readiness.qrEnabled ? strings.yes : strings.no }}</span>
+                  </p>
+                  <p data-testid="charge-ready">
+                    <strong>{{ strings.chargeReady }}</strong
+                    ><span>{{ readiness.ready ? strings.ready : strings.notReady }}</span>
+                  </p>
+                </div>
+                @if (!readiness.policy) {
+                  <p class="hint">{{ strings.policyMissing }}</p>
+                }
+                @if (store.blockerLabels().length) {
+                  <div data-testid="readiness-blockers">
+                    <h3>{{ strings.blockersTitle }}</h3>
+                    <ul>
+                      @for (blocker of store.blockerLabels(); track blocker) {
+                        <li>{{ blocker }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+                <form
+                  class="policy-form"
+                  (submit)="$event.preventDefault(); store.savePolicy()"
+                  aria-labelledby="policy-title"
+                >
+                  <h3 id="policy-title">{{ strings.policyTitle }}</h3>
+                  <p class="hint">{{ strings.policyIntro }}</p>
+                  <fieldset [disabled]="busy()">
+                    <label class="field"
+                      >{{ strings.policyCurrency
+                      }}<input
+                        data-testid="policy-currency"
+                        name="policyCurrency"
+                        autocomplete="off"
+                        maxlength="3"
+                        required
+                        [value]="store.policyDraft().currency"
+                        (input)="store.setPolicyCurrency($any($event.target).value)"
+                    /></label>
+                    <label class="field"
+                      >{{ strings.policyDeposit
+                      }}<input
+                        data-testid="policy-deposit"
+                        name="policyDeposit"
+                        inputmode="decimal"
+                        required
+                        [value]="store.policyDraft().depositAmount"
+                        (input)="store.setPolicyDeposit($any($event.target).value)"
+                    /></label>
+                    <label class="field"
+                      >{{ strings.policyTotal
+                      }}<input
+                        data-testid="policy-total"
+                        name="policyTotal"
+                        inputmode="decimal"
+                        [value]="store.policyDraft().totalAmount"
+                        (input)="store.setPolicyTotal($any($event.target).value)"
+                    /></label>
+                    <label class="field"
+                      >{{ strings.policyWindow
+                      }}<input
+                        data-testid="policy-window"
+                        type="number"
+                        min="5"
+                        max="120"
+                        step="1"
+                        required
+                        [value]="store.policyDraft().paymentWindowMinutes"
+                        (input)="store.setPolicyWindow($any($event.target).value)"
+                    /></label>
+                    <div class="policy-choice" role="group" [attr.aria-label]="strings.policyEnabled">
+                      <span>{{ strings.policyEnabled }}</span>
+                      <label
+                        ><input
+                          data-testid="policy-enabled-true"
+                          name="policyEnabled"
+                          type="radio"
+                          [checked]="store.policyDraft().enabled === true"
+                          (change)="store.setPolicyEnabled(true)"
+                        />{{ strings.policyEnable }}</label
+                      >
+                      <label
+                        ><input
+                          data-testid="policy-enabled-false"
+                          name="policyEnabled"
+                          type="radio"
+                          [checked]="store.policyDraft().enabled === false"
+                          (change)="store.setPolicyEnabled(false)"
+                        />{{ strings.policyDisable }}</label
+                      >
+                    </div>
+                  </fieldset>
+                  @if (store.policyError()) {
+                    <p class="message error" role="alert">{{ store.policyError() }}</p>
                   }
-                </ul>
+                  @if (store.policySuccess()) {
+                    <p class="message success" role="status">{{ store.policySuccess() }}</p>
+                  }
+                  <button
+                    data-testid="policy-save"
+                    class="button primary"
+                    type="submit"
+                    [disabled]="!store.canSavePolicy()"
+                  >
+                    {{ strings.policySave }}
+                  </button>
+                </form>
+              }
+            </section>
+          } @else {
+            @if (catalog.loading() || store.loading()) {
+              <p class="hint" role="status">{{ copy.loading }}</p>
+            }
+            @if (catalog.error(); as error) {
+              <div class="message error" role="alert">
+                <span>{{ error }}</span>
+                <button class="button secondary" type="button" [disabled]="busy()" (click)="catalog.load()">
+                  {{ strings.retry }}
+                </button>
               </div>
             }
-            <form
-              class="policy-form"
-              (submit)="$event.preventDefault(); store.savePolicy()"
-              aria-labelledby="policy-title"
-            >
-              <h3 id="policy-title">{{ strings.policyTitle }}</h3>
-              <p class="hint">{{ strings.policyIntro }}</p>
-              <fieldset [disabled]="store.policySaving()">
-                <label class="field"
-                  >{{ strings.policyCurrency
-                  }}<input
-                    data-testid="policy-currency"
-                    name="policyCurrency"
-                    autocomplete="off"
-                    maxlength="3"
-                    required
-                    [value]="store.policyDraft().currency"
-                    (input)="store.setPolicyCurrency($any($event.target).value)"
-                /></label>
-                <label class="field"
-                  >{{ strings.policyDeposit
-                  }}<input
-                    data-testid="policy-deposit"
-                    name="policyDeposit"
-                    inputmode="decimal"
-                    required
-                    [value]="store.policyDraft().depositAmount"
-                    (input)="store.setPolicyDeposit($any($event.target).value)"
-                /></label>
-                <label class="field"
-                  >{{ strings.policyTotal
-                  }}<input
-                    data-testid="policy-total"
-                    name="policyTotal"
-                    inputmode="decimal"
-                    [value]="store.policyDraft().totalAmount"
-                    (input)="store.setPolicyTotal($any($event.target).value)"
-                /></label>
-                <label class="field"
-                  >{{ strings.policyWindow
-                  }}<input
-                    data-testid="policy-window"
-                    type="number"
-                    min="5"
-                    max="120"
-                    step="1"
-                    required
-                    [value]="store.policyDraft().paymentWindowMinutes"
-                    (input)="store.setPolicyWindow($any($event.target).value)"
-                /></label>
-                <div class="policy-choice" role="group" [attr.aria-label]="strings.policyEnabled">
-                  <span>{{ strings.policyEnabled }}</span>
-                  <label
-                    ><input
-                      data-testid="policy-enabled-true"
-                      name="policyEnabled"
-                      type="radio"
-                      [checked]="store.policyDraft().enabled === true"
-                      (change)="store.setPolicyEnabled(true)"
-                    />{{ strings.policyEnable }}</label
-                  >
-                  <label
-                    ><input
-                      data-testid="policy-enabled-false"
-                      name="policyEnabled"
-                      type="radio"
-                      [checked]="store.policyDraft().enabled === false"
-                      (change)="store.setPolicyEnabled(false)"
-                    />{{ strings.policyDisable }}</label
-                  >
-                </div>
-              </fieldset>
-              @if (store.policyError()) {
-                <p class="message error" role="alert">{{ store.policyError() }}</p>
-              }
-              @if (store.policySuccess()) {
-                <p class="message success" role="status">{{ store.policySuccess() }}</p>
-              }
-              <button
-                data-testid="policy-save"
-                class="button primary"
-                type="submit"
-                [disabled]="!store.canSavePolicy()"
-              >
-                {{ strings.policySave }}
-              </button>
-            </form>
+            @if (catalog.saveError(); as error) {
+              <p class="message error" role="alert">{{ error }}</p>
+            }
+            @if (store.error(); as error) {
+              <div class="message error" role="alert">
+                <span>{{ error }}</span>
+                <button class="button secondary" type="button" [disabled]="busy()" (click)="store.load()">
+                  {{ strings.retry }}
+                </button>
+              </div>
+            }
+            @if (
+              !catalog.loading() &&
+              !store.loading() &&
+              !catalog.error() &&
+              !store.error() &&
+              !catalog.methods().length &&
+              !store.configurations().length
+            ) {
+              <div class="saved-panel">
+                <p class="hint">{{ copy.empty }}</p>
+              </div>
+            }
+            <div class="method-table">
+              <div class="method-table-head" aria-hidden="true">
+                <span>{{ copy.methodColumn }}</span>
+                <span>{{ copy.status }}</span>
+              </div>
+              <ul class="saved-list">
+                @for (method of catalog.methods(); track method.id) {
+                  <li class="saved-item">
+                    <span class="method-icon"
+                      ><ng-container
+                        [ngTemplateOutlet]="typeIcon"
+                        [ngTemplateOutletContext]="{ $implicit: method.provider }"
+                    /></span>
+                    <div class="saved-main">
+                      <strong>{{ method.displayName }}</strong>
+                      <span
+                        >{{ providerInfo(method.provider) }}
+                        @if (!method.establishmentId) {
+                          · {{ copy.inherited }}
+                        }
+                      </span>
+                    </div>
+                    <ng-container
+                      [ngTemplateOutlet]="status"
+                      [ngTemplateOutletContext]="{ $implicit: method.enabled }"
+                    />
+                    <ng-container
+                      [ngTemplateOutlet]="rowTrigger"
+                      [ngTemplateOutletContext]="{ $implicit: method.displayName, menu: methodMenu }"
+                    />
+                    <ng-template #methodMenu>
+                      <div
+                        class="row-menu"
+                        cdkMenu
+                        [attr.aria-label]="copy.rowActions.replace('{name}', method.displayName)"
+                      >
+                        <button type="button" cdkMenuItem (cdkMenuItemTriggered)="view(method)">{{ copy.view }}</button>
+                        @if (catalog.canEdit(method)) {
+                          <button
+                            type="button"
+                            cdkMenuItem
+                            [cdkMenuItemDisabled]="busy()"
+                            (cdkMenuItemTriggered)="edit(method)"
+                          >
+                            {{ strings.edit }}
+                          </button>
+                          @if (method.provider !== 'INTEGRATED_GATEWAY') {
+                            <button
+                              type="button"
+                              cdkMenuItem
+                              [cdkMenuItemDisabled]="busy()"
+                              (cdkMenuItemTriggered)="catalog.toggle(method)"
+                            >
+                              {{ method.enabled ? strings.deactivate : strings.activate }}
+                            </button>
+                          }
+                        }
+                      </div>
+                    </ng-template>
+                  </li>
+                }
+                @for (method of store.configurations(); track method.id) {
+                  <li class="saved-item">
+                    <span class="method-icon"><svg lucideFlaskConical aria-hidden="true"></svg></span>
+                    <div class="saved-main">
+                      <strong>{{ copy.mock }} · {{ method.bankName }}</strong>
+                      <span>{{ copy.mockInfo }}</span>
+                    </div>
+                    <ng-container
+                      [ngTemplateOutlet]="status"
+                      [ngTemplateOutletContext]="{ $implicit: method.enabled }"
+                    />
+                    <ng-container
+                      [ngTemplateOutlet]="rowTrigger"
+                      [ngTemplateOutletContext]="{ $implicit: copy.mock + ' · ' + method.bankName, menu: mockMenu }"
+                    />
+                    <ng-template #mockMenu>
+                      <div
+                        class="row-menu"
+                        cdkMenu
+                        [attr.aria-label]="copy.rowActions.replace('{name}', method.bankName)"
+                      >
+                        <button
+                          type="button"
+                          cdkMenuItem
+                          [cdkMenuItemDisabled]="busy()"
+                          (cdkMenuItemTriggered)="editMock(method)"
+                        >
+                          {{ strings.edit }}
+                        </button>
+                        <button
+                          type="button"
+                          cdkMenuItem
+                          [cdkMenuItemDisabled]="busy()"
+                          (cdkMenuItemTriggered)="store.toggle(method)"
+                        >
+                          {{ method.enabled ? strings.deactivate : strings.activate }}
+                        </button>
+                      </div>
+                    </ng-template>
+                  </li>
+                }
+              </ul>
+            </div>
           }
+        </div>
+        @if (screen() === 'list' && !catalog.loading() && !store.loading() && !catalog.error() && !store.error()) {
+          <aside class="collection-summary" aria-labelledby="collection-title">
+            <h2 id="collection-title">{{ copy.collectionTitle }}</h2>
+            <p class="hint">{{ copy.collectionIntro }}</p>
+            <dl>
+              <div>
+                <dt>{{ strings.active }}</dt>
+                <dd>
+                  <svg lucideCircleCheck aria-hidden="true"></svg
+                  ><span>{{ methodTotals().active }} {{ strings.active }}</span>
+                </dd>
+              </div>
+              <div>
+                <dt>{{ strings.inactive }}</dt>
+                <dd>
+                  <svg lucidePause aria-hidden="true"></svg
+                  ><span>{{ methodTotals().inactive }} {{ strings.inactive }}</span>
+                </dd>
+              </div>
+            </dl>
+            @if (store.allowed) {
+              <button class="text-button" type="button" [disabled]="busy()" (click)="show('policies')">
+                {{ copy.configurePolicies }}
+              </button>
+            }
+          </aside>
+        }
+      </div>
+    } @else if (screen() === 'success') {
+      @if (saved(); as result) {
+        <section class="confirmation">
+          <span class="success-mark"><svg lucideCheck aria-hidden="true"></svg></span>
+          <h1 #viewHeading id="payment-title" tabindex="-1">{{ result.edited ? copy.updated : copy.created }}</h1>
+          <p class="hint">{{ copy.savedIntro }}</p>
+          <ng-container [ngTemplateOutlet]="status" [ngTemplateOutletContext]="{ $implicit: result.enabled }" />
+          @if (mock()) {
+            <ng-container [ngTemplateOutlet]="mockPreview" />
+          }
+          <div class="editor-actions">
+            <button class="button primary" type="button" (click)="cancel()">{{ copy.viewList }}</button>
+            <button class="button secondary" type="button" (click)="start()">{{ copy.createAnother }}</button>
+          </div>
         </section>
       }
-      <div class="payment-column">
-        <section class="saved-panel" aria-labelledby="saved-title">
-          <div class="panel-heading">
-            <h2 id="saved-title">{{ strings.savedTitle }}</h2>
-            <button class="button secondary" type="button" (click)="store.startNew()">
-              {{ strings.newConfiguration }}
-            </button>
-          </div>
-          @if (store.configurations().length === 0) {
-            <p class="hint">{{ strings.empty }}</p>
-          } @else {
-            <ul class="saved-list">
-              @for (configuration of store.configurations(); track configuration.id) {
-                <li class="saved-item" [class.is-selected]="configuration.id === store.editingId()">
-                  <button class="saved-main" type="button" (click)="store.selectConfiguration(configuration)">
-                    <strong>{{ store.establishmentName(configuration.establishmentId) }}</strong>
-                    <span>{{ store.countryName(configuration.country) }} · {{ configuration.bankName }}</span>
-                    <span class="badge" [class.badge-off]="!configuration.enabled">
-                      {{ configuration.enabled ? strings.active : strings.inactive }}
-                    </span>
-                  </button>
-                  <div class="saved-actions">
-                    <button class="link-button" type="button" (click)="store.selectConfiguration(configuration)">
-                      {{ strings.edit }}
-                    </button>
-                    <button class="link-button" type="button" (click)="store.toggle(configuration)">
-                      {{ configuration.enabled ? strings.deactivate : strings.activate }}
-                    </button>
-                  </div>
-                </li>
-              }
-            </ul>
-          }
-        </section>
-
-        <form class="method-editor" aria-labelledby="qr-heading" (submit)="$event.preventDefault(); store.save()">
-          <div class="panel-heading">
-            <h2 id="qr-heading">{{ strings.formTitle }}</h2>
-          </div>
-
-          <fieldset [disabled]="store.loading() || store.saving()">
-            <mapit-payment-search-select
-              inputId="establishmentId"
-              [label]="strings.establishment"
-              [placeholder]="strings.establishmentPlaceholder"
-              [emptyMessage]="strings.noEstablishments"
-              [options]="store.establishmentOptions()"
-              [value]="store.draft().establishmentId"
-              [disabled]="store.loading() || store.saving() || store.establishments().length === 0"
-              (valueChanged)="store.setEstablishment($event)"
-            />
-            @if (!store.loading() && store.establishments().length === 0) {
-              <p class="hint">{{ strings.emptyEstablishments }}</p>
-            }
-
-            <mapit-payment-search-select
-              inputId="country"
-              [label]="strings.country"
-              [placeholder]="strings.countryPlaceholder"
-              [emptyMessage]="strings.noCountries"
-              [options]="store.countryOptions()"
-              [value]="store.draft().country"
-              [disabled]="store.loading() || store.saving() || store.countries().length === 0"
-              (valueChanged)="store.setCountry($event)"
-            />
-
-            <label class="field">
-              <span>{{ strings.bank }}</span>
-              <input
-                name="bankName"
-                required
-                maxlength="120"
-                autocomplete="off"
-                list="bank-suggestions"
-                [placeholder]="strings.bankPlaceholder"
-                [value]="store.draft().bankName"
-                (input)="store.setBankName($any($event.target).value)"
-              />
-              <datalist id="bank-suggestions">
-                @for (bank of store.bankSuggestions(); track bank) {
-                  <option [value]="bank"></option>
-                }
-              </datalist>
-              @if (store.bankSuggestions().length > 0) {
-                <small>{{ strings.bankSuggestions }}</small>
-              }
-            </label>
-
-            <label class="field">
-              <span>{{ strings.accountHolder }}</span>
-              <input
-                name="accountHolderName"
-                required
-                maxlength="120"
-                autocomplete="off"
-                [value]="store.draft().accountHolderName"
-                (input)="store.setAccountHolder($any($event.target).value)"
-              />
-            </label>
-
-            <label class="field">
-              <span>{{ strings.accountReference }}</span>
-              <input
-                name="accountReference"
-                required
-                maxlength="120"
-                autocomplete="off"
-                spellcheck="false"
-                [value]="store.draft().accountReference"
-                (input)="store.setAccountReference($any($event.target).value)"
-              />
-            </label>
-
-            <p class="hint">{{ strings.testDataHint }}</p>
-
-            <label class="enabled-option">
-              <input
-                name="enabled"
-                type="checkbox"
-                [checked]="store.draft().enabled"
-                (change)="store.setEnabled($any($event.target).checked)"
-              />
-              <span>{{ strings.enabled }}</span>
-            </label>
-          </fieldset>
-
-          @if (store.success()) {
-            <p class="message success" role="status">{{ store.success() }}</p>
-          }
-
-          <div class="editor-actions">
-            <button class="button secondary" type="button" (click)="store.reset()">
-              {{ strings.reset }}
-            </button>
-            <button class="button primary" type="submit" [disabled]="!store.canSave()">
-              {{ store.saving() ? strings.saving : strings.save }}
-            </button>
-          </div>
-        </form>
+    } @else if (screen() === 'detail') {
+      <h1 #viewHeading id="payment-title" tabindex="-1">{{ copy.details }}</h1>
+      @if (detail(); as method) {
+        <ng-container
+          [ngTemplateOutlet]="summary"
+          [ngTemplateOutletContext]="{ $implicit: method, type: method.provider }"
+        />
+      }
+      <div class="editor-actions">
+        <button class="button secondary" type="button" (click)="cancel()">{{ copy.viewList }}</button>
       </div>
+    } @else {
+      <header class="page-heading">
+        <div>
+          <h1 #viewHeading id="payment-title" tabindex="-1">
+            @switch (screen()) {
+              @case ('review') {
+                {{ copy.review }}
+              }
+              @case ('configure') {
+                {{ mock() ? copy.mockTitle : provider() === 'STATIC_BANK_QR' ? copy.bankTitle : copy.gatewayTitle }}
+              }
+              @default {
+                {{ copy.newTitle }}
+              }
+            }
+          </h1>
+          <p>
+            @switch (screen()) {
+              @case ('review') {
+                {{ copy.reviewIntro }}
+              }
+              @case ('configure') {
+                {{ mock() ? copy.mockIntro : provider() === 'STATIC_BANK_QR' ? copy.bankIntro : copy.gatewayIntro }}
+              }
+              @default {
+                {{ copy.chooseIntro }}
+              }
+            }
+          </p>
+        </div>
+      </header>
+      <div class="wizard">
+        <ol class="stepper" [attr.aria-label]="copy.configuration">
+          @for (step of steps; track step; let index = $index) {
+            <li [attr.aria-current]="step === screen() ? 'step' : null" [class.step-complete]="index < stepIndex()">
+              <span class="step-number" aria-hidden="true">
+                @if (index < stepIndex()) {
+                  <svg lucideCheck></svg>
+                } @else {
+                  {{ index + 1 }}
+                }
+              </span>
+              {{ index === 0 ? copy.type : index === 1 ? copy.configuration : copy.review }}
+            </li>
+          }
+        </ol>
+        <div class="wizard-main">
+          @switch (screen()) {
+            @case ('type') {
+              <fieldset class="method-editor step-content">
+                <legend>{{ copy.type }}</legend>
+                <div class="type-options">
+                  @for (type of providers(); track type) {
+                    <label class="type-card">
+                      <input
+                        type="radio"
+                        name="payment-type"
+                        [value]="type"
+                        [checked]="provider() === type"
+                        (change)="provider.set(type)"
+                      />
+                      <span class="type-mark"><svg lucideCheck aria-hidden="true"></svg></span>
+                      <span class="method-icon"
+                        ><ng-container [ngTemplateOutlet]="typeIcon" [ngTemplateOutletContext]="{ $implicit: type }"
+                      /></span>
+                      <strong>{{ providerLabel(type) }}</strong>
+                      <small>{{ providerInfo(type) }}</small>
+                    </label>
+                  }
+                </div>
+              </fieldset>
+              <div class="editor-actions">
+                <button class="button secondary" type="button" (click)="cancel()">{{ copy.cancel }}</button>
+                <button class="button primary" type="button" [disabled]="!provider() || busy()" (click)="choose()">
+                  {{ copy.next }}<svg lucideArrowRight aria-hidden="true"></svg>
+                </button>
+              </div>
+            }
+            @case ('configure') {
+              <form
+                #configurationForm
+                class="step-content"
+                (submit)="$event.preventDefault(); review(configurationForm)"
+                novalidate
+              >
+                <div class="method-editor config-columns" [class.has-qr]="provider() === 'STATIC_BANK_QR' || mock()">
+                  <fieldset [disabled]="busy()">
+                    <legend>{{ mock() ? strings.formTitle : copy.account }}</legend>
+                    @if (mock()) {
+                      <mapit-payment-search-select
+                        inputId="country"
+                        [label]="strings.country"
+                        [placeholder]="strings.countryPlaceholder"
+                        [emptyMessage]="strings.noCountries"
+                        [options]="store.countryOptions()"
+                        [value]="store.draft().country"
+                        [disabled]="store.loading() || store.saving() || store.countries().length === 0"
+                        (valueChanged)="store.setCountry($event)"
+                      />
 
-      <aside class="qr-card" aria-labelledby="qr-preview-title">
-        <h2 id="qr-preview-title">{{ strings.qrTitle }}</h2>
-        <p class="mock-badge">{{ strings.mockLabel }}</p>
-        @if (store.selectedConfiguration()) {
-          @if (store.qr(); as image) {
-            <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- data URL generada en runtime -->
-            <img class="qr-image" [src]="image" [alt]="strings.qrAlt" width="280" height="280" />
-          } @else if (store.qrBusy()) {
-            <p class="hint" role="status">{{ strings.qrGenerating }}</p>
+                      <label class="field">
+                        <span>{{ strings.bank }}</span>
+                        <input
+                          name="bankName"
+                          required
+                          maxlength="120"
+                          autocomplete="off"
+                          list="bank-suggestions"
+                          [placeholder]="strings.bankPlaceholder"
+                          [value]="store.draft().bankName"
+                          (input)="store.setBankName($any($event.target).value)"
+                        />
+                        <datalist id="bank-suggestions">
+                          @for (bank of store.bankSuggestions(); track bank) {
+                            <option [value]="bank"></option>
+                          }
+                        </datalist>
+                        @if (store.bankSuggestions().length > 0) {
+                          <small>{{ strings.bankSuggestions }}</small>
+                        }
+                      </label>
+
+                      <label class="field">
+                        <span>{{ strings.accountHolder }}</span>
+                        <input
+                          name="accountHolderName"
+                          required
+                          maxlength="120"
+                          autocomplete="off"
+                          [value]="store.draft().accountHolderName"
+                          (input)="store.setAccountHolder($any($event.target).value)"
+                        />
+                      </label>
+
+                      <label class="field">
+                        <span>{{ strings.accountReference }}</span>
+                        <input
+                          name="accountReference"
+                          required
+                          maxlength="120"
+                          autocomplete="off"
+                          spellcheck="false"
+                          [value]="store.draft().accountReference"
+                          (input)="store.setAccountReference($any($event.target).value)"
+                        />
+                      </label>
+
+                      <p class="hint">{{ strings.testDataHint }}</p>
+
+                      <label class="enabled-option">
+                        <input
+                          name="enabled"
+                          type="checkbox"
+                          [checked]="store.draft().enabled"
+                          (change)="store.setEnabled($any($event.target).checked)"
+                        />
+                        <span>{{ strings.enabled }}</span>
+                      </label>
+                    } @else if (catalog.draft(); as draft) {
+                      <label class="field"
+                        >{{ copy.name
+                        }}<input
+                          name="displayName"
+                          required
+                          maxlength="120"
+                          autocomplete="off"
+                          [value]="draft.displayName"
+                          (input)="catalog.patch({ displayName: $any($event.target).value })"
+                      /></label>
+                      <div class="paired-fields">
+                        <label class="field"
+                          >{{ copy.countryCode
+                          }}<input
+                            name="country"
+                            required
+                            maxlength="2"
+                            pattern="[A-Za-z]{2}"
+                            autocomplete="off"
+                            spellcheck="false"
+                            [value]="draft.country"
+                            (input)="catalog.patch({ country: $any($event.target).value })"
+                        /></label>
+                        <label class="field"
+                          >{{ strings.policyCurrency
+                          }}<input
+                            name="currency"
+                            required
+                            maxlength="3"
+                            pattern="[A-Za-z]{3}"
+                            autocomplete="off"
+                            spellcheck="false"
+                            [value]="draft.currency"
+                            (input)="catalog.patch({ currency: $any($event.target).value })"
+                        /></label>
+                      </div>
+                      <label class="field"
+                        >{{ strings.bank
+                        }}<input
+                          name="bankName"
+                          required
+                          maxlength="120"
+                          autocomplete="off"
+                          [value]="draft.bankName"
+                          (input)="catalog.patch({ bankName: $any($event.target).value })"
+                      /></label>
+                      <label class="field"
+                        >{{ strings.accountHolder
+                        }}<input
+                          name="accountHolderName"
+                          [required]="!editing() || draft.enabled"
+                          maxlength="120"
+                          autocomplete="off"
+                          [value]="draft.accountHolderName"
+                          (input)="catalog.patch({ accountHolderName: $any($event.target).value })"
+                      /></label>
+                      <label class="field"
+                        >{{ copy.publicReference
+                        }}<input
+                          name="accountReference"
+                          required
+                          maxlength="120"
+                          autocomplete="off"
+                          spellcheck="false"
+                          [value]="draft.accountReference"
+                          (input)="catalog.patch({ accountReference: $any($event.target).value })"
+                      /></label>
+                      @if (draft.provider !== 'INTEGRATED_GATEWAY') {
+                        <label class="enabled-option"
+                          ><input
+                            type="checkbox"
+                            name="enabled"
+                            [checked]="draft.enabled"
+                            (change)="catalog.patch({ enabled: $any($event.target).checked })"
+                          />{{ strings.enabled }}</label
+                        >
+                      } @else {
+                        <ng-container [ngTemplateOutlet]="status" [ngTemplateOutletContext]="{ $implicit: false }" />
+                      }
+                    }
+                  </fieldset>
+                  @if (mock()) {
+                    <div class="qr-pane"><ng-container [ngTemplateOutlet]="mockPreview" /></div>
+                  } @else if (provider() === 'STATIC_BANK_QR') {
+                    <div class="qr-pane">
+                      <h2>{{ copy.qr }}</h2>
+                      <div class="qr-frame">
+                        @if (catalog.draft()?.staticQrImage; as image) {
+                          <ng-container
+                            [ngTemplateOutlet]="bankImage"
+                            [ngTemplateOutletContext]="{ $implicit: image }"
+                          />
+                        } @else {
+                          <svg lucideQrCode aria-hidden="true"></svg>
+                        }
+                      </div>
+                      <label class="button secondary upload-field">
+                        {{ catalog.draft()?.staticQrImage ? copy.changeImage : copy.upload }}
+                        <input
+                          type="file"
+                          name="qrImage"
+                          accept="image/png,image/jpeg"
+                          [disabled]="busy()"
+                          aria-describedby="qr-hint"
+                          [attr.aria-invalid]="
+                            catalog.qrError() || (invalid() && !catalog.draft()?.staticQrImage) ? 'true' : null
+                          "
+                          [attr.aria-errormessage]="
+                            catalog.qrError() || (invalid() && !catalog.draft()?.staticQrImage) ? 'qr-file-error' : null
+                          "
+                          (change)="upload($any($event.target))"
+                        />
+                      </label>
+                      <p class="hint" id="qr-hint">{{ copy.imageHint }}</p>
+                      @if (catalog.qrError(); as error) {
+                        <p class="error" role="alert" id="qr-file-error">{{ copy[error] }}</p>
+                      } @else if (invalid() && !catalog.draft()?.staticQrImage) {
+                        <p class="error" role="alert" id="qr-file-error">{{ copy.imageRequired }}</p>
+                      }
+                      @if (catalog.draft()?.staticQrImage) {
+                        <button type="button" class="button secondary" [disabled]="busy()" (click)="catalog.clearQr()">
+                          {{ copy.removeImage }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+                @if (invalid()) {
+                  <p class="message error" role="alert">{{ copy.invalid }}</p>
+                }
+                @if (mock() && store.error(); as error) {
+                  <p class="message error" role="alert">{{ error }}</p>
+                }
+                <div class="editor-actions">
+                  <button class="button secondary" type="button" [disabled]="busy()" (click)="cancel()">
+                    {{ copy.cancel }}
+                  </button>
+                  @if (!editing()) {
+                    <button class="button secondary" type="button" [disabled]="busy()" (click)="show('type')">
+                      <svg lucideArrowLeft aria-hidden="true"></svg>{{ copy.previous }}
+                    </button>
+                  }
+                  <button class="button primary" type="submit" [disabled]="busy()">
+                    {{ copy.next }}<svg lucideArrowRight aria-hidden="true"></svg>
+                  </button>
+                </div>
+              </form>
+            }
+            @case ('review') {
+              @if (provider(); as type) {
+                <div class="step-content">
+                  <ng-container
+                    [ngTemplateOutlet]="summary"
+                    [ngTemplateOutletContext]="{ $implicit: mock() ? store.draft() : catalog.draft(), type }"
+                  />
+                  @if (mock() ? store.error() : catalog.saveError(); as error) {
+                    <p class="message error" role="alert">{{ error }}</p>
+                  }
+                </div>
+              }
+              <div class="editor-actions">
+                <button class="button secondary" type="button" [disabled]="busy()" (click)="show('configure')">
+                  <svg lucideArrowLeft aria-hidden="true"></svg>{{ copy.previous }}
+                </button>
+                <button class="button primary" type="button" [disabled]="busy() || !canProceed()" (click)="save()">
+                  {{ busy() ? strings.saving : copy.save }}
+                </button>
+              </div>
+            }
           }
-          @if (store.qrError(); as qrError) {
-            <p class="message error" role="alert">{{ qrError }}</p>
-          }
-          @if (store.qrUrl(); as qrUrl) {
-            <p class="qr-url">
-              <span>{{ strings.qrUrl }}</span>
-              <code>{{ qrUrl }}</code>
-            </p>
-          }
-          <p class="hint">{{ strings.qrNotice }}</p>
-          <button
-            class="button secondary"
-            type="button"
-            [disabled]="store.regenerating() || store.saving()"
-            (click)="store.regenerate()"
-          >
-            {{ store.regenerating() ? strings.regenerating : strings.regenerate }}
-          </button>
-        } @else {
-          <p class="hint">{{ strings.qrEmpty }}</p>
-        }
-      </aside>
-    </div>
+        </div>
+      </div>
+    }
+  } @else {
+    <h1 id="payment-title">{{ copy.title }}</h1>
+    <p class="message" role="status">{{ copy.noContext }}</p>
   }
 </section>
+
+<ng-template #rowTrigger let-name let-menu="menu">
+  <button
+    class="row-trigger"
+    type="button"
+    [cdkMenuTriggerFor]="menu"
+    [attr.aria-label]="copy.rowActions.replace('{name}', name)"
+  >
+    <svg lucideEllipsisVertical aria-hidden="true"></svg>
+  </button>
+</ng-template>
+
+<ng-template #summary let-method let-type="type">
+  @if (method) {
+    <section class="method-editor">
+      <h2>{{ copy.summary }}</h2>
+      <dl class="summary">
+        <div>
+          <dt>{{ strings.establishment }}</dt>
+          <dd>{{ active()?.name }}</dd>
+        </div>
+        <div>
+          <dt>{{ copy.type }}</dt>
+          <dd>{{ providerLabel(type) }}</dd>
+        </div>
+        @if (method.displayName) {
+          <div>
+            <dt>{{ copy.name }}</dt>
+            <dd>{{ method.displayName }}</dd>
+          </div>
+        }
+        <div>
+          <dt>{{ strings.country }}</dt>
+          <dd>{{ method.country }}</dd>
+        </div>
+        @if (method.currency) {
+          <div>
+            <dt>{{ strings.policyCurrency }}</dt>
+            <dd>{{ method.currency }}</dd>
+          </div>
+        }
+        <div>
+          <dt>{{ strings.bank }}</dt>
+          <dd>{{ method.bankName }}</dd>
+        </div>
+        @if (method.accountHolderName) {
+          <div>
+            <dt>{{ strings.accountHolder }}</dt>
+            <dd>{{ method.accountHolderName }}</dd>
+          </div>
+        }
+        <div>
+          <dt>{{ copy.publicReference }}</dt>
+          <dd>{{ method.accountReference }}</dd>
+        </div>
+        <div>
+          <dt>{{ copy.status }}</dt>
+          <dd>
+            <ng-container [ngTemplateOutlet]="status" [ngTemplateOutletContext]="{ $implicit: method.enabled }" />
+          </dd>
+        </div>
+      </dl>
+      @if (method.staticQrImage && type === 'STATIC_BANK_QR') {
+        <ng-container [ngTemplateOutlet]="bankImage" [ngTemplateOutletContext]="{ $implicit: method.staticQrImage }" />
+      }
+    </section>
+  }
+</ng-template>
+
+<ng-template #status let-enabled>
+  <span class="badge" [class.badge-off]="!enabled">{{ enabled ? strings.active : strings.inactive }}</span>
+</ng-template>
+
+<ng-template #typeIcon let-type>
+  @switch (type) {
+    @case ('STATIC_BANK_QR') {
+      <svg lucideQrCode aria-hidden="true"></svg>
+    }
+    @case ('INTEGRATED_GATEWAY') {
+      <svg lucideCreditCard aria-hidden="true"></svg>
+    }
+    @default {
+      <svg lucideFlaskConical aria-hidden="true"></svg>
+    }
+  }
+</ng-template>
+
+<ng-template #bankImage let-image>
+  <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- imagen cargada por el usuario como Data URL -->
+  <img class="qr-image" [src]="image" [alt]="copy.bankAlt" width="240" height="240" />
+</ng-template>
+
+<ng-template #mockPreview>
+  <div class="mock-preview">
+    <h2>{{ strings.qrTitle }}</h2>
+    <p class="mock-badge">{{ strings.mockLabel }}</p>
+    @if (store.selectedConfiguration()) {
+      @if (store.qr(); as image) {
+        <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- data URL generada en runtime -->
+        <img class="qr-image" [src]="image" [alt]="strings.qrAlt" width="280" height="280" />
+      } @else if (store.qrBusy()) {
+        <p class="hint" role="status">{{ strings.qrGenerating }}</p>
+      }
+      @if (store.qrError(); as qrError) {
+        <p class="message error" role="alert">{{ qrError }}</p>
+      }
+      @if (store.qrUrl(); as qrUrl) {
+        <p class="qr-url">
+          <span>{{ strings.qrUrl }}</span>
+          <code>{{ qrUrl }}</code>
+        </p>
+      }
+      <p class="hint">{{ strings.qrNotice }}</p>
+      <button class="button secondary" type="button" [disabled]="busy() || store.dirty()" (click)="store.regenerate()">
+        {{ store.regenerating() ? strings.regenerating : strings.regenerate }}
+      </button>
+    } @else {
+      <p class="hint">{{ strings.qrEmpty }}</p>
+    }
+
+    @if (store.success(); as message) {
+      <p class="hint" role="status">{{ message }}</p>
+    }
+  </div>
+</ng-template>

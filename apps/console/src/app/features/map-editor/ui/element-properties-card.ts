@@ -39,6 +39,7 @@ import { STRINGS } from '../../../core/strings';
               data-testid="element-metadata-label"
               type="text"
               maxlength="120"
+              [disabled]="store.busy() || store.loading()"
               [value]="metadataDraft().label"
               (input)="setLabel($event)"
             />
@@ -50,6 +51,7 @@ import { STRINGS } from '../../../core/strings';
               type="number"
               min="1"
               step="1"
+              [disabled]="store.busy() || store.loading()"
               [value]="metadataDraft().capacity"
               (input)="setCapacity($event)"
             />
@@ -61,7 +63,7 @@ import { STRINGS } from '../../../core/strings';
             <button
               data-testid="element-metadata-clear"
               type="button"
-              [disabled]="store.saving()"
+              [disabled]="store.busy() || store.loading()"
               (click)="store.clearElementMetadata(element().id)"
             >
               {{ strings.metadataClear }}
@@ -69,7 +71,7 @@ import { STRINGS } from '../../../core/strings';
             <button
               data-testid="element-metadata-save"
               type="button"
-              [disabled]="store.saving()"
+              [disabled]="store.busy() || store.loading()"
               (click)="
                 store.saveElementMetadata(
                   element().id,
@@ -91,6 +93,7 @@ import { STRINGS } from '../../../core/strings';
             <span>X:</span>
             <input
               type="number"
+              [disabled]="store.busy() || store.loading()"
               [value]="currentX()"
               (change)="onUpdatePosition(valueAsNumber($event), currentY())"
             />
@@ -99,6 +102,7 @@ import { STRINGS } from '../../../core/strings';
             <span>Y:</span>
             <input
               type="number"
+              [disabled]="store.busy() || store.loading()"
               [value]="currentY()"
               (change)="onUpdatePosition(currentX(), valueAsNumber($event))"
             />
@@ -114,6 +118,7 @@ import { STRINGS } from '../../../core/strings';
             <input
               type="number"
               min="20"
+              [disabled]="store.busy() || store.loading()"
               [value]="roundedSize().width"
               (change)="onUpdateSize(valueAsNumber($event), roundedSize().height)"
             />
@@ -123,6 +128,7 @@ import { STRINGS } from '../../../core/strings';
             <input
               type="number"
               min="20"
+              [disabled]="store.busy() || store.loading()"
               [value]="roundedSize().height"
               (change)="onUpdateSize(roundedSize().width, valueAsNumber($event))"
             />
@@ -137,6 +143,7 @@ import { STRINGS } from '../../../core/strings';
             <input
               type="number"
               step="15"
+              [disabled]="store.busy() || store.loading()"
               [value]="Math.round(element().rotation)"
               (change)="onUpdateRotation(valueAsNumber($event))"
             />
@@ -144,6 +151,8 @@ import { STRINGS } from '../../../core/strings';
           </label>
           <button
             class="btn-rotate"
+            type="button"
+            [disabled]="store.busy() || store.loading()"
             aria-label="{{ strings.rotation }}"
             (click)="onUpdateRotation(0)"
           >
@@ -157,7 +166,12 @@ import { STRINGS } from '../../../core/strings';
         <span>{{ element().capacity ?? strings.capacityUnknown }}</span>
       </div>
 
-      <button class="btn-delete" (click)="onDelete()">
+      <button
+        class="btn-delete"
+        type="button"
+        [disabled]="store.busy() || store.loading()"
+        (click)="onDelete()"
+      >
         {{ floorStrings.deleteElement }}
       </button>
     </aside>
@@ -374,6 +388,14 @@ export class ElementPropertiesCardComponent {
     label: this.store.selectedMetadata()?.label ?? '',
     capacity: this.store.selectedMetadata()?.capacity?.toString() ?? '',
   }));
+  readonly dirty = computed(() => {
+    if (!this.store.canEditMetadata()) return false;
+    const saved = this.store.selectedMetadata();
+    const draft = this.metadataDraft();
+    return (
+      draft.label !== (saved?.label ?? '') || draft.capacity !== (saved?.capacity?.toString() ?? '')
+    );
+  });
 
   protected setLabel(event: Event): void {
     this.metadataDraft.update((draft) => ({
@@ -404,25 +426,32 @@ export class ElementPropertiesCardComponent {
   }
 
   protected onUpdatePosition(x: number, y: number): void {
-    if (Number.isFinite(x) && Number.isFinite(y)) {
+    if (!this.store.busy() && !this.store.loading() && Number.isFinite(x) && Number.isFinite(y)) {
       this.store.dragElement(this.element().id, x, y);
     }
   }
 
   protected onUpdateSize(width: number, height: number): void {
-    if (!Number.isFinite(width) || !Number.isFinite(height)) return;
+    if (
+      this.store.busy() ||
+      this.store.loading() ||
+      !Number.isFinite(width) ||
+      !Number.isFinite(height)
+    )
+      return;
     const el = this.element();
     this.store.resizeElement(el.id, el.position.x, el.position.y, width, height);
   }
 
   protected onUpdateRotation(rotation: number): void {
-    if (Number.isFinite(rotation)) {
+    if (!this.store.busy() && !this.store.loading() && Number.isFinite(rotation)) {
       this.store.rotateElement(this.element().id, rotation);
     }
   }
 
   /** Destructivo: pide confirmación (guía web). */
   protected onDelete(): void {
+    if (this.store.busy() || this.store.loading()) return;
     const el = this.element();
     if (window.confirm(this.strings.deleteConfirm.replace('{label}', el.label))) {
       this.store.deleteElement(el.id);

@@ -38,8 +38,10 @@ async function prepare(page: Page, enabled = true): Promise<void> {
       },
     }),
   );
-  await page.addInitScript(() => {
+  await page.addInitScript((establishmentId) => {
     if (location.origin !== 'http://localhost:4400') return;
+    const userId = '69000000-0000-0000-0000-000000000003';
+    localStorage.setItem(`mapit.establishment.demo.${userId}`, establishmentId);
     sessionStorage.setItem(
       'mapit.auth.session',
       JSON.stringify({
@@ -48,7 +50,7 @@ async function prepare(page: Page, enabled = true): Promise<void> {
         expiresAt: new Date(Date.now() + 3600000).toISOString(),
         tenantSlug: 'demo',
         user: {
-          id: '69000000-0000-0000-0000-000000000003',
+          id: userId,
           tenantId: 'demo',
           email: 'operador@demo.test',
           fullName: 'Operador de demostración',
@@ -56,7 +58,7 @@ async function prepare(page: Page, enabled = true): Promise<void> {
         },
       }),
     );
-  });
+  }, PREVIEW_ESTABLISHMENT_ID);
 }
 
 async function screenshot(page: Page, name: string): Promise<void> {
@@ -120,7 +122,7 @@ test('checkout → comprobante → lectura QR y llegada: únicamente simulación
   await page.goto(CONSOLE + '/check-in', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('check-in-page')).toBeVisible();
   await expect(page.getByTestId('preview-banner')).toBeVisible();
-  await page.getByTestId('check-in-venue').selectOption(PREVIEW_ESTABLISHMENT_ID);
+  await page.getByTestId('check-in-manual-mode').click();
   // Una entrada alterada no resuelve una reserva ni habilita la llegada.
   await page.getByTestId('check-in-code').fill('https://evil.test' + PREVIEW_RECEIPT_PATH);
   await page.getByTestId('lookup-receipt').click();
@@ -131,11 +133,13 @@ test('checkout → comprobante → lectura QR y llegada: únicamente simulación
   await screenshot(page, 'check-in.png');
   // El lector utiliza ZXing real con video de fixture, nunca una cámara física.
   await page.getByTestId('check-in-code').fill('');
+  await page.getByTestId('check-in-scan-mode').click();
   await page.getByTestId('scanner-start').click();
+  await expect(page.getByTestId('register-arrival')).toBeEnabled({ timeout: 20000 });
+  await page.getByTestId('check-in-manual-mode').click();
   await expect(page.getByTestId('check-in-code')).toHaveValue(PUBLIC + PREVIEW_RECEIPT_PATH, {
     timeout: 20000,
   });
-  await expect(page.getByTestId('register-arrival')).toBeEnabled();
   await page.getByTestId('register-arrival').click();
   await expect(page.getByTestId('check-in-status')).toContainText(
     /registrada|CHECKED_IN|ACTIVE|activa/i,

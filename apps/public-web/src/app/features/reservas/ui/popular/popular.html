@@ -1,68 +1,79 @@
-<section class="popular" id="mas-populares" aria-labelledby="popular-title" data-testid="public-catalog">
+<section class="popular" id="mas-populares" tabindex="-1" aria-labelledby="popular-title" data-testid="public-catalog">
   <div class="inner">
     <div class="head">
-      <h2 id="popular-title">{{ strings.publicCatalog.title }}</h2>
+      <div>
+        <h2 id="popular-title">{{ strings.publicCatalog.title }}</h2>
+        @if (store.status() === 'loaded') {
+          <p class="result-count" role="status">
+            {{ store.visibleItems().length }} {{ strings.reservas.catalog.results }}
+          </p>
+        }
+      </div>
+      <label class="sort"
+        >{{ strings.reservas.catalog.sort }}
+        <select [value]="store.order()" (change)="store.order.set($any($event.target).value)">
+          <option value="relevant">{{ strings.reservas.catalog.relevant }}</option>
+          <option value="name">{{ strings.reservas.catalog.byName }}</option>
+        </select>
+      </label>
     </div>
     @if (store.status() === 'loading') {
-      <p role="status">{{ strings.publicCatalog.loading }}</p>
+      <p class="notice" role="status">{{ strings.publicCatalog.loading }}</p>
     } @else if (store.status() === 'error') {
-      <div role="alert">
+      <div class="notice" role="alert">
         <p>{{ strings.publicCatalog.error }}</p>
-        <button type="button" (click)="store.search()">{{ strings.publicCatalog.retry }}</button>
+        <button class="secondary" type="button" (click)="store.search()">{{ strings.publicCatalog.retry }}</button>
       </div>
     } @else {
       <div class="grid">
-        @for (venue of store.items(); track venue.id; let i = $index) {
+        @for (venue of store.visibleItems(); track venue.id; let i = $index) {
           <article
             class="card"
             [attr.data-testid]="'catalog-establishment-' + venue.id"
             mapitReveal
-            [mapitRevealDelay]="(i % 3) * 70"
+            [mapitRevealDelay]="(i % 3) * 60"
           >
-            <div class="media" [attr.data-category]="store.category(venue.type)">
-              <span class="media-placeholder" aria-hidden="true">
-                <svg viewBox="0 0 16 16" width="26" height="26">
-                  <path
-                    d="M8 14.2c3.2-2.2 5.4-4.9 5.4-7.4A5.4 5.4 0 0 0 2.6 6.8c0 2.5 2.2 5.2 5.4 7.4Z"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.3"
-                  />
-                  <circle cx="8" cy="6.8" r="1.8" fill="none" stroke="currentColor" stroke-width="1.3" />
-                </svg>
-                {{ store.typeLabel(venue.type) }}
-              </span>
+            <div class="media">
+              <img
+                [ngSrc]="photos[venue.type] ?? 'assets/img/reservas/hotel.webp'"
+                [alt]="strings.reservas.catalog.illustrative + ': ' + store.typeLabel(venue.type)"
+                fill
+                sizes="(max-width: 560px) 100vw, (max-width: 900px) 50vw, 33vw"
+                loading="lazy"
+              />
             </div>
             <div class="body">
               <h3 class="name">{{ venue.name }}</h3>
-              <p class="meta">{{ strings.venueIdentity.company }}: {{ venue.tenantName }}</p>
-              <p class="meta">{{ strings.venueIdentity.code }}: {{ venue.establishmentSlug }}</p>
-              <p class="meta">{{ store.typeLabel(venue.type) }}</p>
-              @if (venue.address) {
-                <p class="meta">{{ venue.address }}</p>
-              }
-              <p class="meta">{{ strings.publicCatalog.timezone }}: {{ venue.timezone }}</p>
               <a
                 class="cta"
                 data-testid="catalog-availability"
                 [routerLink]="['/disponibilidad', venue.tenantSlug, venue.establishmentSlug]"
+                [queryParams]="store.bookingCriteria()"
                 [attr.aria-label]="strings.reservas.popular.viewVenue + ': ' + venue.name"
-                >{{ strings.reservas.popular.viewVenue }}</a
+                >{{ strings.reservas.popular.viewVenue }} <span aria-hidden="true">→</span></a
               >
             </div>
           </article>
         } @empty {
-          <p role="status">{{ strings.publicCatalog.empty }}</p>
+          <p class="notice" role="status">{{ strings.publicCatalog.empty }}</p>
         }
       </div>
-      <nav [attr.aria-label]="strings.venueIdentity.pagination">
-        <button type="button" (click)="store.previous()" [disabled]="store.offset() === 0">
-          {{ strings.venueIdentity.previous }}
-        </button>
-        <button type="button" (click)="store.next()" [disabled]="store.items().length < store.pageSize">
-          {{ strings.venueIdentity.next }}
-        </button>
-      </nav>
+      <p class="catalog-note">{{ strings.reservas.catalog.note }}</p>
+      @if (store.offset() > 0 || store.items().length === store.pageSize) {
+        <nav class="pagination" [attr.aria-label]="strings.venueIdentity.pagination">
+          <button class="secondary" type="button" (click)="store.previous()" [disabled]="store.offset() === 0">
+            {{ strings.venueIdentity.previous }}
+          </button>
+          <button
+            class="secondary"
+            type="button"
+            (click)="store.next()"
+            [disabled]="store.items().length < store.pageSize"
+          >
+            {{ strings.venueIdentity.next }}
+          </button>
+        </nav>
+      }
     }
   </div>
 </section>

@@ -1,7 +1,33 @@
 <section class="check-in-page" data-testid="check-in-page" aria-labelledby="check-in-title">
   <header class="page-header">
-    <h1 id="check-in-title">{{ strings.title }}</h1>
-    <p>{{ strings.intro }}</p>
+    <div class="header-copy">
+      <p class="eyebrow">{{ strings.eyebrow }}</p>
+      <h1 id="check-in-title">{{ strings.title }}</h1>
+      <p>{{ strings.intro }}</p>
+    </div>
+    <div class="header-art" aria-hidden="true">
+      <svg class="header-route" viewBox="0 0 700 230" fill="none">
+        <defs>
+          <pattern id="arrival-dots" width="20" height="20" patternUnits="userSpaceOnUse">
+            <circle cx="4" cy="4" r="3" fill="#9fc0fa" />
+          </pattern>
+        </defs>
+        <path
+          d="M0 230C65 107 132 78 231 143C333 211 348 190 423 91C495-4 550 121 613 58C641 30 644 7 655 0H700V230Z"
+          fill="currentColor"
+        />
+        <path
+          d="M350 151C458 175 432 0 534 48S626 103 641 62"
+          stroke="var(--mapit-color-primary)"
+          stroke-width="2"
+          stroke-dasharray="9 7"
+          stroke-linecap="round"
+        />
+        <circle cx="641" cy="62" r="6" fill="var(--mapit-color-primary)" />
+        <rect x="585" y="120" width="80" height="64" fill="url(#arrival-dots)" opacity="0.65" />
+      </svg>
+      <img ngSrc="assets/img/check-in/arrival.png" alt="" width="1536" height="1024" />
+    </div>
   </header>
 
   @if (!store.enabled()) {
@@ -10,296 +36,352 @@
       <p>{{ strings.unavailable }}</p>
     </section>
   } @else if (!store.authorized()) {
-    <p class="message error" role="alert">{{ strings.previewOnlyTenant }}</p>
-  } @else {
+    <p class="message error" role="alert">{{ store.preview() ? strings.previewOnlyTenant : strings.noAccess }}</p>
+  } @else if (venue(); as activeEstablishment) {
+    <p class="active-venue">
+      <span class="venue-icon"><svg lucideStore aria-hidden="true"></svg></span>
+      <span class="venue-copy">
+        <span>{{ strings.activeVenue }}</span>
+        <strong>{{ activeEstablishment.name }}</strong>
+      </span>
+      @if (store.canCheckIn()) {
+        <span class="venue-status">{{ strings.receptionReady }}</span>
+      }
+    </p>
     @if (store.preview()) {
       <p class="preview-banner" data-testid="preview-banner">{{ strings.previewBanner }}</p>
     }
-    <p class="sr-only" role="status">
-      {{ store.querying() ? strings.querying : store.result() ? strings.lookupSuccess : '' }}
-    </p>
-    <label class="field venue-field">
-      <span>{{ strings.venue }}</span>
-      <select
-        data-testid="check-in-venue"
-        [disabled]="store.arriving()"
-        (change)="scanner.stop(); store.selectEstablishment($any($event.target).value)"
-      >
-        <option value="" [selected]="!store.establishmentId()">{{ strings.chooseVenue }}</option>
-        @for (venue of store.establishments(); track venue.id) {
-          <option [value]="venue.id" [selected]="store.establishmentId() === venue.id">{{ venue.name }}</option>
-        }
-        @if (store.preview()) {
-          <option value="demo-other-establishment">{{ strings.otherVenue }}</option>
-        }
-      </select>
-    </label>
-
-    @if (store.venuesError()) {
-      <p role="alert">{{ strings.venuesError }}</p>
-      <button class="button secondary" type="button" (click)="store.loadEstablishments()">{{ strings.retry }}</button>
-    }
-    <div class="workspace">
-      <section class="scan-panel" aria-labelledby="scan-title">
-        <header>
-          <h2 id="scan-title">{{ strings.scannerTitle }}</h2>
-          <p>{{ strings.scannerIntro }}</p>
-        </header>
-        <div class="camera-frame" [class.active]="scanner.state() === 'active'">
-          <video
-            #scannerVideo
-            data-testid="scanner-video"
-            muted
-            playsinline
-            [attr.aria-label]="strings.cameraLabel"
-          ></video>
-          @if (scanner.state() !== 'active') {
-            <p class="camera-placeholder">
-              {{ scanner.state() === 'starting' ? strings.cameraStarting : strings.cameraStopped }}
-            </p>
-          }
-        </div>
-        <p class="camera-status" role="status">{{ scanner.state() === 'active' ? strings.cameraReady : '' }}</p>
-        @if (scanner.error(); as cameraError) {
-          <p class="message error" role="alert">{{ cameraError }}</p>
-        }
-        <label class="field">
-          <span>{{ strings.camera }}</span>
-          <select
-            [value]="scanner.selectedDevice()"
-            [disabled]="store.arriving() || scanner.state() === 'starting'"
-            (change)="scanner.selectDevice($any($event.target).value)"
-          >
-            <option value="">{{ strings.defaultCamera }}</option>
-            @for (device of scanner.devices(); track device.deviceId; let index = $index) {
-              <option [value]="device.deviceId">
-                {{ device.label || strings.unnamedCamera.replace('{number}', '' + (index + 1)) }}
-              </option>
-            }
-          </select>
-        </label>
-        <div class="camera-actions">
-          <button
-            class="button secondary"
-            data-testid="scanner-start"
-            type="button"
-            [disabled]="
-              !store.establishmentId() ||
-              store.arriving() ||
-              scanner.state() === 'starting' ||
-              scanner.state() === 'active'
-            "
-            (click)="scanner.start(scannerVideo, store.onScan)"
-          >
-            {{ strings.startCamera }}
-          </button>
-          <button
-            class="button secondary"
-            data-testid="scanner-stop"
-            type="button"
-            [disabled]="scanner.state() !== 'starting' && scanner.state() !== 'active'"
-            (click)="scanner.stop()"
-          >
-            {{ strings.stopCamera }}
-          </button>
-        </div>
-
-        <form class="manual-entry" (submit)="$event.preventDefault(); scanner.stop(); store.query()">
-          <label class="field">
-            <span>{{ strings.manualLabel }}</span>
-            <input
-              data-testid="check-in-code"
-              name="receiptCode"
-              type="text"
-              autocomplete="off"
-              spellcheck="false"
-              maxlength="2048"
-              aria-describedby="code-hint"
-              [value]="store.input()"
-              [disabled]="store.arriving()"
-              (input)="store.setInput($any($event.target).value)"
-            />
-            <small id="code-hint">{{ strings.manualHint }}</small>
-          </label>
-          <div class="camera-actions">
-            <button
-              class="button primary"
-              data-testid="lookup-receipt"
-              type="submit"
-              [disabled]="store.arriving() || store.querying() || !store.input()"
-            >
-              {{ store.querying() ? strings.querying : strings.query }}
-            </button>
-            <button
-              class="button secondary"
-              type="button"
-              [disabled]="store.arriving()"
-              (click)="scanner.stop(); store.clear()"
-            >
-              {{ strings.clear }}
-            </button>
-          </div>
-        </form>
-        @if (store.error(); as error) {
-          <p class="message error" role="alert">{{ error }}</p>
-        }
-
-        @if (store.preview()) {
-          <details class="demo-controls">
-            <summary>{{ strings.demoTitle }}</summary>
-            <p>{{ strings.demoHint }}</p>
-            <label class="field">
-              <span>{{ strings.scenario }}</span>
-              <select
-                data-testid="check-in-scenario"
-                [value]="store.scenario()"
-                [disabled]="store.arriving()"
-                (change)="scanner.stop(); store.setScenario($any($event.target).value)"
+    @if (store.canCheckIn()) {
+      <div class="lookup">
+        <p class="sr-only" role="status">
+          {{ store.querying() ? strings.querying : store.result() ? strings.lookupSuccess : '' }}
+        </p>
+        <div class="workspace">
+          <div class="lookup-column">
+            <div class="lookup-tabs" role="tablist" [attr.aria-label]="strings.lookupMode">
+              <button
+                #scanTab
+                type="button"
+                role="tab"
+                id="scan-tab"
+                aria-controls="scan-panel"
+                data-testid="check-in-scan-mode"
+                [attr.aria-selected]="mode() === 'scan'"
+                [tabIndex]="mode() === 'scan' ? 0 : -1"
+                (click)="selectMode('scan')"
+                (keydown)="navigateTabs($event, scanTab, manualTab)"
               >
-                @for (scenario of store.scenarios; track scenario) {
-                  <option [value]="scenario">{{ strings.scenarios[scenario] }}</option>
-                }
-              </select>
-            </label>
-            <button
-              data-testid="check-in-demo-code"
-              class="button secondary"
-              type="button"
-              [disabled]="store.arriving()"
-              (click)="store.useDemoCode()"
-            >
-              {{ strings.demoCode }}
-            </button>
-          </details>
-        }
-      </section>
+                <svg lucideQrCode aria-hidden="true"></svg>{{ strings.scanMode }}
+              </button>
+              <button
+                #manualTab
+                type="button"
+                role="tab"
+                id="manual-tab"
+                aria-controls="manual-panel"
+                data-testid="check-in-manual-mode"
+                [attr.aria-selected]="mode() === 'manual'"
+                [tabIndex]="mode() === 'manual' ? 0 : -1"
+                (click)="selectMode('manual')"
+                (keydown)="navigateTabs($event, scanTab, manualTab)"
+              >
+                <svg lucideCode aria-hidden="true"></svg>{{ strings.manualMode }}
+              </button>
+            </div>
 
-      <section
-        class="result-panel"
-        aria-labelledby="result-title"
-        [attr.aria-busy]="store.querying() || store.arriving()"
-      >
-        @if (store.result(); as result) {
-          <div class="result-content">
-            <header>
-              <h2 id="result-title">{{ strings.resultTitle }}</h2>
-              <p class="establishment-name">{{ result.receipt.reservation.establishmentName }}</p>
-            </header>
-            <dl class="reservation-details">
-              <div>
-                <dt>{{ strings.reservationCode }}</dt>
-                <dd class="code">{{ result.receipt.reservation.id }}</dd>
-              </div>
-              <div>
-                <dt>{{ strings.schedule }}</dt>
-                <dd>
-                  {{ store.formatDate(result.receipt.reservation.startsAt, result.receipt.reservation.timezone) }} —
-                  {{ store.formatDate(result.receipt.reservation.endsAt, result.receipt.reservation.timezone) }}
-                </dd>
-              </div>
-              <div>
-                <dt>{{ strings.reservationState }}</dt>
-                <dd>{{ store.reservationLabel(result.receipt.reservation.status) }}</dd>
-              </div>
-              <div>
-                <dt>{{ strings.paymentState }}</dt>
-                <dd>{{ store.paymentLabel(result.receipt.payment.status) }}</dd>
-              </div>
-              <div>
-                <dt>{{ strings.arrivalState }}</dt>
-                <dd data-testid="check-in-status">
-                  {{ result.receipt.checkIn === 'CHECKED_IN' ? strings.checkedIn : strings.notCheckedIn }}
-                </dd>
-              </div>
-            </dl>
-            <section class="spaces" aria-labelledby="spaces-title">
-              <h3 id="spaces-title">{{ strings.spacesTitle }}</h3>
-              <ul>
-                @for (space of result.receipt.reservation.spaces; track space.id) {
-                  <li>
-                    <strong>{{ space.name }}</strong
-                    ><span>{{ space.floor }} · {{ space.sector }}</span
-                    ><span>{{ store.spaceLabel(space.state) }}</span>
-                  </li>
-                }
-              </ul>
-            </section>
-            <dl class="amount-details">
-              <div>
-                <dt>{{ strings.paid }}</dt>
-                <dd>
-                  {{ store.formatMoney(result.receipt.paidAmount, result.receipt.currency) }}
-                </dd>
-              </div>
-              @if (result.receipt.balanceAmount !== null) {
-                <div>
-                  <dt>{{ strings.balance }}</dt>
-                  <dd>{{ store.formatMoney(result.receipt.balanceAmount, result.receipt.currency) }}</dd>
-                </div>
-              }
-            </dl>
-            <p class="hint">{{ store.preview() ? strings.amountHint : strings.amountHintReal }}</p>
-            <p class="identity-hint">{{ strings.identityHint }}</p>
-            @if (store.eligibilityMessage(); as message) {
-              <p class="message error" role="status">{{ message }}</p>
-            } @else if (result.receipt.checkIn === 'CHECKED_IN') {
-              <p class="message success" role="status">
-                {{ store.preview() ? strings.arrivalSuccess : strings.arrivalSuccessReal }}
-              </p>
-            } @else {
-              <p class="eligibility">{{ store.preview() ? strings.eligible : strings.eligibleReal }}</p>
-            }
-            <button
-              data-testid="register-arrival"
-              class="button primary arrival-button"
-              type="button"
-              [disabled]="!store.canArrive()"
-              (click)="scanner.stop(); store.arrive()"
+            <section
+              class="tab-panel"
+              role="tabpanel"
+              id="scan-panel"
+              aria-labelledby="scan-tab"
+              [hidden]="mode() !== 'scan'"
             >
-              {{ store.arriving() ? strings.arriving : store.preview() ? strings.arrive : strings.arriveReal }}
-            </button>
-            @if (result.audit; as audit) {
-              <section class="audit" aria-labelledby="audit-title">
-                <h3 id="audit-title">{{ store.preview() ? strings.auditTitle : strings.auditTitleReal }}</h3>
-                <dl>
-                  <div>
-                    <dt>{{ strings.auditActor }}</dt>
-                    <dd class="code">{{ audit.actorId }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ strings.auditDate }}</dt>
-                    <dd data-testid="arrival-audit-time">
-                      {{ store.formatDate(audit.occurredAt, result.receipt.reservation.timezone) }}
+              @if (mode() === 'scan') {
+                <div class="camera-frame">
+                  <video
+                    #scannerVideo
+                    data-testid="scanner-video"
+                    muted
+                    playsinline
+                    [attr.aria-label]="strings.cameraLabel"
+                  ></video>
+                </div>
+                <p class="camera-status" role="status">
+                  @switch (scanner.state()) {
+                    @case ('starting') {
+                      {{ strings.cameraStarting }}
+                    }
+                    @case ('active') {
+                      {{ strings.cameraReady }}
+                    }
+                    @case ('idle') {
+                      {{ strings.cameraStopped }}
+                    }
+                  }
+                </p>
+                @if (scanner.state() === 'error' && scanner.error(); as cameraError) {
+                  <p class="message error" role="alert">{{ cameraError }}</p>
+                }
+                <div class="camera-controls">
+                  @if (scanner.devices().length > 1) {
+                    <label class="field">
+                      <span>{{ strings.camera }}</span>
+                      <select
+                        data-testid="check-in-camera"
+                        [value]="scanner.selectedDevice()"
+                        [disabled]="store.busy() || scanner.state() === 'starting'"
+                        (change)="scanner.selectDevice($any($event.target).value)"
+                      >
+                        <option value="">{{ strings.defaultCamera }}</option>
+                        @for (device of scanner.devices(); track device.deviceId; let index = $index) {
+                          <option [value]="device.deviceId">
+                            {{ device.label || strings.unnamedCamera.replace('{number}', '' + (index + 1)) }}
+                          </option>
+                        }
+                      </select>
+                    </label>
+                  } @else {
+                    <p class="camera-choice" aria-live="polite">
+                      <svg lucideCamera aria-hidden="true"></svg>
+                      <span class="camera-choice-copy"
+                        ><strong>{{ strings.camera }}</strong
+                        ><small>{{ strings.defaultCamera }}</small></span
+                      >
+                    </p>
+                  }
+                  <button
+                    class="button primary"
+                    [attr.data-testid]="scanning() ? 'scanner-stop' : 'scanner-start'"
+                    type="button"
+                    [disabled]="!scanning() && (store.busy() || store.querying())"
+                    (click)="toggleCamera(scannerVideo)"
+                  >
+                    <svg lucideCamera aria-hidden="true"></svg>
+                    {{ scanning() ? strings.stopCamera : strings.startCamera }}
+                  </button>
+                </div>
+                <p class="camera-help">
+                  <svg lucideInfo aria-hidden="true"></svg><span>{{ strings.cameraHint }}</span>
+                </p>
+              }
+            </section>
+            <section
+              class="tab-panel"
+              role="tabpanel"
+              id="manual-panel"
+              aria-labelledby="manual-tab"
+              [hidden]="mode() !== 'manual'"
+            >
+              <form class="manual-entry" (submit)="$event.preventDefault(); scanner.stop(); store.query()">
+                <label class="field">
+                  <span>{{ strings.manualLabel }}</span>
+                  <input
+                    data-testid="check-in-code"
+                    name="receiptCode"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    maxlength="2048"
+                    aria-describedby="code-hint"
+                    [value]="store.input()"
+                    [disabled]="store.arriving()"
+                    (input)="store.setInput($any($event.target).value)"
+                  />
+                  <small id="code-hint">{{ strings.manualHint }}</small>
+                </label>
+                <div class="form-actions">
+                  <button
+                    class="button primary"
+                    data-testid="lookup-receipt"
+                    type="submit"
+                    [disabled]="store.arriving() || store.querying() || !store.input()"
+                  >
+                    {{ store.querying() ? strings.querying : strings.query }}
+                  </button>
+                  @if (!store.result()) {
+                    <button
+                      class="button secondary"
+                      type="button"
+                      [disabled]="store.arriving()"
+                      (click)="scanner.stop(); store.clear()"
+                    >
+                      {{ strings.clear }}
+                    </button>
+                  }
+                </div>
+              </form>
+            </section>
+            @if (store.error(); as error) {
+              <p class="message error" role="alert">{{ error }}</p>
+            }
+            @if (store.preview()) {
+              <details class="demo-controls">
+                <summary>{{ strings.demoTitle }}</summary>
+                <p>{{ strings.demoHint }}</p>
+                <label class="field">
+                  <span>{{ strings.scenario }}</span>
+                  <select
+                    data-testid="check-in-scenario"
+                    [value]="store.scenario()"
+                    [disabled]="store.arriving()"
+                    (change)="scanner.stop(); store.setScenario($any($event.target).value)"
+                  >
+                    @for (scenario of store.scenarios; track scenario) {
+                      <option [value]="scenario">{{ strings.scenarios[scenario] }}</option>
+                    }
+                  </select>
+                </label>
+                <button
+                  data-testid="check-in-demo-code"
+                  class="button secondary"
+                  type="button"
+                  [disabled]="store.arriving()"
+                  (click)="useDemoCode()"
+                >
+                  {{ strings.demoCode }}
+                </button>
+              </details>
+            }
+          </div>
+          <section
+            class="result-panel"
+            [class.awaiting-receipt]="!store.result()"
+            aria-labelledby="result-title"
+            [attr.aria-busy]="store.querying() || store.arriving()"
+          >
+            @if (store.result(); as result) {
+              <div class="result-content">
+                <header>
+                  <h2 id="result-title">{{ strings.resultTitle }}</h2>
+                  <p class="establishment-name">{{ result.receipt.reservation.establishmentName }}</p>
+                </header>
+                <dl class="reservation-details">
+                  <div class="detail-row detail-wide">
+                    <dt><svg lucideCalendarDays aria-hidden="true"></svg>{{ strings.schedule }}</dt>
+                    <dd>
+                      {{ store.formatDate(result.receipt.reservation.startsAt, result.receipt.reservation.timezone) }} —
+                      {{ store.formatDate(result.receipt.reservation.endsAt, result.receipt.reservation.timezone) }}
                     </dd>
                   </div>
-                  <div>
-                    <dt>{{ strings.auditSpaces }}</dt>
-                    <dd>{{ audit.spaceIds.join(', ') }}</dd>
+                  <div class="detail-row">
+                    <dt><svg lucideCheckCircle2 aria-hidden="true"></svg>{{ strings.reservationState }}</dt>
+                    <dd>{{ store.reservationLabel(result.receipt.reservation.status) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt><svg lucideCheckCircle2 aria-hidden="true"></svg>{{ strings.arrivalState }}</dt>
+                    <dd data-testid="check-in-status">
+                      {{ result.receipt.checkIn === 'CHECKED_IN' ? strings.checkedIn : strings.notCheckedIn }}
+                    </dd>
                   </div>
                 </dl>
-              </section>
+                <section class="spaces" aria-labelledby="spaces-title">
+                  <h3 id="spaces-title"><svg lucideMapPin aria-hidden="true"></svg>{{ strings.spacesTitle }}</h3>
+                  <ul>
+                    @for (space of result.receipt.reservation.spaces; track space.id) {
+                      <li>
+                        <strong>{{ space.name }}</strong
+                        ><span>{{ space.floor }} · {{ space.sector }}</span
+                        ><span>{{ store.spaceLabel(space.state) }}</span>
+                      </li>
+                    }
+                  </ul>
+                </section>
+                <details class="payment-details">
+                  <summary>
+                    {{ strings.paymentDetails }} · {{ store.paymentLabel(result.receipt.payment.status) }}
+                  </summary>
+                  <dl class="amount-details">
+                    <div>
+                      <dt>{{ strings.paid }}</dt>
+                      <dd>{{ store.formatMoney(result.receipt.paidAmount, result.receipt.currency) }}</dd>
+                    </div>
+                    @if (result.receipt.balanceAmount !== null) {
+                      <div>
+                        <dt>{{ strings.balance }}</dt>
+                        <dd>{{ store.formatMoney(result.receipt.balanceAmount, result.receipt.currency) }}</dd>
+                      </div>
+                    }
+                  </dl>
+                  <p class="hint">{{ store.preview() ? strings.amountHint : strings.amountHintReal }}</p>
+                  <p class="identity-hint">{{ strings.identityHint }}</p>
+                </details>
+                <details class="technical-details">
+                  <summary>{{ strings.technicalIds }}</summary>
+                  <dl>
+                    <div>
+                      <dt>{{ strings.reservationCode }}</dt>
+                      <dd class="code">{{ result.receipt.reservation.id }}</dd>
+                    </div>
+                  </dl>
+                </details>
+                @if (result.audit; as audit) {
+                  <section class="audit" aria-labelledby="audit-title">
+                    <h3 id="audit-title">{{ store.preview() ? strings.auditTitle : strings.auditTitleReal }}</h3>
+                    <dl>
+                      <div>
+                        <dt>{{ strings.auditActor }}</dt>
+                        <dd class="code">{{ audit.actorId }}</dd>
+                      </div>
+                      <div>
+                        <dt>{{ strings.auditDate }}</dt>
+                        <dd data-testid="arrival-audit-time">
+                          {{ store.formatDate(audit.occurredAt, result.receipt.reservation.timezone) }}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{{ strings.auditSpaces }}</dt>
+                        <dd>{{ audit.spaceIds.join(', ') }}</dd>
+                      </div>
+                    </dl>
+                  </section>
+                }
+                @if (store.eligibilityMessage(); as message) {
+                  <p class="message error" role="status">{{ message }}</p>
+                } @else if (result.receipt.checkIn === 'CHECKED_IN') {
+                  <p class="message success" role="status">
+                    {{ store.preview() ? strings.arrivalSuccess : strings.arrivalSuccessReal }}
+                  </p>
+                } @else {
+                  <p class="eligibility">{{ store.preview() ? strings.eligible : strings.eligibleReal }}</p>
+                }
+                <div class="form-actions">
+                  <button
+                    data-testid="register-arrival"
+                    class="button primary"
+                    type="button"
+                    [disabled]="!store.canArrive()"
+                    (click)="scanner.stop(); store.arrive()"
+                  >
+                    {{ store.arriving() ? strings.arriving : store.preview() ? strings.arrive : strings.arriveReal }}
+                  </button>
+                  <button
+                    class="button secondary"
+                    type="button"
+                    [disabled]="store.busy()"
+                    (click)="scanner.stop(); store.clear()"
+                  >
+                    {{ strings.clear }}
+                  </button>
+                </div>
+              </div>
+            } @else if (store.querying()) {
+              <div class="result-empty">
+                <h2 id="result-title">{{ strings.querying }}</h2>
+              </div>
+            } @else {
+              <div class="result-empty">
+                <img class="receipt-art" ngSrc="assets/img/check-in/receipt.svg" alt="" width="160" height="144" />
+                <h2 id="result-title">{{ strings.emptyTitle }}</h2>
+                <p>{{ strings.empty }}</p>
+              </div>
             }
-          </div>
-        } @else {
-          <div class="result-empty">
-            <svg
-              width="36"
-              height="36"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              aria-hidden="true"
-            >
-              <path
-                d="M8 3H4a1 1 0 0 0-1 1v4m13-5h4a1 1 0 0 1 1 1v4M3 16v4a1 1 0 0 0 1 1h4m13-5v4a1 1 0 0 1-1 1h-4M8 8h3v3H8zm5 0h3v3h-3zm-5 5h3v3H8zm5 0h3v3h-3z"
-              />
-            </svg>
-            <h2 id="result-title">{{ strings.emptyTitle }}</h2>
-            <p>{{ strings.empty }}</p>
-          </div>
-        }
-      </section>
-    </div>
+          </section>
+        </div>
+      </div>
+    } @else {
+      <p class="message error" role="alert">{{ strings.noAccess }}</p>
+    }
+  } @else {
+    <p class="message" role="status">{{ strings.noVenue }}</p>
   }
 </section>

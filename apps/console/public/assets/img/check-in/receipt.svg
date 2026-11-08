@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 144" fill="none">
+  <defs>
+    <filter id="shadow" x="-30%" y="-20%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#234da0" flood-opacity=".2"/>
+    </filter>
+  </defs>
+  <ellipse cx="65" cy="100" rx="52" ry="34" fill="#e4eeff" transform="rotate(-35 65 100)"/>
+  <rect x="35" y="20" width="90" height="100" rx="12" fill="#f8fbff" stroke="#a5bff1" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="39" y="24" width="82" height="92" rx="9" stroke="white" stroke-width="3"/>
+  <g stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="56" y="45" width="16" height="16" rx="2"/>
+    <rect x="88" y="45" width="16" height="16" rx="2"/>
+    <rect x="56" y="77" width="16" height="16" rx="2"/>
+    <path d="M88 77H104V85H96V93H88V85M80 45V53M56 69H64M72 69H80V61M80 85V93M104 93H104.1M127 14V3M138 19L146 10M144 29H156"/>
+  </g>
+</svg>

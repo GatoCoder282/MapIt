@@ -22,6 +22,7 @@ test.describe('Consola — plantillas de elemento', () => {
   const email = `dueno-${run}@mapit.test`;
   const password = 'S3cur3?P4ss!';
   const name = `Plantilla E2E ${run}`;
+  let selection: { tenantId: string; userId: string; establishmentId: string };
 
   test.beforeAll(async ({ request }) => {
     // 1. El SUPER_ADMIN autentica y registra el tenant (API real).
@@ -74,17 +75,28 @@ test.describe('Consola — plantillas de elemento', () => {
       data: { tenantSlug: slug, email, password },
     });
     expect(adminLogin.ok()).toBe(true);
-    const adminSession = (await adminLogin.json()) as { accessToken: string };
+    const adminSession = (await adminLogin.json()) as {
+      accessToken: string;
+      user: { id: string; tenantId: string };
+    };
     const establishment = await request.post(`${API}/establishments`, {
       headers: { Authorization: `Bearer ${adminSession.accessToken}` },
       data: { name: `Sede plantillas ${run}`, type: 'RESTAURANT', slug: 'sede' },
     });
     expect(establishment.status()).toBe(201);
+    selection = {
+      tenantId: adminSession.user.tenantId,
+      userId: adminSession.user.id,
+      establishmentId: ((await establishment.json()) as { id: string }).id,
+    };
   });
 
   test('ciclo CRUD de plantillas de elemento por el staff', async ({ page }) => {
     // Login del tenant creado por este test.
     await page.goto(`/empresa/${slug}/login`);
+    await page.evaluate(({ tenantId, userId, establishmentId }) => {
+      localStorage.setItem(`mapit.establishment.${tenantId}.${userId}`, establishmentId);
+    }, selection);
     await expect(page.getByRole('button', { name: /iniciar sesi/i })).toBeVisible();
 
     // Login

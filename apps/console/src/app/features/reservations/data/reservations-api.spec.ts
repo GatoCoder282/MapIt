@@ -1,11 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import type { Reservation } from '@mapit/api-client';
-import {
-  EstablishmentsService,
-  PeopleService,
-  ReservationsService,
-  SpacesService,
-} from '@mapit/api-client';
+import { PeopleService, ReservationsService, SpacesService } from '@mapit/api-client';
 import { firstValueFrom, of } from 'rxjs';
 
 import { ReservationsApi } from './reservations-api';
@@ -100,7 +95,6 @@ describe('ReservationsApi', () => {
       providers: [
         ReservationsApi,
         { provide: PeopleService, useValue: {} },
-        { provide: EstablishmentsService, useValue: {} },
         {
           provide: SpacesService,
           useValue: {

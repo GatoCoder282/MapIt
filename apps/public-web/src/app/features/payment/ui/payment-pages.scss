@@ -21,23 +21,14 @@
   color: var(--mapit-color-text);
 }
 .payment-header {
-  min-height: 88px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  padding: 1.25rem max(1.5rem, calc((100vw - 1120px) / 2));
+  padding: 0.25rem max(1.5rem, calc((100vw - 1120px) / 2));
   background: var(--mapit-color-surface);
   border-bottom: 1px solid var(--mapit-color-border);
-}
-.wordmark {
-  color: var(--mapit-color-text);
-  font: 800 1.8rem/1 var(--mapit-font-display);
-  letter-spacing: -0.04em;
-  text-decoration: none;
-}
-.wordmark span {
-  color: var(--mapit-color-primary);
 }
 .text-link {
   display: inline-flex;
@@ -230,8 +221,8 @@ summary:focus-visible {
 }
 @media (max-width: 720px) {
   .payment-header {
-    min-height: 72px;
-    padding: 1rem;
+    min-height: 56px;
+    padding: 0.25rem 1rem;
   }
   .payment-header .text-link {
     font-size: 0.6875rem;

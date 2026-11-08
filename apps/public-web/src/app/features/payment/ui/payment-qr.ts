@@ -31,8 +31,8 @@ import { PaymentQr } from '../data/payment-qr';
       min-width: 0;
     }
     .qr-frame {
-      width: 256px;
-      height: 256px;
+      width: var(--payment-qr-size, 256px);
+      height: var(--payment-qr-size, 256px);
       max-width: 100%;
       display: grid;
       place-items: center;

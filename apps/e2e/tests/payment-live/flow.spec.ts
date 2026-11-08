@@ -1,5 +1,7 @@
 import { expect, test, type WebSocketRoute } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fixtureFile, type LiveFixture } from './setup';
 import type { PublicAvailabilityMap } from '../../../../libs/api-client/src/lib/generated/model/public-availability-map';
@@ -113,29 +115,28 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
   }, fixture.session);
   const consolePage = await context.newPage();
   await consolePage.goto('http://localhost:4400/administration/settings/payment-methods');
-  await expect(
-    consolePage.getByRole('heading', { name: 'Configuración QR propio', exact: true }),
-  ).toBeVisible({ timeout: 60000 });
-
-  const venue = consolePage.getByRole('combobox', { name: 'Establecimiento', exact: true });
+  const operationalContext = consolePage.getByRole('dialog', {
+    name: '¿Con cuál establecimiento querés entrar?',
+  });
+  await operationalContext.getByRole('radio', { name: /Navegador — Norte/ }).check();
+  await operationalContext.getByRole('button', { name: 'Continuar' }).click();
+  await consolePage.getByRole('button', { name: 'Agregar método', exact: true }).click();
+  await consolePage.getByRole('radio', { name: /Mock \(desarrollo\)/ }).check();
+  const next = consolePage.getByRole('button', { name: 'Siguiente', exact: true });
+  await next.click();
   const country = consolePage.getByRole('combobox', { name: 'País', exact: true });
-  const save = consolePage.getByRole('button', { name: 'Guardar configuración', exact: true });
-  await expect(venue).toBeEnabled();
-  await venue.fill('Navegador — Norte');
-  await expect(consolePage.getByRole('option')).toContainText('Navegador — Norte');
-  await venue.press('ArrowDown');
-  await venue.press('Enter');
   await country.fill('BO');
   await consolePage.getByRole('option', { name: 'Bolivia (BO)', exact: true }).click();
-  await consolePage.getByLabel('Banco', { exact: true }).fill('Banco de prueba');
+  await consolePage.getByLabel(/^Banco/).fill('Banco de prueba');
   await consolePage.getByLabel('Titular de la cuenta', { exact: true }).fill('Titular simulado');
   await consolePage.getByLabel('Referencia de cuenta', { exact: true }).fill('REFERENCIA-DEMO');
+  await next.click();
   const qrCreatedResponse = consolePage.waitForResponse(
     (response) =>
       response.url() === fixture.api + '/payment-methods/mock-qr' &&
       response.request().method() === 'POST',
   );
-  await save.click();
+  await consolePage.getByRole('button', { name: 'Guardar método', exact: true }).click();
   const qrCreated = await qrCreatedResponse;
   expect(qrCreated.status()).toBe(201);
   const qrConfiguration = (await qrCreated.json()) as {
@@ -145,7 +146,8 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
   };
   expect(qrConfiguration).toMatchObject({ enabled: true, establishmentId: fixture.venue });
   expect(qrConfiguration.simulationPath).toMatch(/^\/simulacion\/qr\/[0-9a-f-]{36}$/i);
-  await expect(consolePage.getByRole('img', { name: /QR de prueba de MapIt/ })).toBeVisible();
+  await consolePage.getByRole('button', { name: 'Ver métodos de pago' }).click();
+  await consolePage.getByRole('button', { name: 'Políticas generales', exact: true }).click();
   const staffHeaders = { Authorization: 'Bearer ' + String(fixture.session['accessToken']) };
   const readinessEndpoint = fixture.api + `/establishments/${fixture.venue}/payment-readiness`;
   const readiness = await request.get(readinessEndpoint, { headers: staffHeaders });
@@ -225,6 +227,7 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
     await page.getByLabel('Fecha de reserva', { exact: true }).fill(fixture.date);
     await page.getByLabel('Hora de inicio', { exact: true }).fill(startTime);
     await page.getByLabel('Hora de fin', { exact: true }).fill(endTime);
+    await page.getByLabel('Personas', { exact: true }).fill('2');
     const mapResponse = page.waitForResponse(
       (response) =>
         response.url().includes(`/establishments/${slug}/availability/map?`) &&
@@ -260,11 +263,19 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
       }
     };
     assertAllowlist(data);
+    if (
+      data.floors.some((floor) =>
+        floor.sectors.some((sector) =>
+          sector.elements.some((space) => space.selectable && space.availability === 'AVAILABLE'),
+        ),
+      )
+    )
+      await page.getByTestId('availability-choose').click();
     return data;
   };
   await searchMap('venue', '10:30', '11:30');
-  await expect(page.getByTestId('space-' + fixture.element)).toBeDisabled();
-  await expect(page.getByTestId('space-' + fixture.unavailableElement)).toBeDisabled();
+  await expect(page.getByTestId('space-' + fixture.element)).toHaveCount(0);
+  await expect(page.getByTestId('space-' + fixture.unavailableElement)).toHaveCount(0);
   await expect(page.getByTestId('availability-continue')).toHaveCount(0);
   await page.goto(`/disponibilidad/${fixture.tenant}/centro`);
   await searchMap('centro', fixture.start, fixture.end);
@@ -314,7 +325,9 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
       (mappedElement.width / 2) * Math.sin(radians) +
       (mappedElement.height / 2) * Math.cos(radians),
   };
-  await page.mouse.click(point.x, point.y);
+  // Locator actionability waits for layout stability; absolute coordinates can go stale
+  // while the public header/fonts settle after navigation.
+  await mapHost.click({ position: { x: point.x - bounds!.x, y: point.y - bounds!.y } });
   await expect(page.getByTestId('space-' + fixture.element)).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -329,18 +342,48 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
       await new Promise<void>((done) =>
         requestAnimationFrame(() => requestAnimationFrame(() => done())),
       );
-      return host.querySelector('canvas')!.toDataURL();
+      return JSON.stringify(
+        Array.from(host.querySelectorAll('canvas'), (canvas) => canvas.toDataURL()),
+      );
     });
-  await page.mouse.move(bounds!.x + 2, bounds!.y + 2);
-  const selectedPixels = await pixels();
-  await page.mouse.move(point.x, point.y);
+  await mapHost.hover({ position: { x: point.x - bounds!.x, y: point.y - bounds!.y } });
+  const gestureBounds = (await mapHost.boundingBox())!;
+  const gesturePoint = {
+    x: gestureBounds.x + point.x - bounds!.x,
+    y: gestureBounds.y + point.y - bounds!.y,
+  };
   await page.mouse.down();
-  await page.mouse.move(point.x + mappedElement.width / 2, point.y + mappedElement.height / 2, {
-    steps: 8,
-  });
+  await page.mouse.move(
+    gesturePoint.x + mappedElement.width / 2,
+    gesturePoint.y + mappedElement.height / 2,
+    {
+      steps: 8,
+    },
+  );
   await page.mouse.up();
-  await page.mouse.move(bounds!.x + 2, bounds!.y + 2);
-  await expect.poll(async () => (await pixels()) === selectedPixels).toBe(true);
+  await page.mouse.move(gestureBounds.x + 2, gestureBounds.y + 2);
+  const afterGesture = await request.get(
+    fixture.api + `/public/tenants/${fixture.tenant}/establishments/venue/availability/map`,
+    { params: { date: fixture.date, startTime: fixture.start, endTime: fixture.end } },
+  );
+  expect(afterGesture.ok()).toBe(true);
+  const afterGestureMap = (await afterGesture.json()) as PublicAvailabilityMap;
+  expect(
+    afterGestureMap.floors
+      .flatMap((floor) => floor.sectors)
+      .find((item) => item.id === fixture.sector)
+      ?.elements.find((item) => item.id === fixture.element),
+  ).toMatchObject({
+    x: mappedElement.x,
+    y: mappedElement.y,
+    width: mappedElement.width,
+    height: mappedElement.height,
+    rotation: mappedElement.rotation,
+  });
+  expect(publicStaffRequests).toEqual([]);
+  await page.getByTestId('space-' + fixture.element).focus();
+  await page.keyboard.press('Enter');
+  const selectedPixels = await pixels();
   await page.getByTestId('space-' + fixture.spareElement).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('space-' + fixture.spareElement)).toHaveAttribute(
@@ -348,19 +391,78 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
     'true',
   );
   await expect.poll(async () => (await pixels()) !== selectedPixels).toBe(true);
+  expect(publicReservationWrites).toBe(0);
+  await page.getByTestId('availability-continue').click();
+  await page.getByLabel('Nombre completo').fill('Cliente navegador');
+  await page.getByLabel('Correo electrónico').fill('guest@browser.test');
+
+  // Pause only browser execution after the last availability read, before sending
+  // the reservation. A real competing HTTP client wins; no API response is intercepted.
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Debugger.enable');
+  await cdp.send('DOMDebugger.setXHRBreakpoint', { url: '/reservations' });
+  const paused = new Promise<void>((done) => cdp.once('Debugger.paused', () => done()));
+  const uiConflictResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/establishments/venue/reservations') &&
+      response.request().method() === 'POST',
+  );
+  const submitConflict = page
+    .getByRole('button', { name: 'Confirmar reserva', exact: true })
+    .click();
+  try {
+    await paused;
+    const competitor = await request.post(
+      fixture.api + `/public/tenants/${fixture.tenant}/establishments/venue/reservations`,
+      {
+        data: {
+          date: fixture.date,
+          startTime: fixture.start,
+          endTime: fixture.end,
+          spaceElementIds: [fixture.spareElement],
+          customer: { fullName: 'Cliente competidor E2E', email: 'race@browser.test' },
+        },
+      },
+    );
+    expect(competitor.status()).toBe(201);
+  } finally {
+    await cdp.send('DOMDebugger.removeXHRBreakpoint', { url: '/reservations' });
+    await cdp.send('Debugger.resume');
+    await cdp.detach();
+  }
+  await submitConflict;
+  const uiConflict = await uiConflictResponse;
+  expect(uiConflict.status()).toBe(409);
+  await expect(page.getByTestId('booking-error')).toBeVisible();
+  await expect(page.getByTestId('booking-submit')).toBeDisabled();
+  await expect(page.getByTestId('booking-checkout')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Cambiar horario', exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await searchMap('venue', fixture.start, fixture.end);
+  await expect(page.getByTestId('space-' + fixture.spareElement)).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true,
+  );
+  const mapScroll = page.getByRole('region', { name: 'Plano del sector', exact: true });
+  await mapScroll.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => mapScroll.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
   await page.getByTestId('space-' + fixture.element).focus();
   await page.keyboard.press('Enter');
-  expect(publicReservationWrites).toBe(0);
+  expect(publicReservationWrites).toBe(1);
   expect(publicStaffRequests).toEqual([]);
   await page.getByTestId('availability-continue').click();
   await expect(page).toHaveURL(
     new RegExp('/reservar/' + fixture.tenant + '/venue/' + fixture.element),
   );
   await expect(page.getByTestId('booking-descriptor')).toContainText(descriptor.name);
+  await expect(page.getByLabel('Nombre completo')).toHaveValue('Cliente navegador');
+  await expect(page.getByLabel('Correo electrónico')).toHaveValue('guest@browser.test');
+  await page.getByTestId('booking-back').click();
   await page.reload();
+  await page.getByTestId('availability-continue').click();
   await expect(page.getByTestId('booking-descriptor')).toContainText(descriptor.name);
   await expect(page.getByTestId('booking-descriptor')).toContainText('Terraza');
-  await page.getByTestId('booking-confirm').click();
   await page.getByLabel('Nombre completo').fill('Cliente navegador');
   await page.getByLabel('Correo electrónico').fill('guest@browser.test');
   const bookingCreated = page.waitForResponse(
@@ -368,7 +470,7 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
       response.url().endsWith('/establishments/venue/reservations') &&
       response.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Crear reserva', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmar reserva', exact: true }).click();
   const bookingResponse = await bookingCreated;
   expect(bookingResponse.status()).toBe(201);
   const bookingPayload: unknown = bookingResponse.request().postDataJSON();
@@ -383,8 +485,7 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
     endTime: fixture.end,
     spaceElementIds: [fixture.element],
   });
-  await expect(page.getByTestId('booking-own-space')).toContainText(descriptor.name);
-  await page.getByTestId('booking-checkout').click();
+  await expect(page.getByTestId('checkout-summary')).toContainText(descriptor.name);
   await expect(page.getByTestId('checkout-page')).toBeVisible();
   await expect(page.getByText(descriptor.name, { exact: true })).toBeVisible();
   const checkoutUrl = new URL(page.url());
@@ -467,6 +568,7 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
   await consolePage.getByTestId('policy-save').click();
   expect((await policySaved).ok()).toBe(true);
   await consolePage.reload();
+  await consolePage.getByRole('button', { name: 'Políticas generales', exact: true }).click();
   await expect(consolePage.getByTestId('policy-deposit')).toHaveValue('120.00');
   expect(
     await (await request.get(readinessEndpoint, { headers: staffHeaders })).json(),
@@ -820,28 +922,72 @@ test('QR-first → inspector → mapa por intervalo → policy ADMIN → webhook
   expect(failures).toEqual([]);
   expect(publicAuthorization).toEqual([]);
   expect(publicStaffRequests).toEqual([]);
-  await testInfo.attach('live-evidence', {
-    contentType: 'application/json',
-    body: Buffer.from(
-      JSON.stringify(
-        {
-          provider: 'MOCK_GATEWAY (no real money)',
-          transport: 'real HTTP + authenticated loopback webhook + PostgreSQL + STOMP',
-          businessApiInterception: false,
-          policyConfiguredByConsoleUi: true,
-          metadataConfiguredByInspector: true,
-          realCanvasClickAndKeyboardSelection: true,
-          conflictStatus: conflictingBooking.status(),
-          forgedWebhookStatus: forgedWebhook.status(),
-          duplicateEventCount: persistedState()['events'],
-          mobileCheckoutViewport: { width: 390, height: 844 },
-          checkoutAndReceiptReload: true,
-          httpRecoveryWithoutStomp: true,
-          finalState: persistedState(),
-        },
-        null,
-        2,
-      ),
-    ),
-  });
+  // Test-only clock aging in our disposable DB. No policy/payment/business state is changed.
+  const stateBeforeExpiry = persistedState();
+  expect(
+    database(`with aged as (
+    update reservation_access set created_at=now()-interval '2 hours', expires_at=now()-interval '1 hour'
+    where tenant_id='${fixture.tenant}' and reservation_id='${reservationId}' returning id
+  ) select json_build_object('rows',count(*)) from aged`),
+  ).toEqual({ rows: 1 });
+  await expect(recoveryPage.getByTestId('receipt-link')).toBeVisible();
+  const expiredResponse = recoveryPage.waitForResponse(
+    (response) => response.url() === checkoutEndpoint && response.request().method() === 'GET',
+  );
+  await recoveryPage.getByTestId('refresh-payment').click();
+  const expired = await expiredResponse;
+  expect(expired.status()).toBe(404);
+  await expect(
+    recoveryPage.getByRole('heading', { name: 'No encontramos esta reserva', exact: true }),
+  ).toBeVisible();
+  await expect(recoveryPage.getByTestId('payment-status')).toHaveCount(0);
+  await expect(recoveryPage.getByTestId('attempt-qr')).toHaveCount(0);
+  await expect(recoveryPage.getByTestId('receipt-link')).toHaveCount(0);
+  await recoveryPage.reload();
+  await expect(
+    recoveryPage.getByRole('heading', { name: 'No encontramos esta reserva', exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId('receipt-page')).toBeVisible();
+  expect(persistedState()).toEqual(stateBeforeExpiry);
+  expect(failures).toEqual([]);
+  expect(publicAuthorization).toEqual([]);
+  expect(publicStaffRequests).toEqual([]);
+  const evidence = JSON.stringify(
+    {
+      provider: 'MOCK_GATEWAY (no real money)',
+      build: fixture.build,
+      transport: 'real HTTP + authenticated loopback webhook + PostgreSQL + STOMP',
+      businessApiInterception: false,
+      policyConfiguredByConsoleUi: true,
+      metadataConfiguredByInspector: true,
+      realCanvasClickAndKeyboardSelection: true,
+      conflictStatus: conflictingBooking.status(),
+      uiConflictRecovery: {
+        status: uiConflict.status(),
+        reselected: true,
+        customerRetainedInMemory: true,
+      },
+      expiredReservationAccess: {
+        status: expired.status(),
+        setup: 'isolated DB timestamps aged; not natural clock expiry',
+        stalePaymentAndReceiptCleared: true,
+        independentReceiptStillValid: true,
+      },
+      forgedWebhookStatus: forgedWebhook.status(),
+      duplicateEventCount: persistedState()['events'],
+      mobileCheckoutViewport: { width: 390, height: 844 },
+      mobileMapNativeKeyboardScroll: true,
+      checkoutAndReceiptReload: true,
+      httpRecoveryWithoutStomp: true,
+      finalState: persistedState(),
+    },
+    null,
+    2,
+  );
+  const evidenceDirectory = resolve(tmpdir(), 'opencode');
+  mkdirSync(evidenceDirectory, { recursive: true });
+  const evidencePath = resolve(evidenceDirectory, `mapit-payment-live-evidence-${Date.now()}.json`);
+  writeFileSync(evidencePath, evidence);
+  await testInfo.attach('live-evidence', { contentType: 'application/json', path: evidencePath });
 });

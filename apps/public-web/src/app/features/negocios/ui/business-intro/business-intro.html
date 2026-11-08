@@ -1,0 +1,92 @@
+<section class="business-intro" aria-labelledby="business-intro-title">
+  <svg class="intro-landscape" viewBox="0 0 1672 941" preserveAspectRatio="none" aria-hidden="true">
+    <path class="landscape-wave" d="M0 750C190 750 224 942 520 905S860 807 1090 868s420 62 582 20v53H0Z" />
+    <path class="landscape-route" d="M130 810C380 668 600 850 760 820S900 785 940 772" />
+    <ellipse cx="942" cy="782" rx="35" ry="12" fill="#bddaff" />
+    <g transform="translate(923 735)">
+      <path class="landscape-pin" d="M38 18c0 14-19 30-19 30S0 32 0 18a19 19 0 0 1 38 0Z" />
+      <circle cx="19" cy="17" r="7" fill="#fff" />
+    </g>
+  </svg>
+  <figure class="intro-photo">
+    <img
+      ngSrc="assets/img/landing/business-manager-reference.jpg"
+      [alt]="copy.businessPhotoAlt"
+      fill
+      sizes="(max-width: 760px) 100vw, 40vw"
+    />
+    <figcaption class="intro-status">
+      <span class="intro-status-check" aria-hidden="true"
+        ><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10" /></svg
+      ></span>
+      <span
+        ><strong>{{ copy.businessStatus }}</strong></span
+      >
+    </figcaption>
+    <div class="intro-occupancy">
+      <span class="occupancy-icon" aria-hidden="true"
+        ><svg viewBox="0 0 24 24"><path d="M5 20v-6m7 6V8m7 12V3" /></svg></span
+      ><span
+        ><strong>{{ copy.operationOverview.currentOccupancy }}</strong
+        ><b>78%</b></span
+      >
+    </div>
+  </figure>
+  <div class="intro-copy">
+    <h2 id="business-intro-title">
+      @for (line of copy.businessesTitle; track line) {
+        <span>{{ line }}</span>
+      }
+    </h2>
+    <p>{{ copy.businessDescription }}</p>
+    <ul class="intro-features" role="list">
+      @for (feature of copy.businessFeatures; track feature) {
+        <li>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7" /></svg>{{ feature }}
+        </li>
+      }
+    </ul>
+  </div>
+  <figure class="intro-phone-preview" role="img" [attr.aria-label]="copy.businessPhonePreview">
+    <div class="booking-phone" aria-hidden="true">
+      <div class="phone-statusbar">
+        <span>9:41</span><span class="phone-speaker"></span
+        ><svg viewBox="0 0 32 16">
+          <path d="M1 11v3m3-6v6m3-9v9m3-12v12M13 6q5-5 10 0m-8 2q3-3 6 0m-4 2h2M25 5h6v8h-6z" />
+        </svg>
+      </div>
+      <div class="phone-header">
+        <span>MapIt</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+      </div>
+      <div class="phone-venue-card">
+        <div class="phone-photo">
+          <img ngSrc="assets/img/landing/restaurant-booking-card.png" alt="" width="455" height="320" loading="lazy" />
+          <span class="phone-venue-name">MapIt</span>
+        </div>
+      </div>
+      <b>{{ copy.businessPhoneTitle }}</b>
+      <span class="phone-detail"
+        ><svg viewBox="0 0 24 24"><path d="M4 5h16v16H4zM4 10h16M8 2v6m8-6v6" /></svg>{{ copy.businessPhoneDetails[0]
+        }}<span class="phone-chevron">⌄</span></span
+      >
+      <span class="phone-detail"
+        ><svg viewBox="0 0 24 24">
+          <circle cx="12" cy="7" r="4" />
+          <path d="M4 22v-2a8 8 0 0 1 16 0v2" /></svg
+        >{{ copy.businessPhoneDetails[1] }}<span class="phone-chevron">⌄</span></span
+      >
+      <div class="phone-time-options">
+        <span>{{ formatDemoTime(19) }}</span
+        ><span class="phone-time-selected">{{ formatDemoTime(20) }}</span
+        ><span>{{ formatDemoTime(21) }}</span>
+      </div>
+      <span class="phone-button">{{ copy.businessPhoneButton }}</span>
+      <span class="phone-qr-note"
+        ><svg viewBox="0 0 24 24">
+          <path d="M2 2h7v7H2zM15 2h7v7h-7zM2 15h7v7H2zM15 15h3v3h-3zM22 15v7h-4M12 2v10H2m10 10v-7m6-3h4" /></svg
+        >{{ copy.businessQrHint }}</span
+      >
+      <span class="phone-home-indicator"></span>
+    </div>
+  </figure>
+</section>

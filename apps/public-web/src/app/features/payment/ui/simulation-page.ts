@@ -44,7 +44,6 @@ export class SimulationPage {
   readonly token = input.required<string>();
   protected readonly strings = STRINGS.qrSimulation;
   protected readonly paymentStrings = STRINGS.payment;
-  protected readonly brand = STRINGS.payment.brand;
   protected readonly outcomes = SimulatePaymentRequest.OutcomeEnum;
   private readonly access = inject(ReservationAccess);
   private readonly api = inject(PublicPaymentApi);

@@ -1,5 +1,19 @@
 /* Estilos globales de la vista pública. */
 @use 'ui-kit/styles/tokens' as *;
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/assets/fonts/inter-latin-variable.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Manrope Variable';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/assets/fonts/manrope-latin-variable.woff2') format('woff2');
+}
 
 :root {
   /* La paleta oscura aún no está definida en DESIGN.md; forzar el esquema
@@ -61,5 +75,70 @@ body {
     transition: none;
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Geometría de la referencia, limitada a la página de reservas. */
+mp-reservas {
+  :focus-visible {
+    outline: 2px solid var(--mapit-color-primary);
+    outline-offset: 4px;
+  }
+  .nav-wordmark {
+    font: 800 25px var(--mapit-font-display);
+    letter-spacing: -0.06em;
+    color: var(--mapit-color-text);
+  }
+  .site-footer--compact .logo-text {
+    font-size: 27px;
+    letter-spacing: -0.06em;
+  }
+}
+
+/* Navbar público compartido: geometría de la referencia de Reservas. */
+mp-root > mapit-ui-site-nav.site-nav-host {
+  --mapit-color-text: #080f49;
+  --mapit-color-primary-hover: #0051cf;
+  .nav-bar {
+    border: 0;
+    background: #f3f7ff;
+  }
+  .nav-inner {
+    max-width: 1168px;
+    height: 64px;
+    gap: 44px;
+  }
+  .nav-logo {
+    min-width: 92px;
+  }
+  .nav-link {
+    color: var(--mapit-color-text);
+    border-radius: 99px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .nav-link--active {
+    box-shadow: none;
+    background: var(--mapit-color-primary-container);
+    color: var(--mapit-color-primary-hover);
+  }
+  mapit-language-selector select {
+    border: 0;
+    border-radius: 99px;
+    color: var(--mapit-color-text);
+    font-size: 13px;
+  }
+  @media (min-width: 768px) {
+    mapit-language-selector.language-selector-desktop {
+      display: inline-flex;
+      margin-left: auto;
+    }
+  }
+  @media (max-width: 767px) {
+    .nav-inner {
+      gap: 16px;
+      padding-inline: 20px;
+    }
   }
 }

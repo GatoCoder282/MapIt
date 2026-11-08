@@ -1,0 +1,125 @@
+<section id="tiempo-real" class="operation-overview" aria-labelledby="operation-title">
+  <header>
+    <h2 id="operation-title">
+      {{ copy.title }} <span>{{ copy.accent }}</span>
+    </h2>
+    <p>{{ copy.description }}</p>
+  </header>
+  <div class="operation-layout">
+    <ul class="operation-benefits">
+      @for (item of copy.benefits; track $index; let i = $index) {
+        <li>
+          <span class="benefit-icon"
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[i]" /></svg
+          ></span>
+          <div>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.detail }}</p>
+          </div>
+        </li>
+      }
+    </ul>
+    <div class="monitor-workspace" data-demo="true">
+      <div class="mock-sidebar" aria-hidden="true">
+        <b>Mapit<span>°</span></b>
+        @for (label of copy.navigation; track $index; let i = $index) {
+          <span [class.selected]="i === 0"
+            ><svg viewBox="0 0 24 24"><path [attr.d]="icons[i % 3]" /></svg>{{ label }}</span
+          >
+        }
+      </div>
+      <div class="workspace-content">
+        <div class="workspace-heading">
+          <div>
+            <h3>{{ copy.workspaceTitle }}</h3>
+            <p>{{ copy.workspaceDescription }}</p>
+          </div>
+          <span class="live-label"><i aria-hidden="true"></i>{{ copy.live }}</span>
+        </div>
+        <div class="workspace-body">
+          <figure class="operation-map">
+            <div class="map-crop">
+              <img
+                ngSrc="assets/img/landing/restaurant-status-map.png"
+                [alt]="copy.mapAlt"
+                width="362"
+                height="291"
+                sizes="(max-width: 560px) 90vw, 40vw"
+                loading="lazy"
+              />
+              @for (table of tables; track $index) {
+                <span
+                  [class]="'table-state status-' + table.status"
+                  [style.left.%]="table.x"
+                  [style.top.%]="table.y"
+                  role="img"
+                  [attr.aria-label]="copy.statuses[table.status]"
+                  ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="statusIcons[table.status]" /></svg
+                ></span>
+              }
+            </div>
+          </figure>
+          <aside class="occupancy-demo" [attr.aria-label]="copy.occupancy">
+            <h4>{{ copy.tablesLabel }} ({{ tables.length }})</h4>
+            <dl class="occupancy-statuses">
+              @for (status of copy.statuses; track $index; let i = $index) {
+                <div [class]="'status-card status-' + i">
+                  <dt><i aria-hidden="true"></i>{{ status }}</dt>
+                  <dd>{{ counts[i] }}</dd>
+                </div>
+              }
+            </dl>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <div class="operation-actions">
+      <article class="action-card">
+        <div class="action-copy">
+          <span class="action-icon"
+            ><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 3h18v15H3zM8 22h8m-4-4v4M7 14v-4m5 4V7m5 7V5" /></svg
+          ></span>
+          <div>
+            <h3>{{ copy.monitorTitle }}</h3>
+            <p>{{ copy.monitorDescription }}</p>
+          </div>
+        </div>
+        <a class="action-button" [href]="runtime.config().consoleBaseUrl + '/home'"
+          >{{ copy.monitorAction }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg
+        ></a>
+      </article>
+      <article class="action-card">
+        <div class="action-copy">
+          <span class="action-icon"
+            ><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 3h14v18H5zM3 1h4v4H3zM17 1h4v4h-4zM3 19h4v4H3zM17 19h4v4h-4z" /></svg
+          ></span>
+          <div>
+            <h3>{{ copy.editorTitle }}</h3>
+            <p>{{ copy.editorDescription }}</p>
+          </div>
+        </div>
+        <a class="action-button secondary" [href]="runtime.config().consoleBaseUrl + '/spaces/setup'"
+          >{{ copy.editorAction }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg
+        ></a>
+      </article>
+    </div>
+  </div>
+  <div class="status-legend">
+    <strong>{{ copy.statesLabel }}</strong>
+    <ul>
+      @for (status of copy.statuses; track $index; let i = $index) {
+        <li [class]="'status-' + i">
+          <span
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="statusIcons[i]" /></svg></span
+          >{{ status }}
+        </li>
+      }
+    </ul>
+  </div>
+  <p class="example-note">{{ strings.landing.showcase.dashboardSample }}</p>
+  <svg class="operation-wave" viewBox="0 0 1380 140" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 20C160 0 170 145 400 125S630 35 850 100 1090 15 1380 25v115H0Z" />
+  </svg>
+</section>
