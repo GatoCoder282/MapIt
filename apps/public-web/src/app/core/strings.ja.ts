@@ -47,7 +47,6 @@ export const PUBLIC_STRINGS_JA = {
     photoAlt: 'お客様を迎える準備が整ったレストラン。',
   },
   howItWorks: {
-    badge: 'MAPITの使い方',
     title: '事業の計画から、',
     accent: 'リアルタイムの運営へ。',
     description: 'スペースと予約ルールを設定し、予約・決済・来店を一つのプラットフォームで管理。',

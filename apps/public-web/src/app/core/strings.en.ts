@@ -49,7 +49,6 @@ export const PUBLIC_STRINGS_EN = {
     photoAlt: 'A restaurant with tables ready to welcome its guests.',
   },
   howItWorks: {
-    badge: 'HOW MAPIT WORKS',
     title: 'From your business plan to',
     accent: 'real-time operations.',
     description:

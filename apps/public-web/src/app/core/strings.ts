@@ -84,7 +84,6 @@ const STRINGS_ES = {
     photoAlt: 'Restaurante con mesas preparadas para recibir a sus clientes.',
   },
   howItWorks: {
-    badge: 'CÓMO FUNCIONA MAPIT',
     title: 'Del plan de tu negocio a una operación',
     accent: 'en tiempo real.',
     description:

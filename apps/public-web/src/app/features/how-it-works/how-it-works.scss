@@ -88,22 +88,6 @@ a:focus-visible {
   position: relative;
   z-index: 1;
 }
-.kicker {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 14px;
-  border-radius: 99px;
-  background: #e0edff;
-  color: #0058ec;
-  font-size: 12px;
-  font-weight: 800;
-  margin-bottom: 24px;
-}
-.kicker svg {
-  width: 17px;
-  height: 17px;
-}
 .hero-copy > p {
   max-width: 440px;
   margin-top: 20px;
@@ -707,9 +691,6 @@ a:focus-visible {
   h1 {
     font-size: clamp(33px, 6vw, 44px);
     max-width: 600px;
-  }
-  .kicker {
-    margin-bottom: 20px;
   }
   .trust {
     font-size: 11px;
