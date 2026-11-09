@@ -185,7 +185,7 @@
                   </h2>
                   <div class="payment-qr-code">
                     @if (store.bankQr(); as bankQr) {
-                      <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- QR bancario local en data URI. -->
+                      <!-- eslint-disable @angular-eslint/template/prefer-ngsrc -- QR bancario local en data URI. -->
                       <img
                         class="bank-qr"
                         data-testid="bank-payment-qr"
@@ -194,6 +194,7 @@
                         width="224"
                         height="224"
                       />
+                      <!-- eslint-enable @angular-eslint/template/prefer-ngsrc -->
                     } @else if (store.simulationLink(); as attemptLink) {
                       <mp-payment-qr data-testid="attempt-qr" [url]="attemptLink" [label]="strings.attemptQrAlt" />
                     } @else {
