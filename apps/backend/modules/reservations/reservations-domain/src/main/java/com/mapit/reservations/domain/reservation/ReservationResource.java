@@ -3,6 +3,8 @@ package com.mapit.reservations.domain.reservation;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.mapit.shared.vertical.VerticalProfile;
+
 /** Proyección mínima de un elemento espacial necesaria para crear una reserva. */
 public record ReservationResource(
     UUID id, UUID establishmentId, Kind kind, OperationalState operationalState) {
@@ -14,9 +16,17 @@ public record ReservationResource(
     Objects.requireNonNull(operationalState, "operationalState no puede ser null");
   }
 
-  /** Hasta CU-07, solo DECOR expresa de forma explícita que no admite reservas. */
+  /**
+   * Regla mínima válida en cualquier vertical: la decoración nunca se reserva. La usan los
+   * flujos posteriores a la creación (pago, llegada) como comprobación defensiva.
+   */
   public boolean isReservable() {
     return kind != Kind.DECOR;
+  }
+
+  /** HU-7.01/7.02: si la vertical del establecimiento permite reservar este tipo. */
+  public boolean isReservableIn(VerticalProfile profile) {
+    return profile.isReservable(kind.name());
   }
 
   public boolean isActive() {

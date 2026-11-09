@@ -29,10 +29,14 @@ import com.mapit.reservations.domain.reservation.ReservationRepository;
 import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.reservations.domain.reservation.ReservationResourceRepository;
 import com.mapit.reservations.domain.reservation.ReservationTimeRange;
+import com.mapit.reservations.domain.reservation.ReservationVenue;
 import com.mapit.shared.audit.AuditEventRecorder;
+import com.mapit.shared.flags.FeatureFlag;
+import com.mapit.shared.flags.FeatureFlagPort;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
+import com.mapit.shared.vertical.VerticalGate;
 
 class CreatePublicReservationTest {
 
@@ -52,7 +56,7 @@ class CreatePublicReservationTest {
   void setUp() {
     establishments =
         new FakePublicEstablishments(
-            new PublicEstablishment(TENANT, ESTABLISHMENT, "America/La_Paz"));
+            new PublicEstablishment(TENANT, ESTABLISHMENT, "America/La_Paz", "RESTAURANT"));
     people = new FakePeople();
     FakeResources resources = new FakeResources();
     FakeConcurrencyGuard guard = new FakeConcurrencyGuard();
@@ -72,7 +76,19 @@ class CreatePublicReservationTest {
             auditEvents,
             tenantContext,
             actorContext,
-            clock);
+            clock,
+            new VerticalGate(
+                new FeatureFlagPort() {
+                  @Override
+                  public boolean isEnabled(FeatureFlag flag) {
+                    return true;
+                  }
+
+                  @Override
+                  public boolean isEnabled(FeatureFlag flag, boolean defaultValue) {
+                    return true;
+                  }
+                }));
     useCase =
         new CreatePublicReservation(
             establishments,
@@ -92,6 +108,7 @@ class CreatePublicReservationTest {
                 "la-bahia",
                 LocalDate.parse("2026-10-25"),
                 LocalTime.parse("19:00"),
+                null,
                 LocalTime.parse("21:00"),
                 List.of(ELEMENT),
                 new CreatePublicReservation.Customer(
@@ -120,7 +137,7 @@ class CreatePublicReservationTest {
   void rechazaUnaFechaPasadaAntesDeRegistrarLaPersona() {
     assertThatThrownBy(() -> useCase.execute(new CreatePublicReservation.Command(
         "demo", "la-bahia", LocalDate.parse("2026-10-19"), LocalTime.parse("19:00"),
-        LocalTime.parse("21:00"), List.of(ELEMENT),
+        null, LocalTime.parse("21:00"), List.of(ELEMENT),
         new CreatePublicReservation.Customer("Ana Pérez", "ana@example.com", null))))
         .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("futuro");
     assertThat(people.created).isNull();
@@ -139,6 +156,7 @@ class CreatePublicReservationTest {
                         "no-existe",
                         LocalDate.parse("2026-10-25"),
                         LocalTime.parse("19:00"),
+                        null,
                         LocalTime.parse("21:00"),
                         List.of(ELEMENT),
                         new CreatePublicReservation.Customer(
@@ -158,6 +176,7 @@ class CreatePublicReservationTest {
                         "la-bahia",
                         LocalDate.parse("2026-10-25"),
                         LocalTime.parse("21:00"),
+                        null,
                         LocalTime.parse("19:00"),
                         List.of(ELEMENT),
                         new CreatePublicReservation.Customer(
@@ -218,6 +237,11 @@ class CreatePublicReservationTest {
     @Override
     public boolean establishmentExists(TenantId tenantId, UUID establishmentId) {
       return true;
+    }
+
+    @Override
+    public Optional<ReservationVenue> findVenue(TenantId tenantId, UUID establishmentId) {
+      return Optional.of(new ReservationVenue("RESTAURANT", "America/La_Paz"));
     }
 
     @Override

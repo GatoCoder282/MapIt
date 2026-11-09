@@ -21,8 +21,10 @@ public class PublicAvailabilityMapController {
   @GetMapping
   public PublicAvailabilityMap find(@PathVariable String tenantSlug, @PathVariable String establishmentSlug,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-      @RequestParam(required = false) @Nullable String startTime, @RequestParam(required = false) @Nullable String endTime) {
-    return service.execute(tenantSlug, establishmentSlug, date, parse(startTime), parse(endTime));
+      @RequestParam(required = false) @Nullable String startTime,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Nullable LocalDate endDate,
+      @RequestParam(required = false) @Nullable String endTime) {
+    return service.execute(tenantSlug, establishmentSlug, date, parse(startTime), endDate, parse(endTime));
   }
   private @Nullable LocalTime parse(@Nullable String value) {
     if (value == null) return null;

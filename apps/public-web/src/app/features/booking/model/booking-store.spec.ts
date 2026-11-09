@@ -15,6 +15,7 @@ describe('BookingStore — resolved selection before customer data', () => {
     spaceElementIds: new Set(['space-a']),
     date: '2030-12-24',
     startTime: '19:00',
+    endDate: '2030-12-24',
     endTime: '21:00',
     startsAt: '2030-12-24T23:00:00Z',
     endsAt: '2030-12-25T01:00:00Z',

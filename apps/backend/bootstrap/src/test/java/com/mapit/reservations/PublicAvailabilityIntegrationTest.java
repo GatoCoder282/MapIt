@@ -122,7 +122,9 @@ class PublicAvailabilityIntegrationTest {
     element(FREE, "TABLE", "AVAILABLE", false);
     element(OVERLAPS_DAY_START, "TABLE", "AVAILABLE", false);
     element(ENDS_AT_DAY_START, "BAR", "AVAILABLE", false);
-    element(STARTS_AT_NEXT_DAY, "SEAT", "AVAILABLE", false);
+    // HU-7.01/7.02: una butaca no es reservable en un restaurante (ni el editor la deja crear);
+    // la zona sí, así que el caso de frontera sigue cubriendo un tipo distinto de mesa y barra.
+    element(STARTS_AT_NEXT_DAY, "SECTOR_ZONE", "AVAILABLE", false);
     element(OCCUPIED, "TABLE", "OCCUPIED", false);
     element(DECOR, "DECOR", "AVAILABLE", false);
     element(DELETED, "TABLE", "AVAILABLE", true);
@@ -174,7 +176,7 @@ class PublicAvailabilityIntegrationTest {
         .containsExactlyInAnyOrder(FREE, ENDS_AT_DAY_START, STARTS_AT_NEXT_DAY);
     assertThat(result.elements())
         .extracting(PublicElementResponse::type)
-        .contains("TABLE", "BAR", "SEAT");
+        .contains("TABLE", "BAR", "SECTOR_ZONE");
   }
 
   @Test void mapa_intervalo_frontera_allowlist_y_estado_operativo_prevalente() {

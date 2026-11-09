@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.reservations.domain.person.PersonId;
 import com.mapit.reservations.domain.person.PersonRepository;
+import com.mapit.reservations.domain.reservation.BookingWindow;
 import com.mapit.reservations.domain.reservation.Reservation;
 import com.mapit.reservations.domain.reservation.ReservationAvailabilityRepository;
 import com.mapit.reservations.domain.reservation.ReservationConcurrencyGuard;
@@ -24,6 +25,7 @@ import com.mapit.reservations.domain.reservation.ReservationRepository;
 import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.reservations.domain.reservation.ReservationResourceRepository;
 import com.mapit.reservations.domain.reservation.ReservationTimeRange;
+import com.mapit.reservations.domain.reservation.ReservationVenue;
 import com.mapit.shared.audit.AuditEvent;
 import com.mapit.shared.audit.AuditEventRecorder;
 import com.mapit.shared.audit.AuditEventType;
@@ -31,8 +33,18 @@ import com.mapit.shared.audit.AuditResourceType;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
+import com.mapit.shared.vertical.Vertical;
+import com.mapit.shared.vertical.VerticalGate;
+import com.mapit.shared.vertical.VerticalProfile;
 
-/** Coordina la creación atómica de una reserva interna. */
+/**
+ * Coordina la creación atómica de una reserva, interna o pública.
+ *
+ * <p>HU-7.01/7.02: es el único servicio de reservas para las cuatro verticales. La vertical del
+ * establecimiento decide si está habilitada (Unleash), qué ventana temporal se admite
+ * ({@link BookingWindow}) y qué elementos son reservables; el resto del flujo —bloqueo,
+ * solapamiento 409, persistencia y auditoría— es común.
+ */
 @Service
 public class CreateReservation {
 
@@ -45,6 +57,7 @@ public class CreateReservation {
   private final TenantContext tenantContext;
   private final ActorContext actorContext;
   private final Clock clock;
+  private final VerticalGate verticalGate;
 
   public CreateReservation(
       PersonRepository people,
@@ -55,7 +68,8 @@ public class CreateReservation {
       AuditEventRecorder auditEvents,
       TenantContext tenantContext,
       ActorContext actorContext,
-      Clock clock) {
+      Clock clock,
+      VerticalGate verticalGate) {
     this.people = people;
     this.resources = resources;
     this.concurrencyGuard = concurrencyGuard;
@@ -65,6 +79,7 @@ public class CreateReservation {
     this.tenantContext = tenantContext;
     this.actorContext = actorContext;
     this.clock = clock;
+    this.verticalGate = verticalGate;
   }
 
   @Transactional
@@ -109,9 +124,12 @@ public class CreateReservation {
             createdBy);
 
     requirePerson(tenantId, reservation.personId());
-    requireEstablishment(tenantId, reservation.establishmentId());
+    ReservationVenue venue = requireEstablishment(tenantId, reservation.establishmentId());
+    VerticalProfile profile = venue.profile();
+    verticalGate.require(Vertical.of(venue.vertical()), tenantId);
+    BookingWindow.of(profile).validate(reservation.timeRange(), venue.zone());
     concurrencyGuard.lockResources(tenantId, reservation.spaceElementIds());
-    requireValidResources(tenantId, reservation, requireAvailableState);
+    requireValidResources(tenantId, reservation, profile, requireAvailableState);
     requireAvailability(tenantId, reservation);
 
     Reservation persisted = reservations.save(reservation);
@@ -141,15 +159,21 @@ public class CreateReservation {
                     ReservationReferenceNotFoundException.Reference.PERSON, personId.value()));
   }
 
-  private void requireEstablishment(TenantId tenantId, UUID establishmentId) {
-    if (!resources.establishmentExists(tenantId, establishmentId)) {
-      throw new ReservationReferenceNotFoundException(
-          ReservationReferenceNotFoundException.Reference.ESTABLISHMENT, establishmentId);
-    }
+  private ReservationVenue requireEstablishment(TenantId tenantId, UUID establishmentId) {
+    return resources
+        .findVenue(tenantId, establishmentId)
+        .orElseThrow(
+            () ->
+                new ReservationReferenceNotFoundException(
+                    ReservationReferenceNotFoundException.Reference.ESTABLISHMENT,
+                    establishmentId));
   }
 
   private void requireValidResources(
-      TenantId tenantId, Reservation reservation, boolean requireAvailableState) {
+      TenantId tenantId,
+      Reservation reservation,
+      VerticalProfile profile,
+      boolean requireAvailableState) {
     List<ReservationResource> found =
         resources.findAliveByIds(tenantId, reservation.spaceElementIds());
     Set<UUID> foundIds = new HashSet<>();
@@ -160,7 +184,7 @@ public class CreateReservation {
         throw InvalidReservationResourceException.differentEstablishment(
             resource.id(), reservation.establishmentId());
       }
-      if (!resource.isReservable()) {
+      if (!resource.isReservableIn(profile)) {
         throw InvalidReservationResourceException.notReservable(resource.id());
       }
       if (requireAvailableState

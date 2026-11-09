@@ -3,6 +3,7 @@ package com.mapit.reservations.infrastructure.reservation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.reservations.domain.reservation.ReservationResourceRepository;
+import com.mapit.reservations.domain.reservation.ReservationVenue;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.shared.tenant.TenantScope;
 
@@ -36,6 +38,23 @@ public class JdbcReservationResourceRepository implements ReservationResourceRep
             tenantId.value(),
             establishmentId);
     return count != null && count > 0;
+  }
+
+  @Override
+  public Optional<ReservationVenue> findVenue(TenantId tenantId, UUID establishmentId) {
+    setTenant(tenantId);
+    return jdbc
+        .query(
+            """
+            select type, timezone from establishment
+            where tenant_id = ? and id = ? and deleted_at is null
+            """,
+            (result, rowNumber) ->
+                new ReservationVenue(result.getString("type"), result.getString("timezone")),
+            tenantId.value(),
+            establishmentId)
+        .stream()
+        .findFirst();
   }
 
   @Override

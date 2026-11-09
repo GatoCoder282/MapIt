@@ -18,7 +18,9 @@ import com.mapit.reservations.domain.booking.PublicReservationRepository;
 import com.mapit.reservations.domain.person.Person;
 import com.mapit.reservations.domain.person.PersonId;
 import com.mapit.reservations.domain.person.PersonRepository;
+import com.mapit.reservations.domain.reservation.PublicReservationTimeRange;
 import com.mapit.reservations.domain.reservation.Reservation;
+import com.mapit.shared.vertical.VerticalCatalog;
 
 /** Crea una reserva anónima desde el portal público resolviendo tenant y establecimiento por slug. */
 @Service
@@ -53,7 +55,16 @@ public class CreatePublicReservation {
             .orElseThrow(PublicEstablishmentNotFoundException::new);
 
     ZoneId zone = ZoneId.of(establishment.timezone());
-    var range = com.mapit.reservations.domain.reservation.PublicReservationTimeRange.resolve(command.date(), command.startTime(), command.endTime(), zone);
+    // HU-7.01/7.02: la vertical decide si el fin puede caer al día siguiente sin endDate.
+    boolean overnight = VerticalCatalog.of(establishment.vertical()).allowsOvernight();
+    var range =
+        PublicReservationTimeRange.resolve(
+            command.date(),
+            command.startTime(),
+            command.endDate(),
+            command.endTime(),
+            zone,
+            overnight);
     Instant startsAt = range.startsAt();
     Instant endsAt = range.endsAt();
     if (!startsAt.isAfter(clock.instant())) {
@@ -87,6 +98,7 @@ public class CreatePublicReservation {
         establishment,
         command.date(),
         command.startTime(),
+        endsAt.atZone(zone).toLocalDate(),
         command.endTime(),
         access.issue(reservation));
   }
@@ -96,6 +108,7 @@ public class CreatePublicReservation {
       String establishmentSlug,
       LocalDate date,
       LocalTime startTime,
+      @Nullable LocalDate endDate,
       LocalTime endTime,
       List<UUID> spaceElementIds,
       Customer customer) {
@@ -125,6 +138,7 @@ public class CreatePublicReservation {
       PublicEstablishment establishment,
       LocalDate date,
       LocalTime startTime,
+      LocalDate endDate,
       LocalTime endTime,
       PublicReservationAccessService.IssuedAccess access) {}
 }

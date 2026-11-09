@@ -160,7 +160,7 @@ class PublicReservationAccessServiceTest {
 
   private PublicReservationAccessService serviceAt(Instant now) {
     PublicReservationRepository establishments = (tenant,venue) -> tenant.equals("tenant-a") && venue.equals("venue")
-        ? Optional.of(new PublicEstablishment(TENANT,VENUE,"UTC")) : Optional.empty();
+        ? Optional.of(new PublicEstablishment(TENANT,VENUE,"UTC","RESTAURANT")) : Optional.empty();
     ReservationConcurrencyGuard guard = (tenant,elements) -> lockedElements=Set.copyOf(elements);
     return new PublicReservationAccessService(repository,establishments,guard,resources,Clock.fixed(now,ZoneOffset.UTC));
   }
@@ -173,6 +173,9 @@ class PublicReservationAccessServiceTest {
   private static final class Resources implements ReservationResourceRepository {
     ReservationResource.OperationalState state = ReservationResource.OperationalState.AVAILABLE;
     @Override public boolean establishmentExists(TenantId tenant,UUID venue) { return TENANT.equals(tenant) && VENUE.equals(venue); }
+    @Override public Optional<com.mapit.reservations.domain.reservation.ReservationVenue> findVenue(TenantId tenant,UUID venue) {
+      return establishmentExists(tenant,venue) ? Optional.of(new com.mapit.reservations.domain.reservation.ReservationVenue("RESTAURANT","UTC")) : Optional.empty();
+    }
     @Override public List<ReservationResource> findAliveByIds(TenantId tenant,Collection<UUID> elements) {
       return List.of(new ReservationResource(ELEMENT,VENUE,ReservationResource.Kind.TABLE,state));
     }

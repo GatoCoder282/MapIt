@@ -16,6 +16,8 @@ import com.mapit.reservations.domain.availability.PublicAvailabilityElement;
 import com.mapit.reservations.domain.availability.PublicAvailabilityRepository;
 import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.shared.tenant.TenantScope;
+import com.mapit.shared.vertical.VerticalCatalog;
+import com.mapit.shared.vertical.VerticalProfile;
 
 /** Consulta disponibilidad con proyecciones propias del contexto reservations y RLS explícita. */
 @Repository
@@ -39,13 +41,15 @@ public class JdbcPublicAvailabilityRepository implements PublicAvailabilityRepos
     List<PublicEstablishment> establishments =
         jdbc.query(
             """
-            select id, timezone
+            select id, timezone, type
             from establishment
             where tenant_id = ? and slug = ? and deleted_at is null
             """,
             (result, rowNumber) ->
                 new PublicEstablishment(
-                    result.getObject("id", UUID.class), result.getString("timezone")),
+                    result.getObject("id", UUID.class),
+                    result.getString("timezone"),
+                    result.getString("type")),
             tenantId.orElseThrow(),
             establishmentSlug);
     if (establishments.isEmpty()) {
@@ -54,6 +58,8 @@ public class JdbcPublicAvailabilityRepository implements PublicAvailabilityRepos
 
     PublicEstablishment establishment = establishments.getFirst();
     ZoneId zone = ZoneId.of(establishment.timezone());
+    // HU-7.01/7.02: solo los tipos que la vertical del establecimiento permite reservar.
+    VerticalProfile profile = VerticalCatalog.of(establishment.type());
     Instant startsAt = date.atStartOfDay(zone).toInstant();
     Instant endsAt = date.plusDays(1).atStartOfDay(zone).toInstant();
     List<PublicAvailabilityElement> elements =
@@ -96,7 +102,11 @@ public class JdbcPublicAvailabilityRepository implements PublicAvailabilityRepos
             Timestamp.from(endsAt),
             Timestamp.from(startsAt));
 
-    return Optional.of(new PublicAvailability(establishment.id(), date, elements));
+    return Optional.of(
+        new PublicAvailability(
+            establishment.id(),
+            date,
+            elements.stream().filter(element -> profile.isReservable(element.type().name())).toList()));
   }
 
   private Optional<String> findActiveTenantId(String tenantSlug) {
@@ -112,5 +122,5 @@ public class JdbcPublicAvailabilityRepository implements PublicAvailabilityRepos
     jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, tenantId);
   }
 
-  private record PublicEstablishment(UUID id, String timezone) {}
+  private record PublicEstablishment(UUID id, String timezone, String type) {}
 }

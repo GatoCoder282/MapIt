@@ -39,8 +39,8 @@ class PublicReservationAccessControllerTest {
     Reservation reservation=Reservation.create(ReservationId.generate(),TENANT,VENUE,
         PersonId.of(UUID.randomUUID()),List.of(ELEMENT),ReservationTimeRange.of(NOW.plusSeconds(60),NOW.plusSeconds(3600)),NOW,null);
     when(useCase.execute(any())).thenReturn(new CreatePublicReservation.Result(reservation,
-        new PublicEstablishment(TENANT,VENUE,"UTC"),LocalDate.parse("2026-10-25"),LocalTime.NOON,
-        LocalTime.of(13,0),new PublicReservationAccessService.IssuedAccess(token,NOW.plusSeconds(90000))));
+        new PublicEstablishment(TENANT,VENUE,"UTC","RESTAURANT"),LocalDate.parse("2026-10-25"),LocalTime.NOON,
+        LocalDate.parse("2026-10-25"),LocalTime.of(13,0),new PublicReservationAccessService.IssuedAccess(token,NOW.plusSeconds(90000))));
     RestTestClient client=RestTestClient.bindToController(new PublicReservationController(useCase)).build();
     client.post().uri("/api/v1/public/tenants/tenant-a/establishments/venue/reservations")
         .contentType(MediaType.APPLICATION_JSON)
