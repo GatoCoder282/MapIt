@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import com.mapit.spaces.domain.establishment.EstablishmentType;
 /**
- * Mapeo vertical → tipos de elemento válidos (HU-2.03, RN-4). Criterio provisional que
- * CU-07 refinará; si cambia, solo se toca {@link SpaceElementTypePolicy}.
+ * Mapeo vertical → tipos de elemento válidos (HU-2.03, RN-4), documentado como contrato en
+ * HU-7.01/7.02 (spec D5). La matriz vive en {@code VerticalCatalog}.
  */
 class SpaceElementTypePolicyTest {
 
@@ -67,5 +67,25 @@ class SpaceElementTypePolicyTest {
         .isTrue();
     assertThat(SpaceElementTypePolicy.esPermitido(EstablishmentType.EVENT_HALL, SpaceElementType.TABLE))
         .isTrue();
+  }
+
+  @Test
+  void cada_tipo_del_catalogo_existe_en_el_enum_de_spaces() {
+    // El catálogo compartido guarda los tipos como texto: si alguien escribe uno que spaces
+    // no conoce, aquí falla en vez de en producción.
+    for (EstablishmentType vertical : EstablishmentType.values()) {
+      var profile = com.mapit.shared.vertical.VerticalCatalog.of(vertical.name());
+      profile.allowedElementTypes().forEach(SpaceElementType::valueOf);
+      assertThat(SpaceElementTypePolicy.permitidos(vertical))
+          .extracting(Enum::name)
+          .containsExactlyInAnyOrderElementsOf(profile.allowedElementTypes());
+    }
+  }
+
+  @Test
+  void ningun_tipo_de_establecimiento_queda_fuera_del_catalogo() {
+    for (EstablishmentType vertical : EstablishmentType.values()) {
+      assertThat(SpaceElementTypePolicy.permitidos(vertical)).isNotEmpty();
+    }
   }
 }

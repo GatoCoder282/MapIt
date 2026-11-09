@@ -5,7 +5,7 @@ import { MapEditorStore } from './map-editor-store';
 import { MapEditorApiService } from '../data/map-editor-api';
 import { MAP_EDITOR_DEBOUNCE_MS } from './map-editor-store';
 import { of, Subject, throwError } from 'rxjs';
-import type { SpaceElement, ElementTemplate } from '@mapit/api-client';
+import type { SpaceElement, ElementTemplate, VerticalProfile } from '@mapit/api-client';
 import { AuthSession } from '@mapit/auth';
 
 const MOCK_ELEMENTS: SpaceElement[] = [
@@ -54,6 +54,20 @@ const MOCK_TEMPLATES: ElementTemplate[] = [
   },
 ];
 
+const HOTEL_PROFILE: VerticalProfile = {
+  establishmentType: 'HOTEL',
+  bookingMode: 'STAY',
+  enabled: true,
+  allowedElementTypes: ['ROOM', 'DECOR'],
+  reservableElementTypes: ['ROOM'],
+  allowsOvernight: true,
+  maxDurationMinutes: null,
+  minNights: 1,
+  maxNights: 30,
+  defaultStartTime: '15:00',
+  defaultEndTime: '12:00',
+};
+
 const createMockApi = () => ({
   listSpaceElementsBySector: vi.fn(() => of(MOCK_ELEMENTS)),
   createSpaceElement: vi.fn(() => of(MOCK_ELEMENTS[0])),
@@ -61,6 +75,7 @@ const createMockApi = () => ({
   deleteSpaceElement: vi.fn(() => of(undefined)),
   listTemplates: vi.fn(() => of(MOCK_TEMPLATES)),
   createTemplate: vi.fn(() => of(MOCK_TEMPLATES[0])),
+  getSectorVerticalProfile: vi.fn(() => of(HOTEL_PROFILE)),
 });
 
 describe('MapEditorStore', () => {
@@ -352,6 +367,28 @@ describe('MapEditorStore', () => {
 
     store.clearError();
     expect(store.error()).toBeNull();
+  });
+
+  describe('Vertical del sector (HU-7.01/7.02 · MAP-247)', () => {
+    it('ofrece solo los tipos que admite la vertical del sector abierto', () => {
+      store.loadSector('sector-1');
+
+      expect(mockApi.getSectorVerticalProfile).toHaveBeenCalledWith('sector-1');
+      expect(store.verticalProfile()?.establishmentType).toBe('HOTEL');
+      expect(store.isTypeAllowed('ROOM')).toBe(true);
+      expect(store.isTypeAllowed('DECOR')).toBe(true);
+      expect(store.isTypeAllowed('TABLE')).toBe(false);
+      expect(store.isTypeAllowed('SEAT')).toBe(false);
+    });
+
+    it('no filtra si el perfil no se pudo cargar: decide el backend (400)', () => {
+      mockApi.getSectorVerticalProfile.mockReturnValueOnce(throwError(() => ({ status: 500 })));
+
+      store.loadSector('sector-1');
+
+      expect(store.verticalProfile()).toBeNull();
+      expect(store.isTypeAllowed('TABLE')).toBe(true);
+    });
   });
 
   describe('Plantillas (HU-4.02)', () => {
