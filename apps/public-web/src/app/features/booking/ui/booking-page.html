@@ -176,6 +176,7 @@
             <button
               class="primary"
               type="submit"
+              data-testid="booking-submit"
               [disabled]="store.status() === 'submitting'"
               [attr.aria-busy]="store.status() === 'submitting'"
             >
