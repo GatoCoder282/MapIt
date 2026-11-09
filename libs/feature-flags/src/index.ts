@@ -7,3 +7,4 @@ export {
   type FeatureFlagConfig,
 } from './lib/feature-flag.config';
 export { FLAGS_POR_DEFECTO, type FeatureFlagKey } from './lib/feature-flag.catalog';
+export { VERTICAL_FLAGS } from './lib/vertical-flags';

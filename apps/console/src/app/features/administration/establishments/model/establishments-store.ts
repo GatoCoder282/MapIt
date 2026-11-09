@@ -139,7 +139,9 @@ export class EstablishmentsStore {
         this.errorState.set(
           response?.status === 409
             ? STRINGS.establishments.errors.slugConflict
-            : STRINGS.establishments.errors.save,
+            : response?.status === 403
+              ? STRINGS.establishments.errors.verticalDisabled
+              : STRINGS.establishments.errors.save,
         ),
     });
   }

@@ -30,11 +30,11 @@ export const FLAGS_POR_DEFECTO = {
   /** Editor visual de elementos espaciales (CU-06 · MAP-196). */
   'map-editor.enabled': true,
 
-  /** Vertical Hotel: reservas por rango de fechas (CU-22). */
-  'vertical.hotel': false,
+  /** Vertical Hotel: reservas por rango de fechas (CU-22). Encendida por defecto (HU-7.01/7.02 D3). */
+  'vertical.hotel': true,
 
-  /** Vertical Salón de eventos: butacas numeradas (CU-21). */
-  'vertical.event-hall': false,
+  /** Vertical Salón de eventos: butacas numeradas (CU-21). Encendida por defecto (HU-7.01/7.02 D3). */
+  'vertical.event-hall': true,
 } as const satisfies Record<string, boolean>;
 
 export type FeatureFlagKey = keyof typeof FLAGS_POR_DEFECTO;

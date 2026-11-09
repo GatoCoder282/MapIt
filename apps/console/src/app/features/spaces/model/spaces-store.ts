@@ -139,7 +139,11 @@ export class SpacesStore {
           this.establishmentTypeState.set(est.type);
         }),
         catchError((err: unknown) => {
-          this.errorState.set(this.strings_.wizard.createFailed);
+          this.errorState.set(
+            (err as { status?: number } | null)?.status === 403
+              ? this.strings_.wizard.verticalDisabled
+              : this.strings_.wizard.createFailed,
+          );
           return throwError(() => err);
         }),
         finalize(() => this.savingState.set(false)),

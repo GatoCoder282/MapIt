@@ -945,6 +945,8 @@ export const STRINGS = {
       typeLabel: 'Tipo',
       typeImmutable:
         'El tipo no se puede cambiar: define qué plantillas de elemento aplican al mapa.',
+      /** HU-7.01/7.02: la vertical está apagada en Unleash para la empresa. */
+      typeDisabled: '(no habilitada)',
       slugLabel: 'Slug',
       slugPlaceholder: 'bar-central',
       slugHint: 'Se usa en la URL pública de reserva. Minúsculas, dígitos y guiones.',
@@ -971,6 +973,8 @@ export const STRINGS = {
       nameRequired: 'El nombre es obligatorio.',
       slugInvalid: 'El slug debe tener entre 2 y 63 caracteres: minúsculas, dígitos y guiones.',
       slugConflict: 'Ya existe un establecimiento con ese slug.',
+      verticalDisabled:
+        'Este tipo de establecimiento no está habilitado para tu empresa. Elige otro o pide que lo activen.',
       save: 'No se pudo guardar el establecimiento.',
       remove: 'No se pudo dar de baja el establecimiento.',
     },
@@ -1034,6 +1038,9 @@ export const STRINGS = {
       timezonePlaceholder: 'Selecciona una zona',
       creating: 'Creando…',
       createFailed: 'No se pudo crear el establecimiento. Inténtalo de nuevo.',
+      verticalDisabled:
+        'Este tipo de establecimiento no está habilitado para tu empresa. Elige otro o pide que lo activen.',
+      typeDisabledHint: 'No habilitado para tu empresa',
       nameRequired: 'Ingresa el nombre del establecimiento.',
       typeRequired: 'Selecciona el tipo de establecimiento.',
       editEyebrow: 'Edición',

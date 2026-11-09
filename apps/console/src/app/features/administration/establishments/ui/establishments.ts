@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import type { Establishment, EstablishmentType } from '@mapit/api-client';
 import { TimezonePicker } from '@mapit/ui-kit';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import { EstablishmentsStore } from '../model/establishments-store';
 import { STRINGS } from '../../../../core/strings';
 
@@ -168,8 +169,15 @@ import { STRINGS } from '../../../../core/strings';
                 (change)="onTypeChange(type.value)"
               >
                 @for (option of store.types; track option) {
-                  <option [value]="option" [selected]="option === store.draft().type">
+                  <option
+                    [value]="option"
+                    [selected]="option === store.draft().type"
+                    [disabled]="!store.isEditing() && !flags.isVerticalEnabled(option)"
+                  >
                     {{ label(option) }}
+                    @if (!flags.isVerticalEnabled(option)) {
+                      {{ strings.establishments.form.typeDisabled }}
+                    }
                   </option>
                 }
               </select>
@@ -550,6 +558,7 @@ import { STRINGS } from '../../../../core/strings';
 })
 export class Establishments {
   protected readonly store = inject(EstablishmentsStore);
+  protected readonly flags = inject(FeatureFlagService);
   protected readonly strings = STRINGS;
 
   /** Si el modal está abierto, los errores se muestran dentro, no detrás del backdrop. */
