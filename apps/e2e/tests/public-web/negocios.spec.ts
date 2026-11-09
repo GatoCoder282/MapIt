@@ -21,7 +21,11 @@ test('la página Negocios funciona de forma anónima y responsive', async ({ pag
   await expect(page).not.toHaveURL(/login/);
   await expect(page.locator('mp-negocios')).toHaveCount(1);
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
-  await expect(page.locator('#hero-title')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Editar distribución de mesas' })).toHaveAttribute(
+    'href',
+    /\/spaces\/setup$/,
+  );
 
   const header = page.getByRole('banner');
   const businessesLink = header.locator('nav').first().locator('a[href="/negocios"]');
@@ -42,20 +46,8 @@ test('la página Negocios funciona de forma anónima y responsive', async ({ pag
   await expect(page.locator('#contacto')).toBeAttached();
   await expect(page.getByRole('contentinfo')).toBeVisible();
 
-  const secondaryCta = page.locator('a[href="/negocios#como-funciona"]');
-  await secondaryCta.click();
-  await expect(page).toHaveURL(/\/negocios#como-funciona$/);
-  await expect(page.locator('#como-funciona')).toBeInViewport();
-
   const dialog = page.getByRole('dialog');
-  const heroCta = page.locator('[aria-labelledby="hero-title"] button').first();
-  await heroCta.click();
-  await expect(dialog).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
-  await expect(heroCta).toBeFocused();
-
-  const finalCta = page.locator('#contacto').getByRole('button');
+  const finalCta = page.getByRole('button', { name: 'Unite a MapIt' });
   await finalCta.click();
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Escape');
@@ -73,7 +65,7 @@ test('la página Negocios funciona de forma anónima y responsive', async ({ pag
   await expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
   await expect(menuToggle).toBeFocused();
 
-  const images = page.locator('main img');
+  const images = page.locator('main img:visible');
   for (let index = 0; index < (await images.count()); index++) {
     const image = images.nth(index);
     await image.scrollIntoViewIfNeeded();

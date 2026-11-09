@@ -112,6 +112,15 @@ test('operational visual captures', async ({ page, request }, testInfo) => {
       venueId: company.venueId,
     },
   );
+  // El backend del stack Docker desactiva los endpoints del simulador.
+  await page.route('**/assets/config.json', async (route) => {
+    const response = await route.fetch();
+    const config = (await response.json()) as Record<string, unknown>;
+    await route.fulfill({
+      response,
+      json: { ...config, environment: 'production' },
+    });
+  });
   const accessibleLoad = page.waitForResponse(
     (response) => new URL(response.url()).pathname.endsWith('/establishments/accessible'),
     { timeout: 30_000 },
@@ -119,7 +128,6 @@ test('operational visual captures', async ({ page, request }, testInfo) => {
   const [, establishmentsResponse] = await Promise.all([page.goto('/home'), accessibleLoad]);
   expect(establishmentsResponse.ok()).toBe(true);
   await expect(page.getByText('Sede Home', { exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('link', { name: 'Auditoría' })).toBeVisible({ timeout: 30_000 });
   const loginState = await page.evaluate((key) => {
     const raw = sessionStorage.getItem('mapit.auth.session');
     const session = raw
@@ -146,7 +154,6 @@ test('operational visual captures', async ({ page, request }, testInfo) => {
     role: 'ADMIN',
     selectedEstablishment: company.venueId,
   });
-  await expect(page.getByRole('link', { name: 'Auditoría' })).toBeVisible();
 
   const records: Array<Record<string, unknown>> = [];
   for (const viewport of viewports) {

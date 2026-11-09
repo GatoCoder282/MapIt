@@ -35,17 +35,19 @@ test('checkout desde una reserva creada: anticipo, fallo recuperable y comproban
   };
   const method = {
     id: 'method',
-    displayName: 'QR de prueba',
-    provider: 'MOCK_GATEWAY',
-    verification: 'AUTOMATIC',
-    staticQrImage: null,
-    simulationPath: '/simulacion/qr/30000000-0000-0000-0000-000000000003',
+    displayName: 'Pago con QR',
+    provider: 'STATIC_BANK_QR',
+    verification: 'MANUAL',
+    // El QR de la fixture codifica el texto «MapIt E2E».
+    staticQrImage:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAAAklEQVR4AewaftIAAAFISURBVMXBQW7jQBDAQFLQ/7/MdR8GEAZSNvYhrrIX/tjBFxx8wcEXnGxUnlQMlQqVUaHypOLq5EbFTuVOxVKxU9mdPFBZKhaVpWKnslTcOfhAxVD5xMGHVCpU3nXyoOInFSoVVxX/c3JD5X9UKlQqhspv2AtvUFkqPnGyUalQ2VVULCoVQ2VXcedgUzEqRsWoUFG5UhkVFaNiUdmd3FAZFaNC5UqlQmWojAqVoVKxO9moVAyVUVFxVaEyVCp+62RTobJUqNypUKnYVaioVFzZC29QGRVDZVSoVAyVijv2woXKk4qhslSoVFypjIrdyY2KncpQWSpGxVCpUPnJwQMVFZVdxVC5UzEqVHYHH1CpGCoqKkNlVIyK3cEHKkbFqFgqVFSenDyouFOxqAyVd5zcUHmiUjEqVCp2FSoVO3vhjx18wcEXHHzBP60l+C51nqWjAAAAAElFTkSuQmCC',
+    simulationPath: null,
   };
-  let state: 'NEW' | 'PENDING' | 'CONFIRMED' = 'NEW';
+  let state: 'NEW' | 'PENDING_MANUAL_VERIFICATION' | 'CONFIRMED' = 'NEW';
   let writes = 0;
   const payment = () => ({
     id: '20000000-0000-0000-0000-000000000002',
-    provider: 'MOCK_GATEWAY',
+    provider: method.provider,
     status: state,
     currency: 'BOB',
     amount: '10.00',
@@ -92,7 +94,7 @@ test('checkout desde una reserva creada: anticipo, fallo recuperable y comproban
     writes++;
     expect(route.request().headers()['authorization']).toBeUndefined();
     if (writes === 1) return route.fulfill({ status: 500, json: { title: 'Temporary failure' } });
-    state = 'PENDING';
+    state = 'PENDING_MANUAL_VERIFICATION';
     return route.fulfill({ status: 201, json: payment() });
   });
   const receiptPayload = () => ({
@@ -144,14 +146,21 @@ test('checkout desde una reserva creada: anticipo, fallo recuperable y comproban
   await page.getByTestId('start-payment').click();
   await expect(page.getByRole('alert')).toContainText('No pudimos completar');
   await page.getByTestId('start-payment').click();
-  await expect(page.getByTestId('payment-status')).toHaveAttribute('data-status', 'PENDING');
+  await expect(page.getByTestId('payment-status')).toHaveAttribute(
+    'data-status',
+    'PENDING_MANUAL_VERIFICATION',
+  );
   await expect(page.getByTestId('start-payment')).toHaveCount(0);
   await expect(page.getByTestId('receipt-link')).toHaveCount(0);
-  await expect(page.getByTestId('attempt-qr').getByRole('img')).toBeVisible();
-  await expect(page.getByTestId('payment-status')).toContainText('No es un QR bancario');
-  await expect(page.getByTestId('payment-qr-panel')).toContainText('Simulado — sin dinero real');
+  const bankQr = page.getByTestId('bank-payment-qr');
+  await expect(bankQr).toBeVisible();
+  await expect(bankQr).toHaveAttribute('src', method.staticQrImage);
+  await expect(page.getByTestId('payment-status')).toContainText('Forma de pago');
   await page.getByTestId('verify-payment').click();
-  await expect(page.getByTestId('payment-status')).toHaveAttribute('data-status', 'PENDING');
+  await expect(page.getByTestId('payment-status')).toHaveAttribute(
+    'data-status',
+    'PENDING_MANUAL_VERIFICATION',
+  );
   await expect(page.getByTestId('receipt-link')).toHaveCount(0);
   const qrOutput = join(process.cwd(), 'screenshots', 'payment-qr-redesign');
   await mkdir(qrOutput, { recursive: true });
@@ -166,7 +175,7 @@ test('checkout desde una reserva creada: anticipo, fallo recuperable y comproban
   expect(writes).toBe(2);
   await page.getByTestId('receipt-link').click();
   await expect(page.getByTestId('receipt-page')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Pago de prueba confirmado' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pago de anticipo confirmado' })).toBeVisible();
   await expect(page.getByTestId('receipt-qr').getByRole('img')).toHaveAttribute(
     'src',
     /^data:image\/png;base64,/,
