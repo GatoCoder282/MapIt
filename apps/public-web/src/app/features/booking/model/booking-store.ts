@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import type { PublicReservation, ReservationCheckout } from '@mapit/api-client';
+import type { PublicReservation, ReservationCheckout, VerticalProfile } from '@mapit/api-client';
 import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { STRINGS } from '../../../core/strings';
 import { BookingApi } from '../data/booking-api';
@@ -9,9 +9,9 @@ import { ReservationAccess } from '../../../core/reservation-access';
 import {
   findPublicSpace,
   matchesPublicMap,
-  validPublicInterval,
   type PublicSpaceDescriptor,
 } from '../../../core/public-space';
+import { validVerticalInterval, verticalTerms } from '../../../core/vertical-booking';
 
 export type BookingStatus = 'idle' | 'submitting' | 'success' | 'error';
 @Injectable({ providedIn: 'root' })
@@ -54,15 +54,30 @@ export class BookingStore {
   readonly date = signal('');
   readonly startTime = signal('');
   readonly endTime = signal('');
+  /** HU-7.01/7.02: día local del fin (salida del hotel); vacío = lo decide la vertical. */
+  readonly endDate = signal('');
+  /** Perfil de la vertical que trae el mapa al resolver el espacio. */
+  readonly profile = signal<VerticalProfile | null>(null);
+  readonly terms = computed(() => verticalTerms(this.profile()));
+  private readonly resolvedEndDate = signal('');
+  /** Día de fin que mostrar: el explícito o el que resolvió el backend. */
+  readonly displayEndDate = computed(() => this.endDate() || this.resolvedEndDate());
   readonly fullName = signal('');
   readonly email = signal('');
   readonly phone = signal('');
   readonly intervalValid = computed(() =>
-    validPublicInterval(this.date(), this.startTime(), this.endTime()),
+    validVerticalInterval(
+      this.profile(),
+      this.date(),
+      this.startTime(),
+      this.endTime(),
+      this.endDate(),
+    ),
   );
   readonly canConfirm = computed(
     () =>
       this.descriptorStatus() === 'ready' &&
+      this.profile()?.enabled !== false &&
       this.intervalValid() &&
       this.descriptor()?.selectable === true &&
       this.descriptor()?.availability === 'AVAILABLE',
@@ -101,6 +116,7 @@ export class BookingStore {
     startTime = '',
     endTime = '',
     reservationId = '',
+    endDate = '',
   ): Promise<void> {
     const key = JSON.stringify([
       tenantSlug,
@@ -110,6 +126,7 @@ export class BookingStore {
       startTime,
       endTime,
       reservationId,
+      endDate,
     ]);
     if (key === this.routeKey) return;
     this.routeKey = key;
@@ -131,6 +148,8 @@ export class BookingStore {
     this.date.set(date);
     this.startTime.set(startTime);
     this.endTime.set(endTime);
+    this.endDate.set(endDate);
+    if (differentVenue) this.profile.set(null);
     this.descriptor.set(null);
     this.descriptorStatus.set('idle');
     this.errorMessage.set('');
@@ -191,19 +210,23 @@ export class BookingStore {
     const { tenantSlug, establishmentSlug, elementId } = this.scope;
     const date = this.date(),
       start = this.startTime(),
-      end = this.endTime();
+      end = this.endTime(),
+      endDate = this.endDate();
     this.descriptor.set(null);
     this.descriptorStatus.set('loading');
     if (!keepError) this.errorMessage.set('');
     try {
       const data = await firstValueFrom(
         this.api
-          .map(tenantSlug, establishmentSlug, date, start, end)
+          .map(tenantSlug, establishmentSlug, date, start, end, endDate)
           .pipe(takeUntil(this.cancel), takeUntilDestroyed(this.destroyRef)),
       );
       if (version !== this.version || resolution !== this.resolutionVersion) return false;
-      if (!matchesPublicMap(data, tenantSlug, establishmentSlug, date, start, end))
+      if (!matchesPublicMap(data, tenantSlug, establishmentSlug, date, start, end, endDate))
         throw new Error('scope-mismatch');
+      this.profile.set(data.vertical);
+      // El backend fija el día de fin real (p. ej. noche que termina de madrugada).
+      this.resolvedEndDate.set(data.endDate);
       this.scopeEstablishmentId = data.establishmentId;
       const descriptor = findPublicSpace(data, elementId);
       this.descriptor.set(descriptor);
@@ -244,6 +267,7 @@ export class BookingStore {
           .create(tenantSlug, establishmentSlug, {
             date: this.date(),
             startTime: this.startTime(),
+            ...(this.endDate() ? { endDate: this.endDate() } : {}),
             endTime: this.endTime(),
             spaceElementIds: new Set([elementId]),
             customer: {
@@ -320,6 +344,7 @@ export class BookingStore {
   }
   private describe(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
+      if (error.status === 403) return STRINGS.verticalDisabled;
       if (error.status === 409) return STRINGS.booking.errors.unavailable;
       if (error.status === 404) return STRINGS.booking.errors.notFound;
       if (error.status === 400) return STRINGS.booking.errors.invalid;

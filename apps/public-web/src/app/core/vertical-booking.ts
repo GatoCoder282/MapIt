@@ -50,7 +50,8 @@ export function nextDay(date: string): string {
  * - Estadía: `endDate` obligatorio y entre `minNights` y `maxNights` noches.
  * - Por horas: sin `endDate`, el fin es ese día o, si la vertical admite noches y
  *   `end ≤ start`, el siguiente; duración positiva y dentro de `maxDurationMinutes`.
- * - Sin perfil (aún cargando) solo se acepta el intervalo del mismo día, como antes.
+ * - Sin perfil (aún cargando) se acepta el intervalo del mismo día, como antes, o uno con
+ *   `endDate` explícito; el mapa trae después el perfil y el backend decide.
  */
 export function validVerticalInterval(
   profile: VerticalProfile | null,
@@ -77,7 +78,8 @@ export function validVerticalInterval(
   }
   const duration = (endDay - startDay) / 60_000 + endMinutes - startMinutes;
   if (duration <= 0) return false;
-  if (!profile) return endDay === startDay;
+  // Sin perfil: el mismo día, o una fecha de fin explícita que llega de un enlace (hotel).
+  if (!profile) return Boolean(endDate) || endDay === startDay;
   if (!profile.allowsOvernight && endDay !== startDay && !(endMinutes === 0 && duration <= 1440))
     return false;
   return profile.maxDurationMinutes === null || duration <= profile.maxDurationMinutes;

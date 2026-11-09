@@ -6,7 +6,12 @@
     <a
       class="back"
       [routerLink]="['/disponibilidad', tenantSlug(), establishmentSlug()]"
-      [queryParams]="{ date: store.date(), startTime: store.startTime(), endTime: store.endTime() }"
+      [queryParams]="{
+        date: store.date(),
+        startTime: store.startTime(),
+        endTime: store.endTime(),
+        endDate: store.endDate() || null,
+      }"
       >{{ strings.booking.chooseAgain }}</a
     >
     @if (store.step() === 'done') {
@@ -73,10 +78,18 @@
         }
         @if (store.descriptor(); as space) {
           <section class="selection-summary" data-testid="booking-descriptor" aria-labelledby="booking-space-heading">
-            <h2 id="booking-space-heading">{{ strings.booking.selectedSpace }}</h2>
+            <h2 id="booking-space-heading">
+              {{ store.profile() ? store.terms().selected : strings.booking.selectedSpace }}
+            </h2>
             <p>{{ store.establishmentName() }}</p>
-            <mp-public-space [space]="space" />
-            <p>{{ store.date() }} · {{ store.startTime() }}–{{ store.endTime() }} · {{ store.timezone() }}</p>
+            <mp-public-space [space]="space" [profile]="store.profile()" />
+            <p data-testid="booking-interval">
+              {{ store.date() }} {{ store.startTime() }} –
+              @if (store.displayEndDate() && store.displayEndDate() !== store.date()) {
+                {{ store.displayEndDate() }}
+              }
+              {{ store.endTime() }} · {{ store.timezone() }}
+            </p>
           </section>
         }
         @if (store.descriptorStatus() === 'error') {

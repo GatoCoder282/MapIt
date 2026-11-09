@@ -36,6 +36,15 @@ export class AvailabilityStore {
   readonly hint = computed(() =>
     this.profile() ? fillVerticalText(this.terms().hint, this.profile()) : '',
   );
+  /**
+   * Día de fin para el enlace a la reserva: el que resolvió el backend si no es el de inicio
+   * (salida de hotel o noche que termina de madrugada); así la reserva no depende de volver a
+   * deducirlo antes de tener el perfil.
+   */
+  readonly linkEndDate = computed(() => {
+    const data = this.response();
+    return data && data.endDate !== data.date ? data.endDate : null;
+  });
   /** Apagada en Unleash: se ve el plano, pero no se reserva (403 en el backend). */
   readonly bookingDisabled = computed(() => this.profile()?.enabled === false);
   readonly intervalValid = computed(() =>
