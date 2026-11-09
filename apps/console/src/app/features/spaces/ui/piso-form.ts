@@ -1,6 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { localizeString } from '../../../core/strings';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { FeatureFlagService } from '@mapit/feature-flags';
+import { localizeString } from '../../../core/strings';
 import { SpacesStore } from '../model/spaces-store';
 
 /** Formulario de creación/edición de planta (CU-05 · MAP-69). */
@@ -212,6 +219,23 @@ export class PisoFormComponent {
   protected readonly localizeString = localizeString;
   protected readonly store = inject(SpacesStore);
   protected readonly flags = inject(FeatureFlagService);
+  private readonly baseline = signal<string | null>(null);
+  private editing = false;
+  readonly dirty = computed(() => {
+    const name = this.store.floorDraft().name;
+    return this.store.isEditingFloor()
+      ? this.baseline() !== null && name !== this.baseline()
+      : !!name.trim();
+  });
+
+  constructor() {
+    effect(() => {
+      const isEditing = this.store.isEditingFloor();
+      if (isEditing && !this.editing) this.baseline.set(this.store.floorDraft().name);
+      if (!isEditing) this.baseline.set(null);
+      this.editing = isEditing;
+    });
+  }
 
   protected onNameInput(event: Event): void {
     const target = event.target as HTMLInputElement;

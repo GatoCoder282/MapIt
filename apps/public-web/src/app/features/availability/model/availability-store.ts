@@ -2,6 +2,7 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom, Subject, takeUntil } from 'rxjs';
 import type { PublicAvailabilityMap } from '@mapit/api-client';
+import { currentLocaleTag } from '@mapit/i18n';
 import { AvailabilityApi } from '../data/availability-api';
 import { findPublicSpace, matchesPublicMap, validPublicInterval } from '../../../core/public-space';
 import { STRINGS } from '../../../core/strings';
@@ -19,12 +20,68 @@ export class AvailabilityStore {
   readonly status = signal<AvailabilityStatus>('idle');
   readonly failure = signal('');
   readonly date = signal('');
+  readonly people = signal<number | null>(null);
   readonly startTime = signal('');
   readonly endTime = signal('');
   readonly response = signal<PublicAvailabilityMap | null>(null);
   readonly floorId = signal('');
   readonly sectorId = signal('');
   readonly selectedElementId = signal<string | null>(null);
+  private readonly calendarMonth = signal(
+    new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1)),
+  );
+  readonly monthLabel = computed(() =>
+    new Intl.DateTimeFormat(currentLocaleTag(), {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(this.calendarMonth()),
+  );
+  readonly weekdays = computed(() => {
+    const formatter = new Intl.DateTimeFormat(currentLocaleTag(), {
+      weekday: 'short',
+      timeZone: 'UTC',
+    });
+    return Array.from({ length: 7 }, (_, day) =>
+      formatter.format(new Date(Date.UTC(2020, 5, 7 + day))),
+    );
+  });
+  readonly calendarDays = computed(() => {
+    const month = this.calendarMonth();
+    const year = month.getUTCFullYear();
+    const index = month.getUTCMonth();
+    const offset = month.getUTCDay();
+    const count = new Date(Date.UTC(year, index + 1, 0)).getUTCDate();
+    const formatter = new Intl.DateTimeFormat(currentLocaleTag(), {
+      dateStyle: 'long',
+      timeZone: 'UTC',
+    });
+    return Array.from({ length: Math.ceil((offset + count) / 7) * 7 }, (_, cell) => {
+      const day = cell - offset + 1;
+      if (day < 1 || day > count) return null;
+      const date = new Date(Date.UTC(year, index, day));
+      return { day, value: date.toISOString().slice(0, 10), label: formatter.format(date) };
+    });
+  });
+  readonly timeChoices = Array.from(
+    { length: 48 },
+    (_, index) => `${String(Math.floor(index / 2)).padStart(2, '0')}:${index % 2 ? '30' : '00'}`,
+  );
+  readonly availableCount = computed(() =>
+    this.floors().reduce(
+      (total, floor) =>
+        total +
+        floor.sectors.reduce(
+          (sum, sector) =>
+            sum +
+            sector.elements.filter(
+              (space) => space.selectable && space.availability === 'AVAILABLE',
+            ).length,
+          0,
+        ),
+      0,
+    ),
+  );
   readonly floors = computed(() => this.response()?.floors ?? []);
   readonly floor = computed(() => this.floors().find((item) => item.id === this.floorId()) ?? null);
   readonly sector = computed(
@@ -35,6 +92,9 @@ export class AvailabilityStore {
     const data = this.response();
     return data ? this.elements().map((item) => findPublicSpace(data, item.id)!) : [];
   });
+  readonly availableSpaces = computed(() =>
+    this.spaces().filter((space) => space.selectable && space.availability === 'AVAILABLE'),
+  );
   readonly layout = computed(() => {
     const floor = this.floor(),
       sector = this.sector();
@@ -67,7 +127,9 @@ export class AvailabilityStore {
     date: string,
     startTime = '',
     endTime = '',
+    people = '',
   ): void {
+    this.setPeople(people);
     const key = JSON.stringify([tenantSlug, establishmentSlug, date, startTime, endTime]);
     if (key === this.routeKey) return;
     this.routeKey = key;
@@ -82,12 +144,30 @@ export class AvailabilityStore {
     this.scope = { tenantSlug, establishmentSlug };
     this.invalidate();
     this.date.set(date);
+    this.showDateMonth(date);
     this.startTime.set(startTime);
     this.endTime.set(endTime);
   }
   setDate(value: string): void {
     this.invalidate();
     this.date.set(value);
+    this.showDateMonth(value);
+  }
+  moveMonth(direction: number): void {
+    const month = this.calendarMonth();
+    this.calendarMonth.set(
+      new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + direction, 1)),
+    );
+  }
+  private showDateMonth(value: string): void {
+    const date = new Date(`${value}T12:00:00Z`);
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+      !Number.isFinite(date.getTime()) ||
+      date.toISOString().slice(0, 10) !== value
+    )
+      return;
+    this.calendarMonth.set(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)));
   }
   setStartTime(value: string): void {
     this.invalidate();
@@ -96,6 +176,9 @@ export class AvailabilityStore {
   setEndTime(value: string): void {
     this.invalidate();
     this.endTime.set(value);
+  }
+  setPeople(value: string): void {
+    this.people.set(/^(?:[1-9]|1\d|20)$/.test(value) ? Number(value) : null);
   }
   private invalidate(): void {
     this.version++;
@@ -107,7 +190,7 @@ export class AvailabilityStore {
     this.status.set('idle');
     this.failure.set('');
   }
-  async search(): Promise<void> {
+  async search(selectedId: string | null = null): Promise<void> {
     this.invalidate();
     if (!validPublicInterval(this.date(), this.startTime(), this.endTime())) {
       this.failure.set(STRINGS.availability.intervalRequired);
@@ -132,11 +215,29 @@ export class AvailabilityStore {
       this.floorId.set(data.floors[0]?.id ?? '');
       this.sectorId.set(data.floors[0]?.sectors[0]?.id ?? '');
       this.status.set('loaded');
+      if (selectedId) this.restoreSelection(selectedId);
     } catch {
       if (version !== this.version) return;
       this.status.set('error');
       this.failure.set(STRINGS.availability.error);
     }
+  }
+  restoreSelection(id: string | null): void {
+    this.failure.set('');
+    this.selectedElementId.set(null);
+    if (!id || this.status() !== 'loaded') return;
+    const floor = this.floors().find((item) =>
+      item.sectors.some((sector) => sector.elements.some((space) => space.id === id)),
+    );
+    const sector = floor?.sectors.find((item) => item.elements.some((space) => space.id === id));
+    const space = sector?.elements.find((item) => item.id === id);
+    if (!floor || !sector || !space?.selectable || space.availability !== 'AVAILABLE') {
+      this.failure.set(STRINGS.availability.selectionUnavailable);
+      return;
+    }
+    this.selectFloor(floor.id);
+    this.selectSector(sector.id);
+    this.select(id);
   }
   selectFloor(id: string): void {
     if (id === this.floorId() || !this.floors().some((item) => item.id === id)) return;

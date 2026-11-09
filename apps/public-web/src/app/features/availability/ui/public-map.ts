@@ -16,8 +16,7 @@ import { STRINGS } from '../../../core/strings';
 @Component({
   selector: 'mp-public-map',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: ` <p id="public-map-help">{{ strings.mapHelp }}</p>
-    <div
+  template: `<div
       class="map-scroll"
       tabindex="0"
       role="region"
@@ -32,24 +31,32 @@ import { STRINGS } from '../../../core/strings';
         [style.width.px]="layout().size.width"
         [style.height.px]="layout().size.height"
       ></div>
-    </div>`,
+    </div>
+    <p id="public-map-help">{{ strings.mapHelp }}</p>`,
   styles: `
     :host {
       display: block;
       min-width: 0;
     }
     p {
+      margin: 0.5rem 0 0;
       color: var(--mapit-color-text-variant);
-      font-size: 0.875rem;
-      line-height: 1.6;
+      font-size: 0.75rem;
+      line-height: 1.5;
     }
     .map-scroll {
       scroll-margin-top: 7rem;
-      max-height: 28rem;
+      height: 20rem;
       max-width: 100%;
       overflow: auto;
-      border: 1px solid var(--mapit-color-border);
-      border-radius: 12px;
+      border: 1px solid #adc9ff;
+      border-radius: 20px;
+      background-color: #f5f7fb;
+      background-image:
+        linear-gradient(#e6ecf5 1px, transparent 1px),
+        linear-gradient(90deg, #e6ecf5 1px, transparent 1px);
+      background-size: 40px 40px;
+      box-shadow: 0 2px 5px rgb(38 83 163 / 0.12);
     }
     .map-scroll:focus-visible {
       outline: 2px solid var(--mapit-color-primary);
@@ -57,6 +64,8 @@ import { STRINGS } from '../../../core/strings';
     }
     .map-host {
       position: relative;
+      margin-inline: auto;
+      background: white;
     }
   `,
 })

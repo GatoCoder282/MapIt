@@ -1,0 +1,110 @@
+<dialog
+  #dialog
+  class="selector-dialog"
+  aria-labelledby="selector-title"
+  aria-describedby="selector-description"
+  (cancel)="preventDismiss($event)"
+>
+  <div class="selector-card">
+    <section class="welcome-panel" aria-labelledby="welcome-title">
+      <div class="welcome-copy">
+        <div class="brand-mark" aria-hidden="true"><svg lucideStore></svg></div>
+        <h1 id="welcome-title">{{ strings.welcomeTitle }}</h1>
+        <p class="welcome-description">{{ strings.welcomeDescription }}</p>
+      </div>
+
+      <div class="benefit-group">
+        <svg class="benefit-map" viewBox="0 0 48 52" aria-hidden="true">
+          <path d="m4 14 11-4 13 4 16-5v31l-16 5-13-4-11 5V14Z" />
+          <path d="M15 10v31m13-27v31" />
+          <path d="M28 3a7 7 0 0 0-7 7c0 5 7 12 7 12s7-7 7-12a7 7 0 0 0-7-7Z" />
+          <circle cx="28" cy="10" r="2" />
+        </svg>
+        <ul class="benefits">
+          <li>
+            <span class="benefit-icon" aria-hidden="true"><svg lucideCheck></svg></span>{{ strings.benefitWorkspace }}
+          </li>
+          <li>
+            <span class="benefit-icon" aria-hidden="true"><svg lucideCheck></svg></span>{{ strings.benefitSeparate }}
+          </li>
+          <li>
+            <span class="benefit-icon" aria-hidden="true"><svg lucideCheck></svg></span>{{ strings.benefitOperations }}
+          </li>
+        </ul>
+      </div>
+
+      <div class="panel-wave wave-diagonal" aria-hidden="true"></div>
+      <div class="panel-wave wave-lower" aria-hidden="true"></div>
+      <div class="dot-field" aria-hidden="true"></div>
+    </section>
+
+    <section class="selection-panel" aria-labelledby="selector-title">
+      @if (canDismiss()) {
+        <button class="dismiss-button" type="button" [attr.aria-label]="strings.close" (click)="dismiss()">
+          <span aria-hidden="true">×</span>
+        </button>
+      }
+      <img class="mapit-logo" ngSrc="/assets/img/logo_mapit_cropped.png" alt="Mapit" width="112" height="42" />
+
+      <div class="selection-heading">
+        <h2 #heading id="selector-title" tabindex="-1">{{ strings.selectQuestion }}</h2>
+        <p id="selector-description">{{ strings.selectDescription }}</p>
+      </div>
+
+      @if (status() === 'loading' || status() === 'idle') {
+        <div class="state-message loading-state" role="status" aria-live="polite">
+          <span class="loading-indicator" aria-hidden="true"></span>
+          <span>{{ strings.loading }}</span>
+        </div>
+      } @else if (status() === 'error') {
+        <div class="state-message error-state" role="alert">
+          <p>{{ strings.error }}</p>
+          <button class="retry-button" type="button" (click)="retry.emit()">{{ strings.retry }}</button>
+        </div>
+      } @else if (establishments().length === 0) {
+        <div class="state-message empty-state" role="status">
+          <p>{{ strings.empty }}</p>
+          <button class="retry-button" type="button" (click)="retry.emit()">{{ strings.retry }}</button>
+        </div>
+      } @else {
+        <fieldset class="establishment-list">
+          <legend class="visually-hidden">{{ strings.choose }}</legend>
+          @for (establishment of establishments(); track establishment.id) {
+            <label class="establishment-option" [class.selected]="selectedId() === establishment.id">
+              <input
+                type="radio"
+                name="establishment"
+                [value]="establishment.id"
+                [checked]="selectedId() === establishment.id"
+                (change)="choose(establishment.id)"
+              />
+              <span class="venue-thumbnail" data-testid="venue-thumbnail" aria-hidden="true">
+                <svg lucideStore></svg>
+              </span>
+              <span class="venue-details">
+                <span class="venue-name">{{ establishment.name }}</span>
+                <span class="venue-kind">{{ strings.neutralLabel }}</span>
+                <span class="venue-address">{{ establishment.address || strings.addressMissing }}</span>
+              </span>
+              <span class="radio-indicator" aria-hidden="true"></span>
+            </label>
+          }
+        </fieldset>
+      }
+
+      <div class="selection-actions">
+        <button
+          class="continue-button"
+          type="button"
+          data-testid="continue"
+          [disabled]="!selectedId() || status() !== 'ready'"
+          (click)="continue()"
+        >
+          {{ strings.continue }}
+          <svg lucideArrowRight aria-hidden="true"></svg>
+        </button>
+        <button class="sign-out-button" type="button" (click)="signOut.emit()">{{ strings.logout }}</button>
+      </div>
+    </section>
+  </div>
+</dialog>

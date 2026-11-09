@@ -1,0 +1,38 @@
+<section id="como-funciona" class="steps" aria-labelledby="steps-title">
+  <svg class="steps-decoration" viewBox="0 0 1984 320" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="business-steps-wave" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#e8f1ff" />
+        <stop offset="1" stop-color="#8ab5ff" />
+      </linearGradient>
+    </defs>
+    <path
+      d="M1350 320C1460 278 1530 253 1655 277S1810 284 1870 251S1940 221 1984 216V320Z"
+      fill="url(#business-steps-wave)"
+    />
+    <path class="steps-route" d="M1580 95C1660 26 1712 22 1785 44S1875 41 1910 8" />
+  </svg>
+  <svg class="steps-pin" viewBox="0 0 32 42" aria-hidden="true">
+    <path d="M16 1A15 15 0 0 0 1 16c0 10 15 25 15 25s15-15 15-25A15 15 0 0 0 16 1Z" />
+    <circle cx="16" cy="16" r="7" />
+  </svg>
+  <header>
+    <h2 id="steps-title">
+      {{ copy.stepsLead }} <span>{{ copy.stepsAccent }}</span>
+    </h2>
+    <p>{{ copy.stepsTail }}</p>
+  </header>
+  <ol>
+    @for (step of copy.steps; track $index; let i = $index) {
+      <li>
+        <span class="step-icon-box"
+          ><svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="stepIcons[i]" /></svg
+        ></span>
+        <div>
+          <span class="step-number" aria-hidden="true">{{ i + 1 }}</span
+          ><b>{{ step }}</b>
+        </div>
+      </li>
+    }
+  </ol>
+</section>

@@ -2,13 +2,15 @@
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   type ElementRef,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import type { Establishment } from '@mapit/api-client';
 import { TimezonePicker } from '@mapit/ui-kit';
@@ -18,6 +20,8 @@ import { localizeString, STRINGS } from '../../../core/strings';
 import { SLUG_PATTERN } from '../../../core/patterns';
 import { SpacesApiService } from '../data/spaces-api';
 import { SpacesStore } from '../model/spaces-store';
+import { EstablishmentContext } from '../../../core/establishment-context';
+import { confirmOperationalExit } from '../../../core/operational-exit-guard';
 
 type Step1Field = 'name' | 'type';
 
@@ -93,6 +97,11 @@ type Step1Field = 'name' | 'type';
 
         @if (modo() === 'list') {
           <div class="chooser">
+            @if (context.active()) {
+              <button class="btn-secondary" type="button" (click)="returnToStructure()">
+                {{ strings.wizard.stepStructure }} · {{ context.active()?.name }}
+              </button>
+            }
             <h2 class="chooser-title">{{ strings.wizard.yourEstablishments }}</h2>
             <ul class="est-list">
               @for (est of establishments(); track est.id) {
@@ -141,13 +150,11 @@ type Step1Field = 'name' | 'type';
                         <circle cx="12" cy="19" r="1" />
                       </svg>
                     </button>
-                    <button
-                      class="btn-primary small"
-                      type="button"
-                      (click)="selectEst(est.id, est.type)"
-                    >
-                      {{ strings.wizard.select }}
-                    </button>
+                    @if (est.id === context.active()?.id) {
+                      <button class="btn-primary small" type="button" (click)="selectEst(est.id)">
+                        {{ strings.wizard.stepStructure }}
+                      </button>
+                    }
                   </div>
                 </li>
               }
@@ -167,6 +174,7 @@ type Step1Field = 'name' | 'type';
                 name="name"
                 [ngModel]="name()"
                 (ngModelChange)="name.set($event)"
+                [disabled]="store.busy()"
                 [placeholder]="strings.wizard.namePlaceholder"
                 [attr.aria-invalid]="invalid().has('name') || null"
                 maxlength="120"
@@ -177,7 +185,7 @@ type Step1Field = 'name' | 'type';
               }
             </label>
 
-            <fieldset class="field types">
+            <fieldset class="field types" [disabled]="store.busy()">
               <legend class="field-label">{{ strings.wizard.typeLabel }}</legend>
               <div class="type-grid" role="radiogroup">
                 @for (option of typeOptions; track option.value) {
@@ -188,6 +196,7 @@ type Step1Field = 'name' | 'type';
                     role="radio"
                     [attr.aria-checked]="establishmentType() === option.value"
                     [attr.aria-invalid]="invalid().has('type') || null"
+                    [disabled]="store.busy()"
                     (click)="establishmentType.set(option.value)"
                   >
                     @switch (option.value) {
@@ -221,6 +230,7 @@ type Step1Field = 'name' | 'type';
                   name="address"
                   [ngModel]="address()"
                   (ngModelChange)="address.set($event)"
+                  [disabled]="store.busy()"
                   [placeholder]="strings.wizard.addressPlaceholder"
                   maxlength="200"
                 />
@@ -230,14 +240,23 @@ type Step1Field = 'name' | 'type';
                 <label class="field-label" for="wizard-timezone">{{
                   strings.wizard.timezoneLabel
                 }}</label>
-                <mapit-ui-timezone-picker inputId="wizard-timezone" [(timezone)]="timezone" />
+                <mapit-ui-timezone-picker
+                  inputId="wizard-timezone"
+                  [(timezone)]="timezone"
+                  [disabled]="store.busy()"
+                />
               </div>
             </div>
 
             <footer class="wizard-footer">
               <div class="footer-actions">
                 @if (establishments().length > 0) {
-                  <button class="btn-secondary" type="button" (click)="modo.set('list')">
+                  <button
+                    class="btn-secondary"
+                    type="button"
+                    [disabled]="store.busy()"
+                    (click)="backToList()"
+                  >
                     {{ strings.wizard.backToList }}
                   </button>
                 } @else {
@@ -452,7 +471,7 @@ type Step1Field = 'name' | 'type';
                 class="btn-secondary"
                 type="button"
                 [disabled]="editDeleting()"
-                (click)="deleteDialog.close()"
+                (click)="cancelDelete()"
               >
                 {{ strings.wizard.cancel }}
               </button>
@@ -933,6 +952,8 @@ export class WizardEstablishmentComponent {
   protected readonly store = inject(SpacesStore);
   private readonly api = inject(SpacesApiService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  protected readonly context = inject(EstablishmentContext);
 
   protected readonly strings = STRINGS.spaces;
 
@@ -953,8 +974,50 @@ export class WizardEstablishmentComponent {
     { value: 'HOTEL', label: STRINGS.verticals.HOTEL },
   ] as const;
 
+  private readonly queryParams = toSignal(this.route.queryParamMap, { initialValue: null });
+  private managementLoaded = false;
+
   constructor() {
-    this.loadEstablishments();
+    effect(() => {
+      const queryParams = this.queryParams();
+      if (!queryParams) return;
+      if (queryParams.get('manage') === '1') {
+        if (!this.managementLoaded) {
+          this.managementLoaded = true;
+          this.loadEstablishments();
+        }
+        return;
+      }
+
+      this.managementLoaded = false;
+      const status = this.context.status();
+      const active = this.context.active();
+      if (status === 'idle' || status === 'loading') {
+        this.modo.set('loading');
+        return;
+      }
+      if (status === 'ready' && active) {
+        void this.router.navigate(['/spaces/floors', active.id], { replaceUrl: true });
+      }
+    });
+  }
+
+  canDeactivate(): boolean {
+    const target = this.editTarget();
+    const draftDirty =
+      this.hasCreateChanges() ||
+      !!this.deleteNameValue() ||
+      (!!target &&
+        (this.editNameValue() !== target.name ||
+          this.editSlugValue() !== target.slug ||
+          this.editTimezoneValue() !== target.timezone));
+    const editBusy = this.editSaving() || this.editDeleting();
+    return confirmOperationalExit(this.store.busy() || editBusy, draftDirty);
+  }
+
+  protected returnToStructure(): void {
+    const activeId = this.context.active()?.id;
+    if (activeId) void this.router.navigate(['/spaces/floors', activeId]);
   }
 
   private loadEstablishments(): void {
@@ -970,9 +1033,8 @@ export class WizardEstablishmentComponent {
     });
   }
 
-  protected selectEst(id: string, type: string): void {
-    this.store.selectEstablishment(id, type);
-    void this.router.navigate(['/spaces/floors', id]);
+  protected selectEst(id: string): void {
+    if (id === this.context.active()?.id) void this.router.navigate(['/spaces/floors', id]);
   }
 
   /** La ediciÃ³n rÃ¡pida ocurre aquÃ­ mismo, en un modal: no redirige al backoffice. */
@@ -1002,6 +1064,10 @@ export class WizardEstablishmentComponent {
 
   protected closeEdit(): void {
     this.editDialog()?.nativeElement.close();
+    this.editTarget.set(null);
+    this.editNameValue.set('');
+    this.editSlugValue.set('');
+    this.editTimezoneValue.set('');
   }
 
   protected saveEdit(): void {
@@ -1069,6 +1135,11 @@ export class WizardEstablishmentComponent {
     this.deleteNameValue.set('');
   }
 
+  protected cancelDelete(): void {
+    this.deleteDialog()?.nativeElement.close();
+    this.closeDelete();
+  }
+
   protected confirmDelete(): void {
     const target = this.editTarget();
     if (!target || this.editDeleting() || !this.canDelete()) return;
@@ -1090,8 +1161,27 @@ export class WizardEstablishmentComponent {
   }
 
   protected startCreate(): void {
-    this.store.selectEstablishment(null);
+    this.resetCreateDraft();
     this.modo.set('form');
+  }
+
+  protected backToList(): void {
+    const dirty = this.hasCreateChanges();
+    if (!confirmOperationalExit(this.store.busy(), dirty)) return;
+    this.resetCreateDraft();
+    this.modo.set('list');
+  }
+
+  private hasCreateChanges(): boolean {
+    return !!this.name() || !!this.establishmentType() || !!this.address() || !!this.timezone();
+  }
+
+  private resetCreateDraft(): void {
+    this.name.set('');
+    this.establishmentType.set(null);
+    this.address.set('');
+    this.timezone.set('');
+    this.invalid.set(new Set());
   }
 
   protected verticalLabel(type: string): string {
@@ -1114,7 +1204,11 @@ export class WizardEstablishmentComponent {
         timezone: this.timezone(),
       })
       .subscribe({
-        next: (est) => void this.router.navigate(['/spaces/floors', est.id]),
+        next: () => {
+          this.resetCreateDraft();
+          this.modo.set('list');
+          this.loadEstablishments();
+        },
         error: () => {}, // el store ya fijÃ³ el mensaje visible
       });
   }

@@ -100,10 +100,7 @@
     <nav class="nav" [attr.aria-label]="navAriaLabel()">
       <ng-container [ngTemplateOutlet]="navList" [ngTemplateOutletContext]="{ $implicit: nav(), level: 0 }" />
     </nav>
-    <div class="sidebar-decor" aria-hidden="true">
-      <span class="decor-circle"></span>
-      <span class="decor-dots"></span>
-    </div>
+    <div class="sidebar-decor" aria-hidden="true"></div>
   </div>
 
   @if (drawerOpen()) {
@@ -143,9 +140,6 @@
       <ng-container [ngTemplateOutlet]="navList" [ngTemplateOutletContext]="{ $implicit: nav(), level: 0 }" />
     </nav>
 
-    <div class="sidebar-decor" aria-hidden="true">
-      <span class="decor-circle"></span>
-      <span class="decor-dots"></span>
-    </div>
+    <div class="sidebar-decor" aria-hidden="true"></div>
   </div>
 </aside>

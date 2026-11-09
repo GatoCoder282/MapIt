@@ -5,7 +5,7 @@
         <h2 id="cta-title">{{ strings.reservas.cta.title }}</h2>
         <p class="cta-subtitle">{{ strings.reservas.cta.subtitle }}</p>
       </div>
-      <a class="cta-btn" href="#mas-populares">
+      <a class="cta-btn" href="/reservas#mas-populares" (click)="explore($event)">
         {{ strings.reservas.cta.action }}
         <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
           <path

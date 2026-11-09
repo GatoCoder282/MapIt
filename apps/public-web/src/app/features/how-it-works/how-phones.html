@@ -1,0 +1,52 @@
+@switch (kind()) {
+  @case ('payment') {
+    <div class="phone-sequence" role="img" [attr.aria-label]="copy.ui.paymentAlt">
+      <div class="phone booking-phone">
+        <span class="phone-brand">MapIt <span aria-hidden="true">≡</span></span>
+        <h3>{{ copy.ui.reserve }}</h3>
+        <strong>{{ copy.ui.complete }}</strong>
+        @for (field of copy.ui.fields; track $index) {
+          <div class="phone-field">{{ field }}<span aria-hidden="true">⌄</span></div>
+        }
+        <span class="phone-action">{{ copy.ui.reserveAction }} <i aria-hidden="true">→</i></span>
+      </div>
+      <span class="sequence-arrow" aria-hidden="true">→</span>
+      <div class="phone receipt-phone">
+        <span class="receipt-symbol"
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[3]" /></svg
+        ></span>
+        <h3>{{ copy.ui.receipt }}</h3>
+        <p class="condition">{{ copy.ui.receiptCondition }}</p>
+        @for (field of copy.ui.receiptFields; track $index) {
+          <div class="receipt-row">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[$index + 2]" /></svg>{{ field }}
+          </div>
+        }
+        <span class="phone-action outline">{{ copy.ui.receiptAction }}</span>
+      </div>
+    </div>
+  }
+  @case ('arrival') {
+    <div class="phone-sequence" role="img" [attr.aria-label]="copy.ui.arrivalAlt">
+      <div class="phone lookup-phone">
+        <h3>{{ copy.ui.reception }}</h3>
+        <div class="scan-tabs">
+          <span>{{ copy.ui.scan }}</span
+          ><span>{{ copy.ui.code }}</span>
+        </div>
+        <div class="scan-symbol">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[4]" /></svg>
+        </div>
+        <span class="phone-action">{{ copy.ui.lookup }}</span>
+      </div>
+      <span class="sequence-arrow" aria-hidden="true">→</span>
+      <div class="phone arrival-phone">
+        <h3>{{ copy.ui.arrival }}</h3>
+        @for (field of copy.ui.arrivalFields; track $index) {
+          <div class="arrival-row"><span aria-hidden="true">✓</span>{{ field }}</div>
+        }
+        <span class="phone-action">{{ copy.ui.arrivalAction }}</span>
+      </div>
+    </div>
+  }
+}

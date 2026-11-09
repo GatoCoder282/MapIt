@@ -24,6 +24,8 @@ describe('ElementPropertiesCardComponent metadata', () => {
     capacity: null,
   });
   const saving = signal(false);
+  const busy = signal(false);
+  const loading = signal(false);
   const metadataError = signal<string | null>(null);
   const saveElementMetadata = vi.fn();
   const clearElementMetadata = vi.fn();
@@ -41,6 +43,8 @@ describe('ElementPropertiesCardComponent metadata', () => {
             canEditMetadata,
             selectedMetadata,
             saving,
+            busy,
+            loading,
             metadataError,
             selectedElementPosition: signal(null),
             saveElementMetadata,
@@ -55,6 +59,7 @@ describe('ElementPropertiesCardComponent metadata', () => {
     const fixture = TestBed.createComponent(ElementPropertiesCardComponent);
     fixture.componentRef.setInput('element', element);
     fixture.detectChanges();
+    expect(fixture.componentInstance.dirty()).toBe(false);
     const root = fixture.nativeElement as HTMLElement;
     const label = root.querySelector<HTMLInputElement>('[data-testid="element-metadata-label"]')!;
     const capacity = root.querySelector<HTMLInputElement>(
@@ -67,10 +72,14 @@ describe('ElementPropertiesCardComponent metadata', () => {
     label.dispatchEvent(new Event('input'));
     capacity.value = '5';
     capacity.dispatchEvent(new Event('input'));
+    expect(fixture.componentInstance.dirty()).toBe(true);
     root.querySelector<HTMLButtonElement>('[data-testid="element-metadata-save"]')!.click();
     expect(saveElementMetadata).toHaveBeenCalledWith('e1', 'Mesa terraza', '5');
     root.querySelector<HTMLButtonElement>('[data-testid="element-metadata-clear"]')!.click();
     expect(clearElementMetadata).toHaveBeenCalledWith('e1');
+    selectedMetadata.set({ label: 'Mesa terraza', capacity: 5 });
+    TestBed.tick();
+    expect(fixture.componentInstance.dirty()).toBe(false);
   });
 
   it('hides editing controls from other roles', () => {
@@ -81,5 +90,19 @@ describe('ElementPropertiesCardComponent metadata', () => {
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('[data-testid="element-metadata"]'),
     ).toBeNull();
+  });
+
+  it('disables element mutations while a write is pending', () => {
+    const fixture = TestBed.createComponent(ElementPropertiesCardComponent);
+    fixture.componentRef.setInput('element', element);
+    busy.set(true);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(
+      root.querySelector<HTMLInputElement>('[data-testid="element-metadata-label"]')?.disabled,
+    ).toBe(true);
+    expect(root.querySelector<HTMLButtonElement>('.btn-delete')?.disabled).toBe(true);
+    fixture.destroy();
+    busy.set(false);
   });
 });

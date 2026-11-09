@@ -12,13 +12,13 @@ import {
   LucideArrowLeft,
   LucideCheck,
   LucideClock3,
-  LucideQrCode,
-  LucideShieldCheck,
+  LucideCalendarDays,
+  LucideArmchair,
+  LucideInfo,
 } from '@lucide/angular';
 import { PREVIEW_RECEIPT_PATH } from '@mapit/api-client';
 
 import { STRINGS } from '../../../core/strings';
-import { PublicEstablishmentIdentity } from '../../../core/public-establishment-identity';
 import { PublicSpaceSummary } from '../../../core/public-space';
 import { ReceiptStore } from '../model/receipt-store';
 import { PaymentQrImage } from './payment-qr';
@@ -27,14 +27,14 @@ import { PaymentQrImage } from './payment-qr';
   selector: 'mp-receipt-page',
   imports: [
     RouterLink,
-    PublicEstablishmentIdentity,
     PublicSpaceSummary,
     PaymentQrImage,
     LucideArrowLeft,
     LucideCheck,
     LucideClock3,
-    LucideQrCode,
-    LucideShieldCheck,
+    LucideCalendarDays,
+    LucideArmchair,
+    LucideInfo,
   ],
   providers: [ReceiptStore],
   templateUrl: './receipt-page.html',

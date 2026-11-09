@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 /**
  * Flujo del editor de plantas (HU-4.01) de punta a punta:
- *   login de staff → abrir la vista de planta → el lienzo y la biblioteca de
+ *   sesión de staff → abrir la vista de planta → el lienzo y la biblioteca de
  *   sectores cargan → entrar al editor del sector → volver a la planta →
  *   recargar y ver que la colocación persiste.
  *
@@ -10,8 +10,7 @@ import { expect, test } from '@playwright/test';
  * concurrencia y duplicado ya tienen tests de dominio/integración.
  *
  * Requiere el stack completo (`pnpm dev`): backend :8080, console :4200 y
- * Mailpit :8025. Los datos se siembran por la API (rutas spaces hoy públicas,
- * fallback al tenant demo — transitorio hasta CU-23/CU-24).
+ * Mailpit :8025. Los datos se siembran por la API con la sesión del tenant.
  */
 const API = process.env['API_BASE_URL'] ?? 'http://localhost:8080/api/v1';
 const MAILPIT = process.env['MAILPIT_URL'] ?? 'http://localhost:8025';
@@ -80,30 +79,20 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
   test('ver la planta, abrir un sector y volver: el diseño persiste al recargar', async ({
     page,
     request,
+    baseURL,
   }) => {
-    // 1. Login del staff por la UI (la consola exige JWT). Patrón del repo:
-    // hasta 3 intentos; el servidor recién activado a veces rechaza el primero.
-    await page.goto(`/empresa/${slug}/login`);
-    await expect(page.getByRole('button', { name: /iniciar sesi/i })).toBeVisible();
-    for (let attempt = 0; attempt < 3; attempt++) {
-      await page.getByLabel(/correo electr/i).fill(email);
-      await page.locator('#password').fill(password);
-      await page.getByRole('button', { name: /iniciar sesi/i }).click();
-      const navigated = await page
-        .waitForURL(/\/home/, { timeout: 8_000 })
-        .then(() => true)
-        .catch(() => false);
-      if (navigated) break;
-    }
-    await expect(page).toHaveURL(/\/home/);
-
-    // 2. Datos por API con el token DEL TENANT NUEVO (las rutas spaces van por
+    test.setTimeout(60_000);
+    // 1. Datos por API con el token DEL TENANT NUEVO (las rutas spaces van por
     // claim JWT; un request sin token caería en el tenant demo y la UI no lo vería).
     const loginApi = await request.post(`${API}/auth/login`, {
       data: { tenantSlug: slug, email, password },
     });
     expect(loginApi.ok()).toBeTruthy();
-    const { accessToken } = (await loginApi.json()) as { accessToken: string };
+    const session = (await loginApi.json()) as {
+      accessToken: string;
+      user: { id: string; tenantId: string };
+    };
+    const { accessToken } = session;
     const asTenant = { headers: { Authorization: `Bearer ${accessToken}` } };
 
     const est = await request.post(`${API}/establishments`, {
@@ -112,6 +101,21 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     });
     expect(est.status()).toBe(201);
     const estBody = (await est.json()) as { id: string };
+
+    // Arranca con la sede sembrada seleccionada también después de recargar.
+    await page.addInitScript(
+      ({ origin, session, tenantSlug, establishmentId }) => {
+        if (location.origin !== origin) return;
+        sessionStorage.setItem('mapit.auth.session', JSON.stringify({ ...session, tenantSlug }));
+        localStorage.setItem(
+          `mapit.establishment.${session.user.tenantId}.${session.user.id}`,
+          establishmentId,
+        );
+      },
+      { origin: new URL(baseURL!).origin, session, tenantSlug: slug, establishmentId: estBody.id },
+    );
+
+    // 3. Seed floors and sectors.
     const floors = await request.get(`${API}/establishments/${estBody.id}/floors`, asTenant);
     const floorList = (await floors.json()) as FloorListItem[];
     let floorId = floorList[0]?.id;
@@ -135,45 +139,70 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
       expect(s.status()).toBe(201);
       sectorId = ((await s.json()) as { id: string }).id;
     }
-    await request.post(`${API}/sectors/${sectorId}/elements`, {
+    const element = await request.post(`${API}/sectors/${sectorId}/elements`, {
       ...asTenant,
       data: { type: 'TABLE', x: 40, y: 40, width: 80, height: 80, rotation: 0 },
     });
+    expect(element.status()).toBe(201);
 
-    // Planta B con su sector (fuente de la biblioteca "duplicables" de la planta A).
+    // Planta B, destino de la copia del sector de la planta A.
     const fb = await request.post(`${API}/establishments/${estBody.id}/floors`, {
       ...asTenant,
       data: { name: `Planta B ${run}` },
     });
     expect(fb.status()).toBe(201);
     const floorBId = ((await fb.json()) as { id: string }).id;
-    const sb = await request.post(`${API}/floors/${floorBId}/sectors`, {
-      ...asTenant,
-      data: { name: `Mezzanine ${run}`, slug: `mezz-${run}`, maxCapacity: 20 },
-    });
-    expect(sb.status()).toBe(201);
-
-    // 3. Vista de planta: lienzo visible; la biblioteca lista sectores duplicables
-    // de OTRAS plantas (la seed tiene una segunda planta con un sector: ver más abajo).
-    await page.goto(`/spaces/floors/${floorBId}/editor?establishmentId=${estBody.id}`);
+    const layoutPath = `/floors/${floorBId}/layout`;
+    const [, loaded] = await Promise.all([
+      page.goto(`/spaces/floors/${floorBId}/editor?establishmentId=${estBody.id}`),
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname.endsWith(layoutPath),
+      ),
+    ]);
+    expect(loaded.status(), 'GET del plano de la planta B').toBe(200);
+    await expect(page.getByRole('heading', { name: `Planta B ${run}` })).toBeVisible();
     await expect(page.getByTestId('floor-editor-canvas')).toBeVisible();
-    await expect(page.getByTestId('library-sector').first()).toBeVisible();
 
-    // 4. Click selecciona; Enter (teclado) duplica a esta planta (RN-5, accesible).
-    await page.getByTestId('library-sector').first().click();
-    const duplicated = page.waitForResponse((r) => r.url().includes(':duplicate'));
-    await page.getByTestId('library-sector').first().press('Enter');
-    const dupResp = await duplicated;
+    // Enter duplica el sector de la planta A en la planta B (RN-5).
+    const source = page.locator(`[data-testid="library-sector"][data-sector-id="${sectorId}"]`);
+    await expect(source).toHaveAttribute('aria-disabled', 'false');
+    const [dupResp, saved] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes(':duplicate')),
+      page.waitForResponse(
+        (r) => r.request().method() === 'PUT' && new URL(r.url()).pathname.endsWith(layoutPath),
+      ),
+      source.press('Enter'),
+    ]);
     expect(dupResp.status(), 'POST sectors:duplicate debe responder 201').toBe(201);
+    expect(saved.status()).toBe(200);
+    const sectorsAfterCopy = await request.get(`${API}/floors/${floorBId}/sectors`, asTenant);
+    expect(sectorsAfterCopy.ok()).toBe(true);
+    const copies = (await sectorsAfterCopy.json()) as SectorListItem[];
+    expect(copies).toHaveLength(1);
+    const copyId = copies[0]!.id;
+    expect(copyId).not.toBe(sectorId);
 
-    // Ir al editor del sector principal de esta planta
-    await page.goto(`/spaces/editor/${sectorId}`);
-    await expect(page.getByText(/TABLE/i).first()).toBeVisible();
+    await page.goto(`/spaces/editor/${sectorId}?floorId=${floorId}`);
+    await expect(page.getByRole('option', { name: /^TABLE/ }).first()).toBeVisible({
+      timeout: 15_000,
+    });
 
-    // 5. Volver a la planta y recargar: todo persiste.
-    await page.goto(`/spaces/floors/${floorId}/editor`);
-    await expect(page.getByTestId('floor-editor-canvas')).toBeVisible();
+    await page.goBack();
+    const floorHeading = page.getByRole('heading', { name: `Planta B ${run}` });
+    await expect(floorHeading).toBeVisible({ timeout: 15_000 });
     await page.reload();
-    await expect(page.getByTestId('floor-editor-canvas')).toBeVisible();
+    await expect(floorHeading).toBeVisible({ timeout: 15_000 });
+    const persisted = await request.get(`${API}${layoutPath}`, asTenant);
+    expect(persisted.ok()).toBe(true);
+    expect(((await persisted.json()) as { sectors: unknown[] }).sectors).toContainEqual(
+      expect.objectContaining({
+        id: copyId,
+        x: 40,
+        y: 40,
+        elements: expect.arrayContaining([expect.objectContaining({ type: 'TABLE' })]),
+      }),
+    );
   });
 });

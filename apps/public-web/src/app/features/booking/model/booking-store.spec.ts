@@ -64,6 +64,7 @@ describe('BookingStore — resolved selection before customer data', () => {
     create: ReturnType<typeof vi.fn>;
     map: ReturnType<typeof vi.fn>;
     checkout: ReturnType<typeof vi.fn>;
+    establishment: ReturnType<typeof vi.fn>;
   };
   let store: BookingStore;
   let i18n: I18nService;
@@ -75,6 +76,18 @@ describe('BookingStore — resolved selection before customer data', () => {
       create: vi.fn(() => of(reservation)),
       map: vi.fn(() => of(publicMapFixture())),
       checkout: vi.fn(() => of(checkout())),
+      establishment: vi.fn(() =>
+        of({
+          id: 'venue-id',
+          tenantSlug: 'tenant-a',
+          establishmentSlug: 'venue-a',
+          tenantName: 'MapIt',
+          name: 'Local de prueba',
+          address: 'Aroma',
+          type: 'RESTAURANT',
+          timezone: 'America/La_Paz',
+        }),
+      ),
     };
     TestBed.configureTestingModule({
       providers: [provideI18n(), BookingStore, { provide: BookingApi, useValue: api }],
@@ -102,6 +115,47 @@ describe('BookingStore — resolved selection before customer data', () => {
     expect(api.create).not.toHaveBeenCalled();
     store.confirm();
     expect(store.step()).toBe('details');
+  });
+  it('includes the country prefix only for a nonempty national number and preserves pasted international numbers', async () => {
+    await configure();
+    store.setPhoneCountry('+34');
+    expect(store.phone()).toBe('');
+    store.setPhone('612345678');
+    expect(store.phone()).toBe('+34 612345678');
+    store.setPhone('+591 70000000');
+    expect(store.phone()).toBe('+591 70000000');
+    store.setPhoneCountry('invalid');
+    expect(store.phoneCountry()).toBe('+34');
+  });
+  it('submits null when the optional phone is blank despite a selected country prefix', async () => {
+    await ready();
+    store.setPhone('');
+    store.setPhoneCountry('+81');
+    await store.submit();
+    expect(api.create).toHaveBeenCalledOnce();
+    const payload = api.create.mock.calls[0]?.[2] as { customer: { phone: string | null } };
+    expect(payload.customer.phone).toBeNull();
+  });
+  it('loads public establishment metadata without accepting another URL scope', async () => {
+    await configure();
+    expect(store.venue()?.address).toBe('Aroma');
+    expect(store.duration()).not.toBe('');
+    api.establishment.mockReturnValue(
+      of({ tenantSlug: 'other', establishmentSlug: 'venue-b', name: 'Other' }),
+    );
+    await store.configure('tenant-a', 'venue-b', 'space-a', '2030-12-24', '19:00', '21:00');
+    expect(store.venue()).toBeNull();
+    expect(store.venueStatus()).toBe('error');
+  });
+  it('formats mixed durations in the selected language and omits invalid intervals', async () => {
+    i18n.setLanguage('es-BO');
+    await store.configure('tenant-a', 'venue-a', 'space-a', '2030-12-24', '19:00', '20:30');
+    expect(store.duration()).toBe('1 hora 30 minutos');
+    i18n.setLanguage('ja-JP');
+    expect(store.duration()).toContain('時間');
+    expect(store.duration()).toContain('分');
+    await store.configure('tenant-a', 'venue-a', 'space-a', '2030-12-24', '19:00', '18:00');
+    expect(store.duration()).toBe('');
   });
   it('legacy URL without hours requests an interval and never assumes 19–21', async () => {
     await store.configure('tenant-a', 'venue-a', 'space-a', '2030-12-24');

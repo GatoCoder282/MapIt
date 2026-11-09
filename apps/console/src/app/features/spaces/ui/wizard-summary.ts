@@ -10,6 +10,7 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
+import type { Subscription } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import type { Establishment, Floor, Sector } from '@mapit/api-client';
 
@@ -17,6 +18,7 @@ import { localizeString, STRINGS } from '../../../core/strings';
 import { SpacesApiService } from '../data/spaces-api';
 import { SpacesStore } from '../model/spaces-store';
 import { FeatureFlagService } from '@mapit/feature-flags';
+import { EstablishmentContext } from '../../../core/establishment-context';
 
 interface SummaryData {
   establishment: Establishment;
@@ -564,6 +566,7 @@ export class WizardSummaryComponent {
 
   private readonly api = inject(SpacesApiService);
   private readonly router = inject(Router);
+  private readonly context = inject(EstablishmentContext);
   protected readonly store = inject(SpacesStore);
   protected readonly flags = inject(FeatureFlagService);
 
@@ -574,23 +577,50 @@ export class WizardSummaryComponent {
   protected readonly data = signal<SummaryData | null>(null);
 
   constructor() {
-    effect(() => {
-      this.loadSummary(this.establishmentId());
+    effect((onCleanup) => {
+      const routeId = this.establishmentId();
+      const status = this.context.status();
+      const activeId = this.context.active()?.id;
+      if (status !== 'ready' || !activeId) {
+        this.cancelSummary();
+        this.data.set(null);
+        this.loading.set(status !== 'error');
+        return;
+      }
+      if (routeId !== activeId) {
+        this.cancelSummary();
+        this.data.set(null);
+        this.loading.set(false);
+        void this.router.navigate(['/spaces/summary', activeId], { replaceUrl: true });
+        return;
+      }
+      this.loadSummary(activeId);
+      onCleanup(() => this.cancelSummary());
     });
   }
 
   protected reload(): void {
-    this.loadSummary(this.establishmentId());
+    const activeId = this.context.active()?.id;
+    if (activeId && activeId === this.establishmentId()) this.loadSummary(activeId);
   }
 
   private readonly destroyRef = inject(DestroyRef);
   private requestSeq = 0;
 
+  private cancelSummary(): void {
+    this.requestSeq++;
+    this.summarySubscription?.unsubscribe();
+    this.summarySubscription = null;
+  }
+
+  private summarySubscription: Subscription | null = null;
   private loadSummary(id: string): void {
+    this.summarySubscription?.unsubscribe();
+    this.summarySubscription = null;
     const seq = ++this.requestSeq;
     this.loading.set(true);
     this.error.set(false);
-    this.api
+    this.summarySubscription = this.api
       .getEstablishment(id)
       .pipe(
         switchMap((establishment) =>

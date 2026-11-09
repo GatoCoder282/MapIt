@@ -7,6 +7,7 @@ import {
   formatDecimalMoney,
   type PublicCheckout,
   type PreviewPaymentStatus,
+  type PublicEstablishmentSummary,
 } from '@mapit/api-client';
 import { Subject, firstValueFrom, takeUntil, timer } from 'rxjs';
 import { STRINGS } from '../../../core/strings';
@@ -57,6 +58,14 @@ export class PaymentStore {
   readonly previewEnabled = computed(() => this.api.allowed());
   readonly payment = computed(() => this.data()?.payment ?? null);
   readonly reservation = computed(() => this.data()?.reservation ?? null);
+  readonly venue = signal<PublicEstablishmentSummary | null>(null);
+  readonly checkoutStep = computed(() =>
+    this.receiptPath()
+      ? 3
+      : this.payment() && ['CONFIRMED', 'RECONCILIATION_REQUIRED'].includes(this.payment()!.status)
+        ? 2
+        : 1,
+  );
   readonly methods = computed(() => this.data()?.methods ?? []);
   readonly unavailableMessage = computed(() => {
     const data = this.data();
@@ -118,6 +127,26 @@ export class PaymentStore {
       capability,
     );
   });
+  readonly qrPending = computed(
+    () =>
+      !!this.simulationLink() ||
+      (this.payment()?.provider === 'STATIC_BANK_QR' &&
+        this.payment()?.status === 'PENDING_MANUAL_VERIFICATION'),
+  );
+  readonly activeQrMethod = computed(() => {
+    const provider = this.payment()?.provider;
+    return this.historicalMethod()?.provider === provider
+      ? this.historicalMethod()
+      : (this.methods().find((method) => method.provider === provider) ?? null);
+  });
+  readonly displayedMethods = computed(() =>
+    this.qrPending() ? (this.activeQrMethod() ? [this.activeQrMethod()!] : []) : this.methods(),
+  );
+  readonly bankQr = computed(() =>
+    this.qrPending() && this.payment()?.provider === 'STATIC_BANK_QR'
+      ? (this.activeQrMethod()?.staticQrImage ?? null)
+      : null,
+  );
   readonly statusLabel = computed(() =>
     this.payment()?.provider === 'MOCK_GATEWAY' && this.payment()?.status === 'CONFIRMED'
       ? STRINGS.payment.mockConfirmed
@@ -181,6 +210,7 @@ export class PaymentStore {
     this.actionError.set(null);
     this.scenario.set(scenario);
     this.data.set(null);
+    this.venue.set(null);
     this.busy.set(false);
     this.pageStatus.set('loading');
     try {
@@ -200,6 +230,7 @@ export class PaymentStore {
         this.accept(projectCheckout(preview));
         this.selectedMethodId.set(selected || 'demo-mock');
       } else {
+        void this.loadVenue(scope, version);
         const checkout = await firstValueFrom(
           this.realApi()
             .checkout(scope)
@@ -222,6 +253,23 @@ export class PaymentStore {
     }
   }
 
+  private async loadVenue(scope: CheckoutScope, version: number): Promise<void> {
+    try {
+      const venue = await firstValueFrom(
+        this.realApi()
+          .establishment(scope)
+          .pipe(takeUntil(this.cancelled), takeUntilDestroyed(this.destroyRef)),
+      );
+      if (
+        version === this.requestVersion &&
+        venue.tenantSlug === scope.tenantSlug &&
+        venue.establishmentSlug === scope.establishmentSlug
+      )
+        this.venue.set(venue);
+    } catch {
+      // Public venue details are optional; checkout remains the reservation authority.
+    }
+  }
   chooseScenario(value: string): void {
     if (!this.previewEnabled() || !this.scope || !Object.hasOwn(STRINGS.payment.scenarios, value))
       return;

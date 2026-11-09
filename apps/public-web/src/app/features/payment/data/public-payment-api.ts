@@ -2,6 +2,7 @@ import { Injectable, Injector, effect, inject, isDevMode } from '@angular/core';
 import { FeatureFlagService } from '@mapit/feature-flags';
 import {
   PublicPaymentsService,
+  PublicAvailabilityService,
   ReceiptsService,
   type SimulatePaymentRequest,
   type PaymentAttempt,
@@ -18,6 +19,7 @@ export class MissingReservationAccessError extends Error {}
 @Injectable({ providedIn: 'root' })
 export class PublicPaymentApi {
   private readonly client = inject(PublicPaymentsService);
+  private readonly venues = inject(PublicAvailabilityService);
   private readonly receipts = inject(ReceiptsService);
   private readonly access = inject(ReservationAccess);
   private readonly runtime = inject(PublicRuntimeConfig);
@@ -27,6 +29,12 @@ export class PublicPaymentApi {
 
   checkout(scope: CheckoutScope): Observable<PublicCheckout> {
     return this.client.getPublicCheckout(this.params(scope));
+  }
+  establishment(scope: CheckoutScope) {
+    return this.venues.getPublicEstablishment({
+      tenantSlug: scope.tenantSlug,
+      establishmentSlug: scope.establishmentSlug,
+    });
   }
   start(scope: CheckoutScope, methodId: string, requestId: string): Observable<PaymentAttempt> {
     return this.client.startPublicPayment({

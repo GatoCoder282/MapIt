@@ -4,7 +4,7 @@ import { RevealOnScroll } from '@mapit/ui-kit';
 
 import { STRINGS } from '../../../../core/strings';
 
-/** SecciÃ³n "Reservar es muy fÃ¡cil": proceso en 5 pasos + visual de confirmaciÃ³n. */
+/** Proceso de reserva en tres pasos. */
 @Component({
   selector: 'mp-reservas-steps',
   changeDetection: ChangeDetectionStrategy.OnPush,

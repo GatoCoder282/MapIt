@@ -1,0 +1,153 @@
+@if (store.response(); as data) {
+  <div class="selection-workspace" data-testid="space-selection-page">
+    <section class="spaces-column" aria-labelledby="choose-space-title">
+      <header class="section-heading">
+        <span class="icon-tile"><svg lucideArmchair aria-hidden="true"></svg></span>
+        <div>
+          <h2 id="choose-space-title" tabindex="-1">{{ strings.availability.chooseTitle }}</h2>
+          <p>{{ strings.availability.chooseHint }}</p>
+        </div>
+      </header>
+      <ul class="interval-strip" [attr.aria-label]="strings.availability.resultDatePrefix">
+        <li><svg lucideCalendarDays aria-hidden="true"></svg>{{ dateLabel() }}</li>
+        <li><svg lucideClock3 aria-hidden="true"></svg>{{ data.startTime }}–{{ data.endTime }}</li>
+        <li><svg lucideMapPin aria-hidden="true"></svg>{{ data.establishmentName }}</li>
+      </ul>
+      <div class="spaces-panel">
+        <header class="section-heading compact">
+          <span class="icon-tile"><svg lucideLayers aria-hidden="true"></svg></span>
+          <div>
+            <h3>{{ strings.availability.resultsTitle }}</h3>
+            <p>
+              {{
+                strings.availability.chooseFor
+                  .replace('{date}', dateLabel())
+                  .replace('{start}', data.startTime ?? '')
+                  .replace('{end}', data.endTime ?? '')
+              }}
+            </p>
+          </div>
+        </header>
+        <div class="location-selectors">
+          <label for="selection-floor"
+            ><span>{{ strings.availability.floor }}</span
+            ><select
+              id="selection-floor"
+              [value]="store.floorId()"
+              (change)="store.selectFloor(value($event)); selected.emit(null)"
+            >
+              @for (floor of store.floors(); track floor.id) {
+                <option [value]="floor.id">{{ floor.name }}</option>
+              }
+            </select></label
+          >
+          <label for="selection-sector"
+            ><span>{{ strings.availability.sector }}</span
+            ><select
+              id="selection-sector"
+              [value]="store.sectorId()"
+              [disabled]="!store.floor()?.sectors.length"
+              (change)="store.selectSector(value($event)); selected.emit(null)"
+            >
+              @for (sector of store.floor()?.sectors ?? []; track sector.id) {
+                <option [value]="sector.id">{{ sector.name }}</option>
+              }
+            </select></label
+          >
+        </div>
+        <ul class="space-options" [attr.aria-label]="strings.availability.listTitle">
+          @for (space of store.availableSpaces(); track space.id) {
+            <li>
+              <button
+                type="button"
+                class="space-option"
+                [attr.data-testid]="'space-' + space.id"
+                [attr.aria-pressed]="store.selectedElementId() === space.id"
+                (click)="selected.emit(space.id)"
+              >
+                <svg lucideArmchair aria-hidden="true"></svg>
+                <span class="space-copy"
+                  ><strong>{{ space.name }}</strong
+                  ><small>{{ space.floor }} · {{ space.sector }}</small></span
+                >
+                <span class="status-pill">{{ strings.availability.states.AVAILABLE }}</span>
+                <span class="selected-check" [class.visible]="store.selectedElementId() === space.id" aria-hidden="true"
+                  ><svg lucideCheckCircle2></svg
+                ></span>
+              </button>
+            </li>
+          }
+        </ul>
+        @if (!store.availableSpaces().length) {
+          <p class="empty">{{ strings.availability.empty }}</p>
+        }
+        <p class="selection-help"><svg lucideInfo aria-hidden="true"></svg>{{ strings.availability.selectionHelp }}</p>
+      </div>
+    </section>
+    <section class="map-panel" aria-labelledby="selection-map-title">
+      <header class="map-heading">
+        <h2 id="selection-map-title">
+          <span class="icon-tile"><svg lucideMap aria-hidden="true"></svg></span>{{ strings.availability.spaceView }}
+        </h2>
+        <ul class="legend" [attr.aria-label]="strings.availability.legend">
+          @for (state of states; track state) {
+            <li [attr.data-availability]="state">{{ strings.availability.states[state] }}</li>
+          }
+        </ul>
+      </header>
+      @if (store.layout(); as layout) {
+        <mp-public-map [layout]="layout" [selectedId]="store.selectedElementId()" (selected)="selected.emit($event)" />
+      } @else {
+        <p class="empty">{{ strings.availability.mapMissing }}</p>
+      }
+    </section>
+  </div>
+  @if (store.selectedSpace(); as space) {
+    <section
+      class="selected-summary"
+      data-testid="availability-selection"
+      aria-labelledby="selected-space-title"
+      aria-live="polite"
+    >
+      <div class="selected-name">
+        <span class="success-icon"><svg lucideCheckCircle2 aria-hidden="true"></svg></span>
+        <div>
+          <p>{{ strings.availability.selected }}</p>
+          <h2 id="selected-space-title">{{ space.name }}</h2>
+        </div>
+      </div>
+      <div class="selected-when">
+        <strong><svg lucideMapPin aria-hidden="true"></svg>{{ data.establishmentName }}</strong
+        ><span
+          ><svg lucideCalendarDays aria-hidden="true"></svg>{{ dateLabel() }} <svg lucideClock3 aria-hidden="true"></svg
+          >{{ data.startTime }}–{{ data.endTime }}</span
+        >
+      </div>
+      <div class="selected-description">
+        <svg lucideArmchair aria-hidden="true"></svg
+        ><span
+          ><strong>{{ space.name }}</strong
+          ><small>{{ typeLabels[space.type ?? ''] }}</small
+          ><small>{{ space.floor }} · {{ space.sector }}</small></span
+        >
+      </div>
+      @if (space.capacity !== null && space.capacity !== undefined) {
+        <p class="capacity">
+          <svg lucideUsers aria-hidden="true"></svg>{{ strings.publicSpace.capacity }}:
+          <strong>{{ space.capacity }}</strong>
+        </p>
+      }
+      @if (store.canConfirm()) {
+        <a
+          class="continue"
+          data-testid="availability-continue"
+          [routerLink]="['/reservar', tenantSlug(), establishmentSlug(), space.id]"
+          [queryParams]="{ date: store.date(), startTime: store.startTime(), endTime: store.endTime() }"
+          >{{ strings.availability.continue }} <svg lucideArrowRight aria-hidden="true"></svg
+        ></a>
+      }
+    </section>
+  } @else {
+    <p class="choose-prompt" role="status">{{ strings.availability.chooseHint }}</p>
+  }
+}

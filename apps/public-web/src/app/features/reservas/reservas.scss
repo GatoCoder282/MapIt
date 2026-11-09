@@ -1,3 +1,19 @@
 :host {
   display: block;
+  --mapit-color-primary: #0062ef;
+  --mapit-color-accent: #0062ef;
+  --mapit-color-primary-hover: #0051cf;
+  --mapit-color-text: #080f49;
+  --mapit-color-text-variant: #4d5e84;
+  --reservas-soft: #f3f7ff;
+  --reservas-ground: #fcfdff;
+  --reservas-sky: #e4f2ff;
+  --reservas-width: 1168px;
+  --reservas-radius: 24px;
+  --reservas-shadow: 0 4px 12px rgb(14 34 80 / 8%);
+  background: var(--reservas-ground);
+  color: var(--mapit-color-text);
+}
+main {
+  display: block;
 }

@@ -1,10 +1,13 @@
-﻿import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
 import { RevealOnScroll } from '@mapit/ui-kit';
 
+// eslint-disable-next-line no-restricted-imports -- UI anidada del mismo feature comparte su ViewModel.
+import { CatalogStore } from '../../model/catalog-store';
+
 import { STRINGS } from '../../../../core/strings';
 
-/** SecciÃ³n "Explora nuestros establecimientos": navegaciÃ³n por categorÃ­a. */
+/** Categorías del catálogo público. */
 @Component({
   selector: 'mp-reservas-categories',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -14,5 +17,14 @@ import { STRINGS } from '../../../../core/strings';
 })
 export class ReservasCategories {
   protected readonly strings = STRINGS;
+  protected readonly store = inject(CatalogStore);
+  protected readonly categoryKeys = [
+    'restaurante',
+    'discoteca',
+    'eventos',
+    'hotel',
+    'salones',
+    'otros',
+  ];
   protected readonly categories = computed(() => STRINGS.reservas.categories.items);
 }

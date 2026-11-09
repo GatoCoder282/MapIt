@@ -1,4 +1,5 @@
-import { type Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, type Routes } from '@angular/router';
 
 /**
  * Rutas públicas. Las features llegan con sus casos de uso:
@@ -24,7 +25,22 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    loadComponent: () => import('./features/landing/landing').then((m) => m.Landing),
+    redirectTo: 'acerca-de-mapit',
+  },
+  {
+    path: 'negocios',
+    title: 'MapIt — Negocios',
+    loadComponent: () => import('./features/negocios/negocios').then((m) => m.Negocios),
+  },
+  {
+    path: 'acerca-de-mapit',
+    title: 'MapIt — Acerca de MapIt',
+    loadComponent: () => import('./features/about/about').then((m) => m.About),
+  },
+  {
+    path: 'como-funciona',
+    title: 'MapIt — Cómo funciona',
+    loadComponent: () => import('./features/how-it-works/how-it-works').then((m) => m.HowItWorks),
   },
   {
     path: 'reservas',
@@ -32,11 +48,34 @@ export const routes: Routes = [
   },
   {
     path: 'disponibilidad/:tenantSlug/:establishmentSlug',
+    data: { selectionStep: false },
+    loadComponent: () =>
+      import('./features/availability/ui/availability-page').then((m) => m.AvailabilityPage),
+  },
+  {
+    path: 'elegir-espacio/:tenantSlug/:establishmentSlug',
+    data: { selectionStep: true },
     loadComponent: () =>
       import('./features/availability/ui/availability-page').then((m) => m.AvailabilityPage),
   },
   {
     path: 'reservar/:tenantSlug/:establishmentSlug/:elementId',
+    canActivate: [
+      (route) => {
+        const reservationId = route.queryParamMap.get('reservationId');
+        return reservationId
+          ? inject(Router).createUrlTree(
+              [
+                '/pago',
+                route.paramMap.get('tenantSlug'),
+                route.paramMap.get('establishmentSlug'),
+                reservationId,
+              ],
+              { fragment: route.fragment ?? '' },
+            )
+          : true;
+      },
+    ],
     loadComponent: () => import('./features/booking/ui/booking-page').then((m) => m.BookingPage),
   },
   {

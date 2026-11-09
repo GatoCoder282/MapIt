@@ -1,18 +1,12 @@
 import { inject, Injectable } from '@angular/core';
 import type {
-  Establishment,
   Person,
   PersonCreateRequest,
   Reservation,
   ReservationCreateRequest,
   SpaceElement,
 } from '@mapit/api-client';
-import {
-  EstablishmentsService,
-  PeopleService,
-  ReservationsService,
-  SpacesService,
-} from '@mapit/api-client';
+import { PeopleService, ReservationsService, SpacesService } from '@mapit/api-client';
 import { forkJoin, map, of, switchMap, type Observable } from 'rxjs';
 import { TYPE_DEFAULTS } from '@mapit/map-engine';
 
@@ -28,7 +22,6 @@ export interface ReservationElementOption {
 @Injectable({ providedIn: 'root' })
 export class ReservationsApi {
   private readonly people = inject(PeopleService);
-  private readonly establishments = inject(EstablishmentsService);
   private readonly spaces = inject(SpacesService);
   private readonly reservations = inject(ReservationsService);
 
@@ -38,10 +31,6 @@ export class ReservationsApi {
 
   createPerson(request: PersonCreateRequest): Observable<Person> {
     return this.people.createPerson({ personCreateRequest: request });
-  }
-
-  listEstablishments(): Observable<Establishment[]> {
-    return this.establishments.listEstablishments();
   }
 
   listReservableElements(establishmentId: string): Observable<ReservationElementOption[]> {

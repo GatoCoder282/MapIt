@@ -1,0 +1,161 @@
+<main class="about-page">
+  <section class="about-hero" aria-labelledby="about-title">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <span class="about-badge"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 11v6m0-10v.1" /></svg
+          >{{ copy.badge }}</span
+        >
+        <h1 id="about-title">
+          {{ copy.title }} <span>{{ copy.accent }}</span>
+        </h1>
+        <svg class="hero-underline" viewBox="0 0 200 24" aria-hidden="true"><path d="M5 17Q105-4 195 20" /></svg>
+        <p>{{ copy.intro }}</p>
+      </div>
+      <div class="hero-art">
+        <img
+          ngSrc="assets/img/about/hero.png"
+          [alt]="copy.heroAlt"
+          width="1536"
+          height="1024"
+          sizes="(max-width:767px) 100vw, 55vw"
+          priority
+        />
+      </div>
+    </div>
+    <svg class="hero-wave" viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 90C160-60 390 40 620 75S1090 10 1440 35V100H0Z" />
+    </svg>
+  </section>
+  <div class="about-content">
+    <section class="who-section" aria-labelledby="who-title">
+      <figure class="who-photo">
+        <img
+          ngSrc="assets/img/reservas/restaurant.webp"
+          [alt]="copy.photoAlt"
+          width="800"
+          height="460"
+          sizes="(max-width:767px) 90vw, 40vw"
+        /><span class="photo-symbol pin"
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[1]" /></svg></span
+        ><span class="photo-symbol table"
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12m-6 0v8M3 9v9h4m14-9v9h-4M7 9h10v3H7Z" /></svg
+        ></span>
+      </figure>
+      <div class="who-copy">
+        <h2 id="who-title">{{ copy.whoTitle }}</h2>
+        <p>{{ copy.who }}</p>
+      </div>
+    </section>
+    <section class="purpose-grid" [attr.aria-label]="copy.purposeTitle">
+      <article class="info-card purpose">
+        <span class="icon-box"
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[3]" /></svg
+        ></span>
+        <div>
+          <h2>{{ copy.purposeTitle }}</h2>
+          <p>{{ copy.purpose }}</p>
+        </div>
+      </article>
+      <article class="info-card goals">
+        <span class="icon-box"
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[0]" /></svg
+        ></span>
+        <div>
+          <h2>{{ copy.goalsTitle }}</h2>
+          <ul>
+            @for (goal of copy.goals; track $index) {
+              <li><span aria-hidden="true">✓</span>{{ goal }}</li>
+            }
+          </ul>
+        </div>
+      </article>
+    </section>
+    <section class="vision-section" aria-labelledby="vision-title">
+      <div class="vision-copy">
+        <span class="icon-box"
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[4]" /></svg
+        ></span>
+        <div>
+          <h2 id="vision-title">{{ copy.visionTitle }}</h2>
+          <p>
+            <strong>{{ copy.visionLead }}</strong> {{ copy.vision }}
+          </p>
+        </div>
+      </div>
+      <svg class="vision-landscape" viewBox="0 0 1240 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+        <defs>
+          <linearGradient id="about-hills" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#aacfff" />
+            <stop offset="1" stop-color="#1466f9" />
+          </linearGradient>
+          <linearGradient id="about-pin" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#5c9cff" />
+            <stop offset="1" stop-color="#0052e9" />
+          </linearGradient>
+        </defs>
+        <path d="M710 122c7-22 33-22 42-8 17-30 53-23 61-2 21-8 37 2 43 17H695Z" fill="#fff" opacity=".7" />
+        <path d="M1110 125c7-21 30-24 40-9 12-28 49-24 57 2 18-8 37 1 42 14h-150Z" fill="#fff" opacity=".7" />
+        <path
+          d="M0 300V200C80 190 117 250 190 270S410 305 555 281 740 228 875 155 1009 66 1090 151 1180 240 1240 170V300Z"
+          fill="#cce2ff"
+        />
+        <path d="M485 300c160-32 242-96 336-92s121-100 207-74 125 88 212 66v100Z" fill="url(#about-hills)" />
+        <path d="M784 300c30-51 135-35 131-68s-86-27-78-54 128-33 110-56" stroke="#fff" stroke-width="14" fill="none" />
+        <path d="M1240 225c-83-40-113 4-164 14s-129 6-167 61h331Z" fill="#2879ff" />
+        <path d="M1100 300c12-35 22-52 60-74s47-34 80-31v105Z" fill="#1065f2" opacity=".65" />
+        <path d="M638 267c118 43 159 4 219-8" stroke="#fff" stroke-width="2.5" stroke-dasharray="8 7" fill="none" />
+        <path d="M945 58c0 22-28 54-28 54s-28-32-28-54a28 28 0 0 1 56 0Z" fill="url(#about-pin)" />
+        <circle cx="917" cy="56" r="12" fill="#edf6ff" />
+        <path
+          d="M973 98v43m0-40c14-16 21 7 36-2l-5 10 6 8c-15 8-23-13-37 1"
+          fill="#0754dd"
+          stroke="#0754dd"
+          stroke-width="3"
+        />
+        <path d="M917 12v-12m18 18 10-9m-2 27 14-3" stroke="#0062ff" stroke-width="5" stroke-linecap="round" />
+        <circle cx="860" cy="260" r="5" fill="#0062ff" />
+      </svg>
+    </section>
+    <section class="values-section" aria-labelledby="values-title">
+      <header>
+        <h2 id="values-title">{{ copy.valuesTitle }}</h2>
+        <p>{{ copy.valuesIntro }}</p>
+      </header>
+      <div class="values-grid">
+        @for (value of copy.values; track $index; let i = $index) {
+          <article class="value-card">
+            <span class="icon-box"
+              ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[i + 5]" /></svg
+            ></span>
+            <div>
+              <h3>{{ value.title }}</h3>
+              <p>{{ value.description }}</p>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+    <section class="commitment-section" aria-labelledby="commitment-title">
+      <div class="commitment-art" aria-hidden="true">
+        <img
+          ngSrc="assets/img/about/commitment.png"
+          alt=""
+          width="1536"
+          height="1024"
+          sizes="(max-width:767px) 60vw, 25vw"
+        />
+      </div>
+      <div class="commitment-copy">
+        <h2 id="commitment-title">{{ copy.commitmentTitle }}</h2>
+        <p>{{ copy.commitment }}</p>
+      </div>
+      <svg class="commitment-route" viewBox="0 0 400 180" aria-hidden="true">
+        <path d="M0 170C100 85 140 190 200 95S270 40 330 70 360 150 400 100" />
+      </svg>
+    </section>
+  </div>
+</main>
+<mapit-ui-site-footer [compact]="true" />

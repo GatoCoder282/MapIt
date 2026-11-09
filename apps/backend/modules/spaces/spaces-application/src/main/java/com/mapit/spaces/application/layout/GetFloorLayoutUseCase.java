@@ -3,6 +3,7 @@ package com.mapit.spaces.application.layout;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.spaces.application.floor.FloorNotFoundException;
@@ -21,6 +22,7 @@ public class GetFloorLayoutUseCase {
     this.tenantContext = tenantContext;
   }
 
+  @Transactional(readOnly = true)
   public FloorLayout get(UUID floorId) {
     return layouts
         .findFloorLayout(tenantContext.require(), floorId)

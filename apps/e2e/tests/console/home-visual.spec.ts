@@ -11,6 +11,12 @@ test.describe('Home Dashboard Visual', () => {
   });
   test.beforeEach(async ({ page }) => {
     // ADMIN real de la empresa creada por este test.
+    await page.addInitScript(
+      ({ tenantId, userId, establishmentId }) => {
+        localStorage.setItem(`mapit.establishment.${tenantId}.${userId}`, establishmentId);
+      },
+      { tenantId: company.tenantId, userId: company.userId, establishmentId: company.venueId },
+    );
     await page.goto('/empresa/' + company.slug + '/login');
     await page.fill('input[type="email"]', company.email);
     await page.fill('input[type="password"]', company.password);

@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  computed,
   DestroyRef,
   effect,
   inject,
@@ -20,6 +21,8 @@ import { type MapEnginePort, MAP_ENGINE } from '@mapit/map-engine';
 
 import { FloorEditorStore } from '../model/floor-editor-store';
 import { localizeString, STRINGS } from '../../../core/strings';
+import { confirmOperationalExit } from '../../../core/operational-exit-guard';
+import { EstablishmentContext } from '../../../core/establishment-context';
 
 /**
  * Vista de planta (HU-4.01, F1): composición de sectores sobre el lienzo del piso.
@@ -32,6 +35,7 @@ import { localizeString, STRINGS } from '../../../core/strings';
 @Component({
   selector: 'mapit-floor-editor-page',
   imports: [],
+  providers: [FloorEditorStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="editor-page">
@@ -56,20 +60,33 @@ import { localizeString, STRINGS } from '../../../core/strings';
         <div class="header-right">
           <button
             class="btn-primary"
+            type="button"
             (click)="store.saveLayout()"
-            [disabled]="!store.dirty() || store.saving()"
+            [disabled]="!store.dirty() || store.busy() || store.loading()"
           >
             {{ store.saving() ? strings.saving : strings.saveLayout }}
           </button>
           @if (store.conflictingIds().length > 0) {
-            <button class="btn-icon" (click)="store.discardAndReload()">
+            <button
+              class="btn-icon"
+              type="button"
+              [disabled]="store.busy() || store.loading()"
+              (click)="confirmDiscardAndReload()"
+            >
               {{ strings.reload }}
             </button>
           }
           @if (store.error()) {
             <div class="error-toast" role="alert">
               {{ localizeString(store.error() ?? '') }}
-              <button class="btn-icon" (click)="store.clearError()">✕</button>
+              <button
+                class="btn-icon"
+                type="button"
+                [attr.aria-label]="strings.dismissError"
+                (click)="store.clearError()"
+              >
+                ✕
+              </button>
             </div>
           }
         </div>
@@ -83,7 +100,12 @@ import { localizeString, STRINGS } from '../../../core/strings';
             @if (store.librarySectors().length === 0) {
               <p class="empty-state">{{ strings.libraryEmpty }}</p>
             }
-            <ul class="library" role="listbox" aria-label="{{ strings.libraryTitle }}">
+            <ul
+              class="library"
+              role="listbox"
+              aria-label="{{ strings.libraryTitle }}"
+              [attr.inert]="store.busy() || store.loading() ? '' : null"
+            >
               @for (sector of store.librarySectors(); track sector.id) {
                 <li
                   class="library-item"
@@ -92,9 +114,11 @@ import { localizeString, STRINGS } from '../../../core/strings';
                   data-testid="library-sector"
                   [attr.data-sector-id]="sector.id"
                   [attr.aria-selected]="false"
+                  [attr.aria-disabled]="store.busy() || store.loading()"
                   draggable="true"
                   (dragstart)="onLibraryDragStart($event, sector.id)"
-                  (keydown.enter)="store.duplicateSector(sector.id)"
+                  (keydown.enter)="duplicateFromLibrary(sector.id)"
+                  (keydown.space)="$event.preventDefault(); duplicateFromLibrary(sector.id)"
                 >
                   <span class="library-label">{{ sector.name }}</span>
                 </li>
@@ -108,7 +132,13 @@ import { localizeString, STRINGS } from '../../../core/strings';
 
       @if (store.selectedSectorId(); as selectedId) {
         <footer class="editor-footer">
-          <button class="btn-primary" data-testid="edit-sector" (click)="editSelected(selectedId)">
+          <button
+            class="btn-primary"
+            type="button"
+            data-testid="edit-sector"
+            [disabled]="store.busy() || store.loading()"
+            (click)="editSelected(selectedId)"
+          >
             {{ strings.editSector }}
           </button>
         </footer>
@@ -229,6 +259,11 @@ export class FloorEditorPageComponent implements OnDestroy {
   protected readonly canvasHost = viewChild.required<ElementRef<HTMLDivElement>>('canvasHost');
   protected readonly store = inject(FloorEditorStore);
   protected readonly strings = STRINGS.spaces.floorEditor;
+  private readonly context = inject(EstablishmentContext);
+
+  canDeactivate(): boolean {
+    return confirmOperationalExit(this.store.busy(), this.store.dirty());
+  }
 
   private readonly port = inject<MapEnginePort>(MAP_ENGINE);
   private readonly route = inject(ActivatedRoute);
@@ -239,22 +274,34 @@ export class FloorEditorPageComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
 
   private isCanvasMounted = false;
+  private observedFloorId: string | null = null;
 
   readonly floorId = toSignal(this.route.paramMap.pipe(map((p) => p.get('floorId'))), {
     initialValue: null,
   });
 
   /** Establecimiento para la biblioteca de sectores duplicables (llega por query). */
-  readonly establishmentId = toSignal(
-    this.route.queryParamMap.pipe(map((p) => p.get('establishmentId'))),
-    { initialValue: null },
-  );
+  readonly establishmentId = computed(() => this.context.active()?.id ?? null);
 
   constructor() {
     runInInjectionContext(this.injector, () => {
       effect(() => {
         const id = this.floorId();
-        if (id) untracked(() => this.store.loadFloor(id));
+        if (!id) return;
+        const previousId = this.observedFloorId;
+        if (previousId && previousId !== id) {
+          if (
+            this.store.loading() ||
+            !confirmOperationalExit(this.store.busy(), this.store.dirty())
+          ) {
+            void this.router.navigate(['/spaces/floors', previousId, 'editor'], {
+              replaceUrl: true,
+            });
+            return;
+          }
+        }
+        this.observedFloorId = id;
+        untracked(() => this.store.loadFloor(id));
       });
 
       effect(() => {
@@ -273,26 +320,36 @@ export class FloorEditorPageComponent implements OnDestroy {
           } else {
             this.port.load(layout);
           }
+          this.port.setEditable(!this.store.busy() && !this.store.loading());
         });
       });
+
+      effect(() => this.port.setEditable(!this.store.busy() && !this.store.loading()));
 
       effect(() => {
         untracked(() => {
           this.port.onSectorDragEnd?.((p) =>
             this.ngZone.run(() => {
+              if (this.store.busy() || this.store.loading()) return;
               this.store.moveSector(p.id, p.x, p.y);
               this.cdr.markForCheck();
             }),
           );
           this.port.onSectorRotateEnd?.((p) =>
             this.ngZone.run(() => {
+              if (this.store.busy() || this.store.loading()) return;
               this.store.rotateSector(p.id, p.rotation);
               this.cdr.markForCheck();
             }),
           );
-          this.port.onSectorClick?.((p) => this.ngZone.run(() => this.store.selectSector(p.id)));
+          this.port.onSectorClick?.((p) =>
+            this.ngZone.run(() => {
+              if (!this.store.busy() && !this.store.loading()) this.store.selectSector(p.id);
+            }),
+          );
           this.port.onExternalDrop?.(({ key, x, y }) =>
             this.ngZone.run(() => {
+              if (this.store.busy() || this.store.loading()) return;
               if (key.startsWith('sector:')) {
                 this.store.duplicateSector(key.slice('sector:'.length), x, y);
               }
@@ -312,11 +369,27 @@ export class FloorEditorPageComponent implements OnDestroy {
   }
 
   protected onLibraryDragStart(event: DragEvent, sectorId: string): void {
+    if (this.store.busy() || this.store.loading()) {
+      event.preventDefault();
+      return;
+    }
     event.dataTransfer?.setData('text/plain', `sector:${sectorId}`);
     event.dataTransfer?.setData('text', `sector:${sectorId}`);
   }
 
+  protected duplicateFromLibrary(sectorId: string): void {
+    if (this.store.busy() || this.store.loading()) return;
+    this.store.duplicateSector(sectorId);
+  }
+
+  protected confirmDiscardAndReload(): void {
+    if (confirmOperationalExit(this.store.busy(), this.store.dirty())) {
+      this.store.discardAndReload();
+    }
+  }
+
   protected editSelected(sectorId: string): void {
+    if (this.store.busy() || this.store.loading()) return;
     const floorId = this.floorId();
     void this.router.navigate(['/spaces/editor', sectorId], {
       queryParams: floorId ? { floorId } : {},

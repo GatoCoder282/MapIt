@@ -46,7 +46,25 @@
     </header>
 
     <main class="content">
-      <router-outlet />
+      @if (establishmentContext.active() && !selectorRequested()) {
+        <router-outlet />
+      } @else if (!selectorRequested() && !initialEstablishmentsLoaded()) {
+        <div class="establishment-pending" role="status" aria-live="polite">
+          {{ strings.establishmentContext.loading }}
+        </div>
+      }
     </main>
   </div>
 </div>
+
+@if (selectorRequested() || (initialEstablishmentsLoaded() && !establishmentContext.active())) {
+  <mapit-establishment-selector
+    [establishments]="establishmentContext.establishments()"
+    [status]="establishmentContext.status()"
+    [canDismiss]="canDismissSelector()"
+    (confirmed)="confirmEstablishment($event)"
+    (dismissed)="dismissSelector()"
+    (retry)="retryEstablishments()"
+    (signOut)="signOut()"
+  />
+}

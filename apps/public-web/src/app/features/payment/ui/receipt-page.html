@@ -1,12 +1,8 @@
 <div class="payment-shell" data-testid="receipt-page">
   <header class="payment-header">
-    <a class="wordmark" routerLink="/">{{ strings.brand }}<span aria-hidden="true">.</span></a
-    ><a class="text-link" routerLink="/reservas"><svg lucideArrowLeft aria-hidden="true"></svg>{{ strings.back }}</a>
+    <a class="text-link" routerLink="/reservas"><svg lucideArrowLeft aria-hidden="true"></svg>{{ strings.back }}</a>
   </header>
   <main class="payment-content receipt-content">
-    @if (!store.previewEnabled() && tenantSlug() && establishmentSlug()) {
-      <mp-public-establishment-identity [tenantSlug]="tenantSlug()" [establishmentSlug]="establishmentSlug()" />
-    }
     @if (store.previewEnabled()) {
       <div class="preview-banner" data-testid="preview-banner">
         <strong>{{ strings.simulation }}</strong
@@ -43,17 +39,28 @@
             <p class="preview-banner" role="note" data-testid="mock-receipt-notice">{{ strings.mockNotice }}</p>
           }
           <div class="receipt-heading">
-            <span class="confirmation-mark"><svg lucideCheck aria-hidden="true"></svg></span>
-            <h1>{{ receipt.payment.provider === 'MOCK_GATEWAY' ? strings.mockConfirmed : strings.receiptTitle }}</h1>
+            <span class="confirmation-mark"
+              ><svg lucideCheck aria-hidden="true"></svg
+              ><svg class="confirmation-rays" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+                <path
+                  d="M8 14V4M18 18L24 9M23 27L33 23"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                /></svg
+            ></span>
+            <h1>
+              @if (receipt.payment.provider === 'MOCK_GATEWAY') {
+                {{ strings.mockConfirmed }}
+              } @else {
+                {{ strings.receiptTitleLead }} <span>{{ strings.receiptTitleAccent }}</span>
+              }
+            </h1>
             <p>{{ receipt.payment.provider === 'MOCK_GATEWAY' ? strings.mockReceiptIntro : strings.receiptIntro }}</p>
           </div>
-          <article class="receipt-document" aria-labelledby="receipt-document-title">
+          <article class="receipt-document" aria-labelledby="receipt-venue-heading">
             <div class="receipt-main">
-              <div class="document-title">
-                <svg lucideShieldCheck aria-hidden="true"></svg>
-                <h2 id="receipt-document-title">{{ strings.receiptDocument }}</h2>
-              </div>
-              <h3 class="venue-name">{{ receipt.reservation.establishmentName }}</h3>
+              <h2 id="receipt-venue-heading" class="venue-name">{{ receipt.reservation.establishmentName }}</h2>
               <div class="receipt-state">
                 <span>{{ reservationStatus() }}</span
                 ><span
@@ -63,15 +70,15 @@
               </div>
               <dl class="reservation-facts">
                 <div>
-                  <dt>{{ strings.date }}</dt>
+                  <dt><svg lucideCalendarDays aria-hidden="true"></svg>{{ strings.date }}</dt>
                   <dd>{{ store.date() }}</dd>
                 </div>
                 <div>
-                  <dt>{{ strings.time }}</dt>
+                  <dt><svg lucideClock3 aria-hidden="true"></svg>{{ strings.time }}</dt>
                   <dd>{{ store.time() }}</dd>
                 </div>
                 <div>
-                  <dt>{{ strings.spaces }}</dt>
+                  <dt><svg lucideArmchair aria-hidden="true"></svg>{{ strings.spaces }}</dt>
                   <dd>
                     @for (space of receipt.reservation.spaces; track space.id) {
                       <mp-public-space [space]="space" [peers]="receipt.reservation.spaces" />
@@ -109,7 +116,6 @@
               </dl>
             </div>
             <div class="receipt-verification">
-              <svg class="verification-icon" lucideQrCode aria-hidden="true"></svg>
               <h2>{{ strings.receiptQr }}</h2>
               <mp-payment-qr data-testid="receipt-qr" [path]="receiptPath()" [label]="strings.receiptQr" />
               <p>{{ strings.receiptQrHelp }}</p>
@@ -121,7 +127,7 @@
               </dl>
             </div>
           </article>
-          <p class="document-note">{{ strings.receiptNote }}</p>
+          <p class="document-note"><svg lucideInfo aria-hidden="true"></svg>{{ strings.receiptNote }}</p>
           @if (store.checkoutPath(); as checkoutPath) {
             <a
               class="text-link receipt-back"

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { SITE_STRINGS } from '../site-strings';
@@ -16,5 +16,6 @@ import { SITE_STRINGS } from '../site-strings';
   styleUrl: './site-footer.scss',
 })
 export class SiteFooter {
+  readonly compact = input(false);
   protected readonly strings = SITE_STRINGS;
 }

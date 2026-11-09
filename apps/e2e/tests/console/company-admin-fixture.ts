@@ -50,11 +50,22 @@ export async function companyAdminFixture(request: APIRequestContext) {
     data: { tenantSlug: slug, email, password },
   });
   expect(login.ok()).toBe(true);
-  const accessToken = ((await login.json()) as { accessToken: string }).accessToken;
+  const session = (await login.json()) as {
+    accessToken: string;
+    user: { id: string; tenantId: string };
+  };
+  const accessToken = session.accessToken;
   const venue = await request.post(api + '/establishments', {
     headers: { Authorization: 'Bearer ' + accessToken },
     data: { name: 'Sede Home', slug: 'sede', type: 'RESTAURANT' },
   });
   expect(venue.status()).toBe(201);
-  return { slug, email, password, venueId: ((await venue.json()) as { id: string }).id };
+  return {
+    slug,
+    email,
+    password,
+    venueId: ((await venue.json()) as { id: string }).id,
+    tenantId: session.user.tenantId,
+    userId: session.user.id,
+  };
 }

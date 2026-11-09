@@ -1,42 +1,92 @@
 <section class="hero" aria-labelledby="hero-title">
+  <img ngSrc="assets/img/reservas/hero.jpg" fill priority alt="" class="hero-image" sizes="100vw" />
   <div class="hero-inner">
-    <div class="hero-content" mapitReveal>
+    <div class="hero-content">
       <h1 id="hero-title">
-        {{ strings.reservas.hero.titleA }} <span class="accent">{{ strings.reservas.hero.titleB }}</span>
+        {{ strings.reservas.hero.titleA }} <span>{{ strings.reservas.hero.titleB }}</span>
       </h1>
       <p class="hero-subtitle">{{ strings.reservas.hero.subtitle }}</p>
-
-      <form class="search" role="search" (submit)="$event.preventDefault(); store.search()">
-        <svg class="search-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-          <circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.5" />
-          <path d="m10.8 10.8 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+    </div>
+    <form class="search" role="search" (submit)="$event.preventDefault(); store.search()">
+      <label class="search-field search-field--query">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="7.5" />
+          <path d="m16 16 5 5" />
         </svg>
-        <input
-          type="search"
-          data-testid="catalog-query"
-          maxlength="120"
-          [value]="store.query()"
-          (input)="store.query.set($any($event.target).value)"
-          class="search-input"
-          placeholder="{{ strings.reservas.hero.searchPlaceholder }}"
-          [attr.aria-label]="strings.reservas.hero.searchAria"
-        />
-        <button
-          type="submit"
-          class="search-btn"
-          data-testid="catalog-search"
-          [attr.aria-label]="strings.reservas.hero.searchSubmitAria"
-        >
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.4" fill="none" stroke="currentColor" stroke-width="1.6" />
-            <path d="m10.4 10.4 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-          </svg>
-        </button>
-      </form>
-    </div>
-
-    <div class="hero-visual" aria-hidden="true" mapitReveal [mapitRevealDelay]="120">
-      <img ngSrc="assets/img/imagen_inicio_reservas.png" width="612" height="385" priority alt="" class="hero-image" />
-    </div>
+        <span class="field-content"
+          ><span class="field-label">{{ strings.reservas.search.query }}</span>
+          <input
+            type="search"
+            name="query"
+            data-testid="catalog-query"
+            maxlength="120"
+            [value]="store.query()"
+            (input)="store.query.set($any($event.target).value)"
+            [placeholder]="strings.reservas.hero.searchPlaceholder"
+          />
+        </span>
+      </label>
+      <label class="search-field">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" />
+          <circle cx="12" cy="10" r="2.5" />
+        </svg>
+        <span class="field-content"
+          ><span class="field-label">{{ strings.reservas.search.location }}</span>
+          <input
+            type="text"
+            name="location"
+            list="catalog-locations"
+            maxlength="160"
+            [value]="store.location()"
+            (input)="store.location.set($any($event.target).value)"
+            [placeholder]="strings.reservas.search.anyLocation"
+          />
+          <datalist id="catalog-locations">
+            @for (location of store.locations(); track location) {
+              <option [value]="location"></option>
+            }
+          </datalist>
+        </span>
+      </label>
+      <label class="search-field search-field--date">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M3 10h18M7 2v6M17 2v6" />
+        </svg>
+        <span class="field-content"
+          ><span class="field-label">{{ strings.reservas.search.date }}</span>
+          <input type="date" name="date" [value]="store.date()" (input)="store.date.set($any($event.target).value)" />
+        </span>
+      </label>
+      <label class="search-field search-field--people">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="7" r="4" />
+          <path d="M3 22v-2a9 9 0 0 1 18 0v2" />
+        </svg>
+        <span class="field-content"
+          ><span class="field-label">{{ strings.reservas.search.people }}</span>
+          <input
+            type="number"
+            name="people"
+            min="1"
+            max="20"
+            required
+            [value]="store.people()"
+            (input)="store.people.set($any($event.target).value)"
+          />
+        </span>
+      </label>
+      <button type="submit" class="search-btn" data-testid="catalog-search" [disabled]="store.status() === 'loading'">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="7" />
+          <path d="m16 16 5 5" />
+        </svg>
+        {{ strings.reservas.hero.searchSubmitAria }}
+      </button>
+    </form>
   </div>
+  <svg class="hero-wave" viewBox="0 0 1440 65" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 22C180 88 270-18 460 24S700 0 870 26s240 65 570-10v49H0Z" />
+  </svg>
 </section>

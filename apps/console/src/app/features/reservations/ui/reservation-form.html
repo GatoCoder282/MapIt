@@ -33,26 +33,17 @@
           <p class="message error" role="alert">{{ localizeString(error) }}</p>
         }
 
-        <label class="field">
-          <span>{{ strings.establishmentLabel }}</span>
-          <select
-            #establishment
-            name="establishment"
-            [value]="store.establishmentId()"
-            [disabled]="store.loading() || store.submitting()"
-            (change)="store.selectEstablishment(establishment.value)"
-          >
-            <option value="">{{ strings.establishmentPlaceholder }}</option>
-            @for (option of store.establishments(); track option.id) {
-              <option [value]="option.id">{{ option.name }}</option>
+        @if (store.establishmentName()) {
+          <p class="field" aria-live="polite">
+            <span>{{ strings.establishmentLabel }}</span>
+            <strong>{{ store.establishmentName() }}</strong>
+            @if (establishmentContext.active(); as activeEstablishment) {
+              <small class="timezone">
+                {{ strings.timezonePrefix }} <strong>{{ activeEstablishment.timezone }}</strong>
+              </small>
             }
-          </select>
-          @if (store.selectedEstablishment(); as selectedEstablishment) {
-            <p class="timezone">
-              {{ strings.timezonePrefix }} <strong>{{ selectedEstablishment.timezone }}</strong>
-            </p>
-          }
-        </label>
+          </p>
+        }
 
         <div class="interval-grid">
           <label class="field">

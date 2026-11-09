@@ -9,9 +9,13 @@ const SITE_STRINGS_ES = {
   nav: {
     aria: 'Navegación principal',
     product: 'Producto',
+    about: 'Acerca de MapIt',
     howItWorks: 'Cómo funciona',
     businesses: 'Negocios',
     bookings: 'Reservas',
+    login: 'Iniciar sesión',
+    join: 'Unite a MapIt',
+    requestAccess: 'Solicitar acceso',
     openMenu: 'Abrir menú de navegación',
     closeMenu: 'Cerrar menú de navegación',
     mobileAria: 'Navegación mobile',
@@ -19,7 +23,7 @@ const SITE_STRINGS_ES = {
   footer: {
     navAria: 'Navegación del pie de página',
     socialAria: 'Redes sociales',
-    copyright: '© 2026 MapIt. Todos los derechos reservados.',
+    copyright: `© ${new Date().getFullYear()} MapIt. Todos los derechos reservados.`,
   },
 } as const;
 

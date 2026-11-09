@@ -41,16 +41,21 @@ El ViewModel usa `signal`, `computed` y `linkedSignal`. **No** `BehaviorSubject`
 7. Miembros usados solo por la plantilla: `protected`. Inputs/outputs/queries: `readonly`.
 8. Nada de `utils.ts`, `helpers.ts` ni `common.ts`.
 
+## Internacionalización
+
+- Los textos visibles se mantienen en `core/strings.ts` y sus catálogos por idioma; no se añaden literales de interfaz a las plantillas.
+- Para mensajes dinámicos del backend usa `localizeString`; para fechas y números usa los pipes compartidos con el locale de `I18nService`.
+- Los componentes que muestran fechas/números deben reaccionar al locale actual, no capturarlo como valor estático.
+
 Las reglas 2-8 las aplica ESLint: si las rompes, `pnpm check` se pone rojo.
 
-## Wizard de spaces (estado entre pasos)
+## Contexto operativo y estructura
 
-El asistente de configuración (alta de establecimiento → pisos/sectores) es
-**multi-ruta**: `spaces/setup` (paso 1) y `spaces/floors/:establishmentId` (paso 2).
-El `establishmentId` viaja en la URL (activo el `withComponentInputBinding()` del
-router), no en un store efímero: así sobrevive a refresco y atrás/adelante.
-`SpacesStore` es `providedIn: 'root'` y lo comparten ambos pasos; el paso 2 sin id
-redirige al paso 1. No añadas parámetros a mano ni defaults ocultos.
+- `EstablishmentContext` en `core/` es la única selección operativa; el shell restaura/valida la preferencia antes de montar las features. Los módulos leen `active()`/`status()`, no llaman `confirm()` ni guardan otra selección.
+- `/spaces/setup` abre la estructura del activo; `?manage=1` conserva los formularios de gestión de establecimientos, sin convertirlos en selección operativa.
+- Los IDs de `/spaces/floors/:establishmentId`, plantas y sectores identifican recursos, no cambian el contexto. Valida su pertenencia al activo antes de cargar o escribir; una URL antigua no autoriza otro establecimiento.
+- `SpacesStore` sigue siendo root: limpia datos/borradores al cambiar ámbito e invalida respuestas anteriores. No confíes solo en destruir la página.
+- Las páginas operativas usan `operationalExitGuard`: confirmar descarte de borradores y bloquear salida durante escrituras. `busy` cuenta operaciones reales; cancelar HTTP no revierte una transacción del servidor. `/admin/*` no depende del contexto de staff.
 
 ## Librerías disponibles
 
