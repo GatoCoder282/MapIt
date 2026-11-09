@@ -1,15 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 import type { PublicAvailabilityMap } from '@mapit/api-client';
-import { publicMapFixture } from '../../../core/public-map.fixture';
+import { publicMapFixture, verticalProfileFixture } from '../../../core/public-map.fixture';
 import { AvailabilityApi } from '../data/availability-api';
 import { AvailabilityStore } from './availability-store';
 
 describe('AvailabilityStore — public interval selection', () => {
   let store: AvailabilityStore;
-  let api: { map: ReturnType<typeof vi.fn> };
+  let api: { map: ReturnType<typeof vi.fn>; profile: ReturnType<typeof vi.fn> };
   beforeEach(() => {
-    api = { map: vi.fn(() => of(publicMapFixture())) };
+    api = {
+      map: vi.fn(() => of(publicMapFixture())),
+      profile: vi.fn(() => of(verticalProfileFixture('RESTAURANT'))),
+    };
     TestBed.configureTestingModule({
       providers: [AvailabilityStore, { provide: AvailabilityApi, useValue: api }],
     });
@@ -28,7 +31,7 @@ describe('AvailabilityStore — public interval selection', () => {
   });
   it('loads real floors/sectors and selects one eligible ID without a POST', async () => {
     await store.search();
-    expect(api.map).toHaveBeenCalledWith('tenant-a', 'venue-a', '2030-12-24', '19:00', '21:00');
+    expect(api.map).toHaveBeenCalledWith('tenant-a', 'venue-a', '2030-12-24', '19:00', '21:00', '');
     expect(store.floor()?.name).toBe('Planta baja');
     expect(store.sector()?.name).toBe('Salón');
     store.select('space-a');
@@ -102,5 +105,86 @@ describe('AvailabilityStore — public interval selection', () => {
     store.select('space-a');
     store.configure('tenant-a', 'venue-a', '2030-12-24', '19:00', '22:00');
     expect(store.canConfirm()).toBe(true);
+  });
+
+  describe('por vertical (HU-7.01/7.02 · MAP-234)', () => {
+    it('carga el perfil al entrar y nombra el formulario como turno', () => {
+      expect(api.profile).toHaveBeenCalledWith('tenant-a', 'venue-a');
+      expect(store.terms().startLabel).toBe('Inicio del turno');
+      expect(store.hint()).toContain('6 h');
+    });
+
+    it('en un hotel pide llegada y salida y usa las horas de check-in/out', async () => {
+      const hotel = verticalProfileFixture('HOTEL');
+      api.profile.mockReturnValue(of(hotel));
+      api.map.mockReturnValue(
+        of({
+          ...publicMapFixture(),
+          establishmentSlug: 'hotel-a',
+          startTime: '15:00',
+          endDate: '2030-12-26',
+          endTime: '12:00',
+          vertical: hotel,
+        }),
+      );
+      store.configure('tenant-a', 'hotel-a', '2030-12-24');
+
+      expect(store.stay()).toBe(true);
+      expect(store.startTime()).toBe('15:00');
+      expect(store.endTime()).toBe('12:00');
+      expect(store.endDate()).toBe('2030-12-25');
+      expect(store.terms().endDateLabel).toBe('Salida');
+
+      store.setEndDate('2030-12-26');
+      await store.search();
+      expect(api.map).toHaveBeenCalledWith(
+        'tenant-a',
+        'hotel-a',
+        '2030-12-24',
+        '15:00',
+        '12:00',
+        '2030-12-26',
+      );
+      expect(store.status()).toBe('loaded');
+    });
+
+    it('rechaza en el navegador un turno de restaurante que cruza el día', async () => {
+      store.setStartTime('22:00');
+      store.setEndTime('01:00');
+      await store.search();
+
+      expect(api.map).not.toHaveBeenCalled();
+      expect(store.failure()).toContain('mismo día');
+    });
+
+    it('acepta en discoteca una salida de madrugada', async () => {
+      const night = verticalProfileFixture('NIGHTCLUB');
+      api.profile.mockReturnValue(of(night));
+      api.map.mockReturnValue(
+        of({
+          ...publicMapFixture(),
+          establishmentSlug: 'club-a',
+          startTime: '23:00',
+          endDate: '2030-12-25',
+          endTime: '04:00',
+          vertical: night,
+        }),
+      );
+      store.configure('tenant-a', 'club-a', '2030-12-24', '23:00', '04:00');
+
+      expect(store.intervalValid()).toBe(true);
+      await store.search();
+      expect(store.status()).toBe('loaded');
+    });
+
+    it('con la vertical apagada muestra el plano pero no deja continuar', async () => {
+      const off = { ...verticalProfileFixture('RESTAURANT'), enabled: false };
+      api.map.mockReturnValue(of({ ...publicMapFixture(), vertical: off }));
+      await store.search();
+      store.select('space-a');
+
+      expect(store.bookingDisabled()).toBe(true);
+      expect(store.canConfirm()).toBe(false);
+    });
   });
 });

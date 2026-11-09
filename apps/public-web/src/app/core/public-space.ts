@@ -1,6 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import type { CheckoutSpace, PublicAvailabilityMap, PublicMapElement } from '@mapit/api-client';
+import type {
+  CheckoutSpace,
+  PublicAvailabilityMap,
+  PublicMapElement,
+  VerticalProfile,
+} from '@mapit/api-client';
 import { STRINGS } from './strings';
+import { verticalTerms } from './vertical-booking';
 
 export type PublicSpaceDescriptor = Pick<
   CheckoutSpace,
@@ -31,12 +37,14 @@ export function matchesPublicMap(
   date: string,
   start: string,
   end: string,
+  endDate = '',
 ): boolean {
   return (
     data.tenantSlug === tenantSlug &&
     data.establishmentSlug === establishmentSlug &&
     data.mode === 'INTERVAL' &&
     data.date === date &&
+    (!endDate || data.endDate === endDate) &&
     (data.startTime === start || data.startTime === start + ':00') &&
     (data.endTime === end || data.endTime === end + ':00')
   );
@@ -109,10 +117,14 @@ export function findPublicSpace(
 export class PublicSpaceSummary {
   readonly space = input.required<PublicSpaceDescriptor>();
   readonly peers = input<readonly PublicSpaceDescriptor[]>([]);
+  /** HU-7.01/7.02: nombra el tipo en la terminología de la vertical (mesa VIP, ubicación…). */
+  readonly profile = input<VerticalProfile | null>(null);
   protected readonly strings = STRINGS.publicSpace;
   protected readonly typeLabel = computed(() => {
+    const type = this.space().type ?? '';
     const labels: Readonly<Record<string, string>> = STRINGS.availability.types;
-    return labels[this.space().type ?? ''] ?? '';
+    const profile = this.profile();
+    return (profile ? verticalTerms(profile).types[type] : undefined) ?? labels[type] ?? '';
   });
   protected readonly showPosition = computed(() => {
     const space = this.space();

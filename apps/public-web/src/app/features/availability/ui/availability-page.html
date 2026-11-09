@@ -7,13 +7,23 @@
     }}</a>
     <mp-public-establishment-identity [tenantSlug]="tenantSlug()" [establishmentSlug]="establishmentSlug()" />
     <header class="heading">
-      <h1>{{ strings.availability.title }}</h1>
-      <p>{{ strings.availability.subtitle }}</p>
+      <h1>{{ store.profile() ? store.terms().title : strings.availability.title }}</h1>
+      <p>{{ store.profile() ? store.terms().subtitle : strings.availability.subtitle }}</p>
     </header>
+    @if (store.profileStatus() === 'loading') {
+      <p class="notice" role="status">{{ strings.verticalLoading }}</p>
+    }
+    @if (store.bookingDisabled()) {
+      <p class="notice" role="status" data-testid="availability-vertical-disabled">
+        {{ strings.verticalDisabled }}
+      </p>
+    }
     <form class="search-panel" (submit)="submit($event)">
       <div class="interval-fields">
         <div>
-          <label for="availability-date">{{ strings.availability.dateLabel }}</label>
+          <label for="availability-date">{{
+            store.profile() ? store.terms().dateLabel : strings.availability.dateLabel
+          }}</label>
           <input
             id="availability-date"
             name="date"
@@ -24,33 +34,62 @@
             (input)="store.setDate(value($event))"
           />
         </div>
-        <div>
-          <label for="availability-start">{{ strings.availability.startTime }}</label>
-          <input
-            id="availability-start"
-            name="startTime"
-            type="time"
-            autocomplete="off"
-            required
-            [value]="store.startTime()"
-            (input)="store.setStartTime(value($event))"
-          />
-        </div>
-        <div>
-          <label for="availability-end">{{ strings.availability.endTime }}</label>
-          <input
-            id="availability-end"
-            name="endTime"
-            type="time"
-            autocomplete="off"
-            required
-            [value]="store.endTime()"
-            (input)="store.setEndTime(value($event))"
-          />
-        </div>
+        @if (store.stay()) {
+          <div>
+            <label for="availability-end-date">{{ store.terms().endDateLabel }}</label>
+            <input
+              id="availability-end-date"
+              name="endDate"
+              type="date"
+              autocomplete="off"
+              required
+              [min]="store.date()"
+              [value]="store.endDate()"
+              (input)="store.setEndDate(value($event))"
+            />
+          </div>
+        } @else {
+          <div>
+            <label for="availability-start">{{
+              store.profile() ? store.terms().startLabel : strings.availability.startTime
+            }}</label>
+            <input
+              id="availability-start"
+              name="startTime"
+              type="time"
+              autocomplete="off"
+              required
+              [value]="store.startTime()"
+              (input)="store.setStartTime(value($event))"
+            />
+          </div>
+          <div>
+            <label for="availability-end">{{
+              store.profile() ? store.terms().endLabel : strings.availability.endTime
+            }}</label>
+            <input
+              id="availability-end"
+              name="endTime"
+              type="time"
+              autocomplete="off"
+              required
+              [value]="store.endTime()"
+              (input)="store.setEndTime(value($event))"
+            />
+          </div>
+        }
       </div>
+      @if (store.hint()) {
+        <p class="interval-hint" data-testid="availability-vertical-hint">{{ store.hint() }}</p>
+      }
       <button class="primary" type="submit" [disabled]="store.status() === 'loading'">
-        {{ store.status() === 'loading' ? strings.availability.searching : strings.availability.search }}
+        {{
+          store.status() === 'loading'
+            ? strings.availability.searching
+            : store.profile()
+              ? store.terms().search
+              : strings.availability.search
+        }}
       </button>
     </form>
     @if (store.failure()) {
@@ -66,7 +105,11 @@
       }
       @if (store.response(); as data) {
         <p class="result-date" role="status">
-          {{ data.date }} · {{ data.startTime }}–{{ data.endTime }} · {{ data.timezone }}
+          @if (data.endDate !== data.date) {
+            {{ data.date }} {{ data.startTime }} → {{ data.endDate }} {{ data.endTime }} · {{ data.timezone }}
+          } @else {
+            {{ data.date }} · {{ data.startTime }}–{{ data.endTime }} · {{ data.timezone }}
+          }
         </p>
         <p class="notice">{{ strings.availability.legend }}</p>
         <ul class="availability-legend" [attr.aria-label]="strings.availability.legend">
@@ -110,7 +153,7 @@
         } @else {
           <p class="notice">{{ strings.availability.mapMissing }}</p>
         }
-        <h3 id="space-list-heading">{{ strings.availability.listTitle }}</h3>
+        <h3 id="space-list-heading">{{ store.terms().listTitle }}</h3>
         <ul class="element-list" aria-labelledby="space-list-heading">
           @for (space of store.spaces(); track space.id) {
             <li>
@@ -122,7 +165,7 @@
                 [disabled]="!space.selectable || space.availability !== 'AVAILABLE'"
                 (click)="store.select(space.id)"
               >
-                <mp-public-space [space]="space" />
+                <mp-public-space [space]="space" [profile]="store.profile()" />
                 <span class="space-state" [attr.data-availability]="space.availability">{{
                   strings.availability.states[space.availability!]
                 }}</span>
@@ -134,12 +177,12 @@
         </ul>
         @if (store.selectedSpace(); as space) {
           <section class="selection-summary" data-testid="availability-selection" aria-live="polite">
-            <h3>{{ strings.availability.selected }}</h3>
+            <h3>{{ store.terms().selected }}</h3>
             <p>
               {{ data.establishmentName }} · {{ data.date }} · {{ data.startTime }}–{{ data.endTime }} ·
               {{ data.timezone }}
             </p>
-            <mp-public-space [space]="space" />
+            <mp-public-space [space]="space" [profile]="store.profile()" />
             @if (store.canConfirm()) {
               <a
                 class="primary"

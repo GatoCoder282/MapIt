@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { Establishment, Person, Reservation } from '@mapit/api-client';
+import type { Establishment, Person, Reservation, VerticalProfile } from '@mapit/api-client';
 import { of, throwError } from 'rxjs';
 
 import { ReservationsApi, type ReservationElementOption } from '../data/reservations-api';
@@ -23,6 +23,7 @@ const PERSON: Person = {
 const ELEMENT: ReservationElementOption = {
   id: '30000000-0000-4000-8000-000000000001',
   type: 'TABLE',
+  label: 'Mesa 4',
   state: 'AVAILABLE',
   floorName: 'Planta baja',
   sectorName: 'Salón',
@@ -39,15 +40,52 @@ const RESERVATION: Reservation = {
   createdBy: '50000000-0000-4000-8000-000000000001',
 };
 
+const RESTAURANT_PROFILE: VerticalProfile = {
+  establishmentType: 'RESTAURANT',
+  bookingMode: 'SHIFT',
+  enabled: true,
+  allowedElementTypes: ['TABLE', 'BAR', 'SECTOR_ZONE', 'STAGE', 'DECOR'],
+  reservableElementTypes: ['TABLE', 'BAR', 'SECTOR_ZONE'],
+  allowsOvernight: false,
+  maxDurationMinutes: 360,
+  minNights: null,
+  maxNights: null,
+  defaultStartTime: null,
+  defaultEndTime: null,
+};
+const HOTEL_PROFILE: VerticalProfile = {
+  establishmentType: 'HOTEL',
+  bookingMode: 'STAY',
+  enabled: true,
+  allowedElementTypes: ['ROOM', 'DECOR'],
+  reservableElementTypes: ['ROOM'],
+  allowsOvernight: true,
+  maxDurationMinutes: null,
+  minNights: 1,
+  maxNights: 30,
+  defaultStartTime: '15:00',
+  defaultEndTime: '12:00',
+};
+const ROOM: ReservationElementOption = {
+  id: '30000000-0000-4000-8000-000000000002',
+  type: 'ROOM',
+  label: 'Habitación 101',
+  state: 'AVAILABLE',
+  floorName: 'Piso 1',
+  sectorName: 'Ala norte',
+};
+
 describe('ReservationFormStore', () => {
   let store: ReservationFormStore;
   const listEstablishments = vi.fn(() => of([ESTABLISHMENT]));
   const listReservableElements = vi.fn(() => of([ELEMENT]));
   const createReservation = vi.fn(() => of(RESERVATION));
+  const getVerticalProfile = vi.fn(() => of(RESTAURANT_PROFILE));
   const api = {
     listEstablishments,
     listReservableElements,
     createReservation,
+    getVerticalProfile,
   } as unknown as ReservationsApi;
 
   beforeEach(() => {
@@ -55,6 +93,7 @@ describe('ReservationFormStore', () => {
     listEstablishments.mockReturnValue(of([ESTABLISHMENT]));
     listReservableElements.mockReturnValue(of([ELEMENT]));
     createReservation.mockReturnValue(of(RESERVATION));
+    getVerticalProfile.mockReturnValue(of(RESTAURANT_PROFILE));
     TestBed.configureTestingModule({
       providers: [ReservationFormStore, { provide: ReservationsApi, useValue: api }],
     });
@@ -149,4 +188,55 @@ describe('ReservationFormStore', () => {
     store.setEndsAt('2026-10-04T13:00');
     store.toggleElement(ELEMENT.id, true);
   }
+  describe('por vertical (HU-7.01/7.02 · MAP-234)', () => {
+    it('usa la terminología y los límites de la vertical del establecimiento', () => {
+      store.load();
+
+      expect(getVerticalProfile).toHaveBeenCalledWith(ESTABLISHMENT.id);
+      expect(store.terms()?.startsAtLabel).toBe('Inicio del turno');
+      expect(store.hint()).toContain('6 h');
+      expect(store.stay()).toBe(false);
+    });
+
+    it('en un hotel solo ofrece habitaciones y reserva por días con las horas del perfil', () => {
+      getVerticalProfile.mockReturnValue(of(HOTEL_PROFILE));
+      listReservableElements.mockReturnValue(of([ELEMENT, ROOM]));
+      store.load();
+      store.setPerson(PERSON);
+
+      expect(store.stay()).toBe(true);
+      expect(store.elements().map((element) => element.id)).toEqual([ROOM.id]);
+      expect(store.terms()?.elementsTitle).toBe('Habitaciones');
+      expect(store.hint()).toContain('15:00');
+
+      store.setStartsAt('2026-10-04');
+      store.setEndsAt('2026-10-06');
+      store.toggleElement(ROOM.id, true);
+      store.submit();
+
+      expect(createReservation).toHaveBeenCalledWith(ESTABLISHMENT.id, {
+        personId: PERSON.id,
+        spaceElementIds: new Set([ROOM.id]),
+        startsAt: '2026-10-04T19:00:00.000Z',
+        endsAt: '2026-10-06T16:00:00.000Z',
+      });
+    });
+
+    it('bloquea el envío y lo explica si la vertical está apagada', () => {
+      getVerticalProfile.mockReturnValue(of({ ...HOTEL_PROFILE, enabled: false }));
+      store.load();
+      store.setPerson(PERSON);
+
+      expect(store.verticalDisabled()).toBe(true);
+      expect(store.canSubmit()).toBe(false);
+    });
+
+    it('traduce el 403 vertical-disabled del backend', () => {
+      createReservation.mockReturnValue(throwError(() => ({ status: 403 })));
+      prepareValidDraft();
+      store.submit();
+
+      expect(store.error()).toContain('no está habilitado');
+    });
+  });
 });

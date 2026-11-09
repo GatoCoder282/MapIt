@@ -2,7 +2,7 @@
   <header class="page-header">
     <p class="eyebrow">{{ strings.eyebrow }}</p>
     <h1>{{ strings.title }}</h1>
-    <p>{{ strings.intro }}</p>
+    <p>{{ store.terms()?.intro ?? strings.intro }}</p>
   </header>
 
   @if (store.created(); as reservation) {
@@ -54,13 +54,19 @@
           }
         </label>
 
+        @if (store.verticalDisabled()) {
+          <p class="message error" role="status" data-testid="reservation-vertical-disabled">
+            {{ strings.errors.verticalDisabled }}
+          </p>
+        }
+
         <div class="interval-grid">
           <label class="field">
-            <span>{{ strings.startsAtLabel }}</span>
+            <span>{{ store.terms()?.startsAtLabel ?? strings.startsAtLabel }}</span>
             <input
               #startsAt
               name="startsAt"
-              type="datetime-local"
+              [type]="store.stay() ? 'date' : 'datetime-local'"
               required
               [value]="store.startsAt()"
               [disabled]="store.submitting()"
@@ -68,11 +74,11 @@
             />
           </label>
           <label class="field">
-            <span>{{ strings.endsAtLabel }}</span>
+            <span>{{ store.terms()?.endsAtLabel ?? strings.endsAtLabel }}</span>
             <input
               #endsAt
               name="endsAt"
-              type="datetime-local"
+              [type]="store.stay() ? 'date' : 'datetime-local'"
               required
               [value]="store.endsAt()"
               [disabled]="store.submitting()"
@@ -80,9 +86,12 @@
             />
           </label>
         </div>
+        @if (store.hint()) {
+          <p class="interval-hint" data-testid="reservation-vertical-hint">{{ store.hint() }}</p>
+        }
 
         <fieldset class="elements" [disabled]="store.loading() || store.submitting()">
-          <legend>{{ strings.elementsTitle }}</legend>
+          <legend>{{ store.terms()?.elementsTitle ?? strings.elementsTitle }}</legend>
           <div class="elements-heading">
             <p>{{ strings.elementsIntro }}</p>
             <span>{{ store.selectedElementIds().size }} {{ strings.selectedCount }}</span>
@@ -103,8 +112,13 @@
                     (change)="store.toggleElement(element.id, $any($event.target).checked)"
                   />
                   <span>
-                    <strong>{{ elementTypeLabel(element.type) }}</strong>
-                    <small>{{ element.floorName }} · {{ element.sectorName }}</small>
+                    <strong>{{ element.label || elementTypeLabel(element.type) }}</strong>
+                    <small>
+                      @if (element.label) {
+                        {{ elementTypeLabel(element.type) }} ·
+                      }
+                      {{ element.floorName }} · {{ element.sectorName }}
+                    </small>
                   </span>
                 </label>
               }

@@ -35,6 +35,7 @@ export class AvailabilityPage {
   readonly date = input('');
   readonly startTime = input('');
   readonly endTime = input('');
+  readonly endDate = input('');
   protected readonly store = inject(AvailabilityStore);
   protected readonly strings = STRINGS;
   protected readonly states = ['AVAILABLE', 'RESERVED', 'UNAVAILABLE'] as const;
@@ -48,6 +49,7 @@ export class AvailabilityPage {
         this.date(),
         this.startTime(),
         this.endTime(),
+        this.endDate(),
       ] as const;
       untracked(() => this.store.configure(...values));
     });
@@ -66,6 +68,7 @@ export class AvailabilityPage {
         date: this.store.date(),
         startTime: this.store.startTime(),
         endTime: this.store.endTime(),
+        endDate: this.store.stay() ? this.store.endDate() : null,
       },
     });
   }
