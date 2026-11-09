@@ -37,14 +37,15 @@
 
 ## MAP-235 — Validar integración, contratos, aislamiento multi-tenant y regresiones
 
-- [ ] IT de aislamiento tenant/establishment del perfil y de la reserva por vertical.
-- [ ] Regresión HU-6.01/6.02/6.03 (`PublicAvailability*`, `PublicReservation*`, `PublicPaymentFlow*`).
-- [ ] `pnpm api:check`, `pnpm check`, `pnpm be:test`, `pnpm be:it`, `pnpm fe:test`.
+- [x] IT de aislamiento tenant/establishment del perfil y de la reserva por vertical.
+- [x] Regresión HU-6.01/6.02/6.03 (`PublicAvailability*`, `PublicReservation*`, `PublicPaymentFlow*`).
+- [x] `pnpm api:check`, `pnpm check`, `pnpm be:test`, `pnpm be:it`, `pnpm fe:test`.
 
 ## MAP-249 — E2E y aceptación reproducible de Restaurante, Discoteca, Salón y Hotel
 
-- [ ] `apps/e2e/tests/public-web/verticals.spec.ts`: una reserva pública por vertical y negativos por API.
-- [ ] `pnpm e2e` (o CI) y captura de checks en verde en el PR.
+- [x] `apps/e2e/tests/public-web/verticals.spec.ts`: una reserva pública por vertical y negativos por API.
+- [x] Playwright local de `public-web` (desktop y móvil) y `console` en verde.
+- [ ] Captura de los checks de CI en verde adjunta a cada PR (pendiente: requiere los PR abiertos).
 
 ## Notas de ejecución
 
@@ -151,3 +152,46 @@
   pago MOCK confirmado y la habitación sigue `AVAILABLE` (pagar no es check-in).
 - Verificación: `ng test public-web` (134) verde; `PublicPaymentFlowIntegrationTest` verde;
   `ng build public-web`, ESLint y `pnpm fe:typecheck` limpios.
+
+### MAP-235 — Validación de integración, contratos y aislamiento
+
+- `UnleashFeatureFlagAdapterTest`: la flag de vertical se evalúa con `UnleashContext`
+  (`tenantId`) y, si Unleash no la conoce (servidor caído), devuelve el default encendido.
+- `VerticalReservationIntegrationTest` suma una carrera: dos estadías solapadas sobre la misma
+  habitación lanzadas a la vez dejan una sola reserva (`201` + `409`), gracias al bloqueo de
+  HU-5.01 que la estrategia de ventana no altera.
+- Cobertura ya existente que se reutiliza: elemento incompatible por vertical → 400
+  (`SpaceElementApiIntegrationTest`, CA-7), aislamiento de `establishment` por RLS y regresión
+  de HU-6.01/6.02/6.03 (`PublicAvailability*`, `PublicReservation*`, `PublicPaymentFlow*`).
+- `pnpm check` (29/10/2026): formato, lint, tipos, tests frontend (console 300, public-web 134,
+  libs) y build frontend verdes. Contrato y backend fallaron en la primera pasada por causas
+  locales y se corrigieron: la huella de `api:gen` era anterior al prettier del hook de commit
+  (`pnpm api:gen` → `pnpm api:check` sincronizado) y faltaba `pnpm be:fmt` en el test nuevo
+  (`gradle build` verde después).
+- `pnpm be:it`: 191 tests de integración, 0 fallos, 0 omitidos (13 min 54 s con Docker local).
+  `pnpm be:test`: 439 unitarios + ArchUnit, 0 fallos.
+
+### MAP-249 — E2E y aceptación reproducible
+
+- `verticals.spec.ts` crea por API real su empresa (fixture de CU-25 con Mailpit), un
+  establecimiento por vertical con piso, sector y elemento etiquetado, y reserva desde el portal
+  anónimo: restaurante (Mesa 4, 19:00–21:00), discoteca (Zona VIP, 23:00–04:00 con salida al día
+  siguiente), salón (Fila A · 1, 18:00–23:00) y hotel (Habitación 101, dos noches sin pedir
+  horas). Comprueba que el navegador no envía credenciales. Negativos por API: solape 409,
+  escenario 400, elemento de otro tenant 404 y perfil público que no cruza tenants.
+- Ejecución local (29/10/2026): el backend del stack de desarrollo no arranca contra la BD local
+  por un checksum de Flyway ya existente (el mismo V12 que registró el PR #51; esta pila no añade
+  migraciones), y el build Docker de `pnpm infra:full` falló por un corte SSL al bajar Gradle.
+  Para no reparar ni borrar la BD local, el E2E corrió con el `bootJar` contra un Postgres 17
+  desechable, Unleash y Mailpit locales, y el build de `public-web` servido estático en `:4300`.
+- Unleash local tenía `vertical.hotel` y `vertical.event-hall` apagadas (sembradas con el
+  `flags.json` anterior); `pnpm db:seed:flags` las alineó con `flags.json`. **Cualquier Unleash
+  ya sembrado (staging, otros equipos) debe encenderlas igual**: si no, hoteles y salones
+  responden 403 `vertical-disabled`, que es el comportamiento definido con la flag apagada.
+- Resultados: `verticals.spec.ts` 10/10 (public-web + public-web-mobile); todos los E2E de
+  `public-web` 26/26 en dos corridas seguidas (la primera corrida en frío tuvo fallos
+  intermitentes por carga que no se repitieron); `console` 10/12 con `home-visual` intermitente
+  en paralelo y 3/3 aislado. CI ejecuta con `workers: 1` y 2 reintentos.
+- Flag apagada (CA-3, CA-13) y Unleash caído (CA-4) se verifican en IT y unitarios: el Unleash de
+  CI arranca sin flags y usa los defaults del catálogo, así que no se apagan en el E2E.
+- Pendiente fuera del código: captura de los checks verdes de CI en cada PR.

@@ -82,7 +82,7 @@
       @if (store.hint()) {
         <p class="interval-hint" data-testid="availability-vertical-hint">{{ store.hint() }}</p>
       }
-      <button class="primary" type="submit" [disabled]="store.status() === 'loading'">
+      <button class="primary" type="submit" data-testid="availability-search" [disabled]="store.status() === 'loading'">
         {{
           store.status() === 'loading'
             ? strings.availability.searching

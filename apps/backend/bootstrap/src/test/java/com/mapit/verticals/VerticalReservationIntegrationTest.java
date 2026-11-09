@@ -1,5 +1,7 @@
 package com.mapit.verticals;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -8,7 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -323,6 +331,35 @@ class VerticalReservationIntegrationTest {
     publicReservation(TENANT_A, "restaurante", TABLE, "2026-11-02", "19:00", null, "21:00")
         .expectStatus()
         .isCreated();
+  }
+
+  @Test
+  void dos_estadias_concurrentes_sobre_la_misma_habitacion_dejan_una_sola_reserva()
+      throws Exception {
+    CountDownLatch start = new CountDownLatch(1);
+    try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+      Callable<Integer> attempt =
+          () -> {
+            start.await(10, TimeUnit.SECONDS);
+            return publicReservation(
+                    TENANT_A, "hotel", ROOM, "2026-11-02", "15:00", "2026-11-04", "12:00")
+                .returnResult(Void.class)
+                .getStatus()
+                .value();
+          };
+      Future<Integer> first = executor.submit(attempt);
+      Future<Integer> second = executor.submit(attempt);
+      start.countDown();
+      assertThat(List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
+          .containsExactlyInAnyOrder(201, 409);
+    }
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from reservation_space_element where tenant_id = ? and space_element_id = ?",
+                Integer.class,
+                TENANT_A,
+                ROOM))
+        .isEqualTo(1);
   }
 
   // ── Staff y aislamiento ───────────────────────────────────────────────
