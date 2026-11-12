@@ -1,0 +1,128 @@
+<main id="main-content" class="business-page">
+  <mp-business-comparison id="producto" />
+
+  <mp-business-intro />
+
+  <div class="landing-content">
+    <section id="negocios" class="industries band" aria-labelledby="industries-title">
+      <header class="section-heading">
+        <h2 id="industries-title">
+          @for (line of copy.businessIndustryTitle; track line) {
+            <span>{{ line }}</span>
+          }
+        </h2>
+        <p>{{ copy.businessIndustryDescription }}</p>
+      </header>
+      <ul class="gallery" role="list">
+        @for (industry of industries; track industry; let i = $index) {
+          <li>
+            <div class="industry-photo">
+              <img
+                [ngSrc]="'assets/img/reservas/' + industry + '.webp'"
+                fill
+                sizes="(max-width: 600px) 50vw, 25vw"
+                alt=""
+              />
+            </div>
+            <div class="industry-caption">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="industryIcons[i]" /></svg>
+              <strong>{{ copy.industries[i] }}</strong>
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <mp-business-operation />
+
+    <section class="venues" aria-labelledby="venues-title">
+      <div class="venues-copy">
+        <span class="venues-badge"
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="venueIcons[1]" /></svg
+          >{{ copy.multiVenue.badge }}</span
+        >
+        <h2 id="venues-title">
+          {{ copy.multiVenue.title }} <span>{{ copy.multiVenue.accent }}</span>
+        </h2>
+        <svg class="venues-underline" viewBox="0 0 200 24" aria-hidden="true"><path d="M5 16Q105-5 195 20" /></svg>
+        <p>{{ copy.multiVenue.description }}</p>
+        <ul class="venues-benefits">
+          @for (benefit of copy.multiVenue.benefits; track $index; let i = $index) {
+            <li>
+              <span class="venues-icon"
+                ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="venueIcons[i]" /></svg
+              ></span>
+              <div>
+                <h3>{{ benefit.title }}</h3>
+                <p>{{ benefit.detail }}</p>
+              </div>
+            </li>
+          }
+        </ul>
+      </div>
+      <figure class="venues-visual">
+        <img
+          ngSrc="assets/img/landing/business-venues.jpg"
+          [alt]="copy.multiVenue.visualAlt"
+          width="1752"
+          height="897"
+          sizes="(max-width: 900px) 100vw, 68vw"
+          loading="lazy"
+        />
+      </figure>
+    </section>
+
+    <mp-business-editor />
+
+    <section id="reservas" class="booking" aria-labelledby="booking-title">
+      <div class="booking-photo">
+        <img
+          ngSrc="assets/img/landing/business-qr.jpg"
+          [alt]="copy.qrAlt"
+          width="2172"
+          height="724"
+          loading="lazy"
+          sizes="(max-width: 760px) 100vw, 42vw"
+        />
+      </div>
+      <div class="booking-copy">
+        <h2 id="booking-title">
+          {{ copy.bookingLead }} <span>{{ copy.bookingAccent }}</span>
+        </h2>
+        <p>{{ copy.bookingDescription }}</p>
+        <ul class="booking-items" role="list">
+          @for (item of copy.bookingItems; track item.title; let i = $index) {
+            <li>
+              <span class="booking-icon"
+                ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="bookingIcons[i]" /></svg></span
+              ><span
+                ><strong>{{ item.title }}</strong
+                ><span class="booking-detail">{{ item.detail }}</span></span
+              >
+            </li>
+          }
+        </ul>
+        <small>{{ copy.bookingNote }}</small>
+      </div>
+    </section>
+
+    <mp-business-steps />
+
+    <mp-business-join>
+      <button class="join-button join-banner-button" type="button" (click)="joinDialog.showModal()">
+        {{ copy.joinBannerButton }}<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h13m-5-5 5 5-5 5" /></svg>
+      </button>
+    </mp-business-join>
+    <dialog #joinDialog aria-labelledby="join-dialog-title">
+      <h2 id="join-dialog-title">{{ copy.join }}</h2>
+      <p>{{ copy.invitation }}</p>
+      <div class="dialog-actions">
+        <a class="join-button" [href]="runtime.config().consoleBaseUrl + '/login'">{{ copy.login }}</a>
+        <form method="dialog">
+          <button class="join-button" type="submit">{{ copy.close }}</button>
+        </form>
+      </div>
+    </dialog>
+  </div>
+</main>
+<mapit-ui-site-footer [compact]="true" />

@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { LanguageSelector } from '@mapit/i18n';
 
 import { localizeString, STRINGS } from '../../../core/strings';
 import { PublicRuntimeConfig } from '../../../core/runtime-config';
@@ -12,11 +11,10 @@ import { ActivationStore } from '../model/activation-store';
  */
 @Component({
   selector: 'mp-activation',
-  imports: [RouterLink, LanguageSelector],
+  imports: [RouterLink],
   providers: [ActivationStore],
   template: `
     <main class="page">
-      <mapit-language-selector class="language-choice" />
       <section class="card" aria-labelledby="activation-title">
         @if (store.success(); as slug) {
           <div class="success" role="status">
@@ -98,11 +96,6 @@ import { ActivationStore } from '../model/activation-store';
       place-items: center;
       padding: var(--mapit-space-6, 1.5rem);
       background: var(--mapit-color-canvas, #f7f8fa);
-    }
-    .language-choice {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
     }
     .card {
       width: min(26rem, 100%);

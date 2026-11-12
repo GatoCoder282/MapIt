@@ -1,0 +1,75 @@
+<section class="hero-stage comparison-hero" id="coordinacion" aria-labelledby="problem-title">
+  <img
+    class="hero-art"
+    ngSrc="assets/img/landing/business-hero-reference.jpg"
+    [alt]="strings.landing.problem.visualAlt"
+    width="1672"
+    height="941"
+    priority
+  />
+  <div class="section-header">
+    <h1 id="problem-title">
+      <span class="hero-title-lead">{{ strings.landing.problem.heroTitle }}</span
+      ><span class="title-accent">{{ strings.landing.problem.heroAccent }}</span>
+    </h1>
+    <svg class="hero-underline" viewBox="0 0 180 25" aria-hidden="true"><path d="M5 20Q85-2 175 8" /></svg>
+    <p class="hero-description">{{ strings.landing.problem.heroDescription }}</p>
+    <div class="hero-actions">
+      <div class="hero-hint">
+        <strong>{{ strings.landing.problem.heroHint }}</strong
+        ><span>{{ strings.landing.problem.heroHintDetail }}</span>
+      </div>
+      <a [href]="runtime.config().consoleBaseUrl + '/spaces/setup'">{{ strings.landing.problem.heroEdit }}</a>
+    </div>
+  </div>
+  <div class="source-tools">
+    <h2 class="source-heading">{{ strings.landing.problem.sourceHeading }}</h2>
+    <ul class="tool-list">
+      @for (card of strings.landing.problem.cards; track $index; let i = $index) {
+        <li [class]="'tool-card tool-' + i">
+          <h3>{{ card.title }}</h3>
+          <p>{{ card.description }}</p>
+        </li>
+      }
+    </ul>
+  </div>
+  <figure class="map-result">
+    <div class="mobile-illustration">
+      <img
+        ngSrc="assets/img/landing/business-hero-reference.jpg"
+        alt=""
+        width="1672"
+        height="941"
+        loading="lazy"
+      /><span>{{ strings.landing.problem.heroVenue }}</span>
+      <span class="mobile-live">{{ strings.landing.problem.live }}</span>
+    </div>
+    <span class="unified-badge">{{ strings.landing.problem.heroVenue }}</span>
+    <span class="comparison-live">{{ strings.landing.problem.live }}</span>
+    <span class="table-label">{{ strings.landing.problem.reservationTable }}</span>
+    <aside class="reservation-preview" [attr.aria-label]="strings.landing.problem.reservationTable">
+      <div class="reservation-heading">
+        <strong>{{ strings.landing.problem.reservationTable }}</strong
+        ><span>{{ strings.landing.problem.heroStatuses[2] }}</span>
+      </div>
+      <dl>
+        <div>
+          <dt>{{ strings.landing.problem.reservationBy }}</dt>
+          <dd>{{ strings.landing.problem.reservationCustomer }}</dd>
+        </div>
+        <div>
+          <dt>{{ strings.landing.problem.reservationDate }}</dt>
+          <dd>{{ strings.landing.problem.reservationToday }}, {{ reservationTime() }}</dd>
+        </div>
+      </dl>
+    </aside>
+    <ul class="comparison-legend">
+      @for (status of strings.landing.problem.heroStatuses; track $index) {
+        <li>{{ status }}</li>
+      }
+    </ul>
+    <figcaption>
+      <span class="result-heading">{{ strings.landing.problem.outcome }}</span>
+    </figcaption>
+  </figure>
+</section>

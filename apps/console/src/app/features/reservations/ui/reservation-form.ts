@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import type { OnInit } from '@angular/core';
 import type { Person, SpaceElement } from '@mapit/api-client';
 
 import { localizeString, STRINGS } from '../../../core/strings';
+import { confirmOperationalExit } from '../../../core/operational-exit-guard';
+import { EstablishmentContext } from '../../../core/establishment-context';
 import { ReservationFormStore } from '../model/reservation-form-store';
 import { ReservationCustomerPicker } from './reservation-customer-picker';
 
@@ -15,13 +16,14 @@ import { ReservationCustomerPicker } from './reservation-customer-picker';
   styleUrl: './reservation-form.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ReservationForm implements OnInit {
+export class ReservationForm {
   protected readonly localizeString = localizeString;
   protected readonly store = inject(ReservationFormStore);
   protected readonly strings = STRINGS.reservations.form;
+  protected readonly establishmentContext = inject(EstablishmentContext);
 
-  ngOnInit(): void {
-    this.store.load();
+  canDeactivate(): boolean {
+    return confirmOperationalExit(this.store.busy(), this.store.dirty());
   }
 
   protected onCustomerSelected(person: Person | null): void {

@@ -1,11 +1,23 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
+import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { distinctUntilChanged, map } from 'rxjs';
 
 import { AuthSession } from '@mapit/auth';
 import { LanguageSelector } from '@mapit/i18n';
 import { Sidebar, type SidebarNavItem } from './sidebar/sidebar';
+import { EstablishmentSelector } from './establishment-selector';
 
 import { STRINGS } from '../core/strings';
+import { EstablishmentContext } from '../core/establishment-context';
 
 /**
  * Chrome de la consola de staff del tenant: sidebar full-height con las
@@ -15,7 +27,7 @@ import { STRINGS } from '../core/strings';
  */
 @Component({
   selector: 'mapit-staff-shell',
-  imports: [RouterOutlet, Sidebar, LanguageSelector],
+  imports: [RouterOutlet, Sidebar, EstablishmentSelector, LanguageSelector],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,7 +35,69 @@ import { STRINGS } from '../core/strings';
 export class StaffShell {
   protected readonly strings = STRINGS;
   protected readonly session = inject(AuthSession);
+  protected readonly establishmentContext = inject(EstablishmentContext);
   protected readonly menuOpen = signal(false);
+  protected readonly initialEstablishmentsLoaded = signal(false);
+  protected readonly selectorRequested = signal(false);
+  private readonly previousEstablishmentId = signal<string | null>(null);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private observedIdentity: string | null = null;
+  private hasObservedIdentity = false;
+
+  protected readonly canDismissSelector = computed(() => {
+    if (!this.selectorRequested() || this.establishmentContext.status() !== 'ready') return false;
+    const previousId = this.previousEstablishmentId() ?? this.establishmentContext.active()?.id;
+    return (
+      !!previousId && this.establishmentContext.establishments().some(({ id }) => id === previousId)
+    );
+  });
+
+  constructor() {
+    effect(() => {
+      const user = this.session.user();
+      const identity = user ? JSON.stringify([user.tenantId, user.id]) : null;
+      const status = this.establishmentContext.status();
+
+      if (!this.hasObservedIdentity) {
+        this.hasObservedIdentity = true;
+        this.observedIdentity = identity;
+        if (identity && (status === 'ready' || status === 'error')) {
+          this.initialEstablishmentsLoaded.set(true);
+        }
+        return;
+      }
+
+      if (identity !== this.observedIdentity) {
+        this.observedIdentity = identity;
+        this.previousEstablishmentId.set(null);
+        this.initialEstablishmentsLoaded.set(false);
+        return;
+      }
+
+      if (identity && (status === 'ready' || status === 'error')) {
+        this.initialEstablishmentsLoaded.set(true);
+      }
+    });
+
+    this.route.queryParamMap
+      .pipe(
+        map((params) => params.get('selectEstablishment') === '1'),
+        distinctUntilChanged(),
+        takeUntilDestroyed(),
+      )
+      .subscribe((requested) => {
+        this.selectorRequested.set(requested);
+        if (requested) {
+          this.previousEstablishmentId.set(
+            untracked(() => this.establishmentContext.active()?.id ?? null),
+          );
+          untracked(() => void this.establishmentContext.load());
+        } else {
+          this.previousEstablishmentId.set(null);
+        }
+      });
+  }
 
   protected readonly navItems = computed<readonly SidebarNavItem[]>(() => [
     { label: STRINGS.staffShell.nav.home, route: '/home', icon: 'home', exact: true },
@@ -91,5 +165,25 @@ export class StaffShell {
 
   protected closeMenu(): void {
     this.menuOpen.set(false);
+  }
+
+  protected confirmEstablishment(id: string): void {
+    if (!this.establishmentContext.confirm(id) || !this.selectorRequested()) return;
+    void this.router.navigate(['/home']);
+  }
+
+  protected retryEstablishments(): void {
+    void this.establishmentContext.load();
+  }
+
+  protected dismissSelector(): void {
+    if (!this.canDismissSelector()) return;
+    const previousId = this.previousEstablishmentId() ?? this.establishmentContext.active()?.id;
+    if (!previousId || !this.establishmentContext.confirm(previousId)) return;
+    void this.router.navigate(['/home']);
+  }
+
+  protected signOut(): void {
+    this.session.logout();
   }
 }

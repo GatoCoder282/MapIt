@@ -1,0 +1,58 @@
+<section class="business-editor" aria-labelledby="business-editor-title">
+  <div class="editor-copy">
+    <span class="editor-badge"
+      ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="panelIcons[0]" /></svg>{{ copy.badge }}</span
+    >
+    <h2 id="business-editor-title">
+      {{ copy.titleA }} <span>{{ copy.titleB }}</span>
+    </h2>
+    <p>{{ copy.businessDescription }}</p>
+    <ul class="editor-benefits">
+      @for (benefit of copy.benefits; track $index; let i = $index) {
+        <li>
+          <span class="benefit-icon"
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="benefitIcons[i]" /></svg
+          ></span>
+          <div>
+            <h3>{{ benefit.title }}</h3>
+            <p>{{ benefit.detail }}</p>
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+  <figure>
+    <ol class="editor-callouts">
+      @for (label of copy.panels; track $index; let i = $index) {
+        <li>
+          <span
+            ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="panelIcons[i]" /></svg>{{ label }}</span
+          >
+        </li>
+      }
+    </ol>
+    <div class="editor-frame">
+      <div class="editor-crop">
+        <img
+          ngSrc="assets/img/landing/business-editor.jpg"
+          [alt]="copy.visualAlt"
+          width="1672"
+          height="941"
+          sizes="(max-width: 900px) 100vw, 70vw"
+          loading="lazy"
+        />
+      </div>
+    </div>
+    <span class="editor-pin" aria-hidden="true"
+      ><svg viewBox="0 0 24 24">
+        <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" />
+        <circle cx="12" cy="10" r="3" /></svg
+    ></span>
+    <span class="editor-ready"
+      ><svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="11" />
+        <path d="m7 12 3 3 7-7" /></svg
+      >{{ copy.ready }}</span
+    >
+  </figure>
+</section>

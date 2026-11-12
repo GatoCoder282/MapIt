@@ -1,6 +1,7 @@
 import {
   computed,
   DestroyRef,
+  effect,
   inject,
   Injectable,
   signal,
@@ -8,10 +9,16 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin } from 'rxjs';
+import { EMPTY, forkJoin, Subject } from 'rxjs';
+import { finalize, map, switchMap, takeUntil } from 'rxjs/operators';
 
 import { MapEditorApiService } from '../data/map-editor-api';
-import type { FloorLayoutResponse, SectorLayoutSector, Sector } from '@mapit/api-client';
+import type {
+  FloorLayoutResponse,
+  FloorLayoutUpdateRequest,
+  SectorLayoutSector,
+  Sector,
+} from '@mapit/api-client';
 import {
   type MapLayout,
   type SectorPlacement,
@@ -21,6 +28,7 @@ import {
 
 import { STRINGS } from '../../../core/strings';
 import { mapApiElementToLayoutElement } from './map-editor-store';
+import { EstablishmentContext } from '../../../core/establishment-context';
 
 interface SectorVersion {
   updatedAt: string;
@@ -46,6 +54,17 @@ export class FloorEditorStore {
   private readonly strings = STRINGS.spaces.floorEditor;
   private readonly editorStrings = STRINGS.spaces.editor;
   private readonly destroyRef = inject(DestroyRef);
+  private readonly context = inject(EstablishmentContext);
+  private epoch = 0;
+  private scopeCancel = new Subject<void>();
+  private activeEstablishmentId: string | null = null;
+  private validatedFloorId: string | null = null;
+  private writeCount = 0;
+  private readonly baselinePlacements = new Map<
+    string,
+    { x: number; y: number; rotation: number }
+  >();
+  private baselineCanvas: { width: number; height: number } | null = null;
 
   private readonly _floorId = signal<string | null>(null);
   readonly floorId = this._floorId.asReadonly();
@@ -65,6 +84,7 @@ export class FloorEditorStore {
   readonly loading = this._loading.asReadonly();
   private readonly _saving = signal(false);
   readonly saving = this._saving.asReadonly();
+  readonly busy = this._saving.asReadonly();
   private readonly _error = signal<string | null>(null);
   readonly error = this._error.asReadonly();
 
@@ -91,7 +111,32 @@ export class FloorEditorStore {
   private readonly _pendingCount = signal(0);
 
   private readonly _canvasDirty = signal(false);
-  readonly dirty = computed(() => this._pendingCount() > 0 || this._canvasDirty());
+  readonly dirty = computed(() => {
+    this._pendingCount();
+    this._canvasDirty();
+    const baseline = this.baselineCanvas;
+    const size = this.canvasSize();
+    const canvasChanged = Boolean(
+      baseline && (size.width !== baseline.width || size.height !== baseline.height),
+    );
+    const placementChanged = Array.from(this.pendingPlacements.entries()).some(([id, current]) => {
+      const original = this.baselinePlacements.get(id);
+      return (
+        !original ||
+        current.x !== original.x ||
+        current.y !== original.y ||
+        current.rotation !== original.rotation
+      );
+    });
+    return canvasChanged || placementChanged;
+  });
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.epoch++);
+    effect(() => {
+      this.syncContext();
+    });
+  }
 
   /** I-8: sectores del establecimiento (todas las plantas) disponibles para duplicar. */
   private readonly _librarySectors = signal<Sector[]>([]);
@@ -102,6 +147,7 @@ export class FloorEditorStore {
 
   /** Edita el lienzo de la planta (F1: forma/límites; D-2: rectángulo). */
   resizeCanvas(width: number, height: number): void {
+    if (this._saving() || !this.isActiveFloor(this._floorId() ?? '')) return;
     if (width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height)) {
       this._error.set(this.editorStrings.errors.saveInvalid);
       return;
@@ -111,27 +157,96 @@ export class FloorEditorStore {
   }
 
   loadFloor(floorId: string): void {
-    this._floorId.set(floorId);
+    const establishmentId = this.syncContext();
+    if (!establishmentId || this._saving()) return;
+    const epoch = ++this.epoch;
     this._loading.set(true);
     this._error.set(null);
     this.pendingPlacements.clear();
+    this.baselinePlacements.clear();
+    this.baselineCanvas = null;
+    this.floorUpdatedAt = null;
+    this.sectorVersions.clear();
     this._pendingCount.set(0);
     this._canvasDirty.set(false);
+    this.validatedFloorId = null;
+    this._floorId.set(null);
+    this._layout.set({ ...LAYOUT_VACIO, kind: 'floor', sectors: [] });
 
     this.api
-      .getFloorLayout(floorId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .listFloorsByEstablishment(establishmentId)
+      .pipe(takeUntil(this.scopeCancel), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response) => this.applyLayout(response),
+        next: (floors) => {
+          if (
+            epoch !== this.epoch ||
+            this.context.status() !== 'ready' ||
+            this.context.active()?.id !== establishmentId
+          )
+            return;
+          if (!floors.some((floor) => floor.id === floorId)) {
+            this._error.set(this.strings.errors.loadFailed);
+            this._loading.set(false);
+            return;
+          }
+          this.api
+            .getFloorLayout(floorId)
+            .pipe(takeUntil(this.scopeCancel), takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (response) => {
+                if (
+                  epoch !== this.epoch ||
+                  this.context.status() !== 'ready' ||
+                  this.context.active()?.id !== establishmentId
+                )
+                  return;
+                if (response.floor.id !== floorId) {
+                  this._error.set(this.strings.errors.loadFailed);
+                  this._loading.set(false);
+                  return;
+                }
+                this.validatedFloorId = floorId;
+                this._floorId.set(floorId);
+                this.applyLayout(response);
+              },
+              error: () => {
+                if (epoch === this.epoch && this.context.active()?.id === establishmentId) {
+                  this._error.set(this.strings.errors.loadFailed);
+                  this._loading.set(false);
+                }
+              },
+            });
+        },
         error: () => {
-          this._error.set(this.strings.errors.loadFailed);
-          this._loading.set(false);
+          if (epoch === this.epoch && this.context.active()?.id === establishmentId) {
+            this._error.set(this.strings.errors.loadFailed);
+            this._loading.set(false);
+          }
         },
       });
   }
 
+  private reset(): void {
+    this.epoch++;
+    this._floorId.set(null);
+    this.validatedFloorId = null;
+    this._layout.set({ ...LAYOUT_VACIO, kind: 'floor', sectors: [] });
+    this.pendingPlacements.clear();
+    this.baselinePlacements.clear();
+    this.baselineCanvas = null;
+    this._pendingCount.set(0);
+    this._canvasDirty.set(false);
+    this._selectedSectorId.set(null);
+    this._librarySectors.set([]);
+    this._loading.set(false);
+    this._error.set(null);
+    this._conflictingIds.set([]);
+  }
+
   selectSector(id: string | null): void {
-    this._selectedSectorId.set(id);
+    this._selectedSectorId.set(
+      id === null || this.sectors().some((sector) => sector.id === id) ? id : null,
+    );
   }
 
   moveSector(id: SpaceElementId, x: number, y: number): void {
@@ -147,6 +262,7 @@ export class FloorEditorStore {
     id: SpaceElementId,
     patch: Partial<{ x: number; y: number; rotation: number }>,
   ): void {
+    if (this._saving() || !this.isActiveFloor(this._floorId() ?? '')) return;
     const current = this.sectors().find((s) => s.id === id);
     if (!current) return;
     const next = {
@@ -166,48 +282,83 @@ export class FloorEditorStore {
         s.id === id ? { ...s, position: { x: next.x, y: next.y }, rotation: next.rotation } : s,
       ),
     }));
-    this.pendingPlacements.set(id, next);
+    const baseline = this.baselinePlacements.get(id);
+    if (
+      baseline &&
+      next.x === baseline.x &&
+      next.y === baseline.y &&
+      next.rotation === baseline.rotation
+    ) {
+      this.pendingPlacements.delete(id);
+    } else {
+      this.pendingPlacements.set(id, next);
+    }
     this._pendingCount.update((n) => n + 1);
   }
 
   /** Carga los sectores de todo el establecimiento para la biblioteca (I-8). */
   loadLibrary(establishmentId: string): void {
+    const activeId = this.syncContext();
+    if (!activeId || activeId !== establishmentId) return;
+    const epoch = this.epoch;
     this.api
       .listFloorsByEstablishment(establishmentId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntil(this.scopeCancel), takeUntilDestroyed(this.destroyRef))
       .subscribe((floors) => {
+        if (epoch !== this.epoch || this.context.active()?.id !== establishmentId) return;
         const requests = floors.map((f) => this.api.listSectorsByFloor(f.id));
-        forkJoin(requests).subscribe((perFloor) => this._librarySectors.set(perFloor.flat()));
+        forkJoin(requests)
+          .pipe(takeUntil(this.scopeCancel), takeUntilDestroyed(this.destroyRef))
+          .subscribe((perFloor) => {
+            if (epoch === this.epoch && this.context.active()?.id === establishmentId)
+              this._librarySectors.set(perFloor.flat());
+          });
       });
   }
 
   /** Coloca una copia de un sector del establecimiento (RN-5: duplicado explícito). */
   duplicateSector(sourceSectorId: string, x = 40, y = 40): void {
     const floorId = this._floorId();
-    if (!floorId) return;
-    this._saving.set(true);
+    if (
+      !floorId ||
+      this._saving() ||
+      this.dirty() ||
+      !this.isActiveFloor(floorId) ||
+      (!this.sectors().some((sector) => sector.id === sourceSectorId) &&
+        !this.librarySectors().some((sector) => sector.id === sourceSectorId))
+    )
+      return;
+    const epoch = this.epoch;
+    const finishWrite = this.beginWrite();
     this._error.set(null);
 
     this.api
       .duplicateSector(floorId, { sourceSectorId })
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        switchMap((duplicated) => {
+          if (epoch !== this.epoch || !this.isActiveFloor(floorId)) return EMPTY;
+          return this.api.getFloorLayout(floorId).pipe(map((fresh) => ({ duplicated, fresh })));
+        }),
+        switchMap(({ duplicated, fresh }) => {
+          if (epoch !== this.epoch || !this.isActiveFloor(floorId)) return EMPTY;
+          if (fresh.floor.id !== floorId) throw new Error('Floor changed during duplication');
+          this.applyLayout(fresh);
+          this.placeSector(duplicated.sector.id, x, y);
+          return this.api.saveFloorLayout(floorId, this.createLayoutRequest());
+        }),
+        takeUntilDestroyed(this.destroyRef),
+        finalize(finishWrite),
+      )
       .subscribe({
-        next: (duplicated) => {
-          // La copia nace en el origen (0,0): se recarga el layout y se coloca.
-          this.api
-            .getFloorLayout(floorId)
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe({
-              next: (fresh) => {
-                this.applyLayout(fresh);
-                this.moveSector(duplicated.sector.id, x, y);
-                this.saveLayout();
-              },
-              error: () => this._saving.set(false),
-            });
+        next: (saved) => {
+          if (epoch !== this.epoch || !this.isActiveFloor(floorId)) return;
+          this.applyLayout(saved);
+          this.pendingPlacements.clear();
+          this._pendingCount.set(0);
+          this._canvasDirty.set(false);
         },
         error: (response: { status?: number }) => {
-          this._saving.set(false);
+          if (epoch !== this.epoch || !this.isActiveFloor(floorId)) return;
           this._error.set(
             response?.status === 404
               ? this.editorStrings.errors.notFound
@@ -220,41 +371,26 @@ export class FloorEditorStore {
   /** Guardado por lotes de la vista de planta (RN-7). */
   saveLayout(): void {
     const floorId = this._floorId();
-    if (!floorId || !this.floorUpdatedAt) return;
+    if (!floorId || !this.floorUpdatedAt || !this.isActiveFloor(floorId) || this._saving()) return;
+    const epoch = this.epoch;
 
-    const canvas = this.canvasSize();
-    const sectors = Array.from(this.pendingPlacements.entries()).map(([id, p]) => ({
-      id,
-      x: p.x,
-      y: p.y,
-      rotation: p.rotation,
-      updatedAt: this.sectorVersions.get(id)?.updatedAt ?? '',
-    }));
-
-    this._saving.set(true);
+    const finishWrite = this.beginWrite();
     this._error.set(null);
     this._conflictingIds.set([]);
 
     this.api
-      .saveFloorLayout(floorId, {
-        floor: {
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-          updatedAt: this.floorUpdatedAt,
-        },
-        sectors,
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .saveFloorLayout(floorId, this.createLayoutRequest())
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(finishWrite))
       .subscribe({
         next: (response) => {
+          if (epoch !== this.epoch || !this.isActiveFloor(floorId)) return;
           this.applyLayout(response);
           this.pendingPlacements.clear();
           this._pendingCount.set(0);
           this._canvasDirty.set(false);
-          this._saving.set(false);
         },
         error: (response: { status?: number; error?: { conflictingIds?: string[] } }) => {
-          this._saving.set(false);
+          if (epoch !== this.epoch || !this.isActiveFloor(floorId)) return;
           if (response?.status === 409) {
             this._conflictingIds.set(response.error?.conflictingIds ?? []);
             this._error.set(this.strings.errors.conflict);
@@ -285,8 +421,11 @@ export class FloorEditorStore {
     const floor = response.floor;
     this.floorUpdatedAt = floor.updatedAt;
     this.sectorVersions.clear();
+    this.baselinePlacements.clear();
+    this.baselineCanvas = { width: floor.canvasWidth, height: floor.canvasHeight };
     const sectors: SectorPlacement[] = response.sectors.map((s: SectorLayoutSector) => {
       this.sectorVersions.set(s.id, { updatedAt: s.updatedAt });
+      this.baselinePlacements.set(s.id, { x: s.x, y: s.y, rotation: s.rotation });
       return {
         id: s.id,
         label: s.name,
@@ -306,5 +445,77 @@ export class FloorEditorStore {
       sectors,
     });
     this._loading.set(false);
+  }
+
+  private isActiveFloor(floorId: string): boolean {
+    return (
+      Boolean(floorId) &&
+      this.validatedFloorId === floorId &&
+      this.context.status() === 'ready' &&
+      this.context.active()?.id === this.activeEstablishmentId &&
+      this._floorId() === floorId &&
+      this._layout().floorId === floorId
+    );
+  }
+
+  private createLayoutRequest(): FloorLayoutUpdateRequest {
+    const size = this.canvasSize();
+    return {
+      floor: {
+        canvasWidth: size.width,
+        canvasHeight: size.height,
+        updatedAt: this.floorUpdatedAt ?? '',
+      },
+      sectors: Array.from(this.pendingPlacements.entries()).map(([id, placement]) => ({
+        id,
+        x: placement.x,
+        y: placement.y,
+        rotation: placement.rotation,
+        updatedAt: this.sectorVersions.get(id)?.updatedAt ?? '',
+      })),
+    };
+  }
+
+  private placeSector(id: string, x: number, y: number): void {
+    const sector = this.sectors().find((item) => item.id === id);
+    if (!sector) return;
+    const canvas = this.canvasSize();
+    const placement = {
+      x: Math.max(0, Math.min(x, Math.max(0, canvas.width - sector.size.width))),
+      y: Math.max(0, Math.min(y, Math.max(0, canvas.height - sector.size.height))),
+      rotation: sector.rotation,
+    };
+    this.pendingPlacements.set(id, placement);
+    this._layout.update((layout) => ({
+      ...layout,
+      sectors: (layout.sectors ?? []).map((item) =>
+        item.id === id ? { ...item, position: { x: placement.x, y: placement.y } } : item,
+      ),
+    }));
+    this._pendingCount.update((count) => count + 1);
+  }
+
+  private beginWrite(): () => void {
+    this.writeCount++;
+    this._saving.set(true);
+    let finished = false;
+    return () => {
+      if (finished) return;
+      finished = true;
+      this.writeCount--;
+      this._saving.set(this.writeCount > 0);
+    };
+  }
+
+  private syncContext(): string | null {
+    const active = this.context.active();
+    const id = this.context.status() === 'ready' ? (active?.id ?? null) : null;
+    if (id !== this.activeEstablishmentId) {
+      this.scopeCancel.next();
+      this.scopeCancel = new Subject<void>();
+      this.reset();
+      this.activeEstablishmentId = id;
+    }
+    return id;
   }
 }

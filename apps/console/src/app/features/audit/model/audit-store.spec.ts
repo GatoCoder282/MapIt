@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { AuditLogEntry, AuditLogPage } from '@mapit/api-client';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { STRINGS } from '../../../core/strings';
 import { AuditApi } from '../data/audit-api';
@@ -17,13 +17,13 @@ const ENTRY: AuditLogEntry = {
   details: { initialStatus: 'CREATED' },
 };
 
-function pageOf(content: AuditLogEntry[], page = 0, totalPages = 1): AuditLogPage {
-  return { content, page, size: 20, totalElements: content.length, totalPages };
+function pageOf(content: AuditLogEntry[], page = 0, totalPages = 1, size = 10): AuditLogPage {
+  return { content, page, size, totalElements: content.length, totalPages };
 }
 
 describe('AuditStore', () => {
   let store: AuditStore;
-  const list = vi.fn((_: unknown) => of(pageOf([ENTRY])));
+  const list = vi.fn<AuditApi['list']>();
   const api = { list } as unknown as AuditApi;
 
   beforeEach(() => {
@@ -40,13 +40,17 @@ describe('AuditStore', () => {
 
     expect(store.status()).toBe('ready');
     expect(store.entries()).toEqual([ENTRY]);
-    expect(list).toHaveBeenCalledWith({ page: 0, size: 20 });
+    const start = new Date();
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    expect(list).toHaveBeenCalledWith({ page: 0, size: 10, from: start.toISOString() });
   });
 
   it('aplica filtros y vuelve a la primera página', () => {
     store.refresh(2);
     store.updateFilter('resourceType', 'RESERVATION');
     store.updateFilter('resourceId', '  ' + ENTRY.resourceId + '  ');
+    store.updatePeriod('custom');
     store.updateFilter('from', '2026-10-20');
     store.applyFilters();
 
@@ -96,18 +100,64 @@ describe('AuditStore', () => {
       from: '',
       to: '',
     });
-    expect(list).toHaveBeenLastCalledWith({ page: 0, size: 20 });
+    expect(list).toHaveBeenLastCalledWith({ page: 0, size: 10 });
   });
 
-  it('pagina sin perder los filtros activos', () => {
+  it('pagina con los filtros aplicados, sin usar cambios pendientes', () => {
     list.mockReturnValue(of(pageOf([ENTRY], 0, 3)));
+    store.updatePeriod('all');
     store.updateFilter('resourceType', 'RESERVATION');
-    store.refresh();
+    store.applyFilters();
+    store.updateFilter('resourceType', 'SPACE_ELEMENT');
 
     store.goNext();
 
-    expect(list).toHaveBeenLastCalledWith(
-      expect.objectContaining({ page: 1, resourceType: 'RESERVATION' }),
-    );
+    expect(list).toHaveBeenLastCalledWith({ page: 1, size: 10, resourceType: 'RESERVATION' });
+  });
+
+  it('reinicia la página al cambiar el tamaño', () => {
+    store.refresh(3);
+    list.mockReturnValue(of(pageOf([ENTRY], 0, 1, 50)));
+
+    store.setPageSize(50);
+
+    expect(list.mock.lastCall?.[0]).toMatchObject({ page: 0, size: 50 });
+    expect(store.page()).toBe(0);
+  });
+
+  it('evita consultas con identificadores incompletos e intervalos inválidos', () => {
+    store.updateFilter('resourceId', '34e8f789');
+    store.applyFilters();
+    expect(store.filterError()).toBe(STRINGS.audit.invalidResourceId);
+
+    store.updateFilter('resourceId', '');
+    store.updatePeriod('custom');
+    store.updateFilter('from', '2026-10-30');
+    store.updateFilter('to', '2026-10-28');
+    store.applyFilters();
+
+    expect(store.filterError()).toBe(STRINGS.audit.invalidPeriod);
+    expect(list).not.toHaveBeenCalled();
+  });
+
+  it('conserva el detalle si el evento sigue visible y descarta respuestas tardías', () => {
+    store.refresh();
+    store.select(ENTRY.id);
+    store.refresh();
+    expect(store.selectedEntry()?.id).toBe(ENTRY.id);
+
+    const older = new Subject<AuditLogPage>();
+    const latest = new Subject<AuditLogPage>();
+    list.mockReturnValueOnce(older).mockReturnValueOnce(latest);
+    store.refresh();
+    store.clearFilters();
+
+    latest.next(pageOf([], 0, 0));
+    latest.complete();
+    older.next(pageOf([ENTRY]));
+    older.complete();
+
+    expect(store.isEmpty()).toBe(true);
+    expect(store.selectedId()).toBeNull();
   });
 });

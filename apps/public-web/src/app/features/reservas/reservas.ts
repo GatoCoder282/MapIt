@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-import { SiteNav, SiteFooter } from '@mapit/ui-kit';
+import { SiteFooter } from '@mapit/ui-kit';
 
 import { ReservasHero } from './ui/hero/hero';
 import { ReservasCategories } from './ui/categories/categories';
@@ -19,7 +19,6 @@ import { CatalogStore } from './model/catalog-store';
   providers: [CatalogStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    SiteNav,
     SiteFooter,
     ReservasHero,
     ReservasCategories,

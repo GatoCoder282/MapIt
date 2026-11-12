@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { localizeString } from '../../../core/strings';
 import { SpacesStore } from '../model/spaces-store';
 
@@ -253,6 +262,23 @@ export class SectorFormComponent {
   readonly formClosed = output<void>();
 
   protected readonly store = inject(SpacesStore);
+  private readonly baseline = signal<string | null>(null);
+  private editing = false;
+  readonly dirty = computed(() => {
+    const name = this.store.sectorDraft().name;
+    return this.store.isEditingSector()
+      ? this.baseline() !== null && name !== this.baseline()
+      : !!name.trim();
+  });
+
+  constructor() {
+    effect(() => {
+      const isEditing = this.store.isEditingSector();
+      if (isEditing && !this.editing) this.baseline.set(this.store.sectorDraft().name);
+      if (!isEditing) this.baseline.set(null);
+      this.editing = isEditing;
+    });
+  }
 
   protected save(): void {
     const name = this.store.sectorDraft().name.trim();

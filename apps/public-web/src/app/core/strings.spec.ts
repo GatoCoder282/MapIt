@@ -20,8 +20,9 @@ describe('Public Web string catalogs', () => {
   });
 
   it('switches booking strings and re-localizes an error captured in Japanese', () => {
-    expect(STRINGS.booking.submit).toBe('Crear reserva');
+    expect(STRINGS.booking.submit).toBe('Confirmar reserva');
     i18n.setLanguage('ja-JP');
+    expect(STRINGS.booking.submit).toBe('予約を確定');
     const capturedError = STRINGS.booking.errors.generic;
     expect(capturedError).not.toBe(
       'No pudimos confirmar la reserva. Revisa tu conexión e inténtalo de nuevo.',
@@ -29,7 +30,7 @@ describe('Public Web string catalogs', () => {
 
     i18n.setLanguage('en');
 
-    expect(STRINGS.booking.submit).toBe('Create reservation');
+    expect(STRINGS.booking.submit).toBe('Confirm reservation');
     expect(localizeString(capturedError)).toBe(STRINGS.booking.errors.generic);
   });
 });

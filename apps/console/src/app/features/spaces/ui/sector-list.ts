@@ -7,6 +7,7 @@ import {
   inject,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 import { FeatureFlagService } from '@mapit/feature-flags';
 import { RouterLink } from '@angular/router';
@@ -453,6 +454,8 @@ export class SectorListComponent {
   protected readonly store = inject(SpacesStore);
   protected readonly flags = inject(FeatureFlagService);
   protected readonly showForm = signal(false);
+  private readonly sectorForm = viewChild(SectorFormComponent);
+  readonly dirty = computed(() => this.showForm() && (this.sectorForm()?.dirty() ?? false));
 
   protected readonly sectors = computed(() => this.store.sectorsByFloorId(this.floorId()));
   protected readonly loading = computed(() => this.store.sectorsLoading(this.floorId()));

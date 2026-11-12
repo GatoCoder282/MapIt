@@ -7,7 +7,15 @@
 
     <div class="grid">
       @for (category of categories(); track category.title; let i = $index) {
-        <a class="card" href="#{{ category.title.toLowerCase() }}" mapitReveal [mapitRevealDelay]="i * 60">
+        <button
+          type="button"
+          class="card"
+          [class.card--active]="store.selectedCategory() === categoryKeys[i]"
+          [attr.aria-pressed]="store.selectedCategory() === categoryKeys[i]"
+          (click)="store.selectCategory(categoryKeys[i] ?? 'otros')"
+          mapitReveal
+          [mapitRevealDelay]="i * 40"
+        >
           <span class="icon-bubble" aria-hidden="true">
             @switch ($index) {
               @case (0) {
@@ -66,21 +74,30 @@
                   />
                 </svg>
               }
+              @case (4) {
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <path
+                    d="M5 12V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v5M5 17v3M19 17v3M4 11a2 2 0 0 1 2 2v1h12v-1a2 2 0 1 1 4 0v4H2v-4a2 2 0 0 1 2-2Z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              }
+              @case (5) {
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <g fill="currentColor">
+                    <circle cx="4" cy="12" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="20" cy="12" r="2" />
+                  </g>
+                </svg>
+              }
             }
           </span>
           <span class="title">{{ category.title }}</span>
-          <span class="desc">{{ category.subtitle }}</span>
-          <svg class="arrow" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-            <path
-              d="M2 8h11M9.5 3.5 14 8l-4.5 4.5"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </a>
+        </button>
       }
     </div>
   </div>

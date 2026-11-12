@@ -9,6 +9,7 @@ import type {
   PublicCheckout,
   PublicReservation,
   PublicReservationCreateRequest,
+  PublicEstablishmentSummary,
 } from '@mapit/api-client';
 import type { Observable } from 'rxjs';
 import { ReservationAccess, type ReservationAccessScope } from '../../../core/reservation-access';
@@ -20,6 +21,12 @@ export class BookingApi {
   private readonly availability = inject(PublicAvailabilityService);
   private readonly payments = inject(PublicPaymentsService);
   private readonly access = inject(ReservationAccess);
+  establishment(
+    tenantSlug: string,
+    establishmentSlug: string,
+  ): Observable<PublicEstablishmentSummary> {
+    return this.availability.getPublicEstablishment({ tenantSlug, establishmentSlug });
+  }
 
   map(
     tenantSlug: string,

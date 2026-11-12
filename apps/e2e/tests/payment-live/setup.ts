@@ -1,5 +1,5 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   createWriteStream,
   copyFileSync,
@@ -17,6 +17,7 @@ const root = resolve(__dirname, '../../../..');
 const temporary = resolve(root, 'apps/e2e/.tmp');
 export const fixtureFile = resolve(temporary, 'payment-live.json');
 export interface LiveFixture {
+  build: { jarSha256: string; sourceRevisionObservedAtRun: string };
   container: string;
   api: string;
   ws: string;
@@ -66,6 +67,13 @@ export default async function setup(): Promise<() => Promise<void>> {
   // Keep this run independent of a later owner bootJar replacing the build artifact.
   const runJar = resolve(temporary, `payment-live-${randomUUID()}.jar`);
   copyFileSync(resolve(libs, jar), runJar);
+  const build = {
+    jarSha256: createHash('sha256').update(readFileSync(runJar)).digest('hex'),
+    sourceRevisionObservedAtRun: execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: root,
+      encoding: 'utf8',
+    }).trim(),
+  };
   let container = '';
   let backend: ChildProcess | undefined;
   const log = createWriteStream(resolve(temporary, 'payment-live-backend.log'));
@@ -257,6 +265,7 @@ export default async function setup(): Promise<() => Promise<void>> {
     );
     if (!previous.ok) throw new Error('Reserva previa API fixture falló: ' + previous.status);
     const fixture: LiveFixture = {
+      build,
       container,
       api,
       ws: `ws://127.0.0.1:${port}/ws`,

@@ -136,6 +136,16 @@
   background: var(--mapit-color-canvas);
 }
 
+.establishment-pending {
+  display: grid;
+  min-height: calc(100dvh - var(--mapit-topbar-height));
+  place-content: center;
+  padding: var(--mapit-space-6);
+  color: var(--mapit-color-text-muted);
+  font: var(--mapit-text-body);
+  text-align: center;
+}
+
 @media (min-width: 861px) {
   mapit-sidebar {
     position: sticky;

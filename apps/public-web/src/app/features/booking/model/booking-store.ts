@@ -2,7 +2,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { currentLocaleTag } from '@mapit/i18n';
-import type { PublicReservation, ReservationCheckout } from '@mapit/api-client';
+import type {
+  PublicReservation,
+  ReservationCheckout,
+  PublicEstablishmentSummary,
+} from '@mapit/api-client';
 import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { STRINGS } from '../../../core/strings';
 import { BookingApi } from '../data/booking-api';
@@ -36,6 +40,8 @@ export class BookingStore {
   readonly descriptor = signal<PublicSpaceDescriptor | null>(null);
   readonly establishmentName = signal('');
   readonly timezone = signal('');
+  readonly venue = signal<PublicEstablishmentSummary | null>(null);
+  readonly venueStatus = signal<'loading' | 'ready' | 'error'>('loading');
   readonly ownReservation = signal<ReservationCheckout | null>(null);
   readonly ownStatus = signal<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   readonly ownWhen = computed(() => {
@@ -57,7 +63,54 @@ export class BookingStore {
   readonly endTime = signal('');
   readonly fullName = signal('');
   readonly email = signal('');
-  readonly phone = signal('');
+  readonly phoneNumber = signal('');
+  readonly phoneCountry = signal('+591');
+  readonly phoneCountries = [
+    '+591',
+    '+54',
+    '+55',
+    '+56',
+    '+57',
+    '+51',
+    '+598',
+    '+595',
+    '+593',
+    '+52',
+    '+1',
+    '+34',
+    '+81',
+  ] as const;
+  readonly phone = computed(() => {
+    const number = this.phoneNumber().trim();
+    return !number || number.startsWith('+') ? number : `${this.phoneCountry()} ${number}`;
+  });
+  readonly duration = computed(() => {
+    if (!this.intervalValid()) return '';
+    const [startHour = 0, startMinute = 0] = this.startTime().split(':').map(Number);
+    const [endHour = 0, endMinute = 0] = this.endTime().split(':').map(Number);
+    const minutes = (endHour - startHour) * 60 + endMinute - startMinute;
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    const locale = currentLocaleTag();
+    return [
+      hours
+        ? new Intl.NumberFormat(locale, {
+            style: 'unit',
+            unit: 'hour',
+            unitDisplay: 'long',
+          }).format(hours)
+        : '',
+      remainder
+        ? new Intl.NumberFormat(locale, {
+            style: 'unit',
+            unit: 'minute',
+            unitDisplay: 'long',
+          }).format(remainder)
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+  });
   readonly intervalValid = computed(() =>
     validPublicInterval(this.date(), this.startTime(), this.endTime()),
   );
@@ -134,6 +187,8 @@ export class BookingStore {
     this.endTime.set(endTime);
     this.descriptor.set(null);
     this.descriptorStatus.set('idle');
+    this.venue.set(null);
+    void this.loadVenue();
     this.errorMessage.set('');
     this.submitted.set(false);
     this.reservation.set(null);
@@ -146,7 +201,8 @@ export class BookingStore {
     if (differentVenue) {
       this.fullName.set('');
       this.email.set('');
-      this.phone.set('');
+      this.phoneNumber.set('');
+      this.phoneCountry.set('+591');
     }
     if (reservationId) {
       this.step.set('done');
@@ -175,8 +231,36 @@ export class BookingStore {
   }
   setPhone(value: string): void {
     if (this.status() !== 'submitting') {
-      this.phone.set(value);
+      this.phoneNumber.set(value);
       this.clearError();
+    }
+  }
+  setPhoneCountry(value: string): void {
+    if (
+      this.status() !== 'submitting' &&
+      this.phoneCountries.some((country) => country === value)
+    ) {
+      this.phoneCountry.set(value);
+      this.clearError();
+    }
+  }
+  async loadVenue(): Promise<void> {
+    const version = this.version;
+    const { tenantSlug, establishmentSlug } = this.scope;
+    this.venueStatus.set('loading');
+    try {
+      const venue = await firstValueFrom(
+        this.api
+          .establishment(tenantSlug, establishmentSlug)
+          .pipe(takeUntil(this.cancel), takeUntilDestroyed(this.destroyRef)),
+      );
+      if (version !== this.version) return;
+      if (venue.tenantSlug !== tenantSlug || venue.establishmentSlug !== establishmentSlug)
+        throw new Error('venue-scope-mismatch');
+      this.venue.set(venue);
+      this.venueStatus.set('ready');
+    } catch {
+      if (version === this.version) this.venueStatus.set('error');
     }
   }
   private clearError(): void {

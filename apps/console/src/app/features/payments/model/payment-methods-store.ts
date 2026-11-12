@@ -1,6 +1,5 @@
-import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import {
-  EstablishmentsService,
   MockQrService,
   PaymentPoliciesService,
   type AccessibleEstablishment,
@@ -15,6 +14,7 @@ import { firstValueFrom, forkJoin } from 'rxjs';
 
 import { RuntimeConfigStore } from '../../../core/runtime-config';
 import { STRINGS } from '../../../core/strings';
+import { EstablishmentContext } from '../../../core/establishment-context';
 
 export interface QrDraft {
   readonly establishmentId: string;
@@ -70,12 +70,12 @@ const QR_PATH = /^\/simulacion\/qr\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 @Injectable()
 export class PaymentMethodsStore {
   private readonly session = inject(AuthSession);
+  private readonly context = inject(EstablishmentContext);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly runtime = inject(RuntimeConfigStore);
   private readonly qrApi = inject(MockQrService);
-  private readonly establishmentsApi = inject(EstablishmentsService);
   private readonly policiesApi = inject(PaymentPoliciesService);
   private readonly owner = signal(this.session.user());
-  private readonly establishmentsState = signal<readonly AccessibleEstablishment[]>([]);
   private readonly countriesState = signal<readonly PaymentCountry[]>([]);
   private readonly configurationsState = signal<readonly MockQrConfiguration[]>([]);
   private readonly draftState = signal<QrDraft>({ ...EMPTY });
@@ -96,12 +96,17 @@ export class PaymentMethodsStore {
   private readonly policyErrorState = signal<string | null>(null);
   private readonly policySuccessState = signal<string | null>(null);
   private readonly policyDraftState = signal<PolicyDraft>({ ...EMPTY_POLICY });
+  private readonly writesInFlight = signal(0);
   private policyEpoch = 0;
+  private policyWriteEpoch = 0;
   private requestEpoch = 0;
   private qrVersion = 0;
+  private loadedActiveId: string | null = null;
+  private contextGeneration = 0;
+  private qrBaseline: QrDraft = { ...EMPTY };
+  private policyBaseline: PolicyDraft = { ...EMPTY_POLICY };
 
   readonly allowed = ['development', 'dev', 'test'].includes(this.runtime.config().environment);
-  readonly establishments = this.establishmentsState.asReadonly();
   readonly countries = this.countriesState.asReadonly();
   readonly configurations = this.configurationsState.asReadonly();
   readonly draft = this.draftState.asReadonly();
@@ -123,13 +128,19 @@ export class PaymentMethodsStore {
   readonly policyError = this.policyErrorState.asReadonly();
   readonly policySuccess = this.policySuccessState.asReadonly();
   readonly policyDraft = this.policyDraftState.asReadonly();
+  readonly busy = computed(() => this.writesInFlight() > 0 || this.qrBusy());
+  readonly dirty = computed(
+    () =>
+      !sameQr(this.draft(), this.qrBaseline) ||
+      !samePolicy(this.policyDraft(), this.policyBaseline),
+  );
   readonly blockerLabels = computed(() =>
     (this.readiness()?.blockers ?? []).map((code) => STRINGS.paymentMethods.blockers[code]),
   );
   readonly canSavePolicy = computed(() => {
     const draft = this.policyDraft();
     if (
-      !this.isAdmin() ||
+      !this.canManage() ||
       !this.allowed ||
       !this.readiness() ||
       this.readinessLoading() ||
@@ -166,13 +177,6 @@ export class PaymentMethodsStore {
     return true;
   });
 
-  readonly establishmentOptions = computed(() =>
-    this.establishmentsState().map((item) => ({
-      value: item.id,
-      label: item.name,
-      description: item.address ?? '',
-    })),
-  );
   readonly countryOptions = computed(() =>
     this.countriesState().map((item) => ({
       value: item.code,
@@ -197,15 +201,25 @@ export class PaymentMethodsStore {
   });
   readonly canSave = computed(
     () =>
-      this.allowed && !this.loading() && !this.saving() && this.validSelection(this.draftState()),
+      this.canManage() && !this.loading() && !this.busy() && this.validSelection(this.draftState()),
   );
   readonly establishmentName = (id: string): string =>
-    this.establishmentsState().find((item) => item.id === id)?.name ??
+    (this.context.active()?.id === id ? this.context.active()?.name : undefined) ??
     STRINGS.paymentMethods.unknownEstablishment;
   readonly countryName = (code: string): string =>
     this.countriesState().find((item) => item.code === code)?.name ?? code;
 
   constructor() {
+    effect(() => {
+      const active = this.context.active();
+      const status = this.context.status();
+      untracked(() => this.changeContext(active, status));
+    });
+    this.destroyRef.onDestroy(() => {
+      this.requestEpoch++;
+      this.policyEpoch++;
+      this.qrVersion++;
+    });
     effect(() => {
       const user = this.session.user();
       untracked(() => {
@@ -216,35 +230,33 @@ export class PaymentMethodsStore {
         }
       });
     });
-    if (this.session.user() && this.allowed) void this.load();
   }
 
   async load(): Promise<void> {
-    if (!this.allowed || !this.owner()) return;
+    if (!this.canManage()) return;
+    const active = this.context.active();
+    if (!active || this.context.status() !== 'ready') return;
     const epoch = ++this.requestEpoch;
     this.loadingState.set(true);
     this.errorState.set(null);
     try {
-      const [establishments, countries, configurations] = await firstValueFrom(
-        forkJoin([
-          this.establishmentsApi.listAccessibleEstablishments(),
-          this.qrApi.listMockQrCountries(),
-          this.qrApi.listMockQrConfigurations(),
-        ]),
+      const [countries, allConfigurations] = await firstValueFrom(
+        forkJoin([this.qrApi.listMockQrCountries(), this.qrApi.listMockQrConfigurations()]),
       );
-      if (epoch !== this.requestEpoch) return;
-      this.establishmentsState.set(establishments.filter((item) => item.canManagePayments));
+      if (!this.scopeCurrent(epoch, active.id)) return;
+      const configurations = allConfigurations.filter((item) => item.establishmentId === active.id);
       this.countriesState.set(countries);
       this.configurationsState.set(configurations);
+      this.loadedActiveId = active.id;
       this.loadingState.set(false);
       const [first] = configurations;
       if (first) {
-        await this.selectConfiguration(first);
+        await this.initializeConfiguration(first);
       } else {
-        this.startNew();
+        this.startNew(active.id);
       }
     } catch (error) {
-      if (epoch !== this.requestEpoch) return;
+      if (!this.scopeCurrent(epoch, active.id)) return;
       this.errorState.set(this.loadError(error));
     } finally {
       if (epoch === this.requestEpoch) this.loadingState.set(false);
@@ -252,31 +264,37 @@ export class PaymentMethodsStore {
   }
 
   async selectConfiguration(configuration: MockQrConfiguration): Promise<void> {
+    if (!this.owns(configuration) || this.busy()) return;
+    await this.initializeConfiguration(configuration);
+  }
+
+  private async initializeConfiguration(configuration: MockQrConfiguration): Promise<void> {
+    if (!this.owns(configuration)) return;
     this.requestEpoch++;
     this.applyConfiguration(configuration);
+    this.qrBaseline = { ...this.draft() };
+    const epoch = this.requestEpoch;
     await this.loadReadiness(configuration.establishmentId);
+    if (!this.current(epoch, configuration.establishmentId)) return;
     this.errorState.set(null);
     this.successState.set(null);
     await this.renderQr(configuration);
   }
 
-  startNew(): void {
+  startNew(establishmentId = this.currentActiveId() ?? ''): void {
+    if (!this.canManage() || !establishmentId || establishmentId !== this.currentActiveId()) return;
     this.requestEpoch++;
     this.qrVersion++;
     this.editingIdState.set(null);
     this.clearReadiness();
-    this.draftState.set({ ...EMPTY });
+    this.draftState.set({ ...EMPTY, establishmentId });
+    this.qrBaseline = { ...this.draft() };
     this.qrState.set(null);
     this.qrUrlState.set(null);
     this.qrErrorState.set(null);
     this.errorState.set(null);
     this.successState.set(null);
-  }
-
-  setEstablishment(id: string): void {
-    this.draftState.update((draft) => ({ ...draft, establishmentId: id }));
-    void this.loadReadiness(id);
-    this.clearFeedback();
+    void this.loadReadiness(establishmentId);
   }
 
   setCountry(code: string): void {
@@ -304,8 +322,9 @@ export class PaymentMethodsStore {
     this.clearFeedback();
   }
 
-  async save(): Promise<void> {
-    if (!this.allowed || !this.owner()) return;
+  async save(): Promise<MockQrConfiguration | undefined> {
+    if (!this.canManage() || this.busy() || !this.isLoadedForActive()) return;
+    const activeId = this.currentActiveId()!;
     const draft = clean(this.draftState());
     if (!this.validSelection(draft)) {
       this.errorState.set(STRINGS.paymentMethods.invalid);
@@ -317,8 +336,14 @@ export class PaymentMethodsStore {
     this.errorState.set(null);
     this.successState.set(null);
     const write: MockQrConfigurationWrite = draft;
+    this.beginWrite();
     try {
       const id = this.editingIdState();
+      if (
+        id &&
+        !this.configurations().some((item) => item.id === id && item.establishmentId === activeId)
+      )
+        return;
       const saved = id
         ? await firstValueFrom(
             this.qrApi.updateMockQrConfiguration({
@@ -329,24 +354,32 @@ export class PaymentMethodsStore {
         : await firstValueFrom(
             this.qrApi.createMockQrConfiguration({ mockQrConfigurationWrite: write }),
           );
-      if (epoch !== this.requestEpoch) return;
+      if (!this.current(epoch, activeId) || saved.establishmentId !== activeId) return;
       this.upsert(saved);
       this.applyConfiguration(saved);
+      this.qrBaseline = { ...this.draft() };
       await this.loadReadiness(saved.establishmentId);
+      if (!this.current(epoch, activeId)) return;
       this.successState.set(STRINGS.paymentMethods.success);
       await this.renderQr(saved);
+      return this.current(epoch, activeId) ? saved : undefined;
     } catch (error) {
-      if (epoch !== this.requestEpoch) return;
+      if (!this.current(epoch, activeId)) return;
       this.errorState.set(this.saveError(error));
+      return;
     } finally {
+      this.endWrite();
       if (epoch === this.requestEpoch) this.savingState.set(false);
     }
   }
 
   async toggle(configuration: MockQrConfiguration): Promise<void> {
-    if (!this.allowed || !this.owner()) return;
+    if (!this.canManage() || this.busy() || !this.owns(configuration)) return;
     const epoch = ++this.requestEpoch;
+    const activeId = this.currentActiveId()!;
+    this.savingState.set(true);
     this.errorState.set(null);
+    this.beginWrite();
     try {
       const saved = await firstValueFrom(
         this.qrApi.updateMockQrConfiguration({
@@ -354,38 +387,60 @@ export class PaymentMethodsStore {
           mockQrConfigurationWrite: { ...writeOf(configuration), enabled: !configuration.enabled },
         }),
       );
-      if (epoch !== this.requestEpoch) return;
+      if (!this.current(epoch, activeId) || saved.establishmentId !== activeId) return;
       this.upsert(saved);
-      if (this.editingIdState() === saved.id) this.applyConfiguration(saved);
-      if (this.draft().establishmentId === saved.establishmentId)
+      if (this.editingIdState() === saved.id) {
+        this.applyConfiguration(saved);
+        this.qrBaseline = { ...this.draft() };
+      }
+      if (this.draft().establishmentId === saved.establishmentId) {
         await this.loadReadiness(saved.establishmentId);
+        if (!this.current(epoch, activeId)) return;
+      }
     } catch {
-      if (epoch !== this.requestEpoch) return;
+      if (!this.current(epoch, activeId)) return;
       this.errorState.set(STRINGS.paymentMethods.toggleError);
+    } finally {
+      this.endWrite();
+      if (epoch === this.requestEpoch) this.savingState.set(false);
     }
   }
 
   async regenerate(): Promise<void> {
     const id = this.editingIdState();
-    if (!id || !this.allowed || !this.owner()) return;
+    if (
+      !id ||
+      !this.canManage() ||
+      this.busy() ||
+      !this.isLoadedForActive() ||
+      !this.configurations().some(
+        (item) => item.id === id && item.establishmentId === this.currentActiveId(),
+      )
+    )
+      return;
     const epoch = ++this.requestEpoch;
+    const activeId = this.currentActiveId()!;
     this.regeneratingState.set(true);
     this.errorState.set(null);
     this.successState.set(null);
+    this.beginWrite();
     try {
       const saved = await firstValueFrom(
         this.qrApi.regenerateMockQrConfiguration({ configurationId: id }),
       );
-      if (epoch !== this.requestEpoch) return;
+      if (!this.current(epoch, activeId) || saved.establishmentId !== activeId) return;
       this.upsert(saved);
       this.applyConfiguration(saved);
+      this.qrBaseline = { ...this.draft() };
       await this.loadReadiness(saved.establishmentId);
+      if (!this.current(epoch, activeId)) return;
       this.successState.set(STRINGS.paymentMethods.regenerateSuccess);
       await this.renderQr(saved);
     } catch {
-      if (epoch !== this.requestEpoch) return;
+      if (!this.current(epoch, activeId)) return;
       this.errorState.set(STRINGS.paymentMethods.regenerateError);
     } finally {
+      this.endWrite();
       if (epoch === this.requestEpoch) this.regeneratingState.set(false);
     }
   }
@@ -415,6 +470,7 @@ export class PaymentMethodsStore {
     this.readinessState.set(null);
     this.readinessErrorState.set(null);
     this.policyDraftState.set({ ...EMPTY_POLICY });
+    this.policyBaseline = { ...EMPTY_POLICY };
     this.policyErrorState.set(null);
     this.policySuccessState.set(null);
     this.readinessLoadingState.set(false);
@@ -423,9 +479,9 @@ export class PaymentMethodsStore {
   async loadReadiness(establishmentId = this.draft().establishmentId): Promise<void> {
     this.clearReadiness();
     if (
-      !this.isAdmin() ||
-      !this.allowed ||
-      !this.establishments().some((item) => item.id === establishmentId)
+      !this.canManage() ||
+      !this.isLoadedForActive() ||
+      this.currentActiveId() !== establishmentId
     )
       return;
     const epoch = this.policyEpoch;
@@ -434,7 +490,12 @@ export class PaymentMethodsStore {
       const result = await firstValueFrom(
         this.policiesApi.getPaymentReadiness({ establishmentId }),
       );
-      if (epoch !== this.policyEpoch) return;
+      if (
+        epoch !== this.policyEpoch ||
+        !this.isLoadedForActive() ||
+        this.currentActiveId() !== establishmentId
+      )
+        return;
       this.readinessState.set(result);
       if (result.policy)
         this.policyDraftState.set({
@@ -442,8 +503,13 @@ export class PaymentMethodsStore {
           totalAmount: result.policy.totalAmount ?? '',
           paymentWindowMinutes: String(result.policy.paymentWindowMinutes),
         });
+      this.policyBaseline = { ...this.policyDraftState() };
     } catch (error) {
-      if (epoch === this.policyEpoch)
+      if (
+        epoch === this.policyEpoch &&
+        this.isLoadedForActive() &&
+        this.currentActiveId() === establishmentId
+      )
         this.readinessErrorState.set(
           statusOf(error) === 404
             ? STRINGS.paymentMethods.readinessNotFound
@@ -457,12 +523,15 @@ export class PaymentMethodsStore {
   }
 
   async savePolicy(): Promise<void> {
-    if (!this.canSavePolicy()) {
+    if (!this.canManage() || this.busy() || !this.isLoadedForActive() || !this.canSavePolicy()) {
       this.policyErrorState.set(STRINGS.paymentMethods.policyInvalid);
       return;
     }
     const establishmentId = this.draft().establishmentId;
     const epochBeforeSave = this.policyEpoch;
+    const contextGeneration = this.contextGeneration;
+    const activeId = this.currentActiveId();
+    if (!activeId || activeId !== establishmentId) return;
     const draft = this.policyDraft();
     const policy: PaymentPolicy = {
       enabled: draft.enabled!,
@@ -472,6 +541,8 @@ export class PaymentMethodsStore {
       paymentWindowMinutes: Number(draft.paymentWindowMinutes),
     };
     this.policySavingState.set(true);
+    const writeEpoch = ++this.policyWriteEpoch;
+    this.beginWrite();
     this.policyErrorState.set(null);
     this.policySuccessState.set(null);
     try {
@@ -481,16 +552,29 @@ export class PaymentMethodsStore {
       // loadReadiness incrementa policyEpoch internamente vía clearReadiness(),
       // por eso no se puede comparar con epochBeforeSave después de este await.
       // Solo se cancela si el establecimiento cambió antes de que llegara la respuesta.
-      if (epochBeforeSave !== this.policyEpoch) return;
+      if (
+        epochBeforeSave !== this.policyEpoch ||
+        contextGeneration !== this.contextGeneration ||
+        !this.isLoadedForActive() ||
+        this.currentActiveId() !== activeId
+      )
+        return;
       await this.loadReadiness(establishmentId);
-      // Tras loadReadiness el policyEpoch ya es diferente; se verifica por establecimiento.
-      if (this.draft().establishmentId === establishmentId && this.readiness())
+      if (
+        contextGeneration === this.contextGeneration &&
+        this.isLoadedForActive() &&
+        this.currentActiveId() === activeId &&
+        this.readiness()
+      ) {
+        this.policyBaseline = { ...this.policyDraftState() };
         this.policySuccessState.set(STRINGS.paymentMethods.policySaved);
+      }
     } catch {
-      if (epochBeforeSave === this.policyEpoch)
+      if (epochBeforeSave === this.policyEpoch && this.currentActiveId() === activeId)
         this.policyErrorState.set(STRINGS.paymentMethods.policySaveError);
     } finally {
-      this.policySavingState.set(false);
+      this.endWrite();
+      if (writeEpoch === this.policyWriteEpoch) this.policySavingState.set(false);
     }
   }
 
@@ -531,6 +615,7 @@ export class PaymentMethodsStore {
       if (url.origin !== base.origin || url.search || url.hash)
         throw new Error('invalid-qr-target');
       const imported = await import('qrcode');
+      if (version !== this.qrVersion || !this.isConfigActive(configuration)) return;
       const qr = imported.default ?? imported;
       const image = await qr.toDataURL(url.href, {
         width: 280,
@@ -538,11 +623,11 @@ export class PaymentMethodsStore {
         errorCorrectionLevel: 'M',
         color: { dark: '#0f172a', light: '#ffffff' },
       });
-      if (version !== this.qrVersion) return;
+      if (version !== this.qrVersion || !this.isConfigActive(configuration)) return;
       this.qrUrlState.set(url.href);
       this.qrState.set(image);
     } catch {
-      if (version !== this.qrVersion) return;
+      if (version !== this.qrVersion || !this.isConfigActive(configuration)) return;
       this.qrErrorState.set(STRINGS.paymentMethods.qrError);
     } finally {
       if (version === this.qrVersion) this.qrBusyState.set(false);
@@ -553,7 +638,6 @@ export class PaymentMethodsStore {
     this.clearReadiness();
     this.requestEpoch++;
     this.qrVersion++;
-    this.establishmentsState.set([]);
     this.countriesState.set([]);
     this.configurationsState.set([]);
     this.draftState.set({ ...EMPTY });
@@ -567,6 +651,9 @@ export class PaymentMethodsStore {
     this.qrState.set(null);
     this.qrUrlState.set(null);
     this.qrErrorState.set(null);
+    this.loadedActiveId = null;
+    this.qrBaseline = { ...EMPTY };
+    this.policyBaseline = { ...EMPTY_POLICY };
   }
 
   private clearFeedback(): void {
@@ -577,9 +664,87 @@ export class PaymentMethodsStore {
   private validSelection(draft: QrDraft): boolean {
     return (
       valid(draft) &&
-      this.establishmentsState().some((item) => item.id === draft.establishmentId) &&
+      this.isLoadedForActive() &&
+      draft.establishmentId === this.currentActiveId() &&
       this.countriesState().some((item) => item.code === draft.country)
     );
+  }
+
+  private canManage(): boolean {
+    return (
+      this.allowed &&
+      this.isAdmin() &&
+      !!this.owner() &&
+      this.context.status() === 'ready' &&
+      !!this.context.active()?.canManagePayments
+    );
+  }
+
+  private currentActiveId(): string | null {
+    const active = this.context.active();
+    return this.context.status() === 'ready' && active?.canManagePayments ? active.id : null;
+  }
+
+  private isLoadedForActive(): boolean {
+    const id = this.currentActiveId();
+    return !!id && this.loadedActiveId === id;
+  }
+
+  private scopeCurrent(epoch: number, activeId: string): boolean {
+    return epoch === this.requestEpoch && this.canManage() && this.currentActiveId() === activeId;
+  }
+
+  private current(epoch: number, activeId: string): boolean {
+    return this.scopeCurrent(epoch, activeId) && this.isLoadedForActive();
+  }
+
+  private owns(configuration: MockQrConfiguration): boolean {
+    return (
+      this.isLoadedForActive() &&
+      configuration.establishmentId === this.currentActiveId() &&
+      this.configurations().some(
+        (item) =>
+          item.id === configuration.id && item.establishmentId === configuration.establishmentId,
+      )
+    );
+  }
+
+  private isConfigActive(configuration: MockQrConfiguration): boolean {
+    return this.isLoadedForActive() && configuration.establishmentId === this.currentActiveId();
+  }
+
+  private changeContext(active: AccessibleEstablishment | null, status: string): void {
+    const activeId = status === 'ready' && active?.canManagePayments ? active.id : null;
+    if (activeId === this.loadedActiveId && activeId !== null) return;
+    this.contextGeneration++;
+    this.requestEpoch++;
+    this.policyEpoch++;
+    this.qrVersion++;
+    this.loadedActiveId = null;
+    this.configurationsState.set([]);
+    this.draftState.set({ ...EMPTY, establishmentId: activeId ?? '' });
+    this.editingIdState.set(null);
+    this.qrBaseline = { ...this.draftState() };
+    this.policyBaseline = { ...EMPTY_POLICY };
+    this.clearReadiness();
+    this.qrState.set(null);
+    this.qrUrlState.set(null);
+    this.qrErrorState.set(null);
+    this.qrBusyState.set(false);
+    this.savingState.set(false);
+    this.regeneratingState.set(false);
+    this.loadingState.set(false);
+    this.errorState.set(null);
+    this.successState.set(null);
+    if (activeId && this.canManage()) void this.load();
+  }
+
+  private beginWrite(): void {
+    this.writesInFlight.update((count) => count + 1);
+  }
+
+  private endWrite(): void {
+    this.writesInFlight.update((count) => Math.max(0, count - 1));
   }
 
   private loadError(error: unknown): string {
@@ -644,5 +809,17 @@ function sameUser(
     current?.id === previous?.id &&
     current?.tenantId === previous?.tenantId &&
     current?.role === previous?.role
+  );
+}
+
+function sameQr(left: QrDraft, right: QrDraft): boolean {
+  return Object.keys(left).every(
+    (key) => left[key as keyof QrDraft] === right[key as keyof QrDraft],
+  );
+}
+
+function samePolicy(left: PolicyDraft, right: PolicyDraft): boolean {
+  return Object.keys(left).every(
+    (key) => left[key as keyof PolicyDraft] === right[key as keyof PolicyDraft],
   );
 }

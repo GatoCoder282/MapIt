@@ -1,12 +1,18 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { DestroyRef } from '@angular/core';
 import { PisoFormComponent } from './piso-form';
 import { PisoListComponent } from './piso-list';
 import { SpacesStore } from '../model/spaces-store';
-import { SpacesApiService } from '../data/spaces-api';
-import type { Establishment } from '@mapit/api-client';
+import { EstablishmentContext } from '../../../core/establishment-context';
+import { confirmOperationalExit } from '../../../core/operational-exit-guard';
 
 /** Pantalla principal del Setup Wizard - Step 2: Estructura del espacio (CU-05 · MAP-69/70). */
 @Component({
@@ -76,6 +82,14 @@ import type { Establishment } from '@mapit/api-client';
           <p class="page-description">
             {{ store.strings_.wizard.pageDescription }}
           </p>
+          @if (context.active(); as activeEstablishment) {
+            <p class="page-description">
+              <strong>{{ activeEstablishment.name }}</strong>
+            </p>
+          }
+          <button class="btn-secondary" type="button" (click)="manageEstablishments()">
+            {{ store.strings_.wizard.yourEstablishments }}
+          </button>
         </div>
       </section>
 
@@ -633,34 +647,26 @@ export class SpacesComponent {
   readonly establishmentId = input<string>('');
 
   protected readonly store = inject(SpacesStore);
+  protected readonly context = inject(EstablishmentContext);
   protected readonly showSectorForm = signal(false);
+  private readonly floorForm = viewChild(PisoFormComponent);
   private readonly router = inject(Router);
-
-  private readonly api = inject<SpacesApiService>(SpacesApiService);
-
-  private readonly destroyRef = inject<DestroyRef>(DestroyRef);
 
   constructor() {
     effect(() => {
-      const id = this.establishmentId();
-      if (!id) {
-        // El paso 2 no tiene sentido sin saber de qué establecimiento se trata.
-        void this.router.navigate(['/spaces/setup']);
-        return;
-      }
-
-      this.api
-        .getEstablishment(id)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-
-        .subscribe({
-          next: (est: Establishment) => this.store.selectEstablishment(est.id, est.type),
-          error: () => {
-            this.store.selectEstablishment(id, null);
-            this.store.setError(this.store.strings_.wizard.loadFailed);
-          },
-        });
+      const activeId = this.context.active()?.id;
+      const routeId = this.establishmentId();
+      if (this.context.status() !== 'ready' || !activeId) return;
+      if (routeId !== activeId) void this.router.navigate(['/spaces/floors', activeId]);
     });
+  }
+
+  canDeactivate(): boolean {
+    return confirmOperationalExit(this.store.busy(), this.floorForm()?.dirty() ?? false);
+  }
+
+  manageEstablishments(): void {
+    void this.router.navigate(['/spaces/setup'], { queryParams: { manage: '1' } });
   }
 
   goBack(): void {

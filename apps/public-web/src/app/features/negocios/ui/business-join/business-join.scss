@@ -1,0 +1,111 @@
+:host {
+  display: block;
+}
+.join-banner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 28px;
+  min-height: 260px;
+  background: #092253 url('/assets/img/landing/business-join.jpg') center / 108% auto no-repeat;
+  scroll-margin-top: 80px;
+}
+.join-banner::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 96%;
+  height: 250%;
+  left: -34%;
+  top: -144%;
+  border-radius: 0 0 50% 0;
+  border-right: 22px solid #0657ed;
+  background: linear-gradient(110deg, #0c1c49 35%, #0b265a 78%, #003b9a);
+  transform: rotate(3deg);
+}
+.join-content {
+  position: relative;
+  width: 62%;
+  padding: 32px 48px;
+  box-sizing: border-box;
+}
+h2 {
+  margin: 0;
+  font: 800 clamp(28px, 3.1vw, 40px)/1.08 var(--mapit-font-display);
+  letter-spacing: -0.04em;
+  color: #fff;
+}
+h2 strong {
+  font-weight: inherit;
+  color: #00a5f7;
+}
+.heading-tail {
+  display: block;
+}
+p {
+  color: #f3f6ff;
+  margin: 15px 0 22px;
+  font-size: clamp(14px, 1.5vw, 18px);
+  line-height: 1.4;
+}
+@media (max-width: 900px) {
+  .join-banner {
+    background-size: auto 410px;
+    background-position: right center;
+  }
+  .join-content {
+    width: 68%;
+    padding: 30px;
+  }
+  .join-banner::before {
+    left: -29%;
+  }
+}
+@media (max-width: 560px) {
+  .join-banner {
+    display: flex;
+    align-items: flex-end;
+    min-height: 420px;
+    border-radius: 22px;
+    background-size: auto 400px;
+    background-position: right -24px top -68px;
+  }
+  .join-banner::before {
+    top: 145px;
+    left: -35%;
+    width: 160%;
+    height: 440px;
+    transform: rotate(-8deg);
+    border-radius: 50% 50% 0 0;
+    border: 0;
+    border-top: 10px solid #0657ed;
+  }
+  .join-content {
+    width: 100%;
+    padding: 38px 24px 26px;
+    background: linear-gradient(transparent, #0c1c49 34%);
+  }
+  h2 {
+    max-width: 340px;
+    font-size: 30px;
+  }
+  p {
+    font-size: 15px;
+    margin: 14px 0 20px;
+  }
+}
+
+.join-banner {
+  border-radius: 0;
+}
+.join-content {
+  padding-inline: var(--business-gutter);
+}
+@media (min-width: 901px) {
+  .join-banner {
+    min-height: clamp(260px, 22vw, 380px);
+  }
+  .join-content {
+    padding-block: 48px;
+  }
+}

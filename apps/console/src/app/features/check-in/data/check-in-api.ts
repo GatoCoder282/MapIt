@@ -10,7 +10,6 @@ import {
   type PaymentReceipt,
   type CheckInDetails,
   CheckInsService,
-  EstablishmentsService,
   projectReceipt,
 } from '@mapit/api-client';
 import { firstValueFrom } from 'rxjs';
@@ -161,17 +160,6 @@ export class CheckInApi {
     };
   }
 
-  async establishments(): Promise<readonly { id: string; name: string }[]> {
-    this.requireAccess();
-    if (this.preview())
-      return [{ id: PREVIEW_ESTABLISHMENT_ID, name: this.receipt.reservation.establishmentName }];
-    const venues = await firstValueFrom(
-      this.injector.get(EstablishmentsService).listAccessibleEstablishments(),
-    );
-    return venues
-      .filter((venue) => venue.canCheckIn)
-      .map((venue) => ({ id: venue.id, name: venue.name }));
-  }
   watch(establishmentId: string, refresh: (reservationId: string | null) => void): () => void {
     if (this.preview()) return () => undefined;
     const realtime = this.injector.get(RealtimeClient);

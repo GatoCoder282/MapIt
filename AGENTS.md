@@ -1,96 +1,61 @@
 # MapIt — contexto para agentes
 
-App espacial multi-tenant: **Angular 22**, **Spring Boot 4.1.1 / Java 25**, **PostgreSQL 17**.
-`console` (staff, `:4200`, JWT) y `public-web` (anónimo, `:4300`, slug de URL) comparten
-código en `libs/` y el contrato en `packages/api-contract/`.
-Entorno: `README.md` · flujo de trabajo: `CONTRIBUTING.md` · fallos conocidos: `TROUBLESHOOTING.md`.
+Monorepo multi-tenant: Angular 22 + Spring Boot 4 / Java 25 + PostgreSQL 17.
+`console` es staff con JWT; `public-web` es anónimo: no importar `@mapit/auth` allí.
+Entorno: `README.md`; flujo de entrega: `CONTRIBUTING.md`; fallos: `TROUBLESHOOTING.md`.
 
-## Antes de editar — lee la zona que toques
+## Antes de editar
 
-| Zona               | Instrucciones                     | Qué rige                                                      |
-| ------------------ | --------------------------------- | ------------------------------------------------------------- |
-| Backend            | `apps/backend/AGENTS.md`          | capas hexagonales, ArchUnit                                   |
-| Consola (staff)    | `apps/console/AGENTS.md`          | MVVM, signals, style guide Angular 22                         |
-| Público            | `apps/public-web/AGENTS.md`       | anónimo, sin `@mapit/auth`, bundle 800 kB                     |
-| Angular compartido | `libs/AGENTS.md`                  | `ui-kit`, `api-client`, `map-engine` (motor sin decidir)      |
-| Contrato API       | `packages/api-contract/AGENTS.md` | `openapi.yaml` es fuente de verdad                            |
-| E2E                | `apps/e2e/AGENTS.md`              | Playwright, stack completo                                    |
-| Infra / Unleash    | `infra/AGENTS.md`                 | compose, puertos, flags en 3 sitios                           |
-| Casos de uso       | `specs/AGENTS.md`                 | spec → plan → tasks antes de código                           |
-| Arquitectura / BD  | `docs/AGENTS.md`                  | ADR, DBML, `use_cases.md` manda sobre `project_definition.md` |
+Lee el `AGENTS.md` de la zona antes de editar; aquí se resumen solo límites compartidos:
+
+| Instrucciones                     | Cuándo leerlas                                                 |
+| --------------------------------- | -------------------------------------------------------------- |
+| `apps/backend/AGENTS.md`          | Capas hexagonales, ArchUnit, trampas de Boot 4/Jackson 3       |
+| `apps/console/AGENTS.md`          | Staff: MVVM/signals, contexto operativo, i18n, config runtime  |
+| `apps/public-web/AGENTS.md`       | Público: sin sesión de staff, tenant por URL, bundle limitado  |
+| `libs/AGENTS.md`                  | APIs públicas, dependencias permitidas, puerto del mapa        |
+| `packages/api-contract/AGENTS.md` | OpenAPI; STOMP se documenta aparte en `docs/api/`              |
+| `apps/e2e/AGENTS.md`              | Playwright con stack completo                                  |
+| `infra/AGENTS.md`                 | Compose, Unleash/proxy, variables y volúmenes                  |
+| `specs/AGENTS.md`                 | CU/HU: spec → plan → tasks antes del código                    |
+| `docs/AGENTS.md`                  | ADR y DBML; `use_cases.md` manda sobre `project_definition.md` |
 
 Para migraciones, flags o tickets Jira: skills `new-migration`, `new-feature-flag`, `ticket-delivery`.
 
-## Comandos cotidianos
+## Entorno y arranque
 
-Node 24, Java 25 (Temurin), pnpm 11.9.0. Docker Desktop **Running** antes de `pnpm setup`, `pnpm dev*` y `pnpm be:it`.
+- Usa Node 24, JDK 25 y el pin `pnpm@11.9.0` de `package.json`, aunque `engines` permita Node 22. No necesitas Gradle ni Angular CLI globales.
+- `pnpm install` → `pnpm setup` → `pnpm dev`. Docker debe estar activo para setup, dev y Testcontainers; `pnpm doctor` diagnostica requisitos y puertos.
+- `setup` crea `.env` desde `.env.example` con un JWT secret propio; si ya existe, solo añade claves faltantes. Añade nuevas variables a `.env.example`, nunca versiones `.env`.
+- **Lee las advertencias de setup:** puede terminar con éxito aunque fallen migraciones, flags o codegen. Si ya hay `node_modules`, no reinstala dependencias.
+- `pnpm dev:front` levanta infra + ambas apps, **no el backend**; `pnpm dev:back` levanta infra + backend. `pnpm fe:console` / `pnpm fe:public` arrancan solo Angular, sin Docker (`:4200` / `:4300`).
+- `pnpm dev` / `dev:back` usan el perfil Spring `dev` si no defines `SPRING_PROFILES_ACTIVE`; `pnpm be:run` no lo activa. Importa para la simulación local de pagos mock.
+- Reutiliza una sesión existente si los puertos están ocupados. Ctrl+C detiene los procesos de dev pero deja contenedores; `pnpm stop` baja contenedores, **no** Angular/Java del host.
+- PostgreSQL en el host: **5433**, no 5432 (dentro de Docker: 5432). `pnpm infra:reset` **borra volúmenes y datos**.
+- Conserva `allowBuilds` y `publicHoistPattern` de `pnpm-workspace.yaml`: sin ellos pueden fallar esbuild o la resolución de imports del dev server.
 
-```bash
-pnpm install && pnpm setup   # .env desde .env.example, Docker, migraciones, cliente API
-pnpm doctor                  # diagnóstico: qué falta y con qué comando arreglarlo
-pnpm dev                     # todo: infra + backend + las 2 apps
-pnpm dev:front               # solo apps Angular (levanta infra, no backend)
-pnpm dev:back                # solo infra + Spring Boot
-pnpm fe:console / fe:public  # Angular sin Docker, :4200 / :4300
-pnpm stop                    # baja contenedores
-pnpm check                   # ANTES DE CADA PUSH: prettier, lint, tipos, tests, build, contrato
-pnpm fmt                     # prettier + spotless (frontend y Java)
-```
+## Contrato, datos y límites
 
-Focalizadas: `pnpm be:test` (unitario + ArchUnit, sin Docker), `pnpm be:it` (Testcontainers, Docker), `pnpm fe:test` (Vitest). `pnpm e2e` requiere `pnpm dev` o `pnpm infra:full` y navegadores instalados (`pnpm e2e:install`, una vez).
+- **Contrato primero:** `packages/api-contract/openapi.yaml` → `pnpm api:lint` → `pnpm api:gen` → implementar. No edites ni versiones salidas `generated/`; el cliente TS vive en `libs/api-client/src/lib/generated/`.
+- Regenera antes de typecheck/tests/build frontend en un checkout limpio. `pnpm api:check` solo compara el hash guardado del contrato; **sin cliente generado avisa pero sale con éxito**. No sustituye lint ni codegen. `pnpm api:mock` sirve el contrato en `:4010`.
+- `api:gen` genera solo TypeScript (no interfaces Java, aunque lo diga la guía del contrato) y no corre con `pnpm install`. Usa Java del PATH o Docker; **no carga `.env` ni aplica su `JAVA_HOME`**, a diferencia del wrapper Gradle. Puede salir con éxito sin generar: comprueba la salida, no solo el código de retorno.
+- Staff: tenant del claim JWT `tenant`, nunca de header/query. Las rutas públicas resuelven el tenant desde la URL validada por backend; no confíes en un tenant arbitrario del cliente.
+- Tablas de negocio: `tenant_id NOT NULL`, índice `(tenant_id, id)` y RLS (`enable_tenant_isolation`). Sin `app.tenant_id`, RLS devuelve 0 filas a propósito.
+- El datasource usa `mapit_app` (sin bypass de RLS); Flyway usa el owner `mapit`. No sustituyas el usuario de runtime por el owner para resolver consultas vacías (`apps/backend/bootstrap/src/main/resources/application.yml`).
+- Esquema solo por Flyway: `pnpm db:new "…"`, `pnpm db:migrate`. Nunca edites una migración mergeada ni cambies `ddl-auto: validate` a `update`. Actualiza `docs/db/mapit.dbml` en el mismo commit y añade prueba de aislamiento si creas tablas.
+- No imports entre features Angular; usa `core/` para estado compartido de una app y `libs/` entre apps (API pública en `src/index.ts`, sin imports profundos). Textos visibles en `STRINGS` y sus catálogos por idioma; convenciones MVVM/Angular en los `AGENTS.md` de cada app.
+- ESLint se configura en la raíz y `packages/config-eslint/`, no por app. Logs del navegador por `@mapit/logging`; solo su adaptador usa `console`. Estilos compartidos: `@use 'ui-kit/styles/tokens'` (include path `libs`).
+- Las restricciones de imports se mantienen juntas en `packages/config-eslint/boundaries.js`: redefinir `no-restricted-imports` en otro bloque reemplaza las anteriores, no las fusiona.
+- Flags: `pnpm new:flag clave tipo` mantiene enum Java, catálogo TS y bootstrap Unleash; el argumento CLI es `kill_switch` (el script lo convierte a `kill-switch` para Unleash). Revisa su activación en Unleash. El navegador usa `unleash-proxy` (`:3063`), nunca el servidor/admin directamente.
 
-Backend puntual: `node tools/scripts/gradle.mjs <tarea> [...]` (p. ej. `:bootstrap:flywayMigrate`, `test --tests "ClaseTest"`).
-Frontend puntual: `pnpm exec ng test console --no-watch --include "**/archivo.spec.ts"` (idem `public-web`, `libs`).
-En Windows, `pnpm be:*` usa `gradlew.bat` y carga `.env`.
+## Verificación y entrega
 
-`.env` **no se versiona**; `pnpm setup` lo (re)genera desde `.env.example`. Añadas una variable, añádela a `.env.example` (`pnpm doctor` verifica que ninguna falte).
-`pnpm setup` puede terminar bien aunque fallen migraciones o codegen: **lee sus advertencias**, no solo el mensaje final.
-No toques `allowBuilds` ni `publicHoistPattern` de `pnpm-workspace.yaml`: afectan esbuild y el dev server.
-
-## Reglas que un agente probablemente pase por alto
-
-1. **Contrato primero.** `packages/api-contract/openapi.yaml` → `pnpm api:lint` → `pnpm api:gen` → implementar.
-   Nunca editar ni commitear `**/generated/` (cliente TS en `libs/api-client/src/lib/generated/`).
-   `pnpm api:mock` sirve el contrato en `:4010` si el front está bloqueado esperando al back.
-   `pnpm api:check` (CI) verifica que generado y contrato coinciden.
-2. **Multi-tenant.** Staff: tenant del claim `tenant` del JWT, nunca de header ni query.
-   `public-web`: slug de URL, validado por backend contra `tenant.slug`.
-   Toda tabla de negocio: `tenant_id NOT NULL`, índice `(tenant_id, id)`, RLS.
-   Sin tenant en sesión → **0 filas** (falla cerrado, a propósito).
-3. **Esquema solo por Flyway.** `pnpm db:new "…"`; una migración mergeada **no se edita** (para corregir, otra nueva).
-   `ddl-auto: validate` a propósito: **nunca** `update`.
-   `docs/db/mapit.dbml` se actualiza en el **mismo commit** que la migración.
-4. **Capas del backend (ArchUnit).** `*-domain` no declara Spring ni JPA (no compila si las importa).
-   `*-application` no importa `*-infrastructure`: puerto en `domain`, lo implementa la infraestructura.
-   Los módulos no se importan entre sí; solo `bootstrap` los conoce. Versiones en `gradle/libs.versions.toml`.
-5. **Angular 22.** `inject()` sin parámetros de constructor; `@if`/`@for` y `[class.x]` (`*ngIf`, `NgClass`, `provideZoneChangeDetection` prohibidos por ESLint);
-   `protected` en miembros solo de plantilla; `readonly` en inputs/outputs/queries; nada de `utils.ts`/`helpers.ts`/`common.ts`;
-   una feature no importa de otra (va a `libs/`); estilos con `@use 'ui-kit/styles/tokens'`; texto visible en `STRINGS`.
-6. **Feature flags.** `pnpm new:flag clave tipo` crea enum Java, catálogo TS y `unleash/flags.json`; luego en la UI (`:4242`, `admin`/`unleash4all`).
-   El frontend las lee por `unleash-proxy` (`:3063`), **nunca** directo a Unleash.
-
-## CI: qué corre en cada PR
-
-CI corre en push y PR a `main` con `pnpm install --frozen-lockfile` (nunca edites `pnpm-lock.yaml` a mano).
-
-- frontend: `fmt:check`, `fe:lint`, `fe:typecheck`, `fe:test`, `fe:build`
-- backend: `build` (tests + ArchUnit)
-- integración: Testcontainers (necesita backend verde)
-- contrato: `api:lint`, `api:gen`, `api:check` — falla si `openapi.yaml` y lo generado divergen
-- e2e: Playwright contra el stack completo (necesita frontend y backend verdes)
-  SonarQube solo a mano (`workflow_dispatch`, máquina de calidad), no en CI normal.
-  Un PR sin `specs/CU-XX/` vinculado se devuelve (plantilla en `.github/pull_request_template.md`).
-
-## Trampas conocidas (han fallado de verdad)
-
-- **Jackson 3 (Spring Boot 4):** imports `tools.jackson.*`; `com.fasterxml.jackson.*` es Jackson 2 y rompe.
-  Props como `spring.jackson.serialization.write-dates-as-timestamps` ya no existen e impiden el arranque.
-- **Flyway silenciosa:** en Boot 4 hace falta `spring-boot-flyway` además de `flyway-core`; sin ella, la app arranca y las migraciones **no se ejecutan**, sin error.
-- **CORS ambigua:** inyectar `CorsConfigurationSource` con `@Qualifier("corsConfigurationSource")`.
-- **Postgres en el host es `:5433`** (no 5432); dentro de Docker el contenedor sigue en 5432.
-
-## Flujo de trabajo (CONTRIBUTING.md)
-
-Rama: `feat/CU-XX-<slug>`; para MAP/HU apiladas, `feat/<usuario>/MAP-122-<subtarea>`, cada PR apunta a la rama anterior y solo la última a `main`.
-Commits: Conventional Commits, validados por hook de husky (se rechazan al hacer commit, no en el PR).
-Antes de cada push: `pnpm check`.
+- Antes de cada push: `pnpm check`. Ejecuta formato, lint, tipos, tests/build frontend, hash API y build backend; **omite backend si falta Java/wrapper** y no incluye integración, E2E ni `api:lint`. CI los valida en jobs separados (`.github/workflows/ci.yml`).
+- Formato de un archivo: `pnpm exec prettier --write AGENTS.md` (sustituye la ruta). `pnpm fmt` formatea **todo** el repo y ejecuta Spotless; para Java solamente: `pnpm be:fmt`.
+- `pnpm be:test`: unitarios + ArchUnit, sin Docker. `pnpm be:it`: integración con Testcontainers, requiere Docker. `pnpm fe:test`: Vitest de console, public-web **y libs**.
+- Backend puntual desde la raíz: `node tools/scripts/gradle.mjs :bootstrap:test --tests "com.mapit.ClaseTest"` (cambia módulo/clase; usa `integrationTest` para integración). `be:test` abarca todos los módulos, no solo `bootstrap`. El wrapper carga `.env`, aplica Java y selecciona `gradlew.bat` en Windows.
+- Frontend puntual: `pnpm exec ng test console --no-watch --include "**/archivo.spec.ts"`; sustituye `console` por `public-web` o **`libs`** (un único proyecto de tests para todas las libs).
+- `pnpm fe:typecheck` usa `tsc`, no comprueba plantillas Angular. Para verificar plantillas/SCSS y presupuestos de una app: `pnpm exec ng build console` (o `public-web`); el build predeterminado es producción (`angular.json`).
+- E2E: `pnpm e2e:install` una vez; levanta el stack con `pnpm dev` o `pnpm infra:full` antes de `pnpm e2e` (Playwright no inicia servidores). Focalizado: `pnpm --filter @mapit/e2e exec playwright test --project=console tests/console/archivo.spec.ts`.
+- Entrega CU/HU siguiendo `specs/AGENTS.md`; registra descubrimientos en las notas de ejecución de `tasks.md`. Ramas/PR apilados Jira y enlace a spec: `CONTRIBUTING.md` y `.github/pull_request_template.md`.
+- Husky ejecuta lint-staged al commit y commitlint exige Conventional Commits. Pasar el hook no equivale a `pnpm check`: lint-staged permite hasta 5 warnings, `fe:lint` exige 0.

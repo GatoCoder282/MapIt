@@ -1,0 +1,164 @@
+<main class="how-page">
+  <section class="how-hero" aria-labelledby="how-title">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <h1 id="how-title">
+          {{ copy.title }} <span>{{ copy.accent }}</span>
+        </h1>
+        <p>{{ copy.description }}</p>
+        <div class="hero-actions">
+          <a class="primary" href="#proceso">{{ copy.process }} <span aria-hidden="true">→</span></a
+          ><a class="secondary" routerLink="/negocios">{{ copy.product }}</a>
+        </div>
+        <ul class="trust">
+          @for (item of copy.trust; track $index) {
+            <li><span aria-hidden="true">✓</span>{{ item }}</li>
+          }
+        </ul>
+      </div>
+      <div class="hero-visual">
+        <svg class="hero-route" viewBox="0 0 650 380" aria-hidden="true">
+          <path
+            d="M120 100C80-20 220-35 250 45S410 40 470 120 650 280 570 310 470 270 415 335 330 285 270 345 160 310 180 275"
+          />
+        </svg>
+        <span class="map-pin" aria-hidden="true">●</span>
+        <mp-how-editor [priority]="true" />
+        <span class="hero-tag online"
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[2]" /></svg>{{ copy.tags[0] }}</span
+        >
+        <span class="hero-tag payment"
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[4]" /></svg>{{ copy.tags[1] }}</span
+        >
+        <span class="hero-tag live"><i></i>{{ copy.tags[2] }}</span>
+      </div>
+    </div>
+    <svg class="hero-wave" viewBox="0 0 1440 110" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 90C240-40 390 130 690 90S1140 170 1440 20V110H0Z" />
+    </svg>
+  </section>
+  <div class="how-content">
+    <section id="proceso" class="journey" aria-labelledby="journey-title">
+      <h2 id="journey-title">
+        {{ copy.journeyTitle }} <span>{{ copy.journeyAccent }}</span>
+      </h2>
+      <p>{{ copy.journeyDescription }}</p>
+      <ol>
+        @for (stage of copy.stages; track $index) {
+          <li>
+            <a [href]="'#paso-' + ($index + 1)"
+              ><span class="stage-number">0{{ $index + 1 }}</span
+              ><strong>{{ stage }}</strong></a
+            >
+          </li>
+        }
+      </ol>
+    </section>
+    @for (step of copy.steps; track $index; let i = $index) {
+      <section
+        [id]="'paso-' + (i + 1)"
+        class="process-section"
+        [class.reverse]="i === 1 || i === 4"
+        [class.tinted]="i === 0 || i === 2 || i === 3 || i === 5"
+        [attr.aria-labelledby]="'title-' + i"
+      >
+        <div class="process-copy">
+          <span class="step-label"><i></i>{{ copy.step }} 0{{ i + 1 }}</span>
+          <h2 [id]="'title-' + i">
+            {{ step.title }} <span>{{ step.accent }}</span>
+          </h2>
+          <p>{{ step.description }}</p>
+          <ul class="feature-list">
+            @for (feature of step.features; track $index; let j = $index) {
+              <li>
+                <span class="feature-icon"
+                  ><svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path [attr.d]="icons[featureIcons[i]?.[j] ?? 0]" /></svg></span
+                >{{ feature }}
+              </li>
+            }
+          </ul>
+        </div>
+        <div class="process-visual">
+          @switch (i) {
+            @case (0) {
+              <div class="setup-panel ui-panel">
+                <div class="panel-title">
+                  <div>
+                    <h3>{{ copy.ui.newVenue }}</h3>
+                    <small>{{ copy.ui.details }}</small>
+                  </div>
+                  <span class="initial"><i></i>{{ copy.ui.initial }}</span>
+                </div>
+                <div class="setup-fields">
+                  <div>
+                    <small>{{ copy.ui.name }}</small
+                    ><span class="field">{{ copy.ui.namePlaceholder }} <i aria-hidden="true">⌄</i></span>
+                  </div>
+                  <div>
+                    <small>{{ copy.ui.city }}</small
+                    ><span class="field">{{ copy.ui.cityPlaceholder }} <i aria-hidden="true">⌄</i></span>
+                  </div>
+                </div>
+                <ul class="venue-types">
+                  @for (type of copy.ui.types; track $index; let t = $index) {
+                    <li [class.selected]="t === 0">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="typeIcons[t]" /></svg
+                      ><strong>{{ type }}</strong>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+            @case (1) {
+              <mp-how-editor />
+            }
+            @case (2) {
+              <div class="rules-panel ui-panel">
+                <h3>{{ copy.ui.rules }}</h3>
+                <p>{{ copy.ui.rulesIntro }}</p>
+                <dl>
+                  @for (label of copy.ui.ruleLabels; track $index; let r = $index) {
+                    <div>
+                      <dt>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icons[r + 1]" /></svg>{{ label }}
+                      </dt>
+                      <dd>{{ copy.ui.ruleValues[r] }}</dd>
+                    </div>
+                  }
+                </dl>
+              </div>
+            }
+            @case (3) {
+              <mp-how-phones kind="payment" />
+            }
+            @case (4) {
+              <mp-how-phones kind="arrival" />
+            }
+            @case (5) {
+              <figure class="dashboard-visual">
+                <img
+                  ngSrc="assets/img/landing/business-venues.jpg"
+                  [alt]="copy.ui.dashboardAlt"
+                  width="1752"
+                  height="897"
+                  sizes="(max-width:767px) 95vw, 55vw"
+                  loading="lazy"
+                />
+              </figure>
+            }
+          }
+        </div>
+      </section>
+    }
+    <section class="how-cta" aria-labelledby="how-cta-title">
+      <div>
+        <h2 id="how-cta-title">{{ copy.ctaTitle }}</h2>
+        <p>{{ copy.ctaDescription }}</p>
+      </div>
+      <a routerLink="/negocios" class="secondary">{{ copy.access }} <span aria-hidden="true">→</span></a
+      ><svg viewBox="0 0 400 100" aria-hidden="true"><path d="M0 90C100-40 120 120 220 40S330 30 400 0" /></svg>
+    </section>
+  </div>
+</main>
+<mapit-ui-site-footer [compact]="true" />

@@ -1,0 +1,17 @@
+# Acerca de MapIt
+
+Ruta: `/acerca-de-mapit`. Enlace antes de Producto en el navbar y footer compartidos. Contenido HTML/Angular con catálogos ES/EN/JA, fuentes Inter/Manrope, adaptación móvil y secciones de la referencia.
+
+Actualización posterior: por solicitud del usuario se eliminó la página Producto (`features/landing`) y sus enlaces del navbar y footer. `/` redirige ahora a `/acerca-de-mapit`. El enlace secundario de Cómo funciona lleva a Negocios con el texto «Conocé MapIt».
+
+Verificación: cinco pruebas de página, traducciones, navegación y rutas correctas; lint y compilación de producción. Revisión visual e iteración en 1440, 1024, 768 y 390 px, sin scroll horizontal; comprobado cierre del menú móvil. Capturas `about-final-desktop.png` y `about-final-mobile.png` en `C:/Users/matia/.codex/visualizations/2026/11/05/01a1ad19-dd42-71c1-9f16-be0b13aab5ae/`. La foto reutiliza el interior de un restaurante en lugar de la terraza de la referencia; el paisaje de visión es SVG. No se ejecutó la suite completa del monorepo. Persisten avisos de tamaño de compilación.
+
+Recursos: fotografía existente `assets/img/reservas/restaurant.webp`; ilustraciones transparentes `apps/public-web/public/assets/img/about/hero.png` y `apps/public-web/public/assets/img/about/commitment.png` (1536 × 1024), preparadas con la herramienta integrada ImageGen a partir de la referencia del usuario. Paisaje de visión e iconos implementados como SVG.
+
+Prompt de la ilustración de compromiso:
+
+Use the attached About MapIt page as a style/composition reference. Create ONLY the small standalone 3D illustration from the bottom dark-blue commitment banner: a glossy cobalt blue map-location pin standing on a thick white rounded isometric map tile with pale blue inset streets. On the FRONT CENTER of the pin put a white rounded shield with one cobalt checkmark; the shield should cover the hole area and be part of the pin. Pin centered above the map base, elegant compact 3:2 landscape composition with all artwork fully visible. Same softly beveled polished blue-and-white 3D plastic/ceramic style, gentle shadows, blue #0062ff, white and pale blue #dbeaff. Absolutely no buildings, no side objects, no text, no labels, no background, no UI, no panel or banner. Transparent background. Keep a small amount of transparent padding all around. The reference full webpage is only a guide; output only the isolated pin-with-shield-on-map artwork.
+
+Prompt final de ImageGen:
+
+Use the attached MapIt About page ONLY as a visual reference. Produce a single isolated transparent-background 3D illustration matching ONLY its top hero artwork: a large glossy cobalt blue map location pin standing over a white rounded isometric map tile with pale blue roads and softly beveled edges. Around it three tiny isometric blue-and-white hospitality buildings: storefront with striped awning at upper left, compact office/hotel building upper right, smaller restaurant building lower right. Fine dashed cobalt route connects them. Match the polished soft 3D blue plastic, white ceramic, gentle ambient shadows and airy isometric camera angle exactly. Wide landscape composition around 3:2, all objects fully inside the canvas, with generous breathing room. Blue #0062ff, pale blue #dbeaff, white only. Transparent background, no backdrop, no text, no typography, no navbar, no panels, no screenshot, no full website, no watermarks. This is a supporting illustration to be placed beside real HTML text, not a webpage design.

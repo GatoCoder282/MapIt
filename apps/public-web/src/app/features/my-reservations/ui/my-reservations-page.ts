@@ -10,7 +10,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { currentLocaleTag } from '@mapit/i18n';
 import type { CustomerReservationHistoryItem } from '@mapit/api-client';
-import { SiteFooter, SiteNav } from '@mapit/ui-kit';
+import { SiteFooter } from '@mapit/ui-kit';
 import { filter } from 'rxjs';
 
 import { STRINGS } from '../../../core/strings';
@@ -19,7 +19,7 @@ import { CustomerHistoryStore } from '../model/customer-history-store';
 
 @Component({
   selector: 'mp-my-reservations-page',
-  imports: [RouterLink, SiteNav, SiteFooter],
+  imports: [RouterLink, SiteFooter],
   providers: [CustomerHistoryApi, CustomerHistoryStore],
   templateUrl: './my-reservations-page.html',
   styleUrl: './my-reservations-page.scss',

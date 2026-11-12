@@ -2,6 +2,7 @@ import { authGuard, roleGuard } from '@mapit/auth';
 import { type Routes } from '@angular/router';
 
 import { STRINGS } from './core/strings';
+import { operationalExitGuard } from './core/operational-exit-guard';
 
 /**
  * Rutas de la consola de staff.
@@ -14,7 +15,7 @@ import { STRINGS } from './core/strings';
  *   /login, /empresa/:tenantSlug/login   públicas
  *   /admin/**                            SUPER_ADMIN (plataforma): auditoría CU-01/CU-03
  *   /administration/*                    sección operativa de staff (futuros CU)
- *   /home, /demo-items, /establishments  staff autenticado de cualquier rol
+ *   /home, /demo-items, /establishments (redirect) staff autenticado de cualquier rol
  *
  * El guard de rol es UX: la autorización real la aplica el backend (403).
  */
@@ -97,21 +98,20 @@ export const routes: Routes = [
         loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
       },
       {
-        // Establecimientos (CU-04): staff de un tenant (ADMIN+, con contexto tenant).
+        // Acceso Negocios: reabre el selector global sobre Inicio.
         path: 'establishments',
-        loadComponent: () =>
-          import('./features/administration/establishments/ui/establishments').then(
-            (m) => m.Establishments,
-          ),
+        pathMatch: 'full',
+        redirectTo: '/home?selectEstablishment=1',
       },
       {
         // CU-05 (MAP-67/MAP-68) + HU-2.03: asistente de configuración del espacio.
-        // Paso 1 (establecimiento) y paso 2 (pisos/sectores) comparten el store
-        // de la ruta; el establishmentId viaja en la URL del paso 2.
+        // El contexto global fija el establecimiento; las URLs de recursos
+        // se validan contra él y nunca cambian la selección operativa.
         path: 'spaces',
         children: [
           {
             path: 'setup',
+            canDeactivate: [operationalExitGuard],
             loadComponent: () =>
               import('./features/spaces/ui/wizard-establishment').then(
                 (m) => m.WizardEstablishmentComponent,
@@ -124,11 +124,13 @@ export const routes: Routes = [
           },
           {
             path: 'floors/:establishmentId',
+            canDeactivate: [operationalExitGuard],
             loadComponent: () =>
               import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
           },
           {
             path: 'floors/:floorId/sectors',
+            canDeactivate: [operationalExitGuard],
             loadComponent: () =>
               import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
           },
@@ -148,6 +150,7 @@ export const routes: Routes = [
           {
             // CU-06 (MAP-196): editor visual de elementos espaciales (Konva.js).
             path: 'editor/:sectorId',
+            canDeactivate: [operationalExitGuard],
             loadComponent: () =>
               import('./features/map-editor/ui/map-editor-page').then(
                 (m) => m.MapEditorPageComponent,
@@ -156,6 +159,7 @@ export const routes: Routes = [
           {
             // HU-4.01: vista de planta — composición de sectores sobre el lienzo.
             path: 'floors/:floorId/editor',
+            canDeactivate: [operationalExitGuard],
             loadComponent: () =>
               import('./features/map-editor/ui/floor-editor-page').then(
                 (m) => m.FloorEditorPageComponent,
@@ -165,6 +169,7 @@ export const routes: Routes = [
       },
       {
         path: 'reservations/new',
+        canDeactivate: [operationalExitGuard],
         loadComponent: () =>
           import('./features/reservations/ui/reservation-form').then((m) => m.ReservationForm),
       },
@@ -175,12 +180,14 @@ export const routes: Routes = [
       },
       {
         path: 'administration/settings/payment-methods',
+        canDeactivate: [operationalExitGuard],
         canActivate: [roleGuard('ADMIN')],
         loadComponent: () =>
           import('./features/payments/ui/payment-methods').then((m) => m.PaymentMethods),
       },
       {
         path: 'check-in',
+        canDeactivate: [operationalExitGuard],
         canActivate: [roleGuard('ADMIN', 'STAFF')],
         loadComponent: () => import('./features/check-in/ui/check-in').then((m) => m.CheckIn),
       },

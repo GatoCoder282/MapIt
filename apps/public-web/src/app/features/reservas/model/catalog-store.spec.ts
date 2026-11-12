@@ -36,14 +36,14 @@ describe('CatalogStore', () => {
   });
   it('mantiene la empresa al buscar y paginar y reinicia la página al filtrar', async () => {
     store.tenantSlug.set('empresa-real');
-    list.mockReturnValue(of(Array.from({ length: 20 }, (_, i) => ({ ...VENUE, id: String(i) }))));
+    list.mockReturnValue(of(Array.from({ length: 6 }, (_, i) => ({ ...VENUE, id: String(i) }))));
     await store.search();
     store.next();
     await Promise.resolve();
-    expect(list).toHaveBeenLastCalledWith('', 'empresa-real', 20, 20);
+    expect(list).toHaveBeenLastCalledWith('', 'empresa-real', 6, 6);
     store.query.set('Norte');
     await store.search();
-    expect(list).toHaveBeenLastCalledWith('Norte', 'empresa-real', 20, 0);
+    expect(list).toHaveBeenLastCalledWith('Norte', 'empresa-real', 6, 0);
   });
   it('cancela resultados de una búsqueda anterior al cambiar de consulta', async () => {
     const old = new Subject<PublicEstablishmentSummary[]>();
@@ -57,5 +57,34 @@ describe('CatalogStore', () => {
     await pending;
     expect(store.items()).toEqual([]);
     expect(store.status()).toBe('loaded');
+  });
+  it('filtra direcciones y categorías reales y ordena sin alterar los datos de la API', async () => {
+    const venues = [
+      { ...VENUE, id: 'z', name: 'Zeta', address: 'Centro, La Paz' },
+      { ...VENUE, id: 'a', name: 'Alfa', address: 'Centro, La Paz' },
+      { ...VENUE, id: 'h', type: 'HOTEL', address: 'Norte, Santa Cruz' },
+      { ...VENUE, id: 's', type: 'EVENT_HALL', address: 'Centro, La Paz' },
+    ];
+    list.mockReturnValue(of(venues));
+    store.location.set('LA PAZ');
+    await store.search();
+    store.selectCategory('restaurante');
+    store.order.set('name');
+    expect(store.visibleItems().map((venue) => venue.name)).toEqual(['Alfa', 'Zeta']);
+    expect(store.items()).toEqual(venues);
+    store.selectCategory('salones');
+    expect(store.visibleItems().map((venue) => venue.id)).toEqual(['s']);
+    store.selectCategory('salones');
+    expect(store.visibleItems()).toHaveLength(3);
+  });
+  it('mantiene fecha y personas para consultar disponibilidad, sin inventar disponibilidad', () => {
+    store.date.set('2026-12-10');
+    store.people.set('4');
+    expect(store.bookingCriteria()).toEqual({ date: '2026-12-10', people: '4' });
+    store.items.set([{ ...VENUE, type: 'UNKNOWN' }]);
+    store.selectCategory('otros');
+    expect(store.visibleItems()).toHaveLength(1);
+    store.selectCategory('hotel');
+    expect(store.visibleItems()).toEqual([]);
   });
 });

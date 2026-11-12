@@ -26,6 +26,77 @@ describe('AvailabilityStore — public interval selection', () => {
     expect(store.canConfirm()).toBe(false);
     expect(store.failure()).toBeTruthy();
   });
+  it('builds a leap-month calendar and moves across the year without changing the interval', () => {
+    store.setDate('2028-02-29');
+    const days = store.calendarDays().filter((day) => day !== null);
+    expect(days).toHaveLength(29);
+    expect(days.at(-1)?.value).toBe('2028-02-29');
+    expect(store.weekdays()).toHaveLength(7);
+    expect(store.startTime()).toBe('19:00');
+    expect(store.endTime()).toBe('21:00');
+    store.setDate('2031-01-05');
+    store.moveMonth(-1);
+    expect(store.calendarDays().find((day) => day)?.value).toBe('2030-12-01');
+    store.setDate('invalid');
+    expect(store.calendarDays().find((day) => day)?.value).toBe('2030-12-01');
+  });
+  it('counts only selectable available spaces across the establishment', async () => {
+    await store.search();
+    expect(store.availableCount()).toBe(3);
+    store.selectSector('sector-b');
+    expect(store.availableCount()).toBe(3);
+    store.setStartTime('20:00');
+    expect(store.availableCount()).toBe(0);
+  });
+  it('restores a chosen space in its sector after loading the interval', async () => {
+    await store.search('space-c');
+    expect(store.floorId()).toBe('floor-a');
+    expect(store.sectorId()).toBe('sector-b');
+    expect(store.selectedElementId()).toBe('space-c');
+    expect(store.canConfirm()).toBe(true);
+  });
+  it.each(['reserved', 'unavailable', 'unknown'])(
+    'does not restore an ineligible URL space: %s',
+    async (id) => {
+      await store.search(id);
+      expect(store.selectedElementId()).toBeNull();
+      expect(store.canConfirm()).toBe(false);
+      expect(store.failure()).toBeTruthy();
+      store.restoreSelection('space-a');
+      expect(store.failure()).toBe('');
+      expect(store.canConfirm()).toBe(true);
+    },
+  );
+  it('does not restore a selection from a cancelled lookup', async () => {
+    const late = new Subject<PublicAvailabilityMap>();
+    api.map.mockReturnValue(late);
+    const request = store.search('space-a');
+    store.setEndTime('22:00');
+    late.next(publicMapFixture());
+    late.complete();
+    await request;
+    expect(store.response()).toBeNull();
+    expect(store.selectedElementId()).toBeNull();
+  });
+  it('accepts a party preference only within the supported range', () => {
+    store.configure('tenant-a', 'venue-a', '2030-12-24', '', '', '4');
+    expect(store.people()).toBe(4);
+    for (const people of ['0', '-1', '21', '2.5', 'invalid']) {
+      store.configure('tenant-a', 'venue-a', '2030-12-24', '', '', people);
+      expect(store.people()).toBeNull();
+    }
+  });
+  it('updates the party preference without losing the chosen interval', async () => {
+    await store.search();
+    store.setPeople('6');
+    expect(store.people()).toBe(6);
+    expect(store.response()).not.toBeNull();
+    expect(store.startTime()).toBe('19:00');
+    for (const value of ['', '0', '21', '2.5']) {
+      store.setPeople(value);
+      expect(store.people()).toBeNull();
+    }
+  });
   it('loads real floors/sectors and selects one eligible ID without a POST', async () => {
     await store.search();
     expect(api.map).toHaveBeenCalledWith('tenant-a', 'venue-a', '2030-12-24', '19:00', '21:00');

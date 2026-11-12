@@ -2,18 +2,56 @@
   <div class="nav-inner">
     <!-- Logo -->
     <a href="/" class="nav-logo" [attr.aria-label]="strings.brandHomeAria">
-      <img ngSrc="assets/img/logo_mapit.png" priority [alt]="strings.brand" class="logo-img" width="132" height="60" />
+      @if (compact()) {
+        <span class="nav-wordmark">{{ strings.brand }}</span>
+      } @else {
+        <img
+          ngSrc="assets/img/logo_mapit.png"
+          priority
+          [alt]="strings.brand"
+          class="logo-img"
+          width="132"
+          height="60"
+        />
+      }
     </a>
 
     <!-- Links de navegación (desktop) -->
     <nav class="nav-links" [attr.aria-label]="strings.nav.aria">
-      <a href="/#producto" class="nav-link">{{ strings.nav.product }}</a>
-      <a href="/#como-funciona" class="nav-link">{{ strings.nav.howItWorks }}</a>
-      <a href="/#negocios" class="nav-link">{{ strings.nav.businesses }}</a>
-      <a routerLink="/reservas" routerLinkActive="nav-link--active" ariaCurrentWhenActive="page" class="nav-link">{{
-        strings.nav.bookings
+      <a
+        routerLink="/acerca-de-mapit"
+        routerLinkActive="nav-link--active"
+        ariaCurrentWhenActive="page"
+        class="nav-link"
+        >{{ strings.nav.about }}</a
+      >
+      <a
+        routerLink="/como-funciona"
+        routerLinkActive="nav-link--active"
+        ariaCurrentWhenActive="page"
+        class="nav-link"
+        >{{ strings.nav.howItWorks }}</a
+      >
+      <a routerLink="/negocios" routerLinkActive="nav-link--active" ariaCurrentWhenActive="page" class="nav-link">{{
+        strings.nav.businesses
       }}</a>
+      <a
+        routerLink="/reservas"
+        [class.nav-link--active]="bookingFlow()"
+        [attr.aria-current]="bookingFlow() ? 'page' : null"
+        class="nav-link"
+        >{{ strings.nav.bookings }}</a
+      >
     </nav>
+
+    @if (loginHref() && joinHref()) {
+      <div class="nav-actions">
+        <a class="nav-login" [href]="loginHref()">{{ strings.nav.login }}</a>
+        <a class="btn-primary" [href]="joinHref()">{{
+          requestAccess() ? strings.nav.requestAccess : strings.nav.join
+        }}</a>
+      </div>
+    }
 
     <mapit-language-selector class="language-selector-desktop" />
 
@@ -37,10 +75,44 @@
   <div id="mobile-menu" class="mobile-menu" [class.mobile-menu--open]="menuOpen()" [inert]="!menuOpen()">
     <div class="mobile-menu-content">
       <nav class="mobile-nav" [attr.aria-label]="strings.nav.mobileAria">
-        <a href="/#producto" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.product }}</a>
-        <a href="/#como-funciona" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.howItWorks }}</a>
-        <a href="/#negocios" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.businesses }}</a>
-        <a routerLink="/reservas" class="mobile-nav-link" (click)="closeMenu()">{{ strings.nav.bookings }}</a>
+        <a
+          routerLink="/acerca-de-mapit"
+          routerLinkActive="nav-link--active"
+          ariaCurrentWhenActive="page"
+          class="mobile-nav-link"
+          (click)="closeMenu()"
+          >{{ strings.nav.about }}</a
+        >
+        <a
+          routerLink="/como-funciona"
+          routerLinkActive="nav-link--active"
+          ariaCurrentWhenActive="page"
+          class="mobile-nav-link"
+          (click)="closeMenu()"
+          >{{ strings.nav.howItWorks }}</a
+        >
+        <a
+          routerLink="/negocios"
+          routerLinkActive="nav-link--active"
+          ariaCurrentWhenActive="page"
+          class="mobile-nav-link"
+          (click)="closeMenu()"
+          >{{ strings.nav.businesses }}</a
+        >
+        <a
+          routerLink="/reservas"
+          class="mobile-nav-link"
+          [class.nav-link--active]="bookingFlow()"
+          [attr.aria-current]="bookingFlow() ? 'page' : null"
+          (click)="closeMenu()"
+          >{{ strings.nav.bookings }}</a
+        >
+        @if (loginHref() && joinHref()) {
+          <a class="mobile-nav-link" [href]="loginHref()" (click)="closeMenu()">{{ strings.nav.login }}</a>
+          <a class="btn-primary mobile-cta" [href]="joinHref()" (click)="closeMenu()">{{
+            requestAccess() ? strings.nav.requestAccess : strings.nav.join
+          }}</a>
+        }
       </nav>
       <mapit-language-selector class="language-selector-mobile" />
     </div>

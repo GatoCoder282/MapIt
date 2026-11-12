@@ -1,159 +1,321 @@
-<section class="page">
+<section class="page" [class.with-detail]="selected() && store.status() !== 'error'">
   <header class="page-header">
-    <p class="eyebrow">{{ strings.audit.eyebrow }}</p>
-    <h1>{{ strings.audit.title }}</h1>
-    <p class="intro">{{ strings.audit.intro }}</p>
+    <p class="breadcrumb">
+      <span>{{ strings.eyebrow }}</span
+      ><span aria-hidden="true">›</span><span>{{ strings.title }}</span>
+    </p>
+    <h1 #pageHeading tabindex="-1">{{ strings.title }}</h1>
+    <p class="intro">{{ strings.intro }}</p>
+    <p class="audit-scope">
+      <span class="scope-icon"><svg lucideBuilding2 aria-hidden="true"></svg></span>
+      <strong>{{ strings.scope }}</strong>
+    </p>
   </header>
-
-  <form class="filters" (submit)="$event.preventDefault(); store.applyFilters()">
-    <h2>{{ strings.audit.filtersTitle }}</h2>
-    <div class="filter-grid">
-      <label>
-        <span>{{ strings.audit.resourceTypeLabel }}</span>
-        <select
-          [value]="store.filters().resourceType"
-          (change)="store.updateFilter('resourceType', $any($event.target).value)"
-        >
-          @for (option of resourceOptions(); track option.value) {
-            <option [value]="option.value">{{ option.label }}</option>
-          }
-        </select>
-      </label>
-
-      <label>
-        <span>{{ strings.audit.eventTypeLabel }}</span>
-        <select
-          [value]="store.filters().eventType"
-          (change)="store.updateFilter('eventType', $any($event.target).value)"
-        >
-          @for (option of eventOptions(); track option.value) {
-            <option [value]="option.value">{{ option.label }}</option>
-          }
-        </select>
-      </label>
-
-      <label>
-        <span>{{ strings.audit.resourceIdLabel }}</span>
-        <input
-          type="text"
-          [value]="store.filters().resourceId"
-          [placeholder]="strings.audit.resourceIdPlaceholder"
-          (input)="store.updateFilter('resourceId', $any($event.target).value)"
-        />
-      </label>
-
-      <label>
-        <span>{{ strings.audit.fromLabel }}</span>
-        <input
-          type="date"
-          [value]="store.filters().from"
-          (input)="store.updateFilter('from', $any($event.target).value)"
-        />
-      </label>
-
-      <label>
-        <span>{{ strings.audit.toLabel }}</span>
-        <input type="date" [value]="store.filters().to" (input)="store.updateFilter('to', $any($event.target).value)" />
-      </label>
-    </div>
-    <div class="filter-actions">
-      <button class="button primary" type="submit" [disabled]="store.status() === 'loading'">
-        {{ strings.audit.applyFilters }}
-      </button>
-      <button
-        class="button secondary"
-        type="button"
-        [disabled]="store.status() === 'loading'"
-        (click)="store.clearFilters()"
-      >
-        {{ strings.audit.clearFilters }}
-      </button>
-    </div>
-  </form>
-
-  @switch (store.status()) {
-    @case ('idle') {}
-    @case ('loading') {
-      <p class="state" role="status">{{ strings.audit.loading }}</p>
-    }
-    @case ('error') {
-      <div class="state error" role="alert">
-        <p>{{ localizeString(store.errorMessage()) }}</p>
-        <button class="button secondary" type="button" (click)="store.retry()">
-          {{ strings.audit.retry }}
-        </button>
-      </div>
-    }
-    @default {
-      @if (store.isEmpty()) {
-        <div class="state empty">
-          <h2>{{ strings.audit.emptyTitle }}</h2>
-          <p>{{ strings.audit.empty }}</p>
-        </div>
-      } @else {
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">{{ strings.audit.columns.occurredAt }}</th>
-                <th scope="col">{{ strings.audit.columns.event }}</th>
-                <th scope="col">{{ strings.audit.columns.resource }}</th>
-                <th scope="col">{{ strings.audit.columns.actor }}</th>
-                <th scope="col">{{ strings.audit.columns.details }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (entry of store.entries(); track entry.id) {
-                <tr>
-                  <td [attr.data-label]="strings.audit.columns.occurredAt">
-                    <time [attr.datetime]="entry.occurredAt">{{
-                      entry.occurredAt | localDate: locale() : 'medium'
-                    }}</time>
-                  </td>
-                  <td [attr.data-label]="strings.audit.columns.event">
-                    <span class="event-chip">{{ eventLabel(entry.eventType) }}</span>
-                  </td>
-                  <td [attr.data-label]="strings.audit.columns.resource">
-                    <span class="resource-name">{{ resourceLabel(entry.resourceType) }}</span>
-                    <code>{{ entry.resourceId }}</code>
-                  </td>
-                  <td [attr.data-label]="strings.audit.columns.actor">
-                    <code>{{ entry.actorId }}</code>
-                  </td>
-                  <td [attr.data-label]="strings.audit.columns.details">
-                    <dl class="details">
-                      @for (detail of entry.details | keyvalue; track detail.key) {
-                        <div>
-                          <dt>{{ detailLabel(detail.key) }}</dt>
-                          <dd>{{ detail.value }}</dd>
-                        </div>
-                      }
-                    </dl>
-                  </td>
-                </tr>
+  <div class="page-main">
+    <form
+      class="filters"
+      [attr.aria-label]="strings.filtersTitle"
+      (submit)="$event.preventDefault(); store.applyFilters()"
+    >
+      <div class="filter-grid">
+        <label>
+          <span>{{ strings.period }}</span>
+          <span class="filter-with-icon">
+            <svg lucideCalendarDays aria-hidden="true"></svg>
+            <select
+              name="period"
+              [value]="store.period()"
+              (change)="
+                store.updatePeriod($any($event.target).value); store.period() !== 'custom' && store.applyFilters()
+              "
+            >
+              @for (option of periodOptions(); track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
               }
-            </tbody>
-          </table>
-        </div>
-
-        <nav class="pagination" [attr.aria-label]="strings.audit.paginationLabel">
-          <span>
-            {{ store.page() * store.size() + (store.totalElements() ? 1 : 0) }}–{{
-              store.page() * store.size() + store.entries().length
-            }}
-            {{ strings.audit.ofTotal }} {{ store.totalElements() }}
+            </select>
           </span>
-          <div class="pager">
-            <button class="button secondary" type="button" [disabled]="!store.canGoPrev()" (click)="store.goPrev()">
-              {{ strings.audit.previous }}
-            </button>
-            <span>{{ store.page() + 1 }} {{ strings.audit.pageOf }} {{ store.totalPages() || 1 }}</span>
-            <button class="button secondary" type="button" [disabled]="!store.canGoNext()" (click)="store.goNext()">
-              {{ strings.audit.next }}
+        </label>
+        <label>
+          <span>{{ strings.resourceTypeLabel }}</span>
+          <select
+            name="resourceType"
+            [value]="store.filters().resourceType"
+            (change)="store.updateFilter('resourceType', $any($event.target).value); store.applyFilters()"
+          >
+            @for (option of resourceOptions(); track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span>{{ strings.eventTypeLabel }}</span>
+          <select
+            name="eventType"
+            [value]="store.filters().eventType"
+            (change)="store.updateFilter('eventType', $any($event.target).value); store.applyFilters()"
+          >
+            @for (option of eventOptions(); track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+        <div class="search-filter">
+          <label for="audit-resource-id">{{ strings.resourceIdLabel }}</label>
+          <div class="search-field">
+            <input
+              id="audit-resource-id"
+              name="resourceId"
+              type="search"
+              autocomplete="off"
+              spellcheck="false"
+              [value]="store.filters().resourceId"
+              [placeholder]="strings.resourceIdPlaceholder"
+              [attr.aria-invalid]="localizeString(store.filterError()) === strings.invalidResourceId || null"
+              [attr.aria-describedby]="
+                localizeString(store.filterError()) === strings.invalidResourceId ? 'audit-filter-error' : null
+              "
+              (input)="store.updateFilter('resourceId', $any($event.target).value)"
+            />
+            <button
+              class="button primary icon-button"
+              type="submit"
+              [attr.aria-label]="strings.applyFilters"
+              [title]="strings.applyFilters"
+            >
+              <svg lucideSearch aria-hidden="true"></svg>
             </button>
           </div>
-        </nav>
+        </div>
+      </div>
+
+      @if (store.period() === 'custom') {
+        <div class="custom-dates">
+          <label>
+            <span>{{ strings.fromLabel }}</span>
+            <input
+              name="from"
+              type="date"
+              [value]="store.filters().from"
+              (input)="store.updateFilter('from', $any($event.target).value)"
+            />
+          </label>
+          <label>
+            <span>{{ strings.toLabel }}</span>
+            <input
+              name="to"
+              type="date"
+              [value]="store.filters().to"
+              (input)="store.updateFilter('to', $any($event.target).value)"
+            />
+          </label>
+        </div>
+      }
+      <div class="filter-footer">
+        @if (store.filterError(); as error) {
+          <p class="filter-error" id="audit-filter-error" role="alert">{{ localizeString(error) }}</p>
+        }
+        <button class="text-button" type="button" (click)="store.clearFilters()">{{ strings.clearFilters }}</button>
+      </div>
+    </form>
+
+    @switch (store.status()) {
+      @case ('idle') {}
+      @case ('loading') {
+        <p class="state" role="status">{{ strings.loading }}</p>
+      }
+      @case ('error') {
+        <div class="state error" role="alert">
+          <p>{{ localizeString(store.errorMessage()) }}</p>
+          <button class="button secondary" type="button" (click)="store.retry()">{{ strings.retry }}</button>
+        </div>
+      }
+      @default {
+        @if (store.isEmpty()) {
+          <div class="state" role="status">
+            <h2>{{ strings.emptyTitle }}</h2>
+            <p>{{ strings.empty }}</p>
+          </div>
+        } @else {
+          <div class="results-wrap">
+            <div class="table-wrap">
+              <table [attr.aria-label]="strings.title">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ strings.columns.occurredAt }}</th>
+                    <th scope="col">{{ strings.columns.event }}</th>
+                    <th scope="col">{{ strings.columns.resource }}</th>
+                    <th scope="col" class="secondary-column">{{ strings.columns.actor }}</th>
+                    <th scope="col" class="secondary-column">{{ strings.columns.details }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of rows(); track item.entry.id) {
+                    <tr [class.selected]="store.selectedId() === item.entry.id">
+                      <td>
+                        <time [attr.datetime]="item.entry.occurredAt">{{
+                          item.entry.occurredAt | localDate: locale() : 'short'
+                        }}</time>
+                      </td>
+                      <td>
+                        <button
+                          #eventButton
+                          class="event-button"
+                          type="button"
+                          [attr.data-audit-id]="item.entry.id"
+                          [attr.aria-expanded]="store.selectedId() === item.entry.id"
+                          [attr.aria-controls]="store.selectedId() === item.entry.id ? 'audit-event-detail' : null"
+                          [attr.aria-label]="item.action + ' · ' + item.resource"
+                          (click)="openDetail(item.entry.id)"
+                        >
+                          {{ item.action }}
+                        </button>
+                      </td>
+                      <td>
+                        <span class="resource-name">
+                          @if (item.entry.resourceType === 'SPACE_ELEMENT') {
+                            <svg lucideTable aria-hidden="true"></svg>
+                          } @else {
+                            <svg lucideClipboardList aria-hidden="true"></svg>
+                          }
+                          <span>{{ item.resource }}</span>
+                        </span>
+                      </td>
+                      <td class="secondary-column">{{ item.actor }}</td>
+                      <td class="secondary-column">{{ item.change }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <nav class="pagination" [attr.aria-label]="strings.paginationLabel">
+              <span>
+                {{ store.page() * store.size() + 1 | localNumber: locale() }}–{{
+                  store.page() * store.size() + rows().length | localNumber: locale()
+                }}
+                {{ strings.ofTotal }} {{ store.totalElements() | localNumber: locale() }} {{ strings.records }}
+              </span>
+              <div class="pager">
+                <label class="page-size">
+                  {{ strings.rowsPerPage }}
+                  <select
+                    name="pageSize"
+                    [value]="store.size()"
+                    (change)="store.setPageSize(+$any($event.target).value)"
+                  >
+                    @for (size of store.pageSizes; track size) {
+                      <option [value]="size">{{ size | localNumber: locale() }}</option>
+                    }
+                  </select>
+                </label>
+                <button
+                  class="button secondary icon-button"
+                  type="button"
+                  [attr.aria-label]="strings.previous"
+                  [disabled]="!store.canGoPrev()"
+                  (click)="store.goPrev()"
+                >
+                  <svg lucideChevronLeft aria-hidden="true"></svg>
+                </button>
+                <span class="current-page" aria-current="page">
+                  {{ store.page() + 1 | localNumber: locale() }} {{ strings.pageOf }}
+                  {{ store.totalPages() | localNumber: locale() }}
+                </span>
+                <button
+                  class="button secondary icon-button"
+                  type="button"
+                  [attr.aria-label]="strings.next"
+                  [disabled]="!store.canGoNext()"
+                  (click)="store.goNext()"
+                >
+                  <svg lucideChevronRight aria-hidden="true"></svg>
+                </button>
+              </div>
+            </nav>
+          </div>
+        }
       }
     }
+  </div>
+
+  @if (store.status() !== 'error' && selected(); as item) {
+    <aside
+      class="detail-panel"
+      id="audit-event-detail"
+      aria-labelledby="audit-detail-heading"
+      tabindex="-1"
+      (keydown.escape)="closeDetail()"
+    >
+      <header class="detail-heading">
+        <h2 #detailHeading id="audit-detail-heading" tabindex="-1">{{ strings.eventDetail }}</h2>
+        <button
+          class="button secondary icon-button close"
+          type="button"
+          [attr.aria-label]="strings.closeDetail"
+          (click)="closeDetail()"
+        >
+          <svg lucideX aria-hidden="true"></svg>
+        </button>
+      </header>
+
+      <div class="detail-card">
+        <div class="event-header">
+          <span class="event-icon">
+            @if (item.entry.resourceType === 'SPACE_ELEMENT') {
+              <svg lucideTable aria-hidden="true"></svg>
+            } @else {
+              <svg lucideClipboardList aria-hidden="true"></svg>
+            }
+          </span>
+          <div>
+            <h3>{{ item.resource }}</h3>
+            <p>{{ item.action }}</p>
+          </div>
+        </div>
+        <dl class="facts">
+          <div>
+            <dt>{{ strings.columns.occurredAt }}</dt>
+            <dd>
+              <time [attr.datetime]="item.entry.occurredAt">{{
+                item.entry.occurredAt | localDate: locale() : 'medium'
+              }}</time>
+            </dd>
+          </div>
+          <div>
+            <dt>{{ strings.columns.actor }}</dt>
+            <dd>{{ item.actor }}</dd>
+          </div>
+          @for (detail of item.details; track detail.key) {
+            <div>
+              <dt>{{ detail.label }}</dt>
+              <dd>
+                <span [attr.data-state]="detail.state">{{ detail.value }}</span>
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+      <details class="technical-ids">
+        <summary>{{ strings.technicalIds }}</summary>
+        <dl>
+          @for (identifier of item.identifiers; track identifier.key) {
+            <div>
+              <dt>{{ identifier.label }}</dt>
+              <dd>
+                <code>{{ identifier.value }}</code>
+                <button
+                  class="text-button"
+                  type="button"
+                  [attr.aria-label]="strings.copyId + ' · ' + identifier.label"
+                  (click)="copy(identifier.value)"
+                >
+                  {{ strings.copyId }}
+                </button>
+              </dd>
+            </div>
+          }
+        </dl>
+        <p class="copy-feedback" aria-live="polite">{{ localizeString(copyFeedback()) }}</p>
+      </details>
+    </aside>
   }
 </section>

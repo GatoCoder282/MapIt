@@ -35,9 +35,10 @@
 
 .logo-img {
   display: block;
-  width: auto;
+  width: 132px;
   height: 60px;
-  object-fit: contain;
+  object-fit: cover;
+  object-position: center;
   user-select: none;
 }
 .nav-links {
@@ -202,16 +203,16 @@
   }
 }
 
+.mobile-menu-content {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .mobile-nav {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px 16px;
-  overflow: hidden;
-}
-
-.mobile-menu-content {
-  min-height: 0;
   overflow: hidden;
 }
 
@@ -244,4 +245,10 @@
   .mobile-menu {
     transition: none;
   }
+}
+
+.nav-wordmark {
+  color: var(--mapit-color-text);
+  font: 800 25px var(--mapit-font-display);
+  letter-spacing: -0.055em;
 }

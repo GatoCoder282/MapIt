@@ -18,11 +18,18 @@ import {
   LucideQrCode,
   LucideShieldCheck,
   LucideWifi,
+  LucideStore,
+  LucideMapPin,
+  LucideCalendarDays,
+  LucideArmchair,
+  LucideInfo,
+  LucideCopy,
+  LucideScanLine,
+  LucideCheckCircle2,
 } from '@lucide/angular';
 import { ReservationAccess } from '../../../core/reservation-access';
 
 import { STRINGS } from '../../../core/strings';
-import { PublicEstablishmentIdentity } from '../../../core/public-establishment-identity';
 import { PublicSpaceSummary } from '../../../core/public-space';
 import { PaymentStore } from '../model/payment-store';
 import { PaymentQrImage } from './payment-qr';
@@ -31,7 +38,6 @@ import { PaymentQrImage } from './payment-qr';
   selector: 'mp-payment-page',
   imports: [
     RouterLink,
-    PublicEstablishmentIdentity,
     PublicSpaceSummary,
     PaymentQrImage,
     LucideArrowLeft,
@@ -42,6 +48,14 @@ import { PaymentQrImage } from './payment-qr';
     LucideQrCode,
     LucideShieldCheck,
     LucideWifi,
+    LucideStore,
+    LucideMapPin,
+    LucideCalendarDays,
+    LucideArmchair,
+    LucideInfo,
+    LucideCopy,
+    LucideScanLine,
+    LucideCheckCircle2,
   ],
   providers: [PaymentStore],
   templateUrl: './payment-page.html',
@@ -57,6 +71,7 @@ export class PaymentPage {
   private readonly access = inject(ReservationAccess);
   private readonly fragment = toSignal(inject(ActivatedRoute).fragment, { initialValue: null });
   protected readonly shareOpen = signal(false);
+  protected readonly copyStatus = signal<'idle' | 'copied' | 'error'>('idle');
   protected readonly scenarios = Object.entries(this.strings.scenarios).map(([value, label]) => ({
     value,
     label,
@@ -72,6 +87,7 @@ export class PaymentPage {
       this.store.previewEnabled();
       const fragment = this.fragment();
       untracked(() => {
+        this.copyStatus.set('idle');
         if (fragment) this.access.capture(scope, fragment);
         void this.store.load(scope);
       });
@@ -80,6 +96,14 @@ export class PaymentPage {
 
   protected changeScenario(event: Event): void {
     this.store.chooseScenario((event.target as HTMLSelectElement).value);
+  }
+  protected async copyReference(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.reservationId());
+      this.copyStatus.set('copied');
+    } catch {
+      this.copyStatus.set('error');
+    }
   }
 
   protected toggleShare(event: Event): void {
