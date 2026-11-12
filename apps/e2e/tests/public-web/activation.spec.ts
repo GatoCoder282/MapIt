@@ -90,7 +90,13 @@ test.describe('CU-25 — onboarding del primer ADMIN', () => {
     await page.locator('#password').fill('S3cur3?P4ss!');
     await page.getByRole('button', { name: /iniciar sesi/i }).click();
     await expect(page).toHaveURL(/\/spaces\/setup\?manage=1$/, { timeout: 15_000 });
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await page.getByRole('textbox', { name: 'Nombre del establecimiento' }).fill('Primera sede');
+    await page.getByRole('radio', { name: 'Restaurante' }).click();
+    await page.getByRole('button', { name: 'Siguiente' }).click();
+    await expect(page).toHaveURL(/\/home\?selectEstablishment=1$/);
+    await page.getByRole('radio', { name: 'Primera sede' }).check();
+    await page.getByTestId('continue').click();
+    await expect(page).toHaveURL(/\/home$/);
   });
 
   test('un enlace sin parámetros avisa claramente', async ({ page }) => {
