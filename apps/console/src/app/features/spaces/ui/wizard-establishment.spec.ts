@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { AccessibleEstablishment } from '@mapit/api-client';
 import { AuthSession } from '@mapit/auth';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import { ActivatedRoute, convertToParamMap, Router, RouterLink } from '@angular/router';
 import { BehaviorSubject, of } from 'rxjs';
 
@@ -46,6 +47,10 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
         },
         { provide: Router, useValue: { navigate } },
         { provide: AuthSession, useValue: { logout: vi.fn() } },
+        {
+          provide: FeatureFlagService,
+          useValue: { isVerticalEnabled: (type: string) => type !== 'HOTEL' },
+        },
         {
           provide: EstablishmentContext,
           useValue: { active, status },
@@ -123,6 +128,8 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
     await fixture.whenStable();
 
     const page = fixture.nativeElement as HTMLElement;
+    const types = page.querySelectorAll<HTMLButtonElement>('button[role="radio"]');
+    expect(types[3]?.disabled).toBe(true);
     const name = page.querySelector<HTMLInputElement>('input[name="name"]')!;
     name.value = 'Mi primer establecimiento';
     name.dispatchEvent(new Event('input'));

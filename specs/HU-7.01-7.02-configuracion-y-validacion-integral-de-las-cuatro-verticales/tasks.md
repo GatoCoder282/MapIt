@@ -2,12 +2,12 @@
 
 ## MAP-232 — Definir y resolver vertical por establecimiento/Tenant con Unleash
 
-- [ ] Contrato: `VerticalProfile`, `GET /establishments/{id}/vertical-profile`, `GET /sectors/{id}/vertical-profile`, `403 vertical-disabled` en `createEstablishment`; `pnpm api:lint` y `pnpm api:gen`.
-- [ ] `shared-kernel/vertical`: catálogo, perfil, modo de reserva, gate y excepción.
-- [ ] `FeatureFlagPort.isEnabledFor` con contexto de tenant en Unleash; defaults `true` en los 3 sitios.
-- [ ] `spaces`: gate en el alta de establecimiento y lectura del perfil por establecimiento/sector.
-- [ ] `bootstrap`: advice `403 vertical-disabled`.
-- [ ] Tests: catálogo y gate (unit); perfil A/B, `404` cruzado y `403` con flag apagada (IT).
+- [x] Contrato: `VerticalProfile`, `GET /establishments/{id}/vertical-profile`, `GET /sectors/{id}/vertical-profile`, `403 vertical-disabled` en `createEstablishment`; `pnpm api:lint` y `pnpm api:gen`.
+- [x] `shared-kernel/vertical`: catálogo, perfil, modo de reserva, gate y excepción.
+- [x] `FeatureFlagPort.isEnabledFor` con contexto de tenant en Unleash; defaults `true` en los 3 sitios.
+- [x] `spaces`: gate en el alta de establecimiento y lectura del perfil por establecimiento/sector.
+- [x] `bootstrap`: advice `403 vertical-disabled`.
+- [x] Tests: catálogo y gate (unit); perfil A/B, `404` cruzado y `403` con flag apagada (IT).
 
 ## MAP-247 — Configurar catálogo de elementos y plantillas para las cuatro verticales
 
@@ -58,3 +58,25 @@
   desde V5) y era inmutable (RN-3 de CU-04): la decisión tenant vs establecimiento no necesita
   migración (spec D1).
 - `vertical.hotel` y `vertical.event-hall` existían en los tres sitios pero ningún código las leía.
+
+### MAP-232 — Resolución y habilitación
+
+- Contrato: `VerticalProfile`, `BookingMode`, `GET /establishments/{id}/vertical-profile`,
+  `GET /sectors/{id}/vertical-profile` y la respuesta `VerticalDisabled` (403) en
+  `createEstablishment`. `pnpm api:lint` sin errores (las 2 advertencias de `/health` y
+  `/demo-items` ya estaban en `main`).
+- `shared-kernel/vertical`: `Vertical`, `BookingMode`, `VerticalProfile`, `VerticalCatalog`,
+  `VerticalGate`, `VerticalDisabledException`. `bootstrap/VerticalWiring` publica el gate y
+  traduce la excepción a `403 https://mapit.local/problems/vertical-disabled` con `vertical`.
+- `FeatureFlagPort.isEnabledFor(flag, tenant)` es un método por defecto: los diez IT que
+  sustituyen el puerto por un doble siguen compilando y, como solo usan restaurantes, no
+  cambian de comportamiento. Unleash lo implementa con `UnleashContext` (`tenantId`).
+- Las rutas de establecimientos siguen abiertas con `DemoTenantContext` (temporal de CU-04):
+  un anónimo cae en el tenant demo y recibe 404 por un establecimiento ajeno, no 401.
+- El backend serializa nulos con `default-property-inclusion: non_null`; el perfil declara
+  `@JsonInclude(ALWAYS)` porque el contrato exige los campos nulos según el modo.
+- El proxy de Unleash del navegador no recibe el tenant: en Console la flag solo deshabilita la
+  opción del selector; quien decide es el backend (403) y la UI muestra el motivo.
+- Verificación: `pnpm be:test` verde; `VerticalProfileIntegrationTest` (6 casos) verde con
+  Testcontainers; `ng test libs` de flags (7) verde; `pnpm fe:typecheck` y ESLint de los
+  archivos tocados sin avisos.

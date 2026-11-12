@@ -807,6 +807,9 @@ export const STRINGS_JA = {
       timezonePlaceholder: 'エリアを選択してください',
       creating: '作成中…',
       createFailed: '施設を作成できませんでした。もう一度やり直してください。',
+      verticalDisabled:
+        'この施設タイプは会社で利用できません。別のタイプを選択するか、利用を申請してください。',
+      typeDisabledHint: 'この会社では利用できません',
       nameRequired: '施設名を入力します。',
       typeRequired: '施設の種類を選択します。',
       editEyebrow: 'エディション',

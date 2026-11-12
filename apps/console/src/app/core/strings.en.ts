@@ -809,6 +809,9 @@ export const STRINGS_EN = {
       timezonePlaceholder: 'Select an area',
       creating: 'Creating…',
       createFailed: 'The establishment could not be created. Try again.',
+      verticalDisabled:
+        'This establishment type is unavailable for your company. Choose another type or ask for access.',
+      typeDisabledHint: 'Unavailable for your company',
       nameRequired: 'Enter the name of the establishment.',
       typeRequired: 'Select the type of establishment.',
       editEyebrow: 'Edition',

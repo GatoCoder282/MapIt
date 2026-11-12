@@ -1151,6 +1151,9 @@ const STRINGS_ES = {
       timezonePlaceholder: 'Selecciona una zona',
       creating: 'Creando…',
       createFailed: 'No se pudo crear el establecimiento. Inténtalo de nuevo.',
+      verticalDisabled:
+        'Este tipo de establecimiento no está habilitado para tu empresa. Elige otro o pide que lo activen.',
+      typeDisabledHint: 'No habilitado para tu empresa',
       nameRequired: 'Ingresa el nombre del establecimiento.',
       typeRequired: 'Selecciona el tipo de establecimiento.',
       editEyebrow: 'Edición',
