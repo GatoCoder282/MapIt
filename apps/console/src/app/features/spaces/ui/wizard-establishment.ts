@@ -13,6 +13,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import type { Establishment } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
 import { TimezonePicker } from '@mapit/ui-kit';
 import { LucideBedDouble, LucideChefHat, LucideMartini, LucidePartyPopper } from '@lucide/angular';
 
@@ -259,7 +260,7 @@ type Step1Field = 'name' | 'type';
                   >
                     {{ strings.wizard.backToList }}
                   </button>
-                } @else {
+                } @else if (context.active()) {
                   <a class="btn-secondary" routerLink="/home">
                     <svg
                       viewBox="0 0 24 24"
@@ -275,6 +276,15 @@ type Step1Field = 'name' | 'type';
                     </svg>
                     {{ strings.wizard.previous }}
                   </a>
+                } @else {
+                  <button
+                    class="btn-secondary"
+                    type="button"
+                    [disabled]="store.busy()"
+                    (click)="signOut()"
+                  >
+                    {{ logoutLabel }}
+                  </button>
                 }
                 <button class="btn-primary" type="submit" [disabled]="store.saving()">
                   {{ store.saving() ? strings.wizard.creating : strings.wizard.next }}
@@ -951,11 +961,13 @@ export class WizardEstablishmentComponent {
   protected readonly localizeString = localizeString;
   protected readonly store = inject(SpacesStore);
   private readonly api = inject(SpacesApiService);
+  private readonly session = inject(AuthSession);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   protected readonly context = inject(EstablishmentContext);
 
   protected readonly strings = STRINGS.spaces;
+  protected readonly logoutLabel = STRINGS.establishmentContext.logout;
 
   protected readonly name = signal('');
   protected readonly establishmentType = signal<string | null>(null);
@@ -1172,6 +1184,12 @@ export class WizardEstablishmentComponent {
     this.modo.set('list');
   }
 
+  protected signOut(): void {
+    if (!this.canDeactivate()) return;
+    this.resetCreateDraft();
+    this.session.logout();
+  }
+
   private hasCreateChanges(): boolean {
     return !!this.name() || !!this.establishmentType() || !!this.address() || !!this.timezone();
   }
@@ -1206,6 +1224,13 @@ export class WizardEstablishmentComponent {
       .subscribe({
         next: () => {
           this.resetCreateDraft();
+          if (!this.context.active()) {
+            void this.router.navigate(['/home'], {
+              queryParams: { selectEstablishment: '1' },
+              replaceUrl: true,
+            });
+            return;
+          }
           this.modo.set('list');
           this.loadEstablishments();
         },

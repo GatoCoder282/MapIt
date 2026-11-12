@@ -110,6 +110,7 @@
         <label for="email">{{ strings.login.emailLabel }}</label>
         <input
           id="email"
+          data-testid="login-email"
           name="email"
           type="email"
           autocomplete="username"
@@ -130,6 +131,7 @@
         <label for="password">{{ strings.login.passwordLabel }}</label>
         <input
           id="password"
+          data-testid="login-password"
           name="password"
           [type]="store.passwordVisible() ? 'text' : 'password'"
           autocomplete="current-password"
@@ -178,12 +180,18 @@
           />
           <span>{{ strings.login.rememberMe }}</span>
         </label>
-        <button type="button" class="text-button" (click)="store.showHelp('password')">
+        <button type="button" class="text-button" (click)="store.showHelp()">
           {{ strings.login.forgotPassword }}
         </button>
       </div>
 
-      <button type="submit" class="submit-button" [disabled]="store.pending()" [attr.aria-busy]="store.pending()">
+      <button
+        type="submit"
+        class="submit-button"
+        data-testid="login-submit"
+        [disabled]="store.pending()"
+        [attr.aria-busy]="store.pending()"
+      >
         {{ store.pending() ? strings.login.submitting : strings.login.submit }}
       </button>
 

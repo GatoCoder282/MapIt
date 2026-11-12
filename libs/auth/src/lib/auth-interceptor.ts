@@ -16,11 +16,12 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     return next(request);
   }
   const prefix = base.pathname.replace(/\/+$/, '');
+  const path = target.pathname.replace(/\/+$/, '');
   if (
     !['http:', 'https:'].includes(base.protocol) ||
     target.origin !== base.origin ||
     !(target.pathname === prefix || target.pathname.startsWith(`${prefix}/`)) ||
-    target.pathname.replace(/\/+$/, '') === `${prefix}/auth/login`
+    path === prefix + '/auth/global-login'
   ) {
     return next(request);
   }

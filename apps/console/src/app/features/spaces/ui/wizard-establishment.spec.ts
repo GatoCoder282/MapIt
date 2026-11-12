@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { AccessibleEstablishment } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
 import { ActivatedRoute, convertToParamMap, Router, RouterLink } from '@angular/router';
 import { BehaviorSubject, of } from 'rxjs';
 
@@ -44,6 +45,7 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
           useValue: { snapshot: { queryParamMap: queryParams.value }, queryParamMap: queryParams },
         },
         { provide: Router, useValue: { navigate } },
+        { provide: AuthSession, useValue: { logout: vi.fn() } },
         {
           provide: EstablishmentContext,
           useValue: { active, status },
@@ -110,5 +112,26 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
     expect(page.querySelector('select[name="establishment"]')).toBeNull();
 
     fixture.destroy();
+  });
+
+  it('vuelve al selector para recargar la lista después de crear el primer establecimiento', async () => {
+    const { listEstablishments, navigate } = setup({ manage: '1' });
+    listEstablishments.mockReturnValue(of([]));
+    await TestBed.compileComponents();
+    const fixture = TestBed.createComponent(WizardEstablishmentComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const page = fixture.nativeElement as HTMLElement;
+    const name = page.querySelector<HTMLInputElement>('input[name="name"]')!;
+    name.value = 'Mi primer establecimiento';
+    name.dispatchEvent(new Event('input'));
+    page.querySelector<HTMLButtonElement>('button[role="radio"]')!.click();
+    page.querySelector<HTMLFormElement>('form.form')!.dispatchEvent(new Event('submit'));
+
+    expect(navigate).toHaveBeenCalledWith(['/home'], {
+      queryParams: { selectEstablishment: '1' },
+      replaceUrl: true,
+    });
   });
 });

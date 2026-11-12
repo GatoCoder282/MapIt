@@ -14,12 +14,13 @@ test('correlaciona un login rechazado sin registrar credenciales', async ({ page
     }
   });
 
-  await page.goto('/empresa/platform/login');
+  await page.goto('/login');
   await page.getByLabel(/correo electr/i).fill(`${sentinel}@example.invalid`);
   await page.getByRole('textbox', { name: /^contrase[ñn]a$/i }).fill(sentinel);
   const responsePromise = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/auth/login') && response.request().method() === 'POST',
+      response.url().includes('/api/v1/auth/global-login') &&
+      response.request().method() === 'POST',
   );
   await page.getByRole('button', { name: /iniciar sesi/i }).click();
   const response = await responsePromise;

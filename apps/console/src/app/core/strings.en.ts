@@ -544,9 +544,8 @@ export const STRINGS_EN = {
     submitting: 'Logging in…',
     pageAriaLabel: 'MapIt Platform',
     panelTitle: 'New here?',
-    panelIntro:
-      'Join today and discover everything MapIt can do for your business. Create your account in seconds.',
-    panelCta: 'Create account',
+    panelIntro: 'Ask your company administrator for an invitation to MapIt.',
+    panelCta: 'Request access',
     transitionAriaLabel: 'Page Transition',
     newBusiness: 'New business?',
     requestAccess: 'Request access',
@@ -566,14 +565,14 @@ export const STRINGS_EN = {
       emailRequired: 'Enter your email.',
       emailInvalid: 'Please enter a valid email.',
       passwordRequired: 'Enter your password.',
-      missingTenantLink: "Open your company's access link to continue.",
+      rateLimited: 'Too many attempts. Wait a moment and try again.',
       startFailed: 'Failed to log in. Try again.',
       invalidCredentials: 'Invalid credentials.',
       connection: 'We could not connect to the service. Try again.',
     },
     help: {
       password: 'Password recovery is not yet available. Contact your company administrator.',
-      access: 'Access requests are not yet available from this screen.',
+      access: 'Contact your company administrator to get an account.',
     },
     passwordStrength: {
       length: '8 characters or more',

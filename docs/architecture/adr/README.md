@@ -47,3 +47,4 @@ descartaron las alternativas_. Sirve para dos cosas muy concretas:
 | [0008](ADR-0008-consulta-credenciales-prelogin.md) | Consulta de credenciales antes del JWT       | **Propuesto** |
 | [0009](ADR-0009-realtime-websocket-outbox.md)      | WebSocket STOMP con outbox y broker simple   | Aceptado      |
 | [0010](ADR-0010-logging-estructurado.md)           | Logging JSON, privacidad y correlación       | Aceptado      |
+| [0011](ADR-0011-identidad-global-staff.md)         | Correo único de Console por cuenta           | Aceptado      |

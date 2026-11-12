@@ -2464,30 +2464,22 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /auth/login:
+  /auth/global-login:
     post:
-      parameters:
-        - $ref: "#/components/parameters/RequestId"
       tags: [auth]
-      summary: Iniciar sesión
-      description: |
-        Verifica las credenciales del usuario dentro del tenant indicado y emite
-        un token de acceso JWT. Todos los rechazos de credenciales usan el mismo
-        mensaje para no revelar si existen el tenant o la cuenta.
-      operationId: login
+      summary: Iniciar sesión con correo y contraseña
+      description: El correo identifica una única cuenta de Console y su tenant, incluido el tenant de plataforma.
+      operationId: globalLogin
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginRequest"
+              $ref: "#/components/schemas/GlobalLoginRequest"
       responses:
         "200":
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/RequestId"
-          description: Credenciales válidas y token emitido
+          description: Sesión de la cuenta autenticada
           content:
             application/json:
               schema:
@@ -2496,6 +2488,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/AuthRateLimited"
 
   /health:
     get:
@@ -2744,7 +2738,7 @@ paths:
 
         El `tenant_id` nunca se acepta como dato del cliente: sale del JWT (o del
         slug indicado por el SUPER_ADMIN, que sí puede operar cross-tenant).
-        El correo es único por tenant; un duplicado responde 409. Nunca se devuelve
+        El correo es único en Console; un duplicado responde 409. Nunca se devuelve
         ni persiste una contraseña temporal en claro, ni se genera un JWT aquí.
       operationId: createUser
       requestBody:
@@ -4044,7 +4038,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        Token JWT emitido por `/auth/login`. Incluye el claim `tenant`, que es de
+        Token JWT emitido por `/auth/global-login`. Incluye el claim `tenant`, que es de
         donde el backend resuelve el tenant (NO del header `X-Tenant-Id`, que el
         cliente podría falsificar).
     customerHistorySession:
@@ -5116,24 +5110,6 @@ components:
           type: [string, "null"]
           maxLength: 32
 
-    LoginRequest:
-      type: object
-      required: [tenantSlug, email, password]
-      properties:
-        tenantSlug:
-          type: string
-          pattern: "^[a-zA-Z0-9][a-zA-Z0-9-]{1,62}$"
-          minLength: 2
-          maxLength: 63
-        email:
-          type: string
-          format: email
-          maxLength: 254
-        password:
-          type: string
-          minLength: 1
-          writeOnly: true
-
     LoginResponse:
       type: object
       required: [accessToken, tokenType, expiresAt, user]
@@ -5151,6 +5127,20 @@ components:
           readOnly: true
         user:
           $ref: "#/components/schemas/AuthenticatedUser"
+
+    GlobalLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 72
+          writeOnly: true
 
     AuthenticatedUser:
       type: object
@@ -5271,7 +5261,7 @@ components:
         tenantSlug:
           type: string
           readOnly: true
-          description: Slug del tenant activado, para redirigir a `/empresa/{slug}/login`.
+          description: Slug del tenant cuya cuenta se activó.
         email:
           type: string
           format: email
@@ -6189,6 +6179,17 @@ components:
           examples: ["BAR"]
 
   responses:
+    AuthRateLimited:
+      description: Límite de intentos excedido
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
     TooManyRequests:
       headers:
         X-Request-ID:

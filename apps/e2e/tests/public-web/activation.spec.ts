@@ -23,8 +23,8 @@ test.describe('CU-25 — onboarding del primer ADMIN', () => {
     const adminEmail = `admin-${run}@mapit.test`;
 
     // 1. El SUPER_ADMIN autentica y registra el tenant (API real).
-    const login = await request.post(`${API}/auth/login`, {
-      data: { tenantSlug: 'platform', email: SUPER_EMAIL, password: SUPER_PASSWORD },
+    const login = await request.post(`${API}/auth/global-login`, {
+      data: { email: SUPER_EMAIL, password: SUPER_PASSWORD },
     });
     expect(login.ok()).toBeTruthy();
     const { accessToken } = (await login.json()) as { accessToken: string };
@@ -72,6 +72,11 @@ test.describe('CU-25 — onboarding del primer ADMIN', () => {
     await page.getByRole('button', { name: /activar cuenta/i }).click();
     await expect(page.getByRole('status')).toContainText(/activada/i);
 
+    await expect(page.getByRole('link', { name: /ir al inicio de sesión/i })).toHaveAttribute(
+      'href',
+      `${CONSOLE_URL}/login`,
+    );
+
     // 4. El enlace no sirve dos veces.
     await page.goto(`/activar?tenant=${linkSlug}&token=${rawToken}`);
     await page.locator('input[autocomplete="new-password"]').first().fill('S3cur3?P4ss!');
@@ -79,12 +84,12 @@ test.describe('CU-25 — onboarding del primer ADMIN', () => {
     await page.getByRole('button', { name: /activar cuenta/i }).click();
     await expect(page.getByRole('alert')).toBeVisible();
 
-    // 5. El ADMIN entra por login de la consola con el tenant de su empresa.
-    await page.goto(`${CONSOLE_URL}/empresa/${linkSlug}/login`);
+    // 5. El ADMIN entra por el login unificado y configura su primer establecimiento.
+    await page.goto(`${CONSOLE_URL}/login`);
     await page.getByLabel(/correo electr/i).fill(adminEmail);
     await page.locator('#password').fill('S3cur3?P4ss!');
     await page.getByRole('button', { name: /iniciar sesi/i }).click();
-    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/spaces\/setup\?manage=1$/, { timeout: 15_000 });
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 

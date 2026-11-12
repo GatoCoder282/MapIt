@@ -24,26 +24,30 @@ public class AuthenticateUser {
     }
 
     public AuthenticatedUser execute(AuthenticateUserCommand command) {
-        String slug = command.tenantSlug();
-        String email = command.email();
         String password = command.password();
-        if (slug == null || email == null || password == null || password.isBlank()
+        var credentials = users.findByEmail(validateCredentials(command.email(), password));
+        return verify(password, credentials).identity();
+    }
+
+    private static String validateCredentials(String email, String password) {
+        if (email == null || password == null || password.isBlank()
                 || password.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new InvalidCredentialsException();
         }
-        slug = slug.strip().toLowerCase(Locale.ROOT);
-        email = email.strip().toLowerCase(Locale.ROOT);
-        if (!slug.matches("[a-z0-9][a-z0-9-]{1,62}") || email.isBlank() || email.length() > 254) {
+        String normalized = email.strip().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty() || normalized.length() > 254) {
             throw new InvalidCredentialsException();
         }
+        return normalized;
+    }
 
-        Optional<UserCredentials> credentials = users.findByTenantSlugAndEmail(slug, email);
+    private UserCredentials verify(String password, Optional<UserCredentials> credentials) {
         // Comparar también cuentas inexistentes o deshabilitadas evita atajos evidentes.
         boolean validPassword = passwords.matches(password, credentials.map(UserCredentials::passwordHash));
         UserCredentials user = credentials.orElseThrow(InvalidCredentialsException::new);
         if (!validPassword || !user.canAuthenticate()) {
             throw new InvalidCredentialsException();
         }
-        return user.identity();
+        return user;
     }
 }

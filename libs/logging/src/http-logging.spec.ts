@@ -76,9 +76,9 @@ describe('correlación HTTP', () => {
   it('conserva el ID válido de respuesta y propaga el error sin exponer datos', () => {
     const received = vi.fn();
     http
-      .post(`${base}/auth/login?token=private-canary`, { password: 'private-canary' })
+      .post(`${base}/auth/global-login?token=private-canary`, { password: 'private-canary' })
       .subscribe({ error: received });
-    const request = controller.expectOne(`${base}/auth/login?token=private-canary`);
+    const request = controller.expectOne(`${base}/auth/global-login?token=private-canary`);
     const responseId = 'abcdef01-1234-5678-9012-abcdef012345';
     request.flush(
       { detail: 'private-canary' },

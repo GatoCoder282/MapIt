@@ -40,7 +40,7 @@ public final class ActivationExceptions {
     }
   }
 
-  /** Ya existe una cuenta con ese correo en el tenant. */
+  /** Ya existe una cuenta con ese correo. */
   public static final class EmailAlreadyRegistered extends RuntimeException {
     public EmailAlreadyRegistered() {
       super("Ya existe una cuenta con este correo.");

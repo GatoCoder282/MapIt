@@ -18,8 +18,8 @@ public final class ApiPaths {
 
   public static final String HEALTH = API_V1 + "/health";
   public static final String PUBLIC = API_V1 + "/public/**";
-  public static final String AUTH_LOGIN = API_V1 + "/auth/login";
   public static final String AUTH_ACTIVATE = API_V1 + "/auth/activate";
+  public static final String AUTH_GLOBAL_LOGIN = API_V1 + "/auth/global-login";
   public static final String DEMO_ITEMS = API_V1 + "/demo-items/**";
   public static final String ESTABLISHMENTS = API_V1 + "/establishments/**";
   public static final String AUDIT_LOGS = API_V1 + "/audit-logs";

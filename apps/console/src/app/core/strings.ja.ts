@@ -542,9 +542,8 @@ export const STRINGS_JA = {
     submitting: 'ログイン中…',
     pageAriaLabel: 'MapIt プラットフォーム',
     panelTitle: 'ここは新しいですか？',
-    panelIntro:
-      '今すぐ参加して、MapIt があなたのビジネスにできることをすべて発見してください。数秒でアカウントを作成できます。',
-    panelCta: 'アカウントを作成する',
+    panelIntro: 'MapIt にアクセスするには、会社の管理者に招待を依頼してください。',
+    panelCta: 'アクセスを申請',
     transitionAriaLabel: 'ページ遷移',
     newBusiness: '新しいビジネス？',
     requestAccess: 'アクセスをリクエストする',
@@ -564,14 +563,14 @@ export const STRINGS_JA = {
       emailRequired: 'メールアドレスを入力してください。',
       emailInvalid: '有効な電子メールを入力してください。',
       passwordRequired: 'パスワードを入力してください。',
-      missingTenantLink: '続行するには、会社のアクセス リンクを開いてください。',
+      rateLimited: '試行回数が上限に達しました。しばらく待ってから再試行してください。',
       startFailed: 'ログインに失敗しました。もう一度お試しください。',
       invalidCredentials: '無効な資格情報です。',
       connection: 'サービスに接続できませんでした。もう一度やり直してください。',
     },
     help: {
       password: 'パスワードの回復はまだ利用できません。会社の管理者に連絡してください。',
-      access: 'この画面からはまだアクセス要求を利用できません。',
+      access: 'アカウントについては、会社の管理者にお問い合わせください。',
     },
     passwordStrength: {
       length: '8文字以上',

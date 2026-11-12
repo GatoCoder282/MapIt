@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -97,13 +98,13 @@ class AuthenticationIntegrationTest {
                     ('auth-b', 'Empresa B', 'empresa-b', 'ACTIVE', 'RESTAURANT')
                 on conflict (id) do update set status = 'ACTIVE'
                 """);
-        insertUser(USER_A, "auth-a", "clave-a", "ADMIN");
-        insertUser(UUID.randomUUID(), "auth-b", "clave-b", "STAFF");
+        insertUser(USER_A, "auth-a", "staff@example.test", "clave-a", "ADMIN");
+        insertUser(UUID.randomUUID(), "auth-b", "staff-b@example.test", "clave-b", "STAFF");
     }
 
     @Test
     void autentica_con_bcrypt_y_devuelve_identidad_persistida() {
-        var result = authenticate.execute(command(" EMPRESA-A ", "clave-a"));
+        var result = authenticate.execute(new AuthenticateUserCommand(" Staff@Example.Test ", "clave-a"));
         assertThat(result.id()).isEqualTo(USER_A);
         assertThat(result.tenantId()).isEqualTo(TenantId.of("auth-a"));
         assertThat(result.role()).isEqualTo(UserRole.ADMIN);
@@ -111,29 +112,47 @@ class AuthenticationIntegrationTest {
     }
 
     @Test
-    void mismo_correo_en_otro_tenant_no_comparte_credenciales() {
-        assertRejected("empresa-b", "clave-a");
-        assertThat(authenticate.execute(command("empresa-b", "clave-b")).tenantId())
-                .isEqualTo(TenantId.of("auth-b"));
-        assertRejected("empresa-a", "clave-b");
+    void autentica_al_super_admin_por_el_mismo_flujo() {
+        UUID id = UUID.randomUUID();
+        insertUser(id, "platform", "platform-login@example.test", "clave-platform", "SUPER_ADMIN");
+        try {
+            var user = authenticate.execute(new AuthenticateUserCommand("platform-login@example.test", "clave-platform"));
+            assertThat(user.id()).isEqualTo(id);
+            assertThat(user.tenantId()).isEqualTo(TenantId.of("platform"));
+            assertThat(user.role()).isEqualTo(UserRole.SUPER_ADMIN);
+        } finally {
+            admin.update("delete from app_user where id = ?", id);
+        }
+    }
+
+    @Test
+    void la_consulta_previa_al_login_solo_puede_leer_el_correo_indicado() {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            jdbc.queryForObject("select set_config('app.login_email', 'staff@example.test', true)", String.class);
+            assertThat(jdbc.queryForList("select id from app_user", UUID.class)).containsExactly(USER_A);
+            setTenant("auth-b");
+            assertThat(jdbc.queryForList("select tenant_id from app_user", String.class)).containsExactly("auth-b");
+        });
+        assertThat(jdbc.queryForObject("select count(*) from app_user", Long.class)).isZero();
     }
 
     @Test
     void rechaza_cuenta_inactiva_y_empresa_suspendida() {
         admin.update("update app_user set active = false where id = ?", USER_A);
-        assertRejected("empresa-a", "clave-a");
+
+        assertThatThrownBy(() -> authenticate.execute(new AuthenticateUserCommand("staff@example.test", "clave-a")))
+                .isInstanceOf(InvalidCredentialsException.class);
         admin.update("update app_user set active = true where id = ?", USER_A);
         admin.update("update tenant set status = 'SUSPENDED' where id = 'auth-a'");
-        assertRejected("empresa-a", "clave-a");
+
+        assertThatThrownBy(() -> authenticate.execute(new AuthenticateUserCommand("staff@example.test", "clave-a")))
+                .isInstanceOf(InvalidCredentialsException.class);
     }
 
     @Test
     void errores_de_credenciales_y_cuentas_inexistentes_son_uniformes() {
-        assertRejected("empresa-a", "incorrecta");
-        assertRejected("empresa-inexistente", "clave-a");
-        assertThatThrownBy(() -> authenticate.execute(
-                new AuthenticateUserCommand("empresa-a", "inexistente@example.test", "clave-a")))
-                .isInstanceOf(InvalidCredentialsException.class).hasMessage("Credenciales inválidas.");
+        assertRejected("staff@example.test", "incorrecta");
+        assertRejected("inexistente@example.test", "clave-a");
     }
 
     @Test
@@ -157,9 +176,9 @@ class AuthenticationIntegrationTest {
 
     @Test
     void autenticacion_no_filtra_el_tenant_a_la_siguiente_operacion() {
-        authenticate.execute(command("empresa-a", "clave-a"));
+        authenticate.execute(new AuthenticateUserCommand(" Staff@Example.Test ", "clave-a"));
         assertThat(jdbc.queryForObject("select current_tenant_id()", String.class)).isNull();
-        assertRejected("empresa-b", "incorrecta");
+        assertRejected("staff-b@example.test", "incorrecta");
         assertThat(jdbc.queryForObject("select current_tenant_id()", String.class)).isNull();
         assertThat(jdbc.queryForObject("select count(*) from app_user", Long.class)).isZero();
     }
@@ -168,37 +187,33 @@ class AuthenticationIntegrationTest {
     void autenticacion_preserva_el_contexto_de_una_transaccion_exterior() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             setTenant("auth-b");
-            assertThat(authenticate.execute(command("empresa-a", "clave-a")).id()).isEqualTo(USER_A);
+            assertThat(authenticate.execute(new AuthenticateUserCommand(" Staff@Example.Test ", "clave-a")).id()).isEqualTo(USER_A);
             assertThat(jdbc.queryForObject("select current_tenant_id()", String.class)).isEqualTo("auth-b");
             assertThat(jdbc.queryForObject("select tenant_id from app_user", String.class)).isEqualTo("auth-b");
         });
     }
 
     @Test
-    void correo_es_unico_dentro_del_tenant_y_debe_estar_normalizado() {
-        assertThatThrownBy(() -> insertUser(UUID.randomUUID(), "auth-a", "otra-clave", "STAFF"))
-                .isInstanceOf(DataAccessException.class);
+    void correo_es_unico_entre_empresas_y_debe_estar_normalizado() {
+        assertThatThrownBy(() -> insertUser(UUID.randomUUID(), "auth-b", "staff@example.test", "otra-clave", "STAFF"))
+                .isInstanceOf(DuplicateKeyException.class);
         assertThatThrownBy(() -> admin.update("update app_user set email = ' Staff@Example.Test ' where id = ?", USER_A))
                 .isInstanceOf(DataAccessException.class);
     }
 
-    private void insertUser(UUID id, String tenantId, String password, String role) {
+    private void insertUser(UUID id, String tenantId, String email, String password, String role) {
         admin.update("""
                 insert into app_user (id, tenant_id, email, password_hash, full_name, role)
-                values (?, ?, 'staff@example.test', ?, 'Operador', ?)
-                """, id, tenantId, encoder.encode(password), role);
+                values (?, ?, ?, ?, 'Operador', ?)
+                """, id, tenantId, email, encoder.encode(password), role);
     }
 
     private void setTenant(String tenantId) {
         jdbc.queryForObject("select set_config('app.tenant_id', ?, true)", String.class, tenantId);
     }
 
-    private static AuthenticateUserCommand command(String slug, String password) {
-        return new AuthenticateUserCommand(slug, " Staff@Example.Test ", password);
-    }
-
-    private void assertRejected(String slug, String password) {
-        assertThatThrownBy(() -> authenticate.execute(command(slug, password)))
+    private void assertRejected(String email, String password) {
+        assertThatThrownBy(() -> authenticate.execute(new AuthenticateUserCommand(email, password)))
                 .isInstanceOf(InvalidCredentialsException.class).hasMessage("Credenciales inválidas.");
     }
 }
