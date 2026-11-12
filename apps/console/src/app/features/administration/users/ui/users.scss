@@ -1,0 +1,74 @@
+@use 'ui-kit/styles/tokens';
+
+.users-page {
+  padding: 2rem;
+  max-width: 80rem;
+  margin-inline: auto;
+}
+.panel {
+  padding: 1.25rem;
+  margin-block: 1.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+}
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+input,
+select,
+button {
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #cbd5e1;
+  text-align: left;
+}
+td:last-child {
+  white-space: nowrap;
+}
+td button + button {
+  margin-left: 0.5rem;
+}
+.pagination,
+.dialog-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+dialog {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  max-width: min(30rem, 90vw);
+  padding: 1.5rem;
+}
+dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}

@@ -85,13 +85,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/ui/home').then((m) => m.Home),
       },
       {
-        // Secciones del roadmap sin caso de uso todavía: placeholder honesto
-        // hasta que exista la feature real (mismo patrón que /admin/settings).
         path: 'users',
-        data: { title: STRINGS.staffShell.nav.users },
-        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+        canActivate: [roleGuard('ADMIN')],
+        loadComponent: () =>
+          import('./features/administration/users/ui/users').then((m) => m.Users),
       },
       {
+        // Secciones del roadmap sin caso de uso todavía.
         path: 'reports',
         data: { title: STRINGS.staffShell.nav.reports },
         loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),

@@ -29,7 +29,9 @@ export class StaffShell {
     { label: STRINGS.staffShell.nav.home, route: '/home', icon: 'home', exact: true },
     { label: STRINGS.staffShell.nav.map, route: '/spaces/setup', icon: 'map' },
     { label: STRINGS.staffShell.nav.businesses, route: '/establishments', icon: 'businesses' },
-    { label: STRINGS.staffShell.nav.users, route: '/users', icon: 'users' },
+    ...(this.session.user()?.role === 'ADMIN'
+      ? [{ label: STRINGS.staffShell.nav.users, route: '/users', icon: 'users' }]
+      : []),
     { label: STRINGS.staffShell.nav.reports, route: '/reports', icon: 'reports' },
     ...(['ADMIN', 'STAFF'].includes(this.session.user()?.role ?? '')
       ? [{ label: STRINGS.staffShell.nav.checkIn, route: '/check-in', icon: 'reservations' }]

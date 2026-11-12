@@ -1,0 +1,227 @@
+<section class="users-page">
+  <header>
+    <h1>{{ strings.title }}</h1>
+    <p>{{ strings.intro }}</p>
+  </header>
+
+  <section class="panel" [attr.aria-label]="strings.inviteTitle">
+    <h2>{{ strings.inviteTitle }}</h2>
+    <form data-testid="users-invite-form" [formGroup]="form" (ngSubmit)="invite()">
+      <label for="invite-email">{{ strings.email }}</label>
+      <input
+        data-testid="users-invite-email"
+        id="invite-email"
+        type="email"
+        autocomplete="email"
+        formControlName="email"
+        required
+        maxlength="254"
+      />
+      <label for="invite-role">{{ strings.role }}</label>
+      <select data-testid="users-invite-role" id="invite-role" formControlName="role">
+        <option value="MANAGER">{{ roles.MANAGER }}</option>
+        <option value="STAFF">{{ roles.STAFF }}</option>
+      </select>
+      <button data-testid="users-invite-submit" type="submit" [disabled]="form.invalid || store.saving()">
+        {{ strings.invite }}
+      </button>
+    </form>
+  </section>
+
+  @if (store.feedback()) {
+    <p role="status">{{ store.feedback() }}</p>
+  }
+  @if (store.error()) {
+    <p role="alert">{{ store.error() }}</p>
+  }
+
+  <section data-testid="users-invitations" class="panel" [attr.aria-label]="strings.invitationsTitle">
+    <h2>{{ strings.invitationsTitle }}</h2>
+    <p>{{ strings.resendHint }}</p>
+    @if (store.invitationError()) {
+      <p role="alert">{{ store.invitationError() }}</p>
+    }
+    @switch (store.invitationStatus()) {
+      @case ('loading') {
+        <p role="status">{{ strings.invitationsLoading }}</p>
+      }
+      @case ('error') {
+        <button type="button" (click)="store.loadInvitations()">{{ strings.retry }}</button>
+      }
+      @case ('ready') {
+        @if (!store.invitations().length) {
+          <p>{{ strings.invitationsEmpty }}</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">{{ strings.email }}</th>
+                  <th scope="col">{{ strings.role }}</th>
+                  <th scope="col">{{ strings.status }}</th>
+                  <th scope="col">{{ strings.expires }}</th>
+                  <th scope="col">{{ strings.dispatchAttempted }}</th>
+                  <th scope="col">{{ strings.actions }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (invitation of store.invitations(); track invitation.id) {
+                  <tr data-testid="users-invitation-row">
+                    <td>{{ invitation.email }}</td>
+                    <td>{{ roles[invitation.role] }}</td>
+                    <td>
+                      {{ strings.invitationStatus[invitation.status] }} ·
+                      {{ strings.dispatch[invitation.dispatchStatus] }}
+                    </td>
+                    <td>{{ invitation.expiresAt | localDate: locale() : 'medium' }}</td>
+                    <td>
+                      @if (invitation.dispatchAttemptedAt) {
+                        {{ invitation.dispatchAttemptedAt | localDate: locale() : 'medium' }}
+                      } @else {
+                        —
+                      }
+                    </td>
+                    <td>
+                      <button
+                        data-testid="users-invitation-resend"
+                        type="button"
+                        [disabled]="store.saving() || !store.canResend(invitation)"
+                        [attr.aria-label]="strings.resend + ': ' + invitation.email"
+                        (click)="store.resend(invitation)"
+                      >
+                        {{ strings.resend }}
+                      </button>
+                      @if (!store.canResend(invitation)) {
+                        <span>{{ strings.cooldown }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <nav class="pagination" [attr.aria-label]="strings.invitationsTitle">
+          <button
+            type="button"
+            [disabled]="!store.canPrevInvitation()"
+            (click)="store.loadInvitations(store.invitationPage() - 1)"
+          >
+            {{ strings.previous }}
+          </button>
+          <span
+            >{{ strings.page }} {{ store.invitationPage() + 1 }} {{ strings.of }}
+            {{ store.invitationTotalPages() || 1 }} ({{ store.invitationTotalElements() }})</span
+          >
+          <button
+            type="button"
+            [disabled]="!store.canNextInvitation()"
+            (click)="store.loadInvitations(store.invitationPage() + 1)"
+          >
+            {{ strings.next }}
+          </button>
+        </nav>
+      }
+    }
+  </section>
+
+  <section data-testid="users-accounts">
+    @switch (store.status()) {
+      @case ('loading') {
+        <p role="status">{{ strings.loading }}</p>
+      }
+      @case ('error') {
+        <button type="button" (click)="store.load()">{{ strings.retry }}</button>
+      }
+      @case ('ready') {
+        @if (!store.users().length) {
+          <p>{{ strings.empty }}</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">{{ strings.name }}</th>
+                  <th scope="col">{{ strings.email }}</th>
+                  <th scope="col">{{ strings.role }}</th>
+                  <th scope="col">{{ strings.status }}</th>
+                  <th scope="col">{{ strings.created }}</th>
+                  <th scope="col">{{ strings.actions }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (user of store.users(); track user.id) {
+                  <tr data-testid="users-account-row">
+                    <td>{{ user.fullName }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ roles[user.role] }}</td>
+                    <td>{{ user.active ? strings.active : strings.inactive }}</td>
+                    <td>{{ user.createdAt | localDate: locale() : 'mediumDate' }}</td>
+                    <td>
+                      <button
+                        type="button"
+                        (click)="store.detail(user)"
+                        [attr.aria-label]="strings.detail + ': ' + user.fullName"
+                      >
+                        {{ strings.detail }}
+                      </button>
+                      @if (store.canManage(user)) {
+                        <button
+                          data-testid="users-change-role"
+                          type="button"
+                          (click)="ask(user, 'role')"
+                          [attr.aria-label]="strings.changeRole + ': ' + user.fullName"
+                        >
+                          {{ strings.changeRole }}
+                        </button>
+                        <button
+                          data-testid="users-deactivate"
+                          type="button"
+                          (click)="ask(user, 'deactivate')"
+                          [attr.aria-label]="strings.deactivate + ': ' + user.fullName"
+                        >
+                          {{ strings.deactivate }}
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <nav class="pagination" [attr.aria-label]="strings.pagination">
+          <button type="button" [disabled]="!store.canPrev()" (click)="store.load(store.page() - 1)">
+            {{ strings.previous }}
+          </button>
+          <span
+            >{{ strings.page }} {{ store.page() + 1 }} {{ strings.of }} {{ store.totalPages() || 1 }} ({{
+              store.totalElements()
+            }})</span
+          >
+          <button type="button" [disabled]="!store.canNext()" (click)="store.load(store.page() + 1)">
+            {{ strings.next }}
+          </button>
+        </nav>
+      }
+    }
+  </section>
+
+  @if (store.selected(); as user) {
+    <section class="panel" aria-live="polite">
+      <h2>{{ user.fullName }}</h2>
+      <p>{{ user.email }} · {{ roles[user.role] }} · {{ user.active ? strings.active : strings.inactive }}</p>
+      <p>{{ strings.created }}: {{ user.createdAt | localDate: locale() : 'mediumDate' }}</p>
+      <button type="button" (click)="store.selected.set(null)">{{ strings.close }}</button>
+    </section>
+  }
+
+  <dialog #confirmation (close)="store.pending.set(null)">
+    <h2>{{ store.pending()?.kind === 'role' ? strings.changeRole : strings.deactivate }}</h2>
+    <p>{{ store.pending()?.kind === 'role' ? strings.confirmRole : strings.confirmDeactivate }}</p>
+    <div class="dialog-actions">
+      <button type="button" (click)="cancel()">{{ strings.cancel }}</button>
+      <button data-testid="users-confirm" type="button" (click)="confirm()">{{ strings.confirm }}</button>
+    </div>
+  </dialog>
+</section>
