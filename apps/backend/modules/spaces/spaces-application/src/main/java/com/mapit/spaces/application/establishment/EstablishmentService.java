@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
+import com.mapit.shared.vertical.Vertical;
+import com.mapit.shared.vertical.VerticalGate;
 import com.mapit.spaces.domain.Slug;
 import com.mapit.spaces.domain.establishment.Establishment;
 import com.mapit.spaces.domain.establishment.EstablishmentRepository;
@@ -31,12 +33,17 @@ public class EstablishmentService {
   private final EstablishmentRepository repository;
   private final TenantContext tenantContext;
   private final Clock clock;
+  private final VerticalGate verticalGate;
 
   public EstablishmentService(
-      EstablishmentRepository repository, TenantContext tenantContext, Clock clock) {
+      EstablishmentRepository repository,
+      TenantContext tenantContext,
+      Clock clock,
+      VerticalGate verticalGate) {
     this.repository = repository;
     this.tenantContext = tenantContext;
     this.clock = clock;
+    this.verticalGate = verticalGate;
   }
 
   @Transactional(readOnly = true)
@@ -51,10 +58,15 @@ public class EstablishmentService {
         .orElseThrow(() -> new EstablishmentNotFoundException(id));
   }
 
+  /**
+   * Registra un establecimiento. La vertical elegida debe estar habilitada en Unleash para el
+   * tenant (HU-7.01/7.02, spec D3); si no, {@code VerticalDisabledException} → 403.
+   */
   @Transactional
   public Establishment create(
       String name, EstablishmentType type, Slug slug, String address, String timezone) {
     TenantId tenantId = tenantContext.require();
+    verticalGate.require(Vertical.of(type.name()), tenantId);
     requireSlugLibre(tenantId, slug, null);
 
     Instant now = clock.instant();

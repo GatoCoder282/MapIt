@@ -208,11 +208,10 @@ export default async function setup(): Promise<() => Promise<void>> {
        insert into sector(id,tenant_id,floor_id,name,slug,max_capacity,width,height) values('${otherSector}','${tenant}','${otherFloor}','Salón centro','salon-centro',10,480,300);
     `,
     );
-    const login = await fetch(api + '/auth/login', {
+    const login = await fetch(api + '/auth/global-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tenantSlug: tenant,
         email: 'admin@browser.test',
         password: 'Browser_test_123!',
       }),

@@ -546,9 +546,8 @@ const STRINGS_ES = {
     submitting: 'Iniciando sesión…',
     pageAriaLabel: 'Plataforma MapIt',
     panelTitle: '¿Nuevo aquí?',
-    panelIntro:
-      'Únete hoy y descubre todo lo que MapIt puede hacer por tu negocio. Crea tu cuenta en segundos.',
-    panelCta: 'Crear cuenta',
+    panelIntro: 'Solicita una invitación al administrador de tu empresa para acceder a MapIt.',
+    panelCta: 'Solicitar acceso',
     transitionAriaLabel: 'Transición de página',
     newBusiness: '¿Nuevo negocio?',
     requestAccess: 'Solicita acceso',
@@ -568,7 +567,7 @@ const STRINGS_ES = {
       emailRequired: 'Ingresa tu correo electrónico.',
       emailInvalid: 'Ingresa un correo electrónico válido.',
       passwordRequired: 'Ingresa tu contraseña.',
-      missingTenantLink: 'Abre el enlace de acceso de tu empresa para continuar.',
+      rateLimited: 'Demasiados intentos. Espera un momento y vuelve a intentarlo.',
       startFailed: 'No se pudo iniciar la sesión. Inténtalo de nuevo.',
       invalidCredentials: 'Credenciales inválidas.',
       connection: 'No pudimos conectar con el servicio. Inténtalo de nuevo.',
@@ -576,7 +575,7 @@ const STRINGS_ES = {
     help: {
       password:
         'La recuperación de contraseña aún no está disponible. Contacta al administrador de tu empresa.',
-      access: 'Las solicitudes de acceso aún no están disponibles desde esta pantalla.',
+      access: 'Para obtener una cuenta, contacta al administrador de tu empresa.',
     },
     passwordStrength: {
       length: '8 caracteres o más',
@@ -1152,6 +1151,9 @@ const STRINGS_ES = {
       timezonePlaceholder: 'Selecciona una zona',
       creating: 'Creando…',
       createFailed: 'No se pudo crear el establecimiento. Inténtalo de nuevo.',
+      verticalDisabled:
+        'Este tipo de establecimiento no está habilitado para tu empresa. Elige otro o pide que lo activen.',
+      typeDisabledHint: 'No habilitado para tu empresa',
       nameRequired: 'Ingresa el nombre del establecimiento.',
       typeRequired: 'Selecciona el tipo de establecimiento.',
       editEyebrow: 'Edición',

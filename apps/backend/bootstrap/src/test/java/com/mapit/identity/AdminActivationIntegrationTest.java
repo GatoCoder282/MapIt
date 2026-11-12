@@ -105,7 +105,7 @@ class AdminActivationIntegrationTest {
     assertThat(response.email()).isEqualTo(email);
 
     // La cuenta ADMIN existe, quedó activada y autentica con el login normal.
-    var login = authenticateUser.execute(new AuthenticateUserCommand(slug, email, "S3cur3?P4ss!"));
+    var login = authenticateUser.execute(new AuthenticateUserCommand(email, "S3cur3?P4ss!"));
     assertThat(login.role().name()).isEqualTo("ADMIN");
     assertThat(login.email()).isEqualTo(email);
 

@@ -37,12 +37,14 @@ async function prepare(
   options: {
     tenant?: string;
     user?: string;
+    role?: 'ADMIN' | 'STAFF';
     establishments?: typeof ESTABLISHMENTS | (() => typeof ESTABLISHMENTS);
   } = {},
 ): Promise<void> {
   if (!baseURL) throw new Error('El proyecto de consola requiere baseURL');
   const tenant = options.tenant ?? TENANT_A;
   const user = options.user ?? USER_A;
+  const role = options.role ?? 'ADMIN';
   const origin = new URL(baseURL).origin;
   await page.route('**/api/v1/**', (route) => route.fulfill({ json: [] }));
   await page.route('**/api/v1/establishments/accessible', (route) =>
@@ -54,7 +56,7 @@ async function prepare(
     }),
   );
   await page.addInitScript(
-    ({ tenant, user, origin }) => {
+    ({ tenant, user, role, origin }) => {
       if (location.origin !== origin) return;
       sessionStorage.setItem(
         'mapit.auth.session',
@@ -68,12 +70,12 @@ async function prepare(
             tenantId: tenant,
             email: `${user}@e2e.test`,
             fullName: 'Operador E2E',
-            role: 'ADMIN',
+            role,
           },
         }),
       );
     },
-    { tenant, user, origin },
+    { tenant, user, role, origin },
   );
 }
 
@@ -204,11 +206,10 @@ test.describe('Consola — selección obligatoria de establecimiento', () => {
     await expect(dialog(page).getByRole('button', { name: 'Continuar' })).toBeDisabled();
   });
 
-  test('una lista vacía bloquea, permite reintentar y ofrece cerrar sesión', async ({
-    page,
-  }, testInfo) => {
+  test('un operador sin acceso puede reintentar y cerrar sesión', async ({ page }, testInfo) => {
     let calls = 0;
     await prepare(page, testInfo.project.use.baseURL, {
+      role: 'STAFF',
       establishments: () => (calls++ === 0 ? [] : ESTABLISHMENTS),
     });
     await goToConsole(page, '/home');

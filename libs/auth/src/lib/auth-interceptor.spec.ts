@@ -24,7 +24,6 @@ describe('authInterceptor', () => {
           role: 'STAFF',
         },
       },
-      'demo',
       false,
     );
   beforeEach(() => {
@@ -54,8 +53,8 @@ describe('authInterceptor', () => {
     ['http://localhost:8080/api/v1/items', true],
     ['http://localhost:8080/api/v1', true],
     ['http://localhost:8080/api/v10/items', false],
-    ['http://localhost:8080/api/v1/auth/login?next=home', false],
-    ['http://localhost:8080/api/v1/auth/login/', false],
+    ['http://localhost:8080/api/v1/auth/global-login?next=home', false],
+    ['http://localhost:8080/api/v1/auth/global-login/', false],
     ['http://evil.example/api/v1/items', false],
     ['http://localhost:4242/api/v1/items', false],
     ['/assets/config.json', false],

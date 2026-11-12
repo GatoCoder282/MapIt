@@ -36,8 +36,8 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
   test.beforeAll(async ({ request }) => {
     // Tenant nuevo activado por correo, como en templates.spec.ts (cada test se
     // prepara sus datos; el stack corre contra el fallback demo para spaces).
-    const login = await request.post(`${API}/auth/login`, {
-      data: { tenantSlug: 'platform', email: SUPER_EMAIL, password: SUPER_PASSWORD },
+    const login = await request.post(`${API}/auth/global-login`, {
+      data: { email: SUPER_EMAIL, password: SUPER_PASSWORD },
     });
     expect(login.ok()).toBeTruthy();
     const { accessToken } = (await login.json()) as { accessToken: string };
@@ -84,8 +84,8 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     test.setTimeout(60_000);
     // 1. Datos por API con el token DEL TENANT NUEVO (las rutas spaces van por
     // claim JWT; un request sin token caería en el tenant demo y la UI no lo vería).
-    const loginApi = await request.post(`${API}/auth/login`, {
-      data: { tenantSlug: slug, email, password },
+    const loginApi = await request.post(`${API}/auth/global-login`, {
+      data: { email, password },
     });
     expect(loginApi.ok()).toBeTruthy();
     const session = (await loginApi.json()) as {

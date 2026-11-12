@@ -13,7 +13,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import type { Establishment } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
 import { TimezonePicker } from '@mapit/ui-kit';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import { LucideBedDouble, LucideChefHat, LucideMartini, LucidePartyPopper } from '@lucide/angular';
 
 import { localizeString, STRINGS } from '../../../core/strings';
@@ -196,7 +198,10 @@ type Step1Field = 'name' | 'type';
                     role="radio"
                     [attr.aria-checked]="establishmentType() === option.value"
                     [attr.aria-invalid]="invalid().has('type') || null"
-                    [disabled]="store.busy()"
+                    [disabled]="store.busy() || !flags.isVerticalEnabled(option.value)"
+                    [attr.title]="
+                      flags.isVerticalEnabled(option.value) ? null : strings.wizard.typeDisabledHint
+                    "
                     (click)="establishmentType.set(option.value)"
                   >
                     @switch (option.value) {
@@ -214,6 +219,9 @@ type Step1Field = 'name' | 'type';
                       }
                     }
                     <span>{{ option.label }}</span>
+                    @if (!flags.isVerticalEnabled(option.value)) {
+                      <span class="type-disabled">{{ strings.wizard.typeDisabledHint }}</span>
+                    }
                   </button>
                 }
               </div>
@@ -259,7 +267,7 @@ type Step1Field = 'name' | 'type';
                   >
                     {{ strings.wizard.backToList }}
                   </button>
-                } @else {
+                } @else if (context.active()) {
                   <a class="btn-secondary" routerLink="/home">
                     <svg
                       viewBox="0 0 24 24"
@@ -275,6 +283,15 @@ type Step1Field = 'name' | 'type';
                     </svg>
                     {{ strings.wizard.previous }}
                   </a>
+                } @else {
+                  <button
+                    class="btn-secondary"
+                    type="button"
+                    [disabled]="store.busy()"
+                    (click)="signOut()"
+                  >
+                    {{ logoutLabel }}
+                  </button>
                 }
                 <button class="btn-primary" type="submit" [disabled]="store.saving()">
                   {{ store.saving() ? strings.wizard.creating : strings.wizard.next }}
@@ -688,6 +705,18 @@ type Step1Field = 'name' | 'type';
       box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
     }
 
+    .type-card:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      border-color: var(--mapit-color-border);
+    }
+
+    .type-disabled {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--mapit-color-text-muted);
+    }
+
     .type-icon {
       width: 28px;
       height: 28px;
@@ -950,12 +979,15 @@ type Step1Field = 'name' | 'type';
 export class WizardEstablishmentComponent {
   protected readonly localizeString = localizeString;
   protected readonly store = inject(SpacesStore);
+  protected readonly flags = inject(FeatureFlagService);
   private readonly api = inject(SpacesApiService);
+  private readonly session = inject(AuthSession);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   protected readonly context = inject(EstablishmentContext);
 
   protected readonly strings = STRINGS.spaces;
+  protected readonly logoutLabel = STRINGS.establishmentContext.logout;
 
   protected readonly name = signal('');
   protected readonly establishmentType = signal<string | null>(null);
@@ -1172,6 +1204,12 @@ export class WizardEstablishmentComponent {
     this.modo.set('list');
   }
 
+  protected signOut(): void {
+    if (!this.canDeactivate()) return;
+    this.resetCreateDraft();
+    this.session.logout();
+  }
+
   private hasCreateChanges(): boolean {
     return !!this.name() || !!this.establishmentType() || !!this.address() || !!this.timezone();
   }
@@ -1206,6 +1244,13 @@ export class WizardEstablishmentComponent {
       .subscribe({
         next: () => {
           this.resetCreateDraft();
+          if (!this.context.active()) {
+            void this.router.navigate(['/home'], {
+              queryParams: { selectEstablishment: '1' },
+              replaceUrl: true,
+            });
+            return;
+          }
           this.modo.set('list');
           this.loadEstablishments();
         },

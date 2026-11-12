@@ -2464,30 +2464,22 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /auth/login:
+  /auth/global-login:
     post:
-      parameters:
-        - $ref: "#/components/parameters/RequestId"
       tags: [auth]
-      summary: Iniciar sesión
-      description: |
-        Verifica las credenciales del usuario dentro del tenant indicado y emite
-        un token de acceso JWT. Todos los rechazos de credenciales usan el mismo
-        mensaje para no revelar si existen el tenant o la cuenta.
-      operationId: login
+      summary: Iniciar sesión con correo y contraseña
+      description: El correo identifica una única cuenta de Console y su tenant, incluido el tenant de plataforma.
+      operationId: globalLogin
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginRequest"
+              $ref: "#/components/schemas/GlobalLoginRequest"
       responses:
         "200":
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/RequestId"
-          description: Credenciales válidas y token emitido
+          description: Sesión de la cuenta autenticada
           content:
             application/json:
               schema:
@@ -2496,6 +2488,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/AuthRateLimited"
 
   /health:
     get:
@@ -2744,7 +2738,7 @@ paths:
 
         El `tenant_id` nunca se acepta como dato del cliente: sale del JWT (o del
         slug indicado por el SUPER_ADMIN, que sí puede operar cross-tenant).
-        El correo es único por tenant; un duplicado responde 409. Nunca se devuelve
+        El correo es único en Console; un duplicado responde 409. Nunca se devuelve
         ni persiste una contraseña temporal en claro, ni se genera un JWT aquí.
       operationId: createUser
       requestBody:
@@ -2994,10 +2988,78 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/VerticalDisabled"
         "409":
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
+
+  /establishments/{establishmentId}/vertical-profile:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: establishmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      tags: [establishments]
+      summary: Perfil de vertical de un establecimiento
+      description: |
+        HU-7.01/7.02 (MAP-232). Resuelve la vertical operativa —el `type` persistido del
+        establecimiento, nunca la del tenant— y las reglas que la acompañan: modo de reserva,
+        ventana temporal, tipos admitidos y reservables, y si Unleash la tiene habilitada.
+        Un establecimiento de otro tenant responde 404, igual que uno inexistente.
+      operationId: getEstablishmentVerticalProfile
+      security: []
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Perfil de vertical resuelto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerticalProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /sectors/{sectorId}/vertical-profile:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: sectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      tags: [spaces]
+      summary: Perfil de vertical del establecimiento que contiene un sector
+      description: |
+        HU-7.01/7.02 (MAP-247). El editor de mapas trabaja por sector; este atajo evita que
+        tenga que reconstruir la cadena sector → planta → establecimiento en el cliente.
+      operationId: getSectorVerticalProfile
+      security: []
+      responses:
+        "200":
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          description: Perfil de vertical resuelto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerticalProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /establishments/{id}:
     parameters:
@@ -4044,7 +4106,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        Token JWT emitido por `/auth/login`. Incluye el claim `tenant`, que es de
+        Token JWT emitido por `/auth/global-login`. Incluye el claim `tenant`, que es de
         donde el backend resuelve el tenant (NO del header `X-Tenant-Id`, que el
         cliente podría falsificar).
     customerHistorySession:
@@ -5116,24 +5178,6 @@ components:
           type: [string, "null"]
           maxLength: 32
 
-    LoginRequest:
-      type: object
-      required: [tenantSlug, email, password]
-      properties:
-        tenantSlug:
-          type: string
-          pattern: "^[a-zA-Z0-9][a-zA-Z0-9-]{1,62}$"
-          minLength: 2
-          maxLength: 63
-        email:
-          type: string
-          format: email
-          maxLength: 254
-        password:
-          type: string
-          minLength: 1
-          writeOnly: true
-
     LoginResponse:
       type: object
       required: [accessToken, tokenType, expiresAt, user]
@@ -5151,6 +5195,20 @@ components:
           readOnly: true
         user:
           $ref: "#/components/schemas/AuthenticatedUser"
+
+    GlobalLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 72
+          writeOnly: true
 
     AuthenticatedUser:
       type: object
@@ -5271,7 +5329,7 @@ components:
         tenantSlug:
           type: string
           readOnly: true
-          description: Slug del tenant activado, para redirigir a `/empresa/{slug}/login`.
+          description: Slug del tenant cuya cuenta se activó.
         email:
           type: string
           format: email
@@ -5448,6 +5506,77 @@ components:
         plantillas de elemento aplican en CU-07), y compartir el esquema acoplaría
         `spaces` a `platform`.
       enum: [RESTAURANT, NIGHTCLUB, EVENT_HALL, HOTEL]
+
+    BookingMode:
+      type: string
+      description: |
+        Cómo reserva una vertical (HU-7.01/7.02): `SHIFT` turno de restaurante, `NIGHT` noche
+        de discoteca, `EVENT` evento de salón, `STAY` estadía de hotel por noches.
+      enum: [SHIFT, NIGHT, EVENT, STAY]
+
+    VerticalProfile:
+      type: object
+      additionalProperties: false
+      description: |
+        Reglas de la vertical operativa de un establecimiento. Las calcula el backend a partir
+        de un único catálogo; los frontends no repiten la matriz, solo eligen textos.
+      required:
+        [
+          establishmentType,
+          bookingMode,
+          enabled,
+          allowedElementTypes,
+          reservableElementTypes,
+          allowsOvernight,
+          maxDurationMinutes,
+          minNights,
+          maxNights,
+          defaultStartTime,
+          defaultEndTime,
+        ]
+      properties:
+        establishmentType:
+          $ref: "#/components/schemas/EstablishmentType"
+        bookingMode:
+          $ref: "#/components/schemas/BookingMode"
+        enabled:
+          type: boolean
+          description: |
+            Si la vertical está habilitada en Unleash para el tenant. Apagada, la vertical no
+            cambia: se rechazan altas y reservas nuevas con 403 `vertical-disabled`.
+        allowedElementTypes:
+          type: array
+          description: Tipos que el editor admite en esta vertical.
+          items:
+            type: string
+            enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+        reservableElementTypes:
+          type: array
+          description: Subconjunto de los admitidos que puede reservarse. Nunca STAGE ni DECOR.
+          items:
+            type: string
+            enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+        allowsOvernight:
+          type: boolean
+          description: Si una reserva puede terminar en el día local siguiente.
+        maxDurationMinutes:
+          type: [integer, "null"]
+          minimum: 1
+          description: Duración máxima de una reserva; nula en `STAY`, que se mide en noches.
+        minNights:
+          type: [integer, "null"]
+          minimum: 1
+        maxNights:
+          type: [integer, "null"]
+          minimum: 1
+        defaultStartTime:
+          type: [string, "null"]
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: Hora local de check-in en `STAY`; nula en el resto.
+        defaultEndTime:
+          type: [string, "null"]
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: Hora local de check-out en `STAY`; nula en el resto.
 
     Establishment:
       type: object
@@ -6189,6 +6318,17 @@ components:
           examples: ["BAR"]
 
   responses:
+    AuthRateLimited:
+      description: Límite de intentos excedido
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
     TooManyRequests:
       headers:
         X-Request-ID:
@@ -6248,6 +6388,17 @@ components:
         X-Request-ID:
           $ref: "#/components/headers/RequestId"
       description: Autenticado, pero sin permiso para este recurso o tenant
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    VerticalDisabled:
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      description: |
+        La vertical del establecimiento está deshabilitada en Unleash para este tenant
+        (`type` = `https://mapit.local/problems/vertical-disabled`, propiedad `vertical`).
       content:
         application/problem+json:
           schema:

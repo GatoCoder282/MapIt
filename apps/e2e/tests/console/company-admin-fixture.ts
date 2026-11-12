@@ -8,9 +8,8 @@ export async function companyAdminFixture(request: APIRequestContext) {
   const slug = 'home-' + randomUUID();
   const email = slug + '@mapit.test';
   const password = 'S3cur3?P4ss!';
-  const platform = await request.post(api + '/auth/login', {
+  const platform = await request.post(api + '/auth/global-login', {
     data: {
-      tenantSlug: 'platform',
       email: process.env['E2E_SUPER_ADMIN_EMAIL'] ?? 'superadmin@mapit.local',
       password: process.env['E2E_SUPER_ADMIN_PASSWORD'] ?? 'super-admin-dev',
     },
@@ -46,8 +45,8 @@ export async function companyAdminFixture(request: APIRequestContext) {
     data: { tenantSlug: slug, token: match![2], password, passwordConfirm: password },
   });
   expect(activated.ok()).toBe(true);
-  const login = await request.post(api + '/auth/login', {
-    data: { tenantSlug: slug, email, password },
+  const login = await request.post(api + '/auth/global-login', {
+    data: { email, password },
   });
   expect(login.ok()).toBe(true);
   const session = (await login.json()) as {

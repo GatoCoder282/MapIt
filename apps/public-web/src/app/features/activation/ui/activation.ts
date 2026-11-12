@@ -16,10 +16,10 @@ import { ActivationStore } from '../model/activation-store';
   template: `
     <main class="page">
       <section class="card" aria-labelledby="activation-title">
-        @if (store.success(); as slug) {
+        @if (store.success()) {
           <div class="success" role="status">
             <h1 id="activation-title">{{ strings.activation.success }}</h1>
-            <a class="primary" [href]="loginUrl(slug)">{{ strings.activation.goToLogin }}</a>
+            <a class="primary" [href]="loginUrl()">{{ strings.activation.goToLogin }}</a>
           </div>
         } @else {
           <h1 id="activation-title">{{ strings.activation.title }}</h1>
@@ -195,8 +195,8 @@ export class Activation {
   protected readonly strings = STRINGS;
   protected readonly localizeString = localizeString;
 
-  protected loginUrl(slug: string): string {
-    return `${this.runtime.config().consoleBaseUrl}/empresa/${slug}/login`;
+  protected loginUrl(): string {
+    return `${this.runtime.config().consoleBaseUrl}/login`;
   }
 
   protected submit(event: Event): void {

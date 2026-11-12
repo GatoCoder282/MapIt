@@ -19,7 +19,7 @@ test.describe('Consola — administración de tenants', () => {
 
   test('ciclo completo del SUPER_ADMIN', async ({ page }) => {
     // Login del tenant técnico `platform`.
-    await page.goto('/empresa/platform/login');
+    await page.goto('/login');
     await expect(page.getByRole('button', { name: /iniciar sesi/i })).toBeVisible();
 
     // El dev server puede re-montar el formulario en frío; si el submit cae en una

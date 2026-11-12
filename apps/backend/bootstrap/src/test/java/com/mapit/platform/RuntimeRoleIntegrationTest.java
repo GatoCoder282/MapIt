@@ -3,6 +3,8 @@ package com.mapit.platform;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.sql.SQLException;
+
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -115,6 +117,34 @@ class RuntimeRoleIntegrationTest {
                             TENANT_DEMO,
                             "intruso@demo.test")))
         .isInstanceOf(DataAccessException.class);
+  }
+
+  @Test
+  void los_contadores_de_autenticacion_solo_son_accesibles_desde_platform() {
+    String bucket = "rls-auth-attempt";
+    String insert = """
+        insert into auth_attempt_limit (tenant_id, id, expires_at, attempts)
+        values (?, ?, now() + interval '1 hour', 1)
+        """;
+    String select = "select attempts from auth_attempt_limit where id = ?";
+    inTransaction(TENANT_PLATFORM, () -> assertThat(jdbc.update(insert, TENANT_PLATFORM, bucket))
+        .isEqualTo(1));
+
+    inTransaction(null, () -> assertThat(jdbc.queryForList(select, Integer.class, bucket)).isEmpty());
+    inTransaction(TENANT_DEMO, () -> {
+      assertThat(jdbc.queryForList(select, Integer.class, bucket)).isEmpty();
+      assertThat(jdbc.update("update auth_attempt_limit set attempts = 2 where id = ?", bucket))
+          .isZero();
+      assertThat(jdbc.update("delete from auth_attempt_limit where id = ?", bucket)).isZero();
+    });
+    assertThatThrownBy(() -> inTransaction(
+        TENANT_DEMO, () -> jdbc.update(insert, TENANT_PLATFORM, bucket + "-demo")))
+        .isInstanceOfSatisfying(DataAccessException.class, failure ->
+            assertThat(failure.getMostSpecificCause()).isInstanceOfSatisfying(
+                SQLException.class, sql -> assertThat(sql.getSQLState()).isEqualTo("42501")));
+
+    inTransaction(TENANT_PLATFORM,
+        () -> assertThat(jdbc.queryForObject(select, Integer.class, bucket)).isEqualTo(1));
   }
 
   private void inTransaction(String tenantId, Runnable body) {

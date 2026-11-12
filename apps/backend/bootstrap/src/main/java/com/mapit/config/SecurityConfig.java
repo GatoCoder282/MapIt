@@ -61,7 +61,6 @@ public class SecurityConfig {
         // El login y la activación del primer ADMIN son públicos por definición
         // (la activación no recibe contraseña temporal ni JWT; solo el token del
         // enlace, que ya es un secreto en sí mismo).
-        ApiPaths.AUTH_LOGIN,
         ApiPaths.AUTH_ACTIVATE,
         // CRUD temporal que conserva acceso público para validar el stack.
         ApiPaths.DEMO_ITEMS,
@@ -96,6 +95,8 @@ public class SecurityConfig {
                         // Conserva el status real de validación/404 durante el despacho de error.
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, ApiPaths.AUTH_GLOBAL_LOGIN)
+                        .permitAll()
                         .requestMatchers("/api/v1/sectors/*/elements", "/api/v1/sectors/*/elements/*",
                             "/v1/sectors/*/elements", "/v1/sectors/*/elements/*")
                         .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())

@@ -103,12 +103,15 @@ class UserCreationIntegrationTest {
         .body(new CreateUserBody(null, "staff@b.test", "Otro", "S3cur3?P4ss!", "STAFF"))
         .exchange().expectStatus().isEqualTo(409);
 
-    // Mismo correo, otro tenant → permitido (regla: único por tenant, no global).
+    // MAP-256: el mismo correo normalizado se rechaza también en otro tenant.
     http().post().uri("/api/v1/users")
         .header("Authorization", "Bearer " + token(UserRole.SUPER_ADMIN, "platform"))
         .contentType(MediaType.APPLICATION_JSON)
-        .body(new CreateUserBody(tenantA, "staff@b.test", "Otro Staff", "S3cur3?P4ss!", "STAFF"))
-        .exchange().expectStatus().isCreated();
+        .body(new CreateUserBody(tenantA, "STAFF@B.TEST", "Otro Staff", "S3cur3?P4ss!", "STAFF"))
+        .exchange().expectStatus().isEqualTo(409)
+        .expectBody()
+        .jsonPath("$.type").isEqualTo("https://mapit.local/problems/email-already-registered")
+        .jsonPath("$.detail").isEqualTo("Ya existe una cuenta con este correo.");
   }
 
   @Test

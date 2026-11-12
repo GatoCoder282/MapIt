@@ -14,9 +14,9 @@ describe('LoginApi', () => {
       ],
     });
     const http = TestBed.inject(HttpTestingController);
-    const body = { tenantSlug: 'demo', email: 'demo@example.com', password: ' exacta ' };
+    const body = { email: 'demo@example.com', password: ' exacta ' };
     TestBed.inject(LoginApi).login(body).subscribe();
-    const request = http.expectOne('http://localhost:8080/api/v1/auth/login');
+    const request = http.expectOne('http://localhost:8080/api/v1/auth/global-login');
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual(body);
     expect(request.request.headers.has('Authorization')).toBe(false);

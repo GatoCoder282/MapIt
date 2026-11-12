@@ -1,5 +1,7 @@
 package com.mapit.shared.flags;
 
+import com.mapit.shared.tenant.TenantId;
+
 /**
  * Puerto de feature toggles.
  *
@@ -22,4 +24,16 @@ public interface FeatureFlagPort {
 
   /** Evalúa una flag con un valor por defecto explícito. */
   boolean isEnabled(FeatureFlag flag, boolean valorPorDefecto);
+
+  /**
+   * Evalúa una flag para un tenant explícito (HU-7.01/7.02).
+   *
+   * <p>Las rutas públicas resuelven el tenant por slug y no siempre lo tienen en el contexto
+   * de la petición; con este método una estrategia de Unleash por tenant funciona igual en
+   * staff y en público. Por defecto ignora el tenant, para que los dobles de prueba existentes
+   * sigan siendo válidos.
+   */
+  default boolean isEnabledFor(FeatureFlag flag, TenantId tenantId) {
+    return isEnabled(flag);
+  }
 }
