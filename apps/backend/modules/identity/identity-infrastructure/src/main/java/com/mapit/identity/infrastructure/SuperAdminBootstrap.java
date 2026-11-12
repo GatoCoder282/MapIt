@@ -63,9 +63,11 @@ public class SuperAdminBootstrap implements ApplicationRunner {
       return;
     }
     // Idempotencia estricta: UN SOLO SUPER_ADMIN por la plataforma.
+    // RLS también filtra el recuento, no solo el INSERT; fijar contexto antes.
     // Si cambiaste el email del .env, la cuenta nueva NO se crea: pasar de
     // una identidad a otra es una iteración deliberada (reclase manual), no
     // algo que el bootstrap haga en silencio al reiniciar.
+    jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, PLATFORM_TENANT);
     Integer existing =
         jdbc.queryForObject(
             "select count(*) from app_user where tenant_id = ? and role = 'SUPER_ADMIN'",
@@ -75,8 +77,7 @@ public class SuperAdminBootstrap implements ApplicationRunner {
       log.atInfo().addKeyValue("event", "identity.bootstrap.unchanged").log("Ya existe un SUPER_ADMIN de plataforma; bootstrap sin cambios (email actual en BD, no el del entorno).");
       return;
     }
-    // RLS de app_user exige el contexto: alcance LOCAL a esta transacción.
-    jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, PLATFORM_TENANT);
+    // El contexto LOCAL fijado arriba sigue vigente para el INSERT.
     jdbc.update(
         """
         insert into app_user (tenant_id, email, password_hash, full_name, role)

@@ -39,7 +39,7 @@ tags:
   - name: auth
     description: Autenticación del staff de cada tenant
   - name: users
-    description: Alta de usuarios de staff (CU-25)
+    description: Administración de cuentas del tenant e invitaciones de MANAGER/STAFF (HU-1.04)
   - name: health
     description: Estado del servicio
   - name: tenants
@@ -2377,8 +2377,16 @@ paths:
       tags: [reservations]
       summary: Listar las reservas del tenant
       description: |
-        Devuelve todas las reservas del tenant autenticado, de la más reciente a la más
-        antigua. El tenant se obtiene exclusivamente del JWT: nunca viaja en la petición.
+        Listado general de reservas del tenant para ADMIN y MANAGER, de la más
+        reciente a la más antigua. El tenant se obtiene exclusivamente del JWT:
+        nunca viaja en la petición. STAFF no puede usar este listado general:
+        carece de filtro por establecimiento; debe recibir 403. La lectura
+        operativa acotada por establecimiento pertenece a MAP-260 y requiere
+        un permiso independiente de `can_check_in`.
+
+        Seguridad objetivo de HU-1.04: la restricción STAFF todavía NO está
+        implementada por el backend y queda asignada a MAP-244; modificar esta
+        descripción contractual no protege la ruta.
 
         **Techo conocido:** la respuesta es un array plano, sin paginación. Está pensada
         para métricas agregadas (totales, crecimiento semanal, reparto por estado). Si un
@@ -2517,6 +2525,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /platform/admin-recoveries:
+    post:
+      tags: [tenants]
+      operationId: startAdminRecovery
+      summary: Iniciar una recuperación manual aprobada de ADMIN
+      description: |
+        Ruta interna de plataforma, deshabilitada por defecto. Exige SUPER_ADMIN
+        vigente y una aprobación recuperada de una fuente independiente con
+        autor, fecha, tenant, destinatario, ticket, motivo y ventana coincidentes.
+        No recibe contraseña ni devuelve el token; el enlace se envía solo al
+        correo ya registrado del ADMIN. Sin verificador de aprobación configurado,
+        la operación falla cerrada.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [tenantId, tenantSlug, targetUserId, ticket, reason, approvalReference]
+              properties:
+                tenantId: { type: string, minLength: 2, maxLength: 63 }
+                tenantSlug: { type: string, minLength: 2, maxLength: 63 }
+                targetUserId: { type: string, format: uuid }
+                ticket: { type: string, minLength: 1, maxLength: 120 }
+                reason: { type: string, minLength: 1, maxLength: 500 }
+                approvalReference: { type: string, minLength: 1, maxLength: 240 }
+      responses:
+        "202":
+          description: Autorización registrada y envío solicitado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authorizationId]
+                properties:
+                  authorizationId: { type: string, format: uuid }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /tenants:
     get:
       tags: [tenants]
@@ -2577,9 +2629,11 @@ paths:
       summary: Registrar un tenant
       description: |
         Registra una nueva empresa en la plataforma. La operación pertenece al
-        Administrador de Plataforma y genera el identificador del tenant en el backend.
-        El correo del administrador se usa para enviar la confirmación y no se devuelve
-        como parte del recurso tenant.
+        SUPER_ADMIN y genera el identificador del tenant en el backend. En este
+        flujo CU-25 se emite la invitación ADMIN_ONBOARDING del PRIMER ADMIN;
+        el invitado establece su contraseña mediante POST /auth/activate.
+        El correo del administrador no se devuelve como parte del recurso tenant.
+        POST /users no crea otro ADMIN por vía ordinaria.
       operationId: createTenant
       requestBody:
         required: true
@@ -2689,16 +2743,22 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RequestId"
       tags: [auth]
-      summary: Activar la cuenta del primer ADMIN de un tenant
+      summary: Activar una cuenta de staff mediante invitación
       description: |
-        Onboarding de CU-25: el invitado abre el enlace que recibió por correo y
-        define su contraseña. Público (aún no existe sesión). Jamás viaja una
-        contraseña temporal ni un JWT: el enlace lleva un token opaco aleatorio
-        de un solo uso con caducidad de 24 h; en el servidor solo se guarda su
-        hash SHA-256.
+        Conserva el onboarding de CU-25: SUPER_ADMIN registra el tenant con
+        POST /tenants, que emite la invitación ADMIN_ONBOARDING del primer ADMIN.
+        También acepta una invitación MEMBER emitida por ADMIN para MANAGER o
+        STAFF. El invitado define y confirma su propia contraseña; el rol,
+        propósito, correo y tenant provienen de la invitación persistida, nunca
+        del cuerpo. Público (aún no existe sesión). El token opaco de 24 h se
+        guarda solo como hash, se valida contra el tenant del enlace y se consume
+        una vez. MEMBER jamás activa ADMIN ni SUPER_ADMIN. No se emite JWT aquí.
+
+        Se mantiene `operationId: activateAdmin` y la misma solicitud/respuesta
+        para no romper el cliente público de activación del primer ADMIN.
 
         Errores específicos (todos `application/problem+json`):
-        - `invitation-invalid`   — el token no existe o está mal formado
+        - `invitation-invalid`   — el token/tenant/propósito no son válidos o fue revocado
         - `invitation-expired`   — el token existe pero caducó
         - `invitation-used`      — el token ya se consumió
         - `password-mismatch`    — password y su confirmación difieren
@@ -2725,44 +2785,90 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /users:
+    get:
+      tags: [users]
+      summary: Listar cuentas de staff del tenant autenticado
+      description: |
+        Solo ADMIN vigente; el tenant sale exclusivamente de su identidad
+        autenticada y se verifica con RLS. Incluye ADMIN del mismo tenant solo
+        para consulta; no incluye personas/clientes finales, contraseñas ni
+        tokens. MANAGER, STAFF y SUPER_ADMIN no consultan esta ruta.
+        La autorización de backend y la revalidación de cuenta/tenant/rol se
+        implementarán en MAP-244; este contrato no otorga permisos por sí solo.
+      operationId: listTenantUsers
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Página de cuentas de staff del tenant, incluidos sus ADMIN
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantUserPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
     post:
       parameters:
         - $ref: "#/components/parameters/RequestId"
       tags: [users]
-      summary: Crear un usuario de staff
+      summary: Invitar a un MANAGER o STAFF del tenant
       description: |
-        Creación de cuentas de staff (CU-25 / MAP-185). Autorización exacta:
-
-        - **SUPER_ADMIN**: puede crear `ADMIN`, `MANAGER` o `STAFF`, y debe indicar
-          el tenant destino con `tenantSlug` (su sesión pertenece al tenant técnico
-          `platform`, no a un negocio).
-        - **ADMIN**: solo puede crear `STAFF` y siempre dentro de su propio tenant;
-          si envía `tenantSlug` distinto del suyo, recibe 403.
-        - **MANAGER** y **STAFF**: 403.
-
-        El `tenant_id` nunca se acepta como dato del cliente: sale del JWT (o del
-        slug indicado por el SUPER_ADMIN, que sí puede operar cross-tenant).
-        El correo es único por tenant; un duplicado responde 409. Nunca se devuelve
-        ni persiste una contraseña temporal en claro, ni se genera un JWT aquí.
-      operationId: createUser
+        Operación ordinaria exclusiva del ADMIN activo del tenant autenticado:
+        emite una invitación MEMBER de un solo uso, válida 24 h, solo con rol
+        MANAGER o STAFF. El tenant procede del JWT vigente; no se acepta slug,
+        tenantId, contraseña, rol ADMIN ni SUPER_ADMIN en el cuerpo. El invitado
+        define su contraseña al aceptar en /auth/activate. La respuesta 202
+        acredita la persistencia de la invitación, NO la creación de una cuenta
+        activa ni la entrega del correo: SMTP_ACCEPTED solo significa aceptación
+        por el servidor SMTP; SMTP_FAILED/UNKNOWN permiten reenvío controlado.
+        Si existe cuenta o invitación pendiente para ese correo/tenant/propósito,
+        responder 409. La autorización y el rechazo del antiguo payload con
+        contraseña se implementarán en MAP-244; el contrato anterior 201/alta
+        directa queda sustituido, sin otra ruta ordinaria para crear ADMIN.
+        SUPER_ADMIN crea el tenant e invita al primer ADMIN SOLO desde POST /tenants;
+        su recuperación excepcional es manual, no mediante este endpoint.
+      operationId: inviteTenantUser
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateUserRequest"
+              $ref: "#/components/schemas/TenantUserInvitationRequest"
       responses:
-        "201":
+        "202":
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
-          description: Usuario creado y activo
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          description: Invitación pendiente persistida; el correo no se presume entregado
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreatedUser"
+                $ref: "#/components/schemas/TenantUserInvitation"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2771,6 +2877,226 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        description: UUID del usuario; se consulta solo dentro del tenant autenticado.
+        schema: { type: string, format: uuid }
+    get:
+      tags: [users]
+      summary: Consultar detalle de una cuenta de staff del propio tenant
+      description: |
+        Solo ADMIN vigente; ADMIN del mismo tenant es visible pero no modificable.
+        Un UUID de otro tenant y uno inexistente producen el mismo 404.
+      operationId: getTenantUser
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Datos mínimos de la cuenta solicitada
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /users/{userId}/role:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [users]
+      summary: Cambiar entre MANAGER y STAFF dentro del tenant
+      description: |
+        Solo ADMIN vigente; objetivo distinto del actor, perteneciente al mismo
+        tenant y con rol MANAGER o STAFF. No cambia ADMIN, ni asigna SUPER_ADMIN.
+        expectedRole permite detectar un cambio concurrente con 409. La
+        autorización y el cambio se comprueban de nuevo en una transacción.
+      operationId: changeTenantUserRole
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantUserRoleChangeRequest"
+      responses:
+        "200":
+          description: Rol modificado y registrado en la bitácora del tenant
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /users/{userId}/access:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [users]
+      summary: Desactivar acceso de un MANAGER o STAFF del tenant
+      description: |
+        Solo ADMIN vigente sobre otro MANAGER/STAFF del mismo tenant. El cuerpo
+        solo admite active=false; no habilita reactivación, baja física ni
+        desactivación de otro ADMIN o del propio actor. Un cambio confirmado se
+        audita y su JWT anterior deja de autorizar solicitudes siguientes.
+      operationId: deactivateTenantUser
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantUserDeactivationRequest"
+      responses:
+        "200":
+          description: Cuenta desactivada sin eliminar sus referencias
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /user-invitations:
+    get:
+      tags: [users]
+      summary: Listar invitaciones MEMBER recuperables del tenant autenticado
+      description: |
+        Solo ADMIN vigente. Devuelve únicamente invitaciones MEMBER no consumidas
+        ni revocadas, incluidas las caducadas: el reenvío por ID reemplaza su token
+        y permite recuperarlas. PENDING indica no vencida; EXPIRED indica que
+        expiresAt ya pasó. No incluye ADMIN_ONBOARDING, tokens, hashes ni enlaces.
+        El tenant proviene de la identidad autenticada, nunca de la consulta.
+        Un intento SMTP aceptado o ambiguo admite reenvío después del cooldown
+        del servidor; SMTP_ACCEPTED no prueba entrega al destinatario.
+      operationId: listTenantUserInvitations
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Página de invitaciones MEMBER recuperables del tenant
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantUserInvitationPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /user-invitations/{invitationId}/resend:
+    parameters:
+      - name: invitationId
+        in: path
+        required: true
+        description: Identificador de invitación pendiente del mismo tenant.
+        schema: { type: string, format: uuid }
+    post:
+      tags: [users]
+      summary: Reenviar de forma controlada una invitación de miembro
+      description: |
+        Solo ADMIN vigente del tenant emisor. Revoca el token anterior y emite
+        una invitación de reemplazo atómicamente; nunca deja dos enlaces
+        vigentes. Un token no puede reconstruirse desde el hash guardado.
+        Se limita el abuso de reintentos; 202 no garantiza entrega del correo.
+        No reenvía invitaciones ADMIN_ONBOARDING ni permite cambiar rol o tenant.
+      operationId: resendTenantUserInvitation
+      security: [{ bearerAuth: [] }]
+      responses:
+        "202":
+          description: Invitación reemplazada; el envío no implica entrega efectiva
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantUserInvitation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /feature-flags:
     get:
@@ -5175,56 +5501,105 @@ components:
         role:
           $ref: "#/components/schemas/UserRole"
 
-    CreateUserRequest:
+    MemberInvitationRole:
+      type: string
+      description: Rol permitido para un integrante invitado por ADMIN; nunca ADMIN ni SUPER_ADMIN.
+      enum: [MANAGER, STAFF]
+
+    TenantUserRole:
+      type: string
+      description: Rol consultable dentro de un tenant de negocio. SUPER_ADMIN es plataforma.
+      enum: [ADMIN, MANAGER, STAFF]
+
+    TenantUserInvitationRequest:
       type: object
-      required: [email, fullName, password, role]
+      additionalProperties: false
+      required: [email, role]
+      description: |
+        Solicitud de invitación MEMBER por ADMIN activo. Sin contraseña,
+        tenantId ni tenantSlug: el tenant lo determina el backend a partir de
+        la identidad vigente. Cualquier propiedad no definida se rechaza con 400.
       properties:
-        tenantSlug:
-          type: string
-          description: |
-            Solo para SUPER_ADMIN: tenant destino. Para ADMIN/MANAGER/STAFF el
-            tenant sale del JWT y este campo se rechaza si no coincide.
-          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
-          minLength: 2
-          maxLength: 63
         email:
           type: string
           format: email
           maxLength: 254
-        fullName:
-          type: string
-          minLength: 1
-          maxLength: 120
-        password:
-          type: string
-          minLength: 8
-          maxLength: 128
-          writeOnly: true
         role:
-          type: string
-          description: Rol a crear. SUPER_ADMIN nunca puede crearse por API.
-          enum: [ADMIN, MANAGER, STAFF]
+          $ref: "#/components/schemas/MemberInvitationRole"
 
-    CreatedUser:
+    TenantUserInvitation:
       type: object
-      required: [id, tenantId, email, fullName, role, active, createdAt]
+      additionalProperties: false
+      required: [id, email, role, status, dispatchStatus, expiresAt]
+      description: |
+        Acuse o proyección de invitación MEMBER recuperable visible solo para ADMIN.
+        No incluye token, contraseña, cuenta activa ni estado de entrega efectiva.
+        SMTP_ACCEPTED solo confirma recepción por SMTP, no por el destinatario.
+        PENDING significa no consumida, no revocada y no vencida; EXPIRED
+        significa que venció pero puede reemplazarse por reenvío. Los acuses
+        de emisión/reenvío siempre son PENDING.
       properties:
         id:
           type: string
           format: uuid
           readOnly: true
-        tenantId:
+        email:
+          type: string
+          format: email
+          readOnly: true
+        role:
+          $ref: "#/components/schemas/MemberInvitationRole"
+        status:
+          type: string
+          enum: [PENDING, EXPIRED]
+          readOnly: true
+        dispatchStatus:
+          type: string
+          enum: [SEND_REQUESTED, SMTP_ACCEPTED, SMTP_FAILED, UNKNOWN]
+          readOnly: true
+        expiresAt:
+          type: string
+          format: date-time
+          readOnly: true
+        dispatchAttemptedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Último intento SMTP, si existe; permite mostrar el cooldown de reenvío.
+
+    TenantUserInvitationPage:
+      type: object
+      additionalProperties: false
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/TenantUserInvitation"
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        totalElements: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+
+    TenantUser:
+      type: object
+      additionalProperties: false
+      required: [id, fullName, email, role, active, createdAt]
+      description: Proyección de staff sin contraseña, hash, tenant arbitrario ni tokens.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        fullName:
           type: string
           readOnly: true
         email:
           type: string
           format: email
           readOnly: true
-        fullName:
-          type: string
-          readOnly: true
         role:
-          $ref: "#/components/schemas/UserRole"
+          $ref: "#/components/schemas/TenantUserRole"
         active:
           type: boolean
           readOnly: true
@@ -5233,8 +5608,49 @@ components:
           format: date-time
           readOnly: true
 
+    TenantUserPage:
+      type: object
+      additionalProperties: false
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/TenantUser"
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        totalElements: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+
+    TenantUserRoleChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [role, expectedRole]
+      description: |
+        Solo modifica a otro MANAGER/STAFF; expectedRole evita sobrescribir
+        silenciosamente un cambio concurrente (409). No acepta ADMIN/SUPER_ADMIN.
+      properties:
+        role:
+          $ref: "#/components/schemas/MemberInvitationRole"
+        expectedRole:
+          $ref: "#/components/schemas/MemberInvitationRole"
+
+    TenantUserDeactivationRequest:
+      type: object
+      additionalProperties: false
+      required: [active]
+      description: Solo desactivación. Reactivación y eliminación fuera de HU-1.04.
+      properties:
+        active:
+          type: boolean
+          const: false
+
     ActivationRequest:
       type: object
+      description: |
+        Solicitud común de activación CU-25/HU-1.04. No incluye rol ni propósito:
+        ADMIN_ONBOARDING solo lo emite POST /tenants para el primer ADMIN;
+        MEMBER solo lo emite POST /users para MANAGER/STAFF.
       required: [tenantSlug, token, password, passwordConfirm]
       properties:
         tenantSlug:
@@ -5266,6 +5682,7 @@ components:
 
     ActivationResponse:
       type: object
+      description: Respuesta común sin rol, contraseña ni token; mantiene la forma de CU-25.
       required: [tenantSlug, email]
       properties:
         tenantSlug:

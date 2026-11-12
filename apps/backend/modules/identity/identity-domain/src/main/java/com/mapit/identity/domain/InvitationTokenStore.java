@@ -14,6 +14,9 @@ public interface InvitationTokenStore {
   /** Resuelve el tenant por su slug público del enlace; vacío si no existe. */
   Optional<TenantId> findTenantBySlug(String slug);
 
+  /** Bloqueo transaccional global, antes de leer invitación o crear cuenta. */
+  boolean lockActiveTenant(TenantId tenantId);
+
   /** Busca la invitación pendiente del tenant por hash del token. */
   Optional<StoredInvitation> findByTokenHash(TenantId tenantId, String tokenHash);
 
@@ -21,5 +24,5 @@ public interface InvitationTokenStore {
    * Consume la invitación de forma atómica: solo si sigue pendiente.
    * Devuelve false si ya estaba consumida (una segunda utilización falla).
    */
-  boolean markConsumed(java.util.UUID invitationId, java.util.UUID userId);
+  boolean markConsumed(TenantId tenantId, java.util.UUID invitationId, java.util.UUID userId);
 }

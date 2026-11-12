@@ -27,6 +27,7 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import com.mapit.identity.domain.AccessTokenVerifier;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
+import com.mapit.identity.domain.CurrentStaffIdentity;
 import com.mapit.reservations.application.reservation.PublicReservationAccessService;
 import com.mapit.shared.flags.FeatureFlag;
 import com.mapit.shared.flags.FeatureFlagPort;
@@ -40,6 +41,7 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
   private static final String BEARER_PREFIX = "Bearer ";
 
   private final AccessTokenVerifier tokens;
+  private final CurrentStaffIdentity identities;
   private final RealtimeRoomAccessPort rooms;
   private final FeatureFlagPort flags;
   private @Nullable PublicReservationAccessService reservations;
@@ -52,8 +54,10 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
   }
 
   public RealtimeStompInterceptor(
-      AccessTokenVerifier tokens, RealtimeRoomAccessPort rooms, FeatureFlagPort flags) {
+      AccessTokenVerifier tokens, CurrentStaffIdentity identities,
+      RealtimeRoomAccessPort rooms, FeatureFlagPort flags) {
     this.tokens = tokens;
+    this.identities = identities;
     this.rooms = rooms;
     this.flags = flags;
   }
@@ -108,6 +112,7 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
         tokens
             .verify(authorization.substring(BEARER_PREFIX.length()).strip())
             .orElseThrow(() -> new MessagingException("JWT STOMP inválido o vencido"));
+    principal = currentStaff(principal);
     Authentication authentication =
         new UsernamePasswordAuthenticationToken(
             principal,
@@ -151,6 +156,7 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
         || !(authentication.getPrincipal() instanceof AuthenticatedPrincipal principal)) {
       throw new MessagingException("La suscripción STOMP no está autenticada");
     }
+    currentStaff(principal);
     RealtimeDestination destination =
         RealtimeDestination.parse(accessor.getDestination())
             .orElseThrow(() -> new MessagingException("Destino de sala STOMP no permitido"));
@@ -203,14 +209,16 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
     PublicReservationPrincipal principal = sessionId == null ? null : publicSessions.get(sessionId);
     if (principal == null) {
       AuthenticatedPrincipal staff = sessionId == null ? null : staffSessions.get(sessionId);
-      if (staff == null) return message;
+       // Una sesión desconocida o desconectada nunca recibe eventos privados.
+       if (staff == null) return null;
       if (!flags.isEnabled(FeatureFlag.REALTIME_WEBSOCKET, true)) return null;
       var destination = RealtimeDestination.parse(SimpMessageHeaderAccessor.getDestination(message.getHeaders()));
       if (destination.isEmpty()) return null;
-      var room = destination.orElseThrow();
-      try {
-        return rooms.canSubscribe(staff.tenantId(), staff.id(), staff.role().name(), room.establishmentId(), room.sectorId()) ? message : null;
-      } catch (RuntimeException exception) { return null; }
+       var room = destination.orElseThrow();
+       try {
+         currentStaff(staff);
+         return rooms.canSubscribe(staff.tenantId(), staff.id(), staff.role().name(), room.establishmentId(), room.sectorId()) ? message : null;
+       } catch (RuntimeException exception) { return null; }
     }
     if (!flags.isEnabled(FeatureFlag.REALTIME_WEBSOCKET, true)
         || !("/topic/reservations/" + principal.reservationId() + "/payments").equals(SimpMessageHeaderAccessor.getDestination(message.getHeaders()))) return null;
@@ -219,6 +227,15 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
       return message;
     } catch (MessagingException exception) {
       return null;
+    }
+  }
+
+  private AuthenticatedPrincipal currentStaff(AuthenticatedPrincipal signed) {
+    try {
+      return identities.resolve(signed)
+          .orElseThrow(() -> new MessagingException("Identidad STOMP no vigente"));
+    } catch (RuntimeException exception) {
+      throw new MessagingException("Identidad STOMP no vigente");
     }
   }
 

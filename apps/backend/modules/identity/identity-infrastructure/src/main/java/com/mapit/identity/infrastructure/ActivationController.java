@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mapit.identity.application.ActivateAdmin;
+import com.mapit.identity.application.RecoverInactiveAdmin;
 import com.mapit.identity.domain.ActivationExceptions.EmailAlreadyRegistered;
 import com.mapit.identity.domain.ActivationExceptions.Expired;
 import com.mapit.identity.domain.ActivationExceptions.Invalid;
@@ -32,13 +33,24 @@ public class ActivationController {
   private static final String SLUG_PATTERN = "^[a-z0-9][a-z0-9-]{1,62}$";
 
   private final ActivateAdmin activateAdmin;
+  private final RecoverInactiveAdmin recoverInactiveAdmin;
 
-  public ActivationController(ActivateAdmin activateAdmin) {
+  public ActivationController(ActivateAdmin activateAdmin, RecoverInactiveAdmin recoverInactiveAdmin) {
     this.activateAdmin = activateAdmin;
+    this.recoverInactiveAdmin = recoverInactiveAdmin;
   }
 
   @PostMapping("/activate")
   public ActivationResponse activate(@Valid @RequestBody ActivationRequest request) {
+    if (request.token().startsWith("recover.")) {
+      try {
+        String email = recoverInactiveAdmin.executeByToken(request.tenantSlug(), request.token(),
+            request.password(), request.passwordConfirm());
+        return new ActivationResponse(request.tenantSlug(), email);
+      } catch (SecurityException | IllegalArgumentException invalid) {
+        throw new Invalid();
+      }
+    }
     String email =
         activateAdmin.execute(
             request.tenantSlug(), request.token(), request.password(), request.passwordConfirm());
