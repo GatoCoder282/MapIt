@@ -385,9 +385,16 @@ class CustomerReservationHistoryIntegrationTest {
         .header("X-Customer-History-Session", token).exchange().expectStatus().isUnauthorized();
     http.get().uri("/api/v1/reservations").header("X-Customer-History-Session", token)
         .exchange().expectStatus().isUnauthorized();
+    http.get().uri("/api/v1/users").header("X-Customer-History-Session", token)
+        .exchange().expectStatus().isUnauthorized();
+    http.get().uri("/api/v1/user-invitations").header("Authorization", "Bearer " + token)
+        .exchange().expectStatus().isUnauthorized();
+    http.post().uri("/api/v1/users").header("X-Customer-History-Session", token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body("{\"email\":\"escalate@history.test\",\"role\":\"STAFF\"}")
+        .exchange().expectStatus().isUnauthorized();
     http.get().uri("/api/v1/reservations").header("Authorization", "Bearer " + staff)
-        .exchange().expectStatus().isOk().expectBody()
-        .jsonPath("$.length()").isEqualTo(6);
+        .exchange().expectStatus().isForbidden();
     http.post().uri(base + "/history-sessions/revoke")
         .header("X-Customer-History-Session", token).exchange().expectStatus().isNoContent();
     http.get().uri(base + "/my-reservations?period=upcoming")

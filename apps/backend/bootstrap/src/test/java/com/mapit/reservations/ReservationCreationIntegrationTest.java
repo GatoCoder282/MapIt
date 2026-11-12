@@ -206,6 +206,9 @@ class ReservationCreationIntegrationTest {
           .isCreated();
     }
 
+    UUID platformAdmin = UUID.randomUUID();
+    jdbc.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,'platform',?,'unused','Plataforma','SUPER_ADMIN')",
+        platformAdmin, "platform-" + platformAdmin + "@reservation.test");
     create(
             ESTABLISHMENT_A,
             PERSON_A,
@@ -221,7 +224,7 @@ class ReservationCreationIntegrationTest {
             List.of(ELEMENT_A),
             "2026-10-12T12:00:00Z",
             "2026-10-12T13:00:00Z",
-            token(UUID.randomUUID(), TENANT_A, UserRole.SUPER_ADMIN))
+            token(platformAdmin, "platform", UserRole.SUPER_ADMIN))
         .expectStatus()
         .isForbidden();
 

@@ -49,6 +49,7 @@ class LoggingHttpIntegrationTest {
       .withDatabaseName("mapit_logging").withUsername("mapit").withPassword("test_password");
   @LocalServerPort int port;
   @Autowired AccessTokenIssuer tokens;
+  @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @DynamicPropertySource
   static void database(DynamicPropertyRegistry registry) {
@@ -70,7 +71,10 @@ class LoggingHttpIntegrationTest {
 
   @Test
   void realServerPreservesStatusesExposesCorsAndEmitsSafeJson(CapturedOutput output) {
-    String token = tokens.issue(new AuthenticatedUser(UUID.randomUUID(), TenantId.of("demo"),
+    UUID actor = UUID.randomUUID();
+    jdbc.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,'demo',?,'unused','Private canary','STAFF')",
+        actor, "logging-" + actor + "@example.test");
+    String token = tokens.issue(new AuthenticatedUser(actor, TenantId.of("demo"),
         "private-canary@example.test", "Private canary", UserRole.STAFF)).value();
     for (int status : List.of(200, 400, 500)) {
       String id = UUID.randomUUID().toString();

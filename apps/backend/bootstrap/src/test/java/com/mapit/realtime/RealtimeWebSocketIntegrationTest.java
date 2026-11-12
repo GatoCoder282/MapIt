@@ -229,14 +229,14 @@ class RealtimeWebSocketIntegrationTest {
         otherTenant,
         "realtime-" + otherSuperAdmin + "@example.test");
 
-    // SUPER_ADMIN de su propio tenant: permitido, ya lee estos mismos datos por HTTP.
+    // SUPER_ADMIN pertenece exclusivamente a platform; nunca accede a salas operativas.
     assertThat(roomAccess.canSubscribe(TenantId.of("demo"), superAdmin, "SUPER_ADMIN", establishment, Optional.empty()))
-        .isTrue();
-    // Los roles operativos siguen permitidos.
+        .isFalse();
+    // Un rol del JWT que no coincide con la fila actual se rechaza.
     assertThat(roomAccess.canSubscribe(TenantId.of("demo"), user, "ADMIN", establishment, Optional.empty()))
-        .isTrue();
+        .isFalse();
     assertThat(roomAccess.canSubscribe(TenantId.of("demo"), user, "MANAGER", establishment, Optional.empty()))
-        .isTrue();
+        .isFalse();
     // SUPER_ADMIN de otro tenant: denegado; el check de tenant se mantiene para cualquier rol.
     assertThat(roomAccess.canSubscribe(TenantId.of(otherTenant), otherSuperAdmin, "SUPER_ADMIN", establishment, Optional.empty()))
         .isFalse();

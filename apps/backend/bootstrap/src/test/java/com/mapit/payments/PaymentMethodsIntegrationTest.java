@@ -99,7 +99,7 @@ class PaymentMethodsIntegrationTest {
   void onlyAdminCanReadOrWriteAndAnonymousCannotAccess() {
     client().get().uri("/api/v1/payment-methods").exchange().expectStatus().isUnauthorized();
     for (UserRole role : new UserRole[] {UserRole.STAFF, UserRole.MANAGER, UserRole.SUPER_ADMIN}) {
-      String bearer = token(adminA, tenantA, role);
+      String bearer = rejectedRoleToken(role);
       client().get().uri("/api/v1/payment-methods").headers(h -> h.setBearerAuth(bearer))
           .exchange().expectStatus().isForbidden();
       client().post().uri("/api/v1/payment-methods").headers(h -> h.setBearerAuth(bearer))
@@ -218,7 +218,7 @@ class PaymentMethodsIntegrationTest {
     jdbc.update("insert into establishment(id,tenant_id,name,type,slug,timezone) values(?,?,'Otra sucursal','RESTAURANT','other-venue','UTC')",otherVenue,tenantA);
     seedConfirmedPayment(tenantA,adminA,otherVenue,method);
     String path="/api/v1/payments?establishmentId="+establishmentA+"&status=CONFIRMED&limit=1&offset=0";
-    client().get().uri(path).headers(h->h.setBearerAuth(token(adminA,tenantA,UserRole.STAFF)))
+    client().get().uri(path).headers(h->h.setBearerAuth(rejectedRoleToken(UserRole.STAFF)))
         .exchange().expectStatus().isForbidden();
     client().get().uri(path).headers(h->h.setBearerAuth(token(adminB,tenantB,UserRole.ADMIN)))
         .exchange().expectStatus().isNotFound();
@@ -331,6 +331,14 @@ class PaymentMethodsIntegrationTest {
 
   private String token(UUID user, String tenant, UserRole role) {
     return tokens.issue(new AuthenticatedUser(user, TenantId.of(tenant), "staff@payments.test", "Staff", role)).value();
+  }
+
+  private String rejectedRoleToken(UserRole role) {
+    String tenant = role == UserRole.SUPER_ADMIN ? "platform" : tenantA;
+    UUID user = UUID.randomUUID();
+    jdbc.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,?,?,'unused','Rol real',?)",
+        user, tenant, user + "@payments.test", role.name());
+    return token(user, tenant, role);
   }
 
   record MethodId(UUID id) {}

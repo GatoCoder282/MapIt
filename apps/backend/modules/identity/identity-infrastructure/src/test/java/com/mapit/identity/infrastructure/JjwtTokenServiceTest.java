@@ -49,7 +49,11 @@ class JjwtTokenServiceTest {
         assertThat(claims.getPayload().get("typ", String.class)).isEqualTo("access");
         assertThat(issued.expiresAt()).isEqualTo(NOW.plusSeconds(900));
 
-        assertThat(service.verify(issued.value())).contains(USER.toPrincipal());
+        assertThat(service.verify(issued.value())).get()
+                .satisfies(principal -> {
+                    assertThat(principal.id()).isEqualTo(USER_ID);
+                    assertThat(principal.issuedAt()).isEqualTo(NOW);
+                });
     }
 
     @Test

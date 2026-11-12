@@ -304,10 +304,13 @@ class AuditLogApiIntegrationTest {
 
     for (UserRole role :
         new UserRole[] {UserRole.MANAGER, UserRole.STAFF, UserRole.SUPER_ADMIN}) {
+      UUID actor = UUID.randomUUID();
+      String tenantId = role == UserRole.SUPER_ADMIN ? "platform" : TENANT_A;
+      user(actor, tenantId, "role-" + actor + "@audit-api.test", role);
       http()
           .get()
           .uri("/api/v1/audit-logs")
-          .header("Authorization", bearer(token(UUID.randomUUID(), TENANT_A, role)))
+          .header("Authorization", bearer(token(actor, tenantId, role)))
           .exchange()
           .expectStatus()
           .isForbidden();

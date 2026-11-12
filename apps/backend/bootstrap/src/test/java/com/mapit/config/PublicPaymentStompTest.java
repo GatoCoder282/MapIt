@@ -40,7 +40,7 @@ class PublicPaymentStompTest {
 
   @BeforeEach void setup() {
     when(flags.isEnabled(any(FeatureFlag.class), anyBoolean())).thenReturn(true);
-    interceptor = new RealtimeStompInterceptor(mock(AccessTokenVerifier.class), mock(RealtimeRoomAccessPort.class), flags);
+    interceptor = new RealtimeStompInterceptor(mock(AccessTokenVerifier.class), signed -> Optional.of(signed), mock(RealtimeRoomAccessPort.class), flags);
     interceptor.publicReservationAccess(access);
   }
 
@@ -104,7 +104,7 @@ class PublicPaymentStompTest {
     StompHeaderAccessor disconnect = StompHeaderAccessor.create(StompCommand.DISCONNECT);
     disconnect.setSessionId("public-session");
     interceptor.preSend(message(disconnect), channel);
-    assertThat(interceptor.authorizeOutbound(delivery)).isSameAs(delivery);
+    assertThat(interceptor.authorizeOutbound(delivery)).isNull();
   }
   @Test void revokingStaffEstablishmentGrantStopsAnOpenStream() {
     var tokens = mock(AccessTokenVerifier.class);
@@ -113,7 +113,7 @@ class PublicPaymentStompTest {
     var staff = new AuthenticatedPrincipal(UUID.randomUUID(), TenantId.of("demo"), "staff@example.test", UserRole.STAFF);
     when(tokens.verify("staff-token")).thenReturn(Optional.of(staff));
     when(rooms.canSubscribe(staff.tenantId(), staff.id(), "STAFF", establishment, Optional.empty())).thenReturn(true);
-    var handler = new RealtimeStompInterceptor(tokens, rooms, flags);
+    var handler = new RealtimeStompInterceptor(tokens, signed -> Optional.of(signed), rooms, flags);
     var connect = StompHeaderAccessor.create(StompCommand.CONNECT);
     connect.setSessionId("staff-session"); connect.addNativeHeader("Authorization", "Bearer staff-token");
     handler.preSend(message(connect), channel);
@@ -122,6 +122,26 @@ class PublicPaymentStompTest {
     var delivery = MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());
     assertThat(handler.authorizeOutbound(delivery)).isSameAs(delivery);
     when(rooms.canSubscribe(staff.tenantId(), staff.id(), "STAFF", establishment, Optional.empty())).thenReturn(false);
+    assertThat(handler.authorizeOutbound(delivery)).isNull();
+  }
+  @Test void revokingStaffIdentityStopsAnOpenStreamEvenWhenRoomGrantRemains() {
+    var tokens = mock(AccessTokenVerifier.class);
+    var rooms = mock(RealtimeRoomAccessPort.class);
+    var current = new java.util.concurrent.atomic.AtomicBoolean(true);
+    UUID establishment = UUID.randomUUID();
+    var staff = new AuthenticatedPrincipal(UUID.randomUUID(), TenantId.of("demo"), "staff@example.test", UserRole.STAFF);
+    when(tokens.verify("staff-token")).thenReturn(Optional.of(staff));
+    when(rooms.canSubscribe(staff.tenantId(), staff.id(), "STAFF", establishment, Optional.empty())).thenReturn(true);
+    var handler = new RealtimeStompInterceptor(tokens,
+        signed -> current.get() ? Optional.of(signed) : Optional.empty(), rooms, flags);
+    var connect = StompHeaderAccessor.create(StompCommand.CONNECT);
+    connect.setSessionId("staff-session"); connect.addNativeHeader("Authorization", "Bearer staff-token");
+    handler.preSend(message(connect), channel);
+    var headers = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
+    headers.setSessionId("staff-session"); headers.setDestination("/topic/establishments/" + establishment);
+    var delivery = MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());
+    assertThat(handler.authorizeOutbound(delivery)).isSameAs(delivery);
+    current.set(false);
     assertThat(handler.authorizeOutbound(delivery)).isNull();
   }
   private Message<?> subscription(Principal principal, String destination) {
