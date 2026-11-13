@@ -26,12 +26,13 @@ const OTHER = {
 };
 
 describe('WizardEstablishmentComponent: setup y gestión', () => {
-  function setup(query: Record<string, string> = {}) {
+  function setup(query: Record<string, string> = {}, initialList = [ACTIVE, OTHER]) {
     const queryParams = new BehaviorSubject(convertToParamMap(query));
     const status = signal<'idle' | 'loading' | 'ready' | 'error'>('loading');
     const active = signal<AccessibleEstablishment | null>(null);
     const navigate = vi.fn().mockResolvedValue(true);
-    const listEstablishments = vi.fn(() => of([ACTIVE, OTHER]));
+    const listEstablishments = vi.fn(() => of(initialList));
+    const load = vi.fn().mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({ imports: [WizardEstablishmentComponent] });
     TestBed.overrideComponent(WizardEstablishmentComponent, {
@@ -46,7 +47,7 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
         { provide: Router, useValue: { navigate } },
         {
           provide: EstablishmentContext,
-          useValue: { active, status },
+          useValue: { active, status, load },
         },
         {
           provide: SpacesStore,
@@ -69,7 +70,7 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
       ],
     });
 
-    return { queryParams, status, active, navigate, listEstablishments };
+    return { queryParams, status, active, navigate, listEstablishments, load };
   }
 
   it('espera al contexto si entra cargando y salta directamente a la estructura activa', async () => {
@@ -109,6 +110,29 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
     expect(page.querySelector('input[name="name"]')).not.toBeNull();
     expect(page.querySelector('select[name="establishment"]')).toBeNull();
 
+    fixture.destroy();
+  });
+
+  it('muestra el formulario del primer establecimiento sin el parámetro manage', async () => {
+    const { status, listEstablishments, load } = setup({}, []);
+    status.set('ready');
+    await TestBed.compileComponents();
+    const fixture = TestBed.createComponent(WizardEstablishmentComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(listEstablishments).toHaveBeenCalledOnce();
+    expect(page.querySelector('form.form')).not.toBeNull();
+    expect(page.querySelector('input[name="name"]')).not.toBeNull();
+
+    const name = page.querySelector<HTMLInputElement>('input[name="name"]')!;
+    name.value = 'A1';
+    name.dispatchEvent(new Event('input'));
+    page.querySelector<HTMLButtonElement>('.type-card')!.click();
+    fixture.detectChanges();
+    page.querySelector<HTMLFormElement>('form.form')!.dispatchEvent(new Event('submit'));
+    expect(load).toHaveBeenCalledOnce();
     fixture.destroy();
   });
 });

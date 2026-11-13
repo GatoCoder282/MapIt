@@ -204,6 +204,70 @@ describe('StaffShell navigation', () => {
     expect(host.querySelector('mapit-establishment-selector')).toBeNull();
   });
 
+  it('sends an ADMIN without establishments to setup instead of trapping them in the selector', async () => {
+    const user = signal({ id: 'admin-1', tenantId: 'tenant-a', fullName: 'Admin', role: 'ADMIN' });
+    const context = {
+      establishments: signal<readonly AccessibleEstablishment[]>([]),
+      active: signal<AccessibleEstablishment | null>(null),
+      status: signal<'idle' | 'loading' | 'ready' | 'error'>('ready'),
+      load: vi.fn(),
+      confirm: vi.fn(),
+    };
+    await TestBed.configureTestingModule({
+      imports: [StaffShell],
+      providers: [
+        provideRouter([]),
+        { provide: AuthSession, useValue: { user, logout: vi.fn() } },
+        { provide: EstablishmentContext, useValue: context },
+      ],
+    }).compileComponents();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(StaffShell);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(navigate).toHaveBeenCalledWith(['/spaces/setup'], { replaceUrl: true });
+    expect(host.querySelector('mapit-establishment-selector')).toBeNull();
+    fixture.destroy();
+  });
+
+  it('mounts setup for an ADMIN with no establishments, but keeps STAFF blocked', async () => {
+    const user = signal({ id: 'admin-1', tenantId: 'tenant-a', fullName: 'Admin', role: 'ADMIN' });
+    const context = {
+      establishments: signal<readonly AccessibleEstablishment[]>([]),
+      active: signal<AccessibleEstablishment | null>(null),
+      status: signal<'idle' | 'loading' | 'ready' | 'error'>('ready'),
+      load: vi.fn(),
+      confirm: vi.fn(),
+    };
+    await TestBed.configureTestingModule({
+      imports: [StaffShell],
+      providers: [
+        provideRouter([{ path: 'spaces/setup', children: [] }]),
+        { provide: AuthSession, useValue: { user, logout: vi.fn() } },
+        { provide: EstablishmentContext, useValue: context },
+      ],
+    }).compileComponents();
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/spaces/setup');
+    const fixture = TestBed.createComponent(StaffShell);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('router-outlet')).not.toBeNull();
+    expect(host.querySelector('mapit-establishment-selector')).toBeNull();
+
+    context.status.set('loading');
+    user.set({ id: 'staff-1', tenantId: 'tenant-a', fullName: 'Staff', role: 'STAFF' });
+    fixture.detectChanges();
+    context.status.set('ready');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector('router-outlet')).toBeNull();
+    expect(host.querySelector('mapit-establishment-selector')).not.toBeNull();
+    fixture.destroy();
+  });
+
   it('redirects the old establishment route to explicit selection on Home', () => {
     const staffShell = routes.find((route) => route.path === '' && route.children);
     const oldRoute = staffShell?.children?.find((route) => route.path === 'establishments');

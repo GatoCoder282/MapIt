@@ -112,6 +112,46 @@ class CurrentStaffSecurityIntegrationTest {
   }
 
   @Test
+  void solo_admin_activo_puede_crear_primer_establecimiento_en_su_tenant() {
+    String a = tenant();
+    String b = tenant();
+    UUID adminA = user(a, "admin@first-establishment.test", UserRole.ADMIN);
+    UUID managerA = user(a, "manager@first-establishment.test", UserRole.MANAGER);
+    UUID staffA = user(a, "staff@first-establishment.test", UserRole.STAFF);
+    UUID adminB = user(b, "admin-b@first-establishment.test", UserRole.ADMIN);
+    var body = Map.of("name", "Primer local", "type", "RESTAURANT", "slug", "primer-local");
+
+    http().post().uri("/api/v1/establishments").contentType(MediaType.APPLICATION_JSON)
+        .body(body).exchange().expectStatus().isUnauthorized();
+    for (var actor : new UUID[] {managerA, staffA}) {
+      UserRole role = actor.equals(managerA) ? UserRole.MANAGER : UserRole.STAFF;
+      http().post().uri("/api/v1/establishments")
+          .header("Authorization", signed(actor, a, role))
+          .contentType(MediaType.APPLICATION_JSON).body(body)
+          .exchange().expectStatus().isForbidden();
+    }
+    http().post().uri("/api/v1/establishments")
+        .header("Authorization", signed(adminA, a, UserRole.ADMIN))
+        .contentType(MediaType.APPLICATION_JSON).body(body)
+        .exchange().expectStatus().isCreated();
+    inTenant(a, () -> assertThat(jdbc.queryForObject(
+        "select count(*) from establishment where tenant_id=? and slug='primer-local'",
+        Long.class, a)).isEqualTo(1));
+
+    // La misma petición autenticada por B crea exclusivamente en B.
+    http().post().uri("/api/v1/establishments")
+        .header("Authorization", signed(adminB, b, UserRole.ADMIN))
+        .contentType(MediaType.APPLICATION_JSON).body(body)
+        .exchange().expectStatus().isCreated();
+    inTenant(b, () -> assertThat(jdbc.queryForObject(
+        "select count(*) from establishment where tenant_id=? and slug='primer-local'",
+        Long.class, b)).isEqualTo(1));
+    inTenant(a, () -> assertThat(jdbc.queryForObject(
+        "select count(*) from establishment where tenant_id=? and slug='primer-local'",
+        Long.class, a)).isEqualTo(1));
+  }
+
+  @Test
   void socket_ya_suscrito_no_recibe_eventos_tras_perder_rol_o_baja() throws Exception {
     String tenant = tenant();
     UUID admin = user(tenant, "admin@socket.test", UserRole.ADMIN);

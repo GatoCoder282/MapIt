@@ -111,6 +111,8 @@ public class SecurityConfig {
                         .hasRole(UserRole.ADMIN.name())
                         .requestMatchers(HttpMethod.GET, "/api/v1/establishments/accessible")
                         .hasAnyRole(UserRole.ADMIN.name(), UserRole.STAFF.name(), UserRole.MANAGER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/establishments")
+                        .hasRole(UserRole.ADMIN.name())
                         .requestMatchers("/api/v1/establishments/*/check-ins", "/api/v1/establishments/*/check-ins/**")
                         .hasAnyRole(UserRole.ADMIN.name(), UserRole.STAFF.name())
                         // MAP-124: la ruta vive debajo de /sectors/**, que aún conserva

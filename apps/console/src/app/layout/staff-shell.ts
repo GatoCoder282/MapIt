@@ -9,7 +9,9 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { distinctUntilChanged, map } from 'rxjs';
+import { distinctUntilChanged, filter, map } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd } from '@angular/router';
 
 import { AuthSession } from '@mapit/auth';
 import { LanguageSelector } from '@mapit/i18n';
@@ -42,6 +44,22 @@ export class StaffShell {
   private readonly previousEstablishmentId = signal<string | null>(null);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+  protected readonly bootstrapSetup = computed(
+    () =>
+      this.session.user()?.role === 'ADMIN' &&
+      this.establishmentContext.status() === 'ready' &&
+      this.establishmentContext.establishments().length === 0,
+  );
+  protected readonly onSetupRoute = computed(
+    () => this.currentUrl().split('?')[0] === '/spaces/setup',
+  );
   private observedIdentity: string | null = null;
   private hasObservedIdentity = false;
 
@@ -54,6 +72,12 @@ export class StaffShell {
   });
 
   constructor() {
+    effect(() => {
+      if (this.bootstrapSetup() && !this.onSetupRoute()) {
+        void this.router.navigate(['/spaces/setup'], { replaceUrl: true });
+      }
+    });
+
     effect(() => {
       const user = this.session.user();
       const identity = user ? JSON.stringify([user.tenantId, user.id]) : null;
