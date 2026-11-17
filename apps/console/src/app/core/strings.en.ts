@@ -422,6 +422,8 @@ export const STRINGS_EN = {
     benefitPermissions: 'Your access permissions stay the same.',
     selectQuestion: 'Which establishment would you like to enter?',
     selectDescription: 'Your account has access to these establishments.',
+    empty:
+      'No establishments have been assigned to you yet. Contact your company administrator to request access.',
     close: 'Close establishment selector',
     discardChanges: 'You have unsaved changes. Discard them and leave this page?',
     optionLabel: 'Select {name}',

@@ -423,6 +423,8 @@ export const STRINGS_JA = {
     benefitPermissions: 'アクセス権限は変更されません。',
     selectQuestion: 'どの事業所を開きますか？',
     selectDescription: 'アカウントで利用できる事業所です。',
+    empty:
+      'まだ事業所が割り当てられていません。アクセスを申請するには、会社の管理者にお問い合わせください。',
     close: '事業所セレクターを閉じる',
     discardChanges: '未保存の変更があります。破棄してこのページを離れますか？',
     optionLabel: '{name}を選択',

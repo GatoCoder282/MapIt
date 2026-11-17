@@ -877,7 +877,8 @@ const STRINGS_ES = {
     selectQuestion: '¿Con cuál establecimiento querés entrar?',
     selectDescription: 'Tu cuenta tiene acceso a los siguientes establecimientos.',
     loading: 'Cargando establecimientos…',
-    empty: 'No tienes establecimientos disponibles.',
+    empty:
+      'Todavía no tienes establecimientos asignados. Contacta con el administrador de tu empresa para solicitar acceso.',
     error: 'No se pudieron cargar los establecimientos. Inténtalo de nuevo.',
     retry: 'Reintentar',
     choose: 'Seleccionar',
