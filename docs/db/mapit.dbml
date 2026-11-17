@@ -45,7 +45,7 @@ Table tenant {
 Table app_user {
   id            uuid        [pk]
   tenant_id     text        [not null, ref: > tenant.id]
-  email         text        [not null, note: 'Minúsculas, sin espacios externos, 1-254 caracteres']
+  email         text        [not null, unique, note: 'Minúsculas, sin espacios externos, 1-254 caracteres']
   password_hash text        [not null, note: 'BCrypt (RNF09)']
   full_name     text        [not null]
   role          text        [not null, note: 'SUPER_ADMIN | ADMIN | MANAGER | STAFF']
@@ -57,7 +57,20 @@ Table app_user {
     (tenant_id, id) [unique]
     (tenant_id, email) [unique]
   }
-  Note: 'IMPLEMENTADA en V3 con RLS forzada. El claim `tenant` del JWT saldrá de aquí. Los privilegios transversales de SUPER_ADMIN se implementarán en CU-24.'
+  Note: 'RLS por tenant. V32 añade la unicidad del correo y permite consultar una cuenta por su correo antes del JWT, con alcance de transacción.'
+}
+
+Table auth_attempt_limit {
+  tenant_id  text        [not null, ref: > tenant.id]
+  id         text        [not null, note: 'Huella HMAC del ámbito y la clave de límite']
+  expires_at timestamptz [not null]
+  attempts   int         [not null]
+
+  Indexes {
+    (tenant_id, id) [pk]
+    (tenant_id, expires_at)
+  }
+  Note: 'RLS en platform. Contadores de autenticación compartidos entre instancias.'
 }
 
 Table admin_recovery_authorization {
@@ -68,8 +81,8 @@ Table admin_recovery_authorization {
   target_user_id   uuid        [not null]
   operator_id      uuid        [not null]
   approver_id      uuid
-  approval_reference text [note: 'V35: referencia de acta/ticket verificada manualmente']
-  approval_responsible text [note: 'V35: responsable identificable distinto del ejecutor']
+  approval_reference text [note: 'V37: referencia de acta/ticket verificada manualmente']
+  approval_responsible text [note: 'V37: responsable identificable distinto del ejecutor']
   ticket           text        [not null]
   reason           text        [not null]
   valid_from       timestamptz [not null]
@@ -84,7 +97,7 @@ Table admin_recovery_authorization {
     (tenant_id, id)
     (target_tenant_id, target_user_id, status)
   }
-  Note: 'CA-05 V33/V35. Solicitud scoped a platform; aprobación con segundo SUPER_ADMIN legado o referencia documental. V37 impide reutilizar la referencia.'
+  Note: 'CA-05 V35/V37. Solicitud scoped a platform; aprobación con segundo SUPER_ADMIN legado o referencia documental. V39 impide reutilizar la referencia.'
 }
 
 Ref: admin_recovery_authorization.(target_tenant_id, target_user_id) > app_user.(tenant_id, id)
@@ -110,7 +123,7 @@ Table admin_recovery_approval_evidence {
   Indexes {
     (tenant_id, id)
   }
-  Note: 'V37: mapit_app solo SELECT; mapit_recovery_approver NOLOGIN recibe escritura acotada, otorgada a una cuenta personal ajena al ejecutor. Evidencia inmutable salvo revocación.'
+  Note: 'V39: mapit_app solo SELECT; mapit_recovery_approver NOLOGIN recibe escritura acotada, otorgada a una cuenta personal ajena al ejecutor. Evidencia inmutable salvo revocación.'
 }
 
 Ref: admin_recovery_approval_evidence.(target_tenant_id, target_user_id) > app_user.(tenant_id, id)
@@ -128,7 +141,7 @@ Table admin_recovery_token {
   Indexes {
     (tenant_id, id)
   }
-  Note: 'V36. El tenant y ADMIN objetivo son el alcance inmutable de V33; un token por autorización.'
+  Note: 'V38. El tenant y ADMIN objetivo son el alcance inmutable de V35; un token por autorización.'
 }
 
 
@@ -153,7 +166,7 @@ Table invitation_tokens {
     (tenant_id, id) [name: 'invitation_tokens_tenant_id_idx']
     (tenant_id, email, purpose) [unique, name: 'invitation_tokens_member_pending_unique', note: 'Parcial: purpose MEMBER y consumed_at/revoked_at NULL']
   }
-  Note: 'V10/V32. RLS forzada; un resultado consumido/revocado no vuelve a pendiente. Onboarding anterior conserva target_role/invited_by/dispatch NULL.'
+  Note: 'V10/V34. RLS forzada; un resultado consumido/revocado no vuelve a pendiente. Onboarding anterior conserva target_role/invited_by/dispatch NULL.'
 }
 Ref: invitation_tokens.(tenant_id, invited_by) > app_user.(tenant_id, id)
 Ref: invitation_tokens.(tenant_id, user_id) > app_user.(tenant_id, id)

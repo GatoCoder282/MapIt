@@ -1,6 +1,8 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { AccessibleEstablishment } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import { ActivatedRoute, convertToParamMap, Router, RouterLink } from '@angular/router';
 import { BehaviorSubject, of } from 'rxjs';
 
@@ -45,6 +47,11 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
           useValue: { snapshot: { queryParamMap: queryParams.value }, queryParamMap: queryParams },
         },
         { provide: Router, useValue: { navigate } },
+        { provide: AuthSession, useValue: { logout: vi.fn() } },
+        {
+          provide: FeatureFlagService,
+          useValue: { isVerticalEnabled: (type: string) => type !== 'HOTEL' },
+        },
         {
           provide: EstablishmentContext,
           useValue: { active, status, load },
@@ -114,7 +121,7 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
   });
 
   it('muestra el formulario del primer establecimiento sin el parámetro manage', async () => {
-    const { status, listEstablishments, load } = setup({}, []);
+    const { status, listEstablishments } = setup({}, []);
     status.set('ready');
     await TestBed.compileComponents();
     const fixture = TestBed.createComponent(WizardEstablishmentComponent);
@@ -129,10 +136,30 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
     const name = page.querySelector<HTMLInputElement>('input[name="name"]')!;
     name.value = 'A1';
     name.dispatchEvent(new Event('input'));
-    page.querySelector<HTMLButtonElement>('.type-card')!.click();
+    fixture.destroy();
+  });
+
+  it('vuelve al selector para recargar la lista después de crear el primer establecimiento', async () => {
+    const { listEstablishments, navigate } = setup({ manage: '1' });
+    listEstablishments.mockReturnValue(of([]));
+    await TestBed.compileComponents();
+    const fixture = TestBed.createComponent(WizardEstablishmentComponent);
     fixture.detectChanges();
+    await fixture.whenStable();
+
+    const page = fixture.nativeElement as HTMLElement;
+    const types = page.querySelectorAll<HTMLButtonElement>('button[role="radio"]');
+    expect(types[3]?.disabled).toBe(true);
+    const name = page.querySelector<HTMLInputElement>('input[name="name"]')!;
+    name.value = 'Mi primer establecimiento';
+    name.dispatchEvent(new Event('input'));
+    page.querySelector<HTMLButtonElement>('button[role="radio"]')!.click();
     page.querySelector<HTMLFormElement>('form.form')!.dispatchEvent(new Event('submit'));
-    expect(load).toHaveBeenCalledOnce();
+
+    expect(navigate).toHaveBeenCalledWith(['/home'], {
+      queryParams: { selectEstablishment: '1' },
+      replaceUrl: true,
+    });
     fixture.destroy();
   });
 });

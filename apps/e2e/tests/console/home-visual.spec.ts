@@ -17,7 +17,7 @@ test.describe('Home Dashboard Visual', () => {
       },
       { tenantId: company.tenantId, userId: company.userId, establishmentId: company.venueId },
     );
-    await page.goto('/empresa/' + company.slug + '/login');
+    await page.goto('/login');
     await page.fill('input[type="email"]', company.email);
     await page.fill('input[type="password"]', company.password);
     await page.click('button[type="submit"]');

@@ -7,11 +7,9 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { distinctUntilChanged, filter, map } from 'rxjs';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd } from '@angular/router';
 
 import { AuthSession } from '@mapit/auth';
 import { LanguageSelector } from '@mapit/i18n';
@@ -44,24 +42,30 @@ export class StaffShell {
   private readonly previousEstablishmentId = signal<string | null>(null);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly currentUrl = toSignal(
+  private readonly firstEstablishmentUrl = this.router.createUrlTree(['/spaces/setup'], {
+    queryParams: { manage: '1' },
+  });
+  private readonly onEstablishmentSetup = toSignal(
     this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      map((event) => event.urlAfterRedirects),
+      filter((event) => event instanceof NavigationEnd),
+      map(() => this.isEstablishmentSetup()),
     ),
-    { initialValue: this.router.url },
-  );
-  protected readonly bootstrapSetup = computed(
-    () =>
-      this.session.user()?.role === 'ADMIN' &&
-      this.establishmentContext.status() === 'ready' &&
-      this.establishmentContext.establishments().length === 0,
-  );
-  protected readonly onSetupRoute = computed(
-    () => this.currentUrl().split('?')[0] === '/spaces/setup',
+    { initialValue: this.isEstablishmentSetup() },
   );
   private observedIdentity: string | null = null;
   private hasObservedIdentity = false;
+
+  protected readonly needsFirstEstablishment = computed(
+    () =>
+      this.session.user()?.role === 'ADMIN' &&
+      this.initialEstablishmentsLoaded() &&
+      this.establishmentContext.status() === 'ready' &&
+      !this.establishmentContext.active() &&
+      this.establishmentContext.establishments().length === 0,
+  );
+  protected readonly canOpenFirstEstablishmentSetup = computed(
+    () => this.needsFirstEstablishment() && this.onEstablishmentSetup(),
+  );
 
   protected readonly canDismissSelector = computed(() => {
     if (!this.selectorRequested() || this.establishmentContext.status() !== 'ready') return false;
@@ -72,12 +76,6 @@ export class StaffShell {
   });
 
   constructor() {
-    effect(() => {
-      if (this.bootstrapSetup() && !this.onSetupRoute()) {
-        void this.router.navigate(['/spaces/setup'], { replaceUrl: true });
-      }
-    });
-
     effect(() => {
       const user = this.session.user();
       const identity = user ? JSON.stringify([user.tenantId, user.id]) : null;
@@ -104,6 +102,12 @@ export class StaffShell {
       }
     });
 
+    effect(() => {
+      if (this.needsFirstEstablishment() && !this.onEstablishmentSetup()) {
+        void this.router.navigateByUrl(this.firstEstablishmentUrl, { replaceUrl: true });
+      }
+    });
+
     this.route.queryParamMap
       .pipe(
         map((params) => params.get('selectEstablishment') === '1'),
@@ -121,6 +125,15 @@ export class StaffShell {
           this.previousEstablishmentId.set(null);
         }
       });
+  }
+
+  private isEstablishmentSetup(): boolean {
+    return this.router.isActive(this.firstEstablishmentUrl, {
+      paths: 'exact',
+      queryParams: 'exact',
+      fragment: 'ignored',
+      matrixParams: 'ignored',
+    });
   }
 
   protected readonly navItems = computed<readonly SidebarNavItem[]>(() => [

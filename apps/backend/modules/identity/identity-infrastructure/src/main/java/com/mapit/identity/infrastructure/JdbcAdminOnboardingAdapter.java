@@ -126,10 +126,17 @@ class JdbcAdminOnboardingAdapter implements InvitationTokenStore, AppUserCreator
 
   @Override
   public boolean userExists(TenantId tenant, String email) {
-    setTenant(tenant);
-    return Boolean.TRUE.equals(jdbc.queryForObject(
-        "select exists(select 1 from app_user where tenant_id=? and email=?)",
-        Boolean.class, tenant.value(), email));
+    // La política de login de V32 permite consultar únicamente este correo aun
+    // antes del JWT. Restaurar el scope del tenant para el resto de la transacción.
+    jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, "");
+    try {
+      jdbc.queryForObject("select set_config('app.login_email', ?, true)", String.class, email);
+      return Boolean.TRUE.equals(jdbc.queryForObject(
+          "select exists(select 1 from app_user where email=?)", Boolean.class, email));
+    } finally {
+      jdbc.queryForObject("select set_config('app.login_email', '', true)", String.class);
+      setTenant(tenant);
+    }
   }
 
   @Override

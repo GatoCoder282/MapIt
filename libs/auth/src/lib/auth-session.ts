@@ -18,18 +18,11 @@ export interface SessionResponse {
   user: SessionUser;
 }
 
-interface StoredSession extends SessionResponse {
-  tenantSlug: string;
-}
-
 const SESSION_KEY = 'mapit.auth.session';
-const SLUG_KEY = 'mapit.auth.tenant';
-const validSlug = (value: unknown): value is string =>
-  typeof value === 'string' && /^[a-z0-9][a-z0-9-]{1,62}$/.test(value);
 
-function validSession(value: unknown): value is StoredSession {
+function validSession(value: unknown): value is SessionResponse {
   if (!value || typeof value !== 'object') return false;
-  const session = value as Partial<StoredSession>;
+  const session = value as Partial<SessionResponse>;
   const user = session.user;
   return (
     typeof session.accessToken === 'string' &&
@@ -38,7 +31,6 @@ function validSession(value: unknown): value is StoredSession {
     typeof session.expiresAt === 'string' &&
     Number.isFinite(Date.parse(session.expiresAt)) &&
     Date.parse(session.expiresAt) > Date.now() &&
-    validSlug(session.tenantSlug) &&
     !!user &&
     typeof user.id === 'string' &&
     /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(user.id) &&
@@ -58,8 +50,7 @@ export class AuthSession {
   private readonly router = inject(Router);
   private readonly currentUser = signal<SessionUser | null>(null);
   private readonly storageWarningVisible = signal(false);
-  private current: StoredSession | null = null;
-  private tenantSlug: string | null = null;
+  private current: SessionResponse | null = null;
   private expiryTimer: ReturnType<typeof setTimeout> | undefined;
   readonly user = this.currentUser.asReadonly();
   readonly warning = computed(() =>
@@ -71,8 +62,8 @@ export class AuthSession {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.expiryTimer));
   }
 
-  start(response: SessionResponse, tenantSlug: string, remember: boolean): void {
-    const candidate: unknown = { ...response, tenantSlug };
+  start(response: SessionResponse, remember: boolean): void {
+    const candidate: unknown = response;
     if (!validSession(candidate)) throw new Error(AUTH_STRINGS.sessionInvalid);
     // Seleccionar campos explícitos impide persistir datos ajenos al contrato.
     const { id, tenantId, email, fullName, role } = candidate.user;
@@ -80,17 +71,14 @@ export class AuthSession {
       accessToken: candidate.accessToken,
       tokenType: 'Bearer',
       expiresAt: candidate.expiresAt,
-      tenantSlug,
       user: { id, tenantId, email, fullName, role },
     };
-    this.tenantSlug = tenantSlug;
     this.currentUser.set(this.current.user);
     this.storageWarningVisible.set(false);
     this.removeStoredSessions();
     this.withStorage(remember ? 'localStorage' : 'sessionStorage', (storage) => {
       storage.setItem(SESSION_KEY, JSON.stringify(this.current));
     });
-    this.withStorage('localStorage', (storage) => storage.setItem(SLUG_KEY, tenantSlug));
     this.scheduleExpiry();
   }
 
@@ -100,7 +88,7 @@ export class AuthSession {
   }
 
   loginUrl(): string {
-    return this.tenantSlug ? `/empresa/${encodeURIComponent(this.tenantSlug)}/login` : '/login';
+    return '/login';
   }
 
   logout(): void {
@@ -116,10 +104,6 @@ export class AuthSession {
   }
 
   private restore(): void {
-    this.withStorage('localStorage', (storage) => {
-      const slug = storage.getItem(SLUG_KEY);
-      if (validSlug(slug)) this.tenantSlug = slug;
-    });
     for (const name of ['sessionStorage', 'localStorage'] as const) {
       this.withStorage(name, (storage) => {
         const raw = storage.getItem(SESSION_KEY);
@@ -136,7 +120,6 @@ export class AuthSession {
           return;
         }
         this.current = stored;
-        this.tenantSlug = stored.tenantSlug;
         this.currentUser.set(stored.user);
       });
     }

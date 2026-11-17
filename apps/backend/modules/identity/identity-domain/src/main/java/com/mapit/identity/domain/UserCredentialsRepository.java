@@ -2,7 +2,7 @@ package com.mapit.identity.domain;
 
 import java.util.Optional;
 
-/** Consulta previa al login: el slug selecciona empresa, pero no concede autorización. */
+/** Consulta de la cuenta de Console antes de emitir el JWT. */
 public interface UserCredentialsRepository {
-    Optional<UserCredentials> findByTenantSlugAndEmail(String tenantSlug, String email);
+    Optional<UserCredentials> findByEmail(String email);
 }

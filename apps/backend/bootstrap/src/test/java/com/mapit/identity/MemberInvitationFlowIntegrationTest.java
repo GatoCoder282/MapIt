@@ -201,6 +201,7 @@ class MemberInvitationFlowIntegrationTest {
     UUID adminB = user(b, UserRole.ADMIN, "admin@bchecks.test");
     String bearer = bearer(a, admin, UserRole.ADMIN);
     String other = bearer(b, adminB, UserRole.ADMIN);
+    assertThat(inviteStatus(bearer, "admin@bchecks.test")).isEqualTo(409);
     InvitationView first = invite(bearer, "pending@checks.test", "STAFF");
     http().post().uri("/api/v1/users").header("Authorization", bearer).contentType(MediaType.APPLICATION_JSON)
         .body(Map.of("email", "pending@checks.test", "role", "MANAGER"))

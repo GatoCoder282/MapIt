@@ -25,11 +25,16 @@ public enum FeatureFlag {
   /** Agrupar elementos en el editor de mapas (CU-06). */
   SPACES_EDITOR_GROUPING("spaces.editor-grouping", Tipo.RELEASE, false),
 
-  /** Vertical Hotel: reservas por rango de fechas (CU-22). */
-  VERTICAL_HOTEL("vertical.hotel", Tipo.PERMISSION, false),
+  /**
+   * Vertical Hotel: reservas por rango de fechas (CU-22).
+   *
+   * <p>Por defecto encendida (HU-7.01/7.02, spec D3): si Unleash cae, un hotel que ya opera
+   * sigue reservando; apagarla es un acto explícito en Unleash.
+   */
+  VERTICAL_HOTEL("vertical.hotel", Tipo.PERMISSION, true),
 
-  /** Vertical Salón de eventos: butacas numeradas (CU-21). */
-  VERTICAL_EVENT_HALL("vertical.event-hall", Tipo.PERMISSION, false);
+  /** Vertical Salón de eventos: butacas numeradas (CU-21). Por defecto encendida, como hotel. */
+  VERTICAL_EVENT_HALL("vertical.event-hall", Tipo.PERMISSION, true);
 
   /**
    * Tipos canónicos de toggle. El tipo determina cuánto debe vivir la flag:

@@ -4,12 +4,13 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.UUID;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -35,20 +36,32 @@ import com.mapit.identity.domain.UserRole;
 public class LoginController {
   private final AuthenticateUser authenticateUser;
   private final IssueAccessToken issueAccessToken;
+  private final AuthAttemptLimiter limiter;
 
-  public LoginController(AuthenticateUser authenticateUser, IssueAccessToken issueAccessToken) {
+  public LoginController(
+      AuthenticateUser authenticateUser, IssueAccessToken issueAccessToken,
+      AuthAttemptLimiter limiter) {
     this.authenticateUser = authenticateUser;
     this.issueAccessToken = issueAccessToken;
+    this.limiter = limiter;
   }
 
-  @PostMapping("/login")
-  public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-    AuthenticatedUser user =
-        authenticateUser.execute(
-            new AuthenticateUserCommand(
-                request.tenantSlug(), request.email(), request.password()));
-    IssuedAccessToken token = issueAccessToken.execute(user);
-    return LoginResponse.from(user, token);
+  @PostMapping("/global-login")
+  public ResponseEntity<LoginResponse> globalLogin(
+      @Valid @RequestBody GlobalLoginRequest request, HttpServletRequest http) {
+    limiter.check(http.getRemoteAddr(), request.email());
+    var user = authenticateUser.execute(new AuthenticateUserCommand(request.email(), request.password()));
+    var session = LoginResponse.from(user, issueAccessToken.execute(user));
+    return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+        .body(session);
+  }
+
+  public record GlobalLoginRequest(
+      @NotBlank @Email @Size(max = 254) String email, @NotBlank String password) {
+    @Override
+    public String toString() {
+      return "GlobalLoginRequest[REDACTED]";
+    }
   }
 
   @ExceptionHandler(InvalidCredentialsException.class)
@@ -71,20 +84,6 @@ public class LoginController {
     problem.setTitle("Solicitud inválida");
     problem.setType(URI.create(LoginProblemTypes.INVALID_REQUEST));
     return ResponseEntity.badRequest().body(problem);
-  }
-
-  /** Credenciales recibidas. Su representación deliberadamente oculta todos los valores. */
-  public record LoginRequest(
-      @NotBlank
-          @Size(min = 2, max = 63)
-          @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9-]{1,62}$")
-          String tenantSlug,
-      @NotBlank @Email @Size(max = 254) String email,
-      @NotBlank String password) {
-    @Override
-    public String toString() {
-      return "LoginRequest[REDACTED]";
-    }
   }
 
   /** Respuesta de login sin contraseña ni hash. */

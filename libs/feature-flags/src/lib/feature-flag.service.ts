@@ -3,6 +3,7 @@ import { computed, effect, inject, Injectable, signal, type Signal } from '@angu
 
 import { FEATURE_FLAG_CONFIG } from './feature-flag.config';
 import { FLAGS_POR_DEFECTO, type FeatureFlagKey } from './feature-flag.catalog';
+import { VERTICAL_FLAGS } from './vertical-flags';
 
 interface RespuestaProxy {
   readonly toggles: readonly { readonly name: string; readonly enabled: boolean }[];
@@ -68,6 +69,15 @@ export class FeatureFlagService {
       this.cache.set(flag, sig);
     }
     return sig;
+  }
+
+  /**
+   * HU-7.01/7.02: si una vertical está habilitada. Lee el Signal de su flag, así que es
+   * reactiva dentro de plantillas y `computed`. Las verticales base no llevan flag.
+   */
+  isVerticalEnabled(type: string): boolean {
+    const flag = VERTICAL_FLAGS[type];
+    return flag ? this.isEnabled(flag)() : true;
   }
 
   /** Lectura puntual, para lógica imperativa (guards, interceptores). */

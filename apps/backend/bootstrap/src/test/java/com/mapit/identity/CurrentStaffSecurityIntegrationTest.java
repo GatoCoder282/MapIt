@@ -335,8 +335,8 @@ class CurrentStaffSecurityIntegrationTest {
         .body(Map.of("active", false)).exchange().expectStatus().isOk();
     http().get().uri("/api/v1/establishments/accessible").header("Authorization", staff)
         .exchange().expectStatus().isUnauthorized();
-    http().post().uri("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-        .body(Map.of("tenantSlug", tenant, "email", "staff@jwt.test", "password", PASSWORD))
+    http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("email", "staff@jwt.test", "password", PASSWORD))
         .exchange().expectStatus().isUnauthorized();
 
     jdbc.update("update tenant set status='SUSPENDED' where id=?", tenant);
@@ -518,12 +518,12 @@ class CurrentStaffSecurityIntegrationTest {
         """, Long.class, operator, target, a)).isEqualTo(1));
     http().get().uri("/api/v1/users").header("Authorization", oldJwt)
         .exchange().expectStatus().isUnauthorized();
-    http().post().uri("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-        .body(Map.of("tenantSlug", a, "email", "admin@manual.test", "password", PASSWORD))
+    http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("email", "admin@manual.test", "password", PASSWORD))
         .exchange().expectStatus().isUnauthorized();
     Thread.sleep(1100);
-    http().post().uri("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-        .body(Map.of("tenantSlug", a, "email", "admin@manual.test",
+    http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("email", "admin@manual.test",
             "password", "N3w-Password!42"))
         .exchange().expectStatus().isOk();
   }
@@ -675,12 +675,12 @@ class CurrentStaffSecurityIntegrationTest {
         """, Long.class, operator, target)).isEqualTo(1));
     http().get().uri("/api/v1/users").header("Authorization", oldJwt)
         .exchange().expectStatus().isUnauthorized();
-    http().post().uri("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-        .body(Map.of("tenantSlug", a, "email", "admin@recovery-token.test", "password", PASSWORD))
+    http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("email", "admin@recovery-token.test", "password", PASSWORD))
         .exchange().expectStatus().isUnauthorized();
     Thread.sleep(1100);
-    http().post().uri("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-        .body(Map.of("tenantSlug", a, "email", "admin@recovery-token.test",
+    http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("email", "admin@recovery-token.test",
             "password", "N3w-Password!42"))
         .exchange().expectStatus().isOk();
   }
@@ -820,12 +820,12 @@ class CurrentStaffSecurityIntegrationTest {
         """, Long.class, operator, target, a)).isEqualTo(1));
     http().get().uri("/api/v1/users").header("Authorization", oldToken)
         .exchange().expectStatus().isUnauthorized();
-    http().post().uri("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-        .body(Map.of("tenantSlug", a, "email", "admin@recover.test", "password", PASSWORD))
+    http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("email", "admin@recover.test", "password", PASSWORD))
         .exchange().expectStatus().isUnauthorized();
     Thread.sleep(1100); // iat tiene precisión de segundos y el corte debe quedar atrás.
-    String body = http().post().uri("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-        .body(Map.of("tenantSlug", a, "email", "admin@recover.test", "password", "N3w-Password!42"))
+    String body = http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("email", "admin@recover.test", "password", "N3w-Password!42"))
         .exchange().expectStatus().isOk().expectBody(String.class).returnResult().getResponseBody();
     String newToken = "Bearer " + body.split("\\\"accessToken\\\":\\\"")[1].split("\\\"")[0];
     http().get().uri("/api/v1/users").header("Authorization", newToken)
@@ -1007,8 +1007,8 @@ class CurrentStaffSecurityIntegrationTest {
   }
 
   private String login(String tenant, String email) {
-    String body = http().post().uri("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-        .body(Map.of("tenantSlug", tenant, "email", email, "password", PASSWORD))
+    String body = http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("email", email, "password", PASSWORD))
         .exchange().expectStatus().isOk().expectBody(String.class).returnResult().getResponseBody();
     return "Bearer " + body.split("\\\"accessToken\\\":\\\"")[1].split("\\\"")[0];
   }

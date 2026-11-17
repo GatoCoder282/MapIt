@@ -1,4 +1,4 @@
--- CA-05: token de recuperación vinculado por FK al alcance inmutable de V33.
+-- CA-05: token de recuperación vinculado por FK al alcance inmutable de V35.
 -- Se persiste solo SHA-256; el token en claro vive únicamente en la entrega SMTP.
 CREATE TABLE admin_recovery_token (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

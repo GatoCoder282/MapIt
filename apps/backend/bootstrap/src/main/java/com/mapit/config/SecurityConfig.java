@@ -61,7 +61,6 @@ public class SecurityConfig {
         // El login y la activación del primer ADMIN son públicos por definición
         // (la activación no recibe contraseña temporal ni JWT; solo el token del
         // enlace, que ya es un secreto en sí mismo).
-        ApiPaths.AUTH_LOGIN,
         ApiPaths.AUTH_ACTIVATE,
         // CRUD temporal que conserva acceso público para validar el stack.
         ApiPaths.DEMO_ITEMS,
@@ -98,6 +97,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/platform/admin-recoveries")
                         .hasRole(UserRole.SUPER_ADMIN.name())
+                        .requestMatchers(HttpMethod.POST, ApiPaths.AUTH_GLOBAL_LOGIN)
+                        .permitAll()
                         .requestMatchers("/api/v1/sectors/*/elements", "/api/v1/sectors/*/elements/*",
                             "/v1/sectors/*/elements", "/v1/sectors/*/elements/*")
                         .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())

@@ -1,4 +1,4 @@
--- CA-05: V33 admite una referencia documental verificada manualmente por plataforma.
+-- CA-05: V35 admite una referencia documental verificada manualmente por plataforma.
 -- Las aprobaciones existentes con approver_id conservan su significado y sus FK.
 ALTER TABLE admin_recovery_authorization
     ADD COLUMN approval_reference TEXT,
@@ -26,7 +26,7 @@ ALTER TABLE admin_recovery_authorization ADD CONSTRAINT admin_recovery_state CHE
               AND length(btrim(approval_responsible)) BETWEEN 1 AND 120)))
 );
 
--- V33 ya protege el alcance. También se inmoviliza la evidencia al aprobar.
+-- V35 ya protege el alcance. También se inmoviliza la evidencia al aprobar.
 CREATE OR REPLACE FUNCTION guard_admin_recovery_authorization() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     IF (NEW.id, NEW.tenant_id, NEW.target_tenant_id, NEW.target_slug, NEW.target_user_id,

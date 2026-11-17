@@ -422,7 +422,12 @@
   color: #9aa1ad;
 }
 
+.ghost-button {
+  text-decoration: none;
+}
+
 /* Focus visible */
+a:focus-visible,
 button:focus-visible,
 input:focus-visible {
   outline: 2px solid currentColor;
