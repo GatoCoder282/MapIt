@@ -98,7 +98,7 @@ public class CreateUser {
               passwordHasher.hash(command.password()),
               targetRole);
     } catch (DuplicateKeyException duplicate) {
-      throw new Conflict("Ya existe un usuario con ese correo en el tenant.");
+      throw new Conflict("Ya existe una cuenta con este correo.");
     }
     return new CreatedUser(id, targetTenant.value(), email, command.fullName().trim(), targetRole.name());
   }

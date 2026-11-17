@@ -45,7 +45,7 @@ Table tenant {
 Table app_user {
   id            uuid        [pk]
   tenant_id     text        [not null, ref: > tenant.id]
-  email         text        [not null, note: 'Minúsculas, sin espacios externos, 1-254 caracteres']
+  email         text        [not null, unique, note: 'Minúsculas, sin espacios externos, 1-254 caracteres']
   password_hash text        [not null, note: 'BCrypt (RNF09)']
   full_name     text        [not null]
   role          text        [not null, note: 'SUPER_ADMIN | ADMIN | MANAGER | STAFF']
@@ -56,7 +56,20 @@ Table app_user {
     (tenant_id, id) [unique]
     (tenant_id, email) [unique]
   }
-  Note: 'IMPLEMENTADA en V3 con RLS forzada. El claim `tenant` del JWT saldrá de aquí. Los privilegios transversales de SUPER_ADMIN se implementarán en CU-24.'
+  Note: 'RLS por tenant. V32 añade la unicidad del correo y permite consultar una cuenta por su correo antes del JWT, con alcance de transacción.'
+}
+
+Table auth_attempt_limit {
+  tenant_id  text        [not null, ref: > tenant.id]
+  id         text        [not null, note: 'Huella HMAC del ámbito y la clave de límite']
+  expires_at timestamptz [not null]
+  attempts   int         [not null]
+
+  Indexes {
+    (tenant_id, id) [pk]
+    (tenant_id, expires_at)
+  }
+  Note: 'RLS en platform. Contadores de autenticación compartidos entre instancias.'
 }
 
 // ── ESPACIO (CU-04 … CU-08) ──────────────────────────────────

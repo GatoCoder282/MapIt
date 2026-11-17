@@ -33,20 +33,30 @@ describe('AuthSession', () => {
 
   it('guarda solo la sesión mínima y cambia Recordarme sin duplicados', () => {
     const session = TestBed.inject(AuthSession);
-    session.start({ ...response(), password: 'never-store' } as SessionResponse, 'demo', false);
+    session.start({ ...response(), password: 'never-store' } as SessionResponse, false);
     expect(sessionStorage.getItem('mapit.auth.session')).toContain('Staff');
     expect(sessionStorage.getItem('mapit.auth.session')).not.toContain('never-store');
     expect(localStorage.getItem('mapit.auth.session')).toBeNull();
-    session.start(response(), 'demo', true);
+    session.start(response(), true);
     expect(sessionStorage.getItem('mapit.auth.session')).toBeNull();
     expect(localStorage.getItem('mapit.auth.session')).toContain('Staff');
+  });
+
+  it('restaura una sesión guardada y vuelve a /login al expirar', () => {
+    localStorage.setItem('mapit.auth.session', JSON.stringify({ ...response() }));
+    const session = TestBed.inject(AuthSession);
+    expect(session.loginUrl()).toBe('/login');
+    expect(session.token()).toBeTruthy();
+    vi.advanceTimersByTime(60_000);
+    expect(vi.mocked(TestBed.inject(Router)).navigateByUrl.mock.calls[0]?.[0]).toBe('/login');
+    expect(localStorage.getItem('mapit.auth.session')).toBeNull();
   });
 
   it('acepta un identificador de empresa diferente de su slug', () => {
     const session = TestBed.inject(AuthSession);
     const data = response();
     data.user.tenantId = 'Tenant_01';
-    session.start(data, 'demo', false);
+    session.start(data, false);
     expect(session.user()?.tenantId).toBe('Tenant_01');
   });
 
@@ -70,26 +80,24 @@ describe('AuthSession', () => {
 
   it('expira y vuelve al login de empresa eliminando persistencia', () => {
     const session = TestBed.inject(AuthSession);
-    session.start(response(), 'demo', true);
+    session.start(response(), true);
     vi.advanceTimersByTime(60_000);
     expect(session.user()).toBeNull();
     expect(localStorage.getItem('mapit.auth.session')).toBeNull();
-    expect(vi.mocked(TestBed.inject(Router)).navigateByUrl.mock.calls[0]?.[0]).toBe(
-      '/empresa/demo/login',
-    );
+    expect(vi.mocked(TestBed.inject(Router)).navigateByUrl.mock.calls[0]?.[0]).toBe('/login');
   });
 
   it('comprueba expiración aunque no se haya ejecutado el temporizador', () => {
     const session = TestBed.inject(AuthSession);
-    session.start(response(), 'demo', false);
+    session.start(response(), false);
     vi.setSystemTime(Date.now() + 60_001);
     expect(session.token()).toBeNull();
   });
 
   it('no acepta respuestas inválidas y conserva la sesión actual', () => {
     const session = TestBed.inject(AuthSession);
-    session.start(response(), 'demo', false);
-    expect(() => session.start({ ...response(), expiresAt: 'invalid' }, 'demo', false)).toThrow();
+    session.start(response(), false);
+    expect(() => session.start({ ...response(), expiresAt: 'invalid' }, false)).toThrow();
     expect(session.token()).toBe('header.payload.signature');
   });
 
@@ -98,7 +106,7 @@ describe('AuthSession', () => {
       throw new Error('blocked');
     });
     const session = TestBed.inject(AuthSession);
-    session.start(response(), 'demo', true);
+    session.start(response(), true);
     expect(session.token()).toBeTruthy();
     expect(session.warning()).toContain('no permite guardarla');
   });
@@ -107,10 +115,10 @@ describe('AuthSession', () => {
     const session = TestBed.inject(AuthSession);
     const runGuard = () => TestBed.runInInjectionContext(() => authGuard({} as never, {} as never));
     expect((runGuard() as UrlTree).toString()).toBe('/login');
-    session.start(response(), 'demo', false);
+    session.start(response(), false);
     expect(runGuard()).toBe(true);
     session.logout();
-    expect((runGuard() as UrlTree).toString()).toBe('/empresa/demo/login');
+    expect((runGuard() as UrlTree).toString()).toBe('/login');
     expect(sessionStorage.getItem('mapit.auth.session')).toBeNull();
   });
 });

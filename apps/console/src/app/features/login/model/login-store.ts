@@ -1,19 +1,18 @@
-import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
-
 import { HttpErrorResponse } from '@angular/common/http';
-import { filter, finalize, takeUntil, timeout } from 'rxjs';
+import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
+import { finalize, timeout } from 'rxjs';
+import type { LoginResponse } from '@mapit/api-client';
 import { AuthSession } from '@mapit/auth';
-import { STRINGS } from '../../../core/strings';
-import { SLUG_PATTERN } from '../../../core/patterns';
-import { LoginApi } from '../data/login-api';
 import { PageTransitionService } from '@mapit/ui-kit';
+
+import { STRINGS } from '../../../core/strings';
+import { LoginApi } from '../data/login-api';
 
 /** Timeout de la llamada de login (ms): cubre cold starts en dev local. */
 const LOGIN_TIMEOUT_MS = 15_000;
 
-/** Estado y coordinación del inicio de sesión. */
 @Injectable()
 export class LoginStore {
   private readonly api = inject(LoginApi);
@@ -21,18 +20,14 @@ export class LoginStore {
   private readonly router = inject(Router);
   private readonly transition = inject(PageTransitionService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly pending = signal(false);
-  private readonly route = inject(ActivatedRoute);
-  private readonly params = toSignal(this.route.paramMap, {
-    initialValue: this.route.snapshot.paramMap,
-  });
-  readonly tenantSlug = computed(() => this.params().get('tenantSlug') ?? '');
   readonly email = signal('');
   readonly password = signal('');
   readonly passwordVisible = signal(false);
   readonly remember = signal(false);
   readonly submitted = signal(false);
+  readonly pending = signal(false);
   readonly message = signal('');
+
   readonly emailError = computed(() => {
     if (!this.submitted()) return '';
     const email = this.email().trim();
@@ -68,50 +63,57 @@ export class LoginStore {
     this.submitted.set(true);
     this.message.set('');
     if (this.emailError() || this.passwordError()) return;
-    if (!SLUG_PATTERN.test(this.tenantSlug())) {
-      this.message.set(STRINGS.login.errors.missingTenantLink);
-      return;
-    }
-    const tenantSlug = this.tenantSlug();
+
+    const credentials = { email: this.email().trim().toLowerCase(), password: this.password() };
     const remember = this.remember();
     this.pending.set(true);
     this.api
-      .login({ tenantSlug, email: this.email().trim().toLowerCase(), password: this.password() })
+      .login(credentials)
       .pipe(
         timeout(LOGIN_TIMEOUT_MS),
-        takeUntil(
-          this.route.paramMap.pipe(filter((params) => params.get('tenantSlug') !== tenantSlug)),
-        ),
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.pending.set(false)),
       )
       .subscribe({
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        next: async (response) => {
-          try {
-            this.session.start(response, tenantSlug, remember);
-          } catch {
-            this.message.set(STRINGS.login.errors.startFailed);
-            return;
-          }
-          this.password.set('');
-          // Transición de página: wipe-in, navega, espera a que llegue, wipe-out.
-          const destino = this.session.user()?.role === 'SUPER_ADMIN' ? '/admin/tenants' : '/home';
-          await this.transition.start();
-          await this.router.navigateByUrl(destino);
-          await this.transition.complete();
-        },
-        error: (error: unknown) => {
-          this.message.set(
-            error instanceof HttpErrorResponse && error.status === 401
-              ? STRINGS.login.errors.invalidCredentials
-              : STRINGS.login.errors.connection,
-          );
-        },
+        next: (response) => this.startSession(response, remember),
+        error: (error: unknown) => this.showError(error),
       });
   }
 
-  showHelp(kind: 'password' | 'access'): void {
-    this.message.set(kind === 'password' ? STRINGS.login.help.password : STRINGS.login.help.access);
+  showHelp(kind: 'access' | 'password' = 'password'): void {
+    this.message.set(STRINGS.login.help[kind]);
+  }
+
+  private showError(error: unknown): void {
+    const status = error instanceof HttpErrorResponse ? error.status : 0;
+    this.message.set(
+      status === 401
+        ? STRINGS.login.errors.invalidCredentials
+        : status === 429
+          ? STRINGS.login.errors.rateLimited
+          : STRINGS.login.errors.connection,
+    );
+  }
+
+  private startSession(response: LoginResponse, remember: boolean): void {
+    try {
+      this.session.start(response, remember);
+    } catch {
+      this.message.set(STRINGS.login.errors.startFailed);
+      return;
+    }
+    this.submitted.set(false);
+    this.password.set('');
+    const role = this.session.user()?.role;
+    void this.navigate(role === 'SUPER_ADMIN' ? '/admin/tenants' : '/home');
+  }
+
+  private async navigate(destination: string): Promise<void> {
+    await this.transition.start();
+    try {
+      await this.router.navigateByUrl(destination);
+    } finally {
+      await this.transition.complete();
+    }
   }
 }

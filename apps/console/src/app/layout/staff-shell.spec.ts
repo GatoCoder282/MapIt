@@ -34,12 +34,15 @@ async function mountShell(options?: {
   active?: ReturnType<typeof signal<AccessibleEstablishment | null>>;
   status?: ReturnType<typeof signal<'idle' | 'loading' | 'ready' | 'error'>>;
   query?: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+  role?: 'ADMIN' | 'STAFF';
+  establishments?: readonly AccessibleEstablishment[];
+  onSetup?: boolean;
 }) {
   const user = signal({
     id: 'staff-1',
     tenantId: 'tenant-a',
     fullName: 'Test User',
-    role: 'STAFF',
+    role: options?.role ?? 'STAFF',
   });
   const active = options?.active ?? signal<AccessibleEstablishment | null>(ESTABLISHMENTS[0]!);
   const status = options?.status ?? signal<'idle' | 'loading' | 'ready' | 'error'>('ready');
@@ -55,7 +58,7 @@ async function mountShell(options?: {
     return true;
   });
   const context = {
-    establishments: signal<readonly AccessibleEstablishment[]>(ESTABLISHMENTS),
+    establishments: signal(options?.establishments ?? ESTABLISHMENTS),
     active,
     status,
     load,
@@ -72,14 +75,16 @@ async function mountShell(options?: {
     ],
   }).compileComponents();
 
+  const router = TestBed.inject(Router);
+  const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+  const navigateByUrl = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+  if (options?.onSetup) vi.spyOn(router, 'isActive').mockReturnValue(true);
   const fixture = TestBed.createComponent(StaffShell);
   fixture.detectChanges();
   await fixture.whenStable();
   fixture.detectChanges();
   const host = fixture.nativeElement as HTMLElement;
-  const router = TestBed.inject(Router);
-  const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-  return { fixture, host, active, context, navigate, query, user };
+  return { fixture, host, active, context, navigate, navigateByUrl, query, router, user };
 }
 
 describe('StaffShell navigation', () => {
@@ -258,6 +263,52 @@ describe('StaffShell navigation', () => {
     expect(host.querySelector('mapit-establishment-selector')).toBeNull();
     expect(context.load).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('opens first establishment setup only after the admin receives an empty list', async () => {
+    const { fixture, host, context, navigateByUrl, router } = await mountShell({
+      role: 'ADMIN',
+      active: signal(null),
+      establishments: [],
+      status: signal('loading'),
+    });
+    expect(navigateByUrl).not.toHaveBeenCalled();
+
+    context.status.set('ready');
+    fixture.detectChanges();
+
+    expect(navigateByUrl).toHaveBeenCalledExactlyOnceWith(
+      router.parseUrl('/spaces/setup?manage=1'),
+      { replaceUrl: true },
+    );
+    expect(host.querySelector('mapit-establishment-selector')).toBeNull();
+  });
+
+  it('renders the setup route without an active establishment for an admin', async () => {
+    const { host, navigateByUrl } = await mountShell({
+      role: 'ADMIN',
+      active: signal(null),
+      establishments: [],
+      onSetup: true,
+    });
+    expect(host.querySelector('router-outlet')).not.toBeNull();
+    expect(host.querySelector('mapit-establishment-selector')).toBeNull();
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['STAFF', 'ready'],
+    ['ADMIN', 'error'],
+  ] as const)('keeps the selector for %s with an empty list in state %s', async (role, status) => {
+    const { host, navigateByUrl } = await mountShell({
+      role,
+      active: signal(null),
+      establishments: [],
+      status: signal(status),
+    });
+    expect(host.querySelector('mapit-establishment-selector')).not.toBeNull();
+    expect(host.querySelector('router-outlet')).toBeNull();
+    expect(navigateByUrl).not.toHaveBeenCalled();
   });
 
   it('does not force a popup or redirect during ordinary entry confirmation', async () => {

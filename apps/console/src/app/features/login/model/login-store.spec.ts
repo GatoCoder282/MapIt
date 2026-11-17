@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, NavigationEnd, Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { of, Subject, type Observable } from 'rxjs';
-import { type LoginResponse } from '@mapit/api-client';
+import type { LoginResponse } from '@mapit/api-client';
 import { AuthSession } from '@mapit/auth';
 import { LoginApi } from '../data/login-api';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -22,8 +22,7 @@ describe('LoginStore', () => {
     transitionStart.mockResolvedValue(undefined);
     transitionComplete.mockResolvedValue(undefined);
   });
-  function create(tenant = 'empresa-prueba'): LoginStore {
-    const paramMap = convertToParamMap(tenant ? { tenantSlug: tenant } : {});
+  function create(): LoginStore {
     TestBed.configureTestingModule({
       providers: [
         LoginStore,
@@ -39,13 +38,6 @@ describe('LoginStore', () => {
         {
           provide: PageTransitionService,
           useValue: { start: transitionStart, complete: transitionComplete },
-        },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            paramMap: of(paramMap),
-            snapshot: { paramMap },
-          },
         },
       ],
     });
@@ -81,7 +73,6 @@ describe('LoginStore', () => {
     store.submit();
     store.submit();
     expect(login).toHaveBeenCalledExactlyOnceWith({
-      tenantSlug: 'empresa-prueba',
       email: 'persona@empresa.com',
       password: ' clave ',
     });
@@ -95,8 +86,9 @@ describe('LoginStore', () => {
     store.setPassword('clave');
     store.toggleRemember();
     store.submit();
-    expect(start).toHaveBeenCalledWith({ accessToken: 'token' }, 'empresa-prueba', true);
+    expect(start).toHaveBeenCalledWith({ accessToken: 'token' }, true);
     expect(store.password()).toBe('');
+    expect(store.passwordError()).toBe('');
     await vi.waitFor(() => expect(navigateByUrl).toHaveBeenCalledWith('/home'));
     expect(store.pending()).toBe(false);
   });
@@ -140,14 +132,5 @@ describe('LoginStore', () => {
     rejected.error(new HttpErrorResponse({ status: 0 }));
     expect(store.message()).toContain('conectar con el servicio');
     expect(store.pending()).toBe(false);
-  });
-
-  it('no utiliza un tenant por defecto si falta el enlace de empresa', () => {
-    const store = create('');
-    store.setEmail('persona@empresa.com');
-    store.setPassword('clave');
-    store.submit();
-    expect(store.tenantSlug()).toBe('');
-    expect(store.message()).toContain('enlace de acceso');
   });
 });

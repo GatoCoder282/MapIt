@@ -26,8 +26,8 @@ test.describe('Consola — plantillas de elemento', () => {
 
   test.beforeAll(async ({ request }) => {
     // 1. El SUPER_ADMIN autentica y registra el tenant (API real).
-    const login = await request.post(`${API}/auth/login`, {
-      data: { tenantSlug: 'platform', email: SUPER_EMAIL, password: SUPER_PASSWORD },
+    const login = await request.post(`${API}/auth/global-login`, {
+      data: { email: SUPER_EMAIL, password: SUPER_PASSWORD },
     });
     expect(login.ok()).toBeTruthy();
     const { accessToken } = (await login.json()) as { accessToken: string };
@@ -71,8 +71,8 @@ test.describe('Consola — plantillas de elemento', () => {
       data: { tenantSlug: linkSlug, token: rawToken, password, passwordConfirm: password },
     });
     expect(activated.status(), `activación de ${email}`).toBe(200);
-    const adminLogin = await request.post(`${API}/auth/login`, {
-      data: { tenantSlug: slug, email, password },
+    const adminLogin = await request.post(`${API}/auth/global-login`, {
+      data: { email, password },
     });
     expect(adminLogin.ok()).toBe(true);
     const adminSession = (await adminLogin.json()) as {
@@ -93,7 +93,7 @@ test.describe('Consola — plantillas de elemento', () => {
 
   test('ciclo CRUD de plantillas de elemento por el staff', async ({ page }) => {
     // Login del tenant creado por este test.
-    await page.goto(`/empresa/${slug}/login`);
+    await page.goto('/login');
     await page.evaluate(({ tenantId, userId, establishmentId }) => {
       localStorage.setItem(`mapit.establishment.${tenantId}.${userId}`, establishmentId);
     }, selection);

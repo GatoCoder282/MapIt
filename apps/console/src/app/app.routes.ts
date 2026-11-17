@@ -12,7 +12,7 @@ import { operationalExitGuard } from './core/operational-exit-guard';
  * para que el editor de mapas —que es el bundle pesado— no penalice al resto.
  *
  * Estructura:
- *   /login, /empresa/:tenantSlug/login   públicas
+ *   /login                                pública
  *   /admin/**                            SUPER_ADMIN (plataforma): auditoría CU-01/CU-03
  *   /administration/*                    sección operativa de staff (futuros CU)
  *   /home, /demo-items, /establishments (redirect) staff autenticado de cualquier rol
@@ -22,10 +22,6 @@ import { operationalExitGuard } from './core/operational-exit-guard';
 export const routes: Routes = [
   {
     path: 'login',
-    loadComponent: () => import('./features/login/ui/login').then((m) => m.Login),
-  },
-  {
-    path: 'empresa/:tenantSlug/login',
     loadComponent: () => import('./features/login/ui/login').then((m) => m.Login),
   },
   {

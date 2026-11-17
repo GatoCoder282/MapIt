@@ -337,7 +337,7 @@ class PaymentMethodsIntegrationTest {
 
   private void seed(String tenant, UUID user, UUID establishment) {
     jdbc.update("insert into tenant (id,name,slug,status,vertical) values (?,? ,?,'ACTIVE','RESTAURANT')", tenant, tenant, tenant);
-    jdbc.update("insert into app_user (id,tenant_id,email,password_hash,full_name,role) values (?,?,'admin@payments.test','unused','Admin','ADMIN')", user, tenant);
+    jdbc.update("insert into app_user (id,tenant_id,email,password_hash,full_name,role) values (?,?,?,'unused','Admin','ADMIN')", user, tenant, "admin-" + user + "@payments.test");
     jdbc.update("insert into establishment (id,tenant_id,name,type,slug) values (?,?,'Local','RESTAURANT',?)", establishment, tenant, tenant);
   }
 }

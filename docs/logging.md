@@ -41,7 +41,7 @@ Ejemplo ficticio de resumen HTTP:
   "event": "http.request.completed",
   "request_id": "c4972182-5fa3-4630-8de7-f11a409ee314",
   "method": "POST",
-  "route": "/api/v1/auth/login",
+  "route": "/api/v1/auth/global-login",
   "status": 401,
   "duration_ms": 18
 }

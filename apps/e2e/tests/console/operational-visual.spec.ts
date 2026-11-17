@@ -84,8 +84,8 @@ test('operational visual captures', async ({ page, request }, testInfo) => {
   });
 
   const apiBaseUrl = process.env['API_BASE_URL'] ?? 'http://localhost:8080/api/v1';
-  const loginResponse = await request.post(`${apiBaseUrl}/auth/login`, {
-    data: { tenantSlug: company.slug, email: company.email, password: company.password },
+  const loginResponse = await request.post(`${apiBaseUrl}/auth/global-login`, {
+    data: { email: company.email, password: company.password },
   });
   expect(loginResponse.ok()).toBe(true);
   const realSession = (await loginResponse.json()) as {
@@ -369,7 +369,6 @@ test('mocked populated operational views and keyboard flows', async ({ page }, t
         id: '79000000-0000-4000-8000-000000000041',
         establishmentId: venue,
         establishmentName: 'Sede Visual Fixture',
-        tenantSlug: tenant,
         establishmentSlug: 'sede-visual',
         startsAt: '2026-11-06T10:00:00-04:00',
         endsAt: '2026-11-06T11:00:00-04:00',

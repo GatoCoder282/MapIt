@@ -1,8 +1,10 @@
 package com.mapit.identity.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,17 +41,17 @@ class LoginControllerTest {
 
     String body =
         mvc.perform(
-                post("/api/v1/auth/login")
+                post("/api/v1/auth/global-login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(
                         """
                         {
-                          "tenantSlug": "TENANT-A",
                           "email": "Staff@Example.Test",
                           "password": "correcta"
                         }
                         """))
             .andExpect(status().isOk())
+            .andExpect(header().string("Cache-Control", "no-store"))
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.accessToken").value("jwt.firmado.valor"))
             .andExpect(jsonPath("$.tokenType").value("Bearer"))
@@ -71,12 +73,11 @@ class LoginControllerTest {
     MockMvc mvc = mvc(credentials(true), new AtomicInteger());
 
     mvc.perform(
-            post("/api/v1/auth/login")
+            post("/api/v1/auth/global-login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
                     {
-                      "tenantSlug": "tenant-a",
                       "email": "staff@example.test",
                       "password": "incorrecta"
                     }
@@ -95,12 +96,11 @@ class LoginControllerTest {
     MockMvc mvc = mvc(credentials(true), repositoryCalls);
 
     mvc.perform(
-            post("/api/v1/auth/login")
+            post("/api/v1/auth/global-login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
                     {
-                      "tenantSlug": "!",
                       "email": "correo-invalido",
                       "password": ""
                     }
@@ -114,7 +114,7 @@ class LoginControllerTest {
   void cuerpo_ausente_devuelve_problem_details_sin_exponer_datos() throws Exception {
     MockMvc mvc = mvc(credentials(true), new AtomicInteger());
 
-    mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON))
+    mvc.perform(post("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
         .andExpect(jsonPath("$.type").value("https://mapit.local/problems/invalid-request"))
@@ -123,13 +123,19 @@ class LoginControllerTest {
         .andExpect(jsonPath("$.detail").value("El cuerpo de la solicitud no es válido."));
   }
 
+  @Test
+  void login_por_slug_ya_no_tiene_controlador() throws Exception {
+    mvc(credentials(true), new AtomicInteger())
+        .perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isNotFound());
+  }
+
   private static MockMvc mvc(
       Optional<UserCredentials> credentials, AtomicInteger repositoryCalls) {
-    UserCredentialsRepository repository =
-        (tenantSlug, email) -> {
-          repositoryCalls.incrementAndGet();
-          return credentials;
-        };
+    UserCredentialsRepository repository = email -> {
+      repositoryCalls.incrementAndGet();
+      return credentials;
+    };
     var authenticate =
         new AuthenticateUser(
             repository,
@@ -137,7 +143,8 @@ class LoginControllerTest {
                 passwordHash.isPresent() && "correcta".equals(rawPassword));
     var issue =
         new IssueAccessToken(user -> new IssuedAccessToken("jwt.firmado.valor", EXPIRES_AT));
-    return MockMvcBuilders.standaloneSetup(new LoginController(authenticate, issue)).build();
+    return MockMvcBuilders.standaloneSetup(
+        new LoginController(authenticate, issue, mock(AuthAttemptLimiter.class))).build();
   }
 
   private static Optional<UserCredentials> credentials(boolean active) {
