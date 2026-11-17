@@ -50,6 +50,7 @@ Para migraciones, flags o tickets Jira: skills `new-migration`, `new-feature-fla
 
 ## Verificación y entrega
 
+- Para cambios exploratorios, mantener los commits pequeños y revisar los checks disponibles antes de integrar.
 - Antes de cada push: `pnpm check`. Ejecuta formato, lint, tipos, tests/build frontend, hash API y build backend; **omite backend si falta Java/wrapper** y no incluye integración, E2E ni `api:lint`. CI los valida en jobs separados (`.github/workflows/ci.yml`).
 - Formato de un archivo: `pnpm exec prettier --write AGENTS.md` (sustituye la ruta). `pnpm fmt` formatea **todo** el repo y ejecuta Spotless; para Java solamente: `pnpm be:fmt`.
 - `pnpm be:test`: unitarios + ArchUnit, sin Docker. `pnpm be:it`: integración con Testcontainers, requiere Docker. `pnpm fe:test`: Vitest de console, public-web **y libs**.
