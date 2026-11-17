@@ -1,59 +1,68 @@
 <section class="users-page">
-  <header>
+  <header class="page-header">
     <h1>{{ strings.title }}</h1>
     <p>{{ strings.intro }}</p>
   </header>
 
-  <section class="panel" [attr.aria-label]="strings.inviteTitle">
+  <section class="panel invite-panel" [attr.aria-label]="strings.inviteTitle">
     <h2>{{ strings.inviteTitle }}</h2>
     <form data-testid="users-invite-form" [formGroup]="form" (ngSubmit)="invite()">
-      <label for="invite-email">{{ strings.email }}</label>
-      <input
-        data-testid="users-invite-email"
-        id="invite-email"
-        type="email"
-        autocomplete="email"
-        formControlName="email"
-        required
-        maxlength="254"
-      />
-      <label for="invite-role">{{ strings.role }}</label>
-      <select data-testid="users-invite-role" id="invite-role" formControlName="role">
-        <option value="MANAGER">{{ roles.MANAGER }}</option>
-        <option value="STAFF">{{ roles.STAFF }}</option>
-      </select>
-      <button data-testid="users-invite-submit" type="submit" [disabled]="form.invalid || store.saving()">
+      <div class="field">
+        <label for="invite-email">{{ strings.email }}</label>
+        <input
+          data-testid="users-invite-email"
+          id="invite-email"
+          type="email"
+          autocomplete="email"
+          formControlName="email"
+          required
+          maxlength="254"
+        />
+      </div>
+      <div class="field">
+        <label for="invite-role">{{ strings.role }}</label>
+        <select data-testid="users-invite-role" id="invite-role" formControlName="role">
+          <option value="MANAGER">{{ roles.MANAGER }}</option>
+          <option value="STAFF">{{ roles.STAFF }}</option>
+        </select>
+      </div>
+      <button
+        class="button primary"
+        data-testid="users-invite-submit"
+        type="submit"
+        [disabled]="form.invalid || store.saving()"
+      >
         {{ strings.invite }}
       </button>
     </form>
   </section>
 
   @if (store.feedback()) {
-    <p role="status">{{ store.feedback() }}</p>
+    <p class="notice success" role="status">{{ store.feedback() }}</p>
   }
   @if (store.error()) {
-    <p role="alert">{{ store.error() }}</p>
+    <p class="notice error" role="alert">{{ store.error() }}</p>
   }
 
   <section data-testid="users-invitations" class="panel" [attr.aria-label]="strings.invitationsTitle">
     <h2>{{ strings.invitationsTitle }}</h2>
-    <p>{{ strings.resendHint }}</p>
+    <p class="section-hint">{{ strings.resendHint }}</p>
     @if (store.invitationError()) {
-      <p role="alert">{{ store.invitationError() }}</p>
+      <p class="notice error" role="alert">{{ store.invitationError() }}</p>
     }
     @switch (store.invitationStatus()) {
       @case ('loading') {
-        <p role="status">{{ strings.invitationsLoading }}</p>
+        <p class="state" role="status">{{ strings.invitationsLoading }}</p>
       }
       @case ('error') {
-        <button type="button" (click)="store.loadInvitations()">{{ strings.retry }}</button>
+        <button class="button secondary" type="button" (click)="store.loadInvitations()">{{ strings.retry }}</button>
       }
       @case ('ready') {
         @if (!store.invitations().length) {
-          <p>{{ strings.invitationsEmpty }}</p>
+          <p class="empty-state">{{ strings.invitationsEmpty }}</p>
         } @else {
           <div class="table-wrap">
-            <table>
+            <table class="invitations-table">
               <thead>
                 <tr>
                   <th scope="col">{{ strings.email }}</th>
@@ -67,22 +76,31 @@
               <tbody>
                 @for (invitation of store.invitations(); track invitation.id) {
                   <tr data-testid="users-invitation-row">
-                    <td>{{ invitation.email }}</td>
-                    <td>{{ roles[invitation.role] }}</td>
-                    <td>
-                      {{ strings.invitationStatus[invitation.status] }} ·
-                      {{ strings.dispatch[invitation.dispatchStatus] }}
+                    <td class="email-cell" [attr.data-label]="strings.email">{{ invitation.email }}</td>
+                    <td [attr.data-label]="strings.role">
+                      <span class="role-chip" [class.manager]="invitation.role === 'MANAGER'">{{
+                        roles[invitation.role]
+                      }}</span>
                     </td>
-                    <td>{{ invitation.expiresAt | localDate: locale() : 'medium' }}</td>
-                    <td>
+                    <td [attr.data-label]="strings.status">
+                      <span class="status-chip" [class.expired]="invitation.status === 'EXPIRED'">{{
+                        strings.invitationStatus[invitation.status]
+                      }}</span>
+                      <span class="dispatch-status">{{ strings.dispatch[invitation.dispatchStatus] }}</span>
+                    </td>
+                    <td [attr.data-label]="strings.expires">
+                      {{ invitation.expiresAt | localDate: locale() : 'medium' }}
+                    </td>
+                    <td [attr.data-label]="strings.dispatchAttempted">
                       @if (invitation.dispatchAttemptedAt) {
                         {{ invitation.dispatchAttemptedAt | localDate: locale() : 'medium' }}
                       } @else {
                         —
                       }
                     </td>
-                    <td>
+                    <td class="actions-cell" [attr.data-label]="strings.actions">
                       <button
+                        class="button secondary"
                         data-testid="users-invitation-resend"
                         type="button"
                         [disabled]="store.saving() || !store.canResend(invitation)"
@@ -92,7 +110,7 @@
                         {{ strings.resend }}
                       </button>
                       @if (!store.canResend(invitation)) {
-                        <span>{{ strings.cooldown }}</span>
+                        <span class="action-hint">{{ strings.cooldown }}</span>
                       }
                     </td>
                   </tr>
@@ -103,6 +121,7 @@
         }
         <nav class="pagination" [attr.aria-label]="strings.invitationsTitle">
           <button
+            class="button secondary"
             type="button"
             [disabled]="!store.canPrevInvitation()"
             (click)="store.loadInvitations(store.invitationPage() - 1)"
@@ -114,6 +133,7 @@
             {{ store.invitationTotalPages() || 1 }} ({{ store.invitationTotalElements() }})</span
           >
           <button
+            class="button secondary"
             type="button"
             [disabled]="!store.canNextInvitation()"
             (click)="store.loadInvitations(store.invitationPage() + 1)"
@@ -125,20 +145,21 @@
     }
   </section>
 
-  <section data-testid="users-accounts">
+  <section data-testid="users-accounts" class="panel" [attr.aria-label]="strings.title">
+    <h2>{{ strings.title }}</h2>
     @switch (store.status()) {
       @case ('loading') {
-        <p role="status">{{ strings.loading }}</p>
+        <p class="state" role="status">{{ strings.loading }}</p>
       }
       @case ('error') {
-        <button type="button" (click)="store.load()">{{ strings.retry }}</button>
+        <button class="button secondary" type="button" (click)="store.load()">{{ strings.retry }}</button>
       }
       @case ('ready') {
         @if (!store.users().length) {
-          <p>{{ strings.empty }}</p>
+          <p class="empty-state">{{ strings.empty }}</p>
         } @else {
           <div class="table-wrap">
-            <table>
+            <table class="accounts-table">
               <thead>
                 <tr>
                   <th scope="col">{{ strings.name }}</th>
@@ -152,13 +173,27 @@
               <tbody>
                 @for (user of store.users(); track user.id) {
                   <tr data-testid="users-account-row">
-                    <td>{{ user.fullName }}</td>
-                    <td>{{ user.email }}</td>
-                    <td>{{ roles[user.role] }}</td>
-                    <td>{{ user.active ? strings.active : strings.inactive }}</td>
-                    <td>{{ user.createdAt | localDate: locale() : 'mediumDate' }}</td>
-                    <td>
+                    <th class="name-cell" scope="row" [attr.data-label]="strings.name">{{ user.fullName }}</th>
+                    <td class="email-cell" [attr.data-label]="strings.email">{{ user.email }}</td>
+                    <td [attr.data-label]="strings.role">
+                      <span
+                        class="role-chip"
+                        [class.admin]="user.role === 'ADMIN'"
+                        [class.manager]="user.role === 'MANAGER'"
+                        >{{ roles[user.role] }}</span
+                      >
+                    </td>
+                    <td [attr.data-label]="strings.status">
+                      <span class="status-chip" [class.inactive]="!user.active">{{
+                        user.active ? strings.active : strings.inactive
+                      }}</span>
+                    </td>
+                    <td [attr.data-label]="strings.created">
+                      {{ user.createdAt | localDate: locale() : 'mediumDate' }}
+                    </td>
+                    <td class="actions-cell" [attr.data-label]="strings.actions">
                       <button
+                        class="button text"
                         type="button"
                         (click)="store.detail(user)"
                         [attr.aria-label]="strings.detail + ': ' + user.fullName"
@@ -167,6 +202,7 @@
                       </button>
                       @if (store.canManage(user)) {
                         <button
+                          class="button text"
                           data-testid="users-change-role"
                           type="button"
                           (click)="ask(user, 'role')"
@@ -175,6 +211,7 @@
                           {{ strings.changeRole }}
                         </button>
                         <button
+                          class="button text danger"
                           data-testid="users-deactivate"
                           type="button"
                           (click)="ask(user, 'deactivate')"
@@ -191,7 +228,12 @@
           </div>
         }
         <nav class="pagination" [attr.aria-label]="strings.pagination">
-          <button type="button" [disabled]="!store.canPrev()" (click)="store.load(store.page() - 1)">
+          <button
+            class="button secondary"
+            type="button"
+            [disabled]="!store.canPrev()"
+            (click)="store.load(store.page() - 1)"
+          >
             {{ strings.previous }}
           </button>
           <span
@@ -199,7 +241,12 @@
               store.totalElements()
             }})</span
           >
-          <button type="button" [disabled]="!store.canNext()" (click)="store.load(store.page() + 1)">
+          <button
+            class="button secondary"
+            type="button"
+            [disabled]="!store.canNext()"
+            (click)="store.load(store.page() + 1)"
+          >
             {{ strings.next }}
           </button>
         </nav>
@@ -208,20 +255,52 @@
   </section>
 
   @if (store.selected(); as user) {
-    <section class="panel" aria-live="polite">
-      <h2>{{ user.fullName }}</h2>
-      <p>{{ user.email }} · {{ roles[user.role] }} · {{ user.active ? strings.active : strings.inactive }}</p>
-      <p>{{ strings.created }}: {{ user.createdAt | localDate: locale() : 'mediumDate' }}</p>
-      <button type="button" (click)="store.selected.set(null)">{{ strings.close }}</button>
+    <section class="panel detail-panel" aria-live="polite" [attr.aria-label]="strings.detail">
+      <div class="detail-header">
+        <h2>{{ user.fullName }}</h2>
+        <button class="button secondary" type="button" (click)="store.selected.set(null)">{{ strings.close }}</button>
+      </div>
+      <dl class="detail-fields">
+        <div>
+          <dt>{{ strings.name }}</dt>
+          <dd>{{ user.fullName }}</dd>
+        </div>
+        <div>
+          <dt>{{ strings.email }}</dt>
+          <dd>{{ user.email }}</dd>
+        </div>
+        <div>
+          <dt>{{ strings.role }}</dt>
+          <dd>
+            <span class="role-chip" [class.admin]="user.role === 'ADMIN'" [class.manager]="user.role === 'MANAGER'">{{
+              roles[user.role]
+            }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>{{ strings.status }}</dt>
+          <dd>
+            <span class="status-chip" [class.inactive]="!user.active">{{
+              user.active ? strings.active : strings.inactive
+            }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>{{ strings.created }}</dt>
+          <dd>{{ user.createdAt | localDate: locale() : 'mediumDate' }}</dd>
+        </div>
+      </dl>
     </section>
   }
 
-  <dialog #confirmation (close)="store.pending.set(null)">
+  <dialog #confirmation class="edit-dialog" (close)="store.pending.set(null)">
     <h2>{{ store.pending()?.kind === 'role' ? strings.changeRole : strings.deactivate }}</h2>
     <p>{{ store.pending()?.kind === 'role' ? strings.confirmRole : strings.confirmDeactivate }}</p>
     <div class="dialog-actions">
-      <button type="button" (click)="cancel()">{{ strings.cancel }}</button>
-      <button data-testid="users-confirm" type="button" (click)="confirm()">{{ strings.confirm }}</button>
+      <button class="button secondary" type="button" (click)="cancel()">{{ strings.cancel }}</button>
+      <button class="button primary" data-testid="users-confirm" type="button" (click)="confirm()">
+        {{ strings.confirm }}
+      </button>
     </div>
   </dialog>
 </section>
