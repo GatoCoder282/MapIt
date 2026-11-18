@@ -48,6 +48,12 @@ Para migraciones, flags o tickets Jira: skills `new-migration`, `new-feature-fla
 - Las restricciones de imports se mantienen juntas en `packages/config-eslint/boundaries.js`: redefinir `no-restricted-imports` en otro bloque reemplaza las anteriores, no las fusiona.
 - Flags: `pnpm new:flag clave tipo` mantiene enum Java, catálogo TS y bootstrap Unleash; el argumento CLI es `kill_switch` (el script lo convierte a `kill-switch` para Unleash). Revisa su activación en Unleash. El navegador usa `unleash-proxy` (`:3063`), nunca el servidor/admin directamente.
 
+## Previews de QA en Vercel
+
+- Las ramas de tickets siguen `feat/<usuario>/<ticket>-<slug>`; también existen ramas históricas `feat/<ticket>-<slug>`. Usa el prefijo `feat/` para que ambas queden cubiertas por `feat/**`.
+- Mantén en `vercel.json` `"**": false`, `"feat/**": true` y `"main": true`. Si una rama de ticket usa otro prefijo, añade una regla `git.deploymentEnabled` que permita ese patrón antes de subirla.
+- Después del push, comprueba que Vercel haya creado el preview, espera el estado `success` y comparte la URL para QA. Si falla, revisa el deployment y reporta el error antes de dar el ambiente por listo.
+
 ## Verificación y entrega
 
 - Para cambios exploratorios, mantener los commits pequeños y revisar los checks disponibles antes de integrar.
