@@ -25,6 +25,7 @@ import { OperationalReservationsStore } from '../model/operational-reservations-
                 <th>{{ strings.reference }}</th>
                 <th>{{ strings.date }}</th>
                 <th>{{ strings.status }}</th>
+                <th>{{ strings.spaces }}</th>
                 <th>{{ strings.arrival }}</th>
               </tr>
             </thead>
@@ -36,6 +37,11 @@ import { OperationalReservationsStore } from '../model/operational-reservations-
                   </td>
                   <td>{{ item.startsAt }}</td>
                   <td>{{ item.status }}</td>
+                  <td>
+                    @for (space of item.spaceElementIds; track space) {
+                      <code>{{ space }}</code>
+                    }
+                  </td>
                   <td>{{ item.checkedIn ? strings.checkedIn : strings.pending }}</td>
                 </tr>
               }

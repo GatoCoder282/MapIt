@@ -10,6 +10,7 @@ export const STRINGS_JA = {
     previous: '前へ',
     next: '次へ',
     reference: '参照番号',
+    spaces: 'スペース',
     date: '日時',
     status: '状態',
     arrival: '来店',

@@ -5413,13 +5413,16 @@ components:
     OperationalReservation:
       type: object
       additionalProperties: false
-      required: [id, startsAt, endsAt, status, checkedIn]
+      required: [id, startsAt, endsAt, status, checkedIn, spaceElementIds]
       properties:
         id: { type: string, format: uuid }
         startsAt: { type: string, format: date-time }
         endsAt: { type: string, format: date-time }
         status: { type: string, enum: [CREATED, CONFIRMED, ACTIVE, RELEASED, CANCELLED] }
         checkedIn: { type: boolean }
+        spaceElementIds:
+          type: array
+          items: { type: string, format: uuid }
     Reservation:
       type: object
       required:

@@ -1,6 +1,8 @@
 package com.mapit.reservations.infrastructure.reservation;
 
+import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,16 +50,28 @@ public class OperationalReservationController {
     long total = jdbc.queryForObject("select count(*) from reservation where tenant_id=? and establishment_id=?",
         Long.class, tenant.value(), establishmentId);
     List<Item> items = jdbc.query("""
-        select id, starts_at, ends_at, status, checked_in_at
-        from reservation where tenant_id=? and establishment_id=?
-        order by starts_at desc, id desc limit ? offset ?
+        select r.id, r.starts_at, r.ends_at, r.status, r.checked_in_at,
+          coalesce(s.ids, '{}'::uuid[]) as space_ids
+        from reservation r
+        left join lateral (
+          select array_agg(rse.space_element_id order by rse.space_element_id) as ids
+          from reservation_space_element rse
+          where rse.tenant_id=r.tenant_id and rse.reservation_id=r.id
+        ) s on true
+        where r.tenant_id=? and r.establishment_id=?
+        order by r.starts_at desc, r.id desc limit ? offset ?
         """, (row, index) -> new Item(row.getObject("id", UUID.class),
             row.getTimestamp("starts_at").toInstant(), row.getTimestamp("ends_at").toInstant(),
-            row.getString("status"), row.getTimestamp("checked_in_at") != null),
+            row.getString("status"), row.getTimestamp("checked_in_at") != null, spaces(row)),
         tenant.value(), establishmentId, limit, offset);
     return new Page(items, total, limit, offset);
   }
 
-  public record Item(UUID id, Instant startsAt, Instant endsAt, String status, boolean checkedIn) {}
+  private static List<UUID> spaces(java.sql.ResultSet row) throws SQLException {
+    return Arrays.stream((Object[]) row.getArray("space_ids").getArray()).map(UUID.class::cast).toList();
+  }
+
+  public record Item(UUID id, Instant startsAt, Instant endsAt, String status, boolean checkedIn,
+      List<UUID> spaceElementIds) {}
   public record Page(List<Item> items, long total, int limit, int offset) {}
 }

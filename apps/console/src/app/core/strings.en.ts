@@ -10,6 +10,7 @@ export const STRINGS_EN = {
     previous: 'Previous',
     next: 'Next',
     reference: 'Reference',
+    spaces: 'Spaces',
     date: 'Date',
     status: 'Status',
     arrival: 'Arrival',

@@ -269,6 +269,7 @@ class CurrentStaffSecurityIntegrationTest {
     http().get().uri("/api/v1/establishments/" + a1 + "/reservations?limit=20&offset=0")
         .header("Authorization", signed(granted, a, UserRole.STAFF)).exchange().expectStatus().isOk()
         .expectBody().jsonPath("$.items[0].id").isEqualTo(reservation.toString())
+        .jsonPath("$.items[0].spaceElementIds[0]").isEqualTo(element.toString())
         .jsonPath("$.items[0].personId").doesNotExist();
     http().get().uri("/api/v1/establishments/" + a1 + "/reservations")
         .header("Authorization", signed(ungranted, a, UserRole.STAFF)).exchange().expectStatus().isForbidden();

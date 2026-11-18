@@ -31,6 +31,7 @@ const STRINGS_ES = {
     previous: 'Anterior',
     next: 'Siguiente',
     reference: 'Referencia',
+    spaces: 'Espacios',
     date: 'Fecha',
     status: 'Estado',
     arrival: 'Llegada',
