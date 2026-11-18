@@ -38,6 +38,9 @@ const STRINGS_ES = {
     checkedIn: 'Registrada',
     pending: 'Pendiente',
     amount: 'Importe',
+    verify: 'Confirmar cobro',
+    bankReference: 'Referencia bancaria',
+    verificationError: 'No se pudo confirmar el cobro.',
   },
   brand: {
     name: 'MapIt',

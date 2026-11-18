@@ -11,6 +11,10 @@ export class OperationalPaymentsStore {
   readonly page = signal<PaymentPage | null>(null);
   readonly status = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
   readonly offset = signal(0);
+  readonly selectedPaymentId = signal<string | null>(null);
+  readonly bankReference = signal('');
+  readonly verifying = signal(false);
+  readonly verificationError = signal(false);
 
   constructor() {
     effect(() => {
@@ -18,6 +22,8 @@ export class OperationalPaymentsStore {
       const contextStatus = this.context.status();
       if (!activeId && contextStatus === 'ready') this.page.set(null);
       this.offset.set(0);
+      this.selectedPaymentId.set(null);
+      this.bankReference.set('');
       untracked(() => void this.load());
     });
   }
@@ -48,5 +54,46 @@ export class OperationalPaymentsStore {
     if (next === this.offset() || next >= (this.page()?.total ?? 0)) return;
     this.offset.set(next);
     void this.load();
+  }
+
+  select(paymentId: string): void {
+    this.selectedPaymentId.set(paymentId);
+    this.bankReference.set('');
+    this.verificationError.set(false);
+  }
+
+  setBankReference(value: string): void {
+    this.bankReference.set(value);
+  }
+
+  async verify(): Promise<void> {
+    const paymentId = this.selectedPaymentId();
+    const reference = this.bankReference().trim();
+    const establishmentId = this.context.active()?.id;
+    const payment = this.page()?.items.find((item) => item.id === paymentId);
+    if (
+      !paymentId ||
+      !reference ||
+      !establishmentId ||
+      payment?.establishmentId !== establishmentId ||
+      payment.provider !== 'STATIC_BANK_QR' ||
+      payment.status !== 'PENDING_MANUAL_VERIFICATION' ||
+      this.verifying()
+    )
+      return;
+    this.verifying.set(true);
+    this.verificationError.set(false);
+    try {
+      await firstValueFrom(
+        this.api.verifyPayment({ paymentId, verifyPaymentRequest: { bankReference: reference } }),
+      );
+      this.selectedPaymentId.set(null);
+      this.bankReference.set('');
+      await this.load();
+    } catch {
+      this.verificationError.set(true);
+    } finally {
+      this.verifying.set(false);
+    }
   }
 }

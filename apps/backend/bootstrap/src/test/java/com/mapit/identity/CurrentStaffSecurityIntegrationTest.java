@@ -216,6 +216,7 @@ class CurrentStaffSecurityIntegrationTest {
     UUID granted = user(a, "granted@arrival.test", UserRole.STAFF);
     UUID ungranted = user(a, "ungranted@arrival.test", UserRole.STAFF);
     UUID foreign = user(b, "foreign@arrival.test", UserRole.STAFF);
+    UUID foreignManager = user(b, "foreign-manager@arrival.test", UserRole.MANAGER);
     UUID a1 = UUID.randomUUID();
     UUID a2 = UUID.randomUUID();
     UUID b1 = UUID.randomUUID();
@@ -242,13 +243,13 @@ class CurrentStaffSecurityIntegrationTest {
       jdbc.update("insert into reservation_space_element(tenant_id,reservation_id,space_element_id) values (?,?,?)", a, reservation, element);
       jdbc.update("""
           insert into merchant_payment_method(id,tenant_id,establishment_id,display_name,country,currency,provider,
-            bank_name,account_reference,enabled,created_at,updated_at,created_by,updated_by)
-          values (?,?,?,'QR de prueba','BO','BOB','MOCK_GATEWAY','Banco prueba','cuenta-prueba',true,now(),now(),?,?)
+            bank_name,account_reference,static_qr_image,enabled,created_at,updated_at,created_by,updated_by)
+          values (?,?,?,'QR de prueba','BO','BOB','STATIC_BANK_QR','Banco prueba','cuenta-prueba','data:image/png;base64,aGVsbG8=',true,now(),now(),?,?)
           """, method, a, a1, admin, admin);
       jdbc.update("""
           insert into payment(id,tenant_id,establishment_id,reservation_id,method_id,provider,merchant_reference,
             external_reference,amount,currency,status,created_at,expires_at,verified_at,verification_source)
-          values (?,?,?,?,?,'MOCK_GATEWAY',?, ?,10,'BOB','CONFIRMED',?,?,?,'MOCK')
+          values (?,?,?,?,?,'STATIC_BANK_QR',?, ?,10,'BOB','CONFIRMED',?,?,?,'MANUAL')
           """, payment, a, a1, reservation, method, "merchant-" + payment, "external-" + payment,
           Timestamp.from(now.minusSeconds(90)), Timestamp.from(now.plusSeconds(3600)), Timestamp.from(now.minusSeconds(30)));
       jdbc.update("update reservation set confirmed_payment_id=? where tenant_id=? and id=?", payment, a, reservation);
@@ -279,6 +280,18 @@ class CurrentStaffSecurityIntegrationTest {
         .header("Authorization", signed(manager, a, UserRole.MANAGER)).exchange().expectStatus().isOk();
     http().get().uri("/api/v1/payments?establishmentId=" + a1)
         .header("Authorization", signed(granted, a, UserRole.STAFF)).exchange().expectStatus().isForbidden();
+    http().post().uri("/api/v1/payments/" + payment + "/verify")
+        .header("Authorization", signed(manager, a, UserRole.MANAGER))
+        .contentType(MediaType.APPLICATION_JSON).body(Map.of("bankReference", "test-reference"))
+        .exchange().expectStatus().isOk();
+    http().post().uri("/api/v1/payments/" + payment + "/verify")
+        .header("Authorization", signed(granted, a, UserRole.STAFF))
+        .contentType(MediaType.APPLICATION_JSON).body(Map.of("bankReference", "test-reference"))
+        .exchange().expectStatus().isForbidden();
+    http().post().uri("/api/v1/payments/" + payment + "/verify")
+        .header("Authorization", signed(foreignManager, b, UserRole.MANAGER))
+        .contentType(MediaType.APPLICATION_JSON).body(Map.of("bankReference", "test-reference"))
+        .exchange().expectStatus().isNotFound();
     http().get().uri("/api/v1/establishments/" + a1 + "/staff-access")
         .header("Authorization", signed(manager, a, UserRole.MANAGER)).exchange().expectStatus().isForbidden();
     assertThat(arrivalStatus(a, ungranted, a1, token, true)).isEqualTo(403);

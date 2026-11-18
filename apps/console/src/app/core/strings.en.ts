@@ -17,6 +17,9 @@ export const STRINGS_EN = {
     checkedIn: 'Recorded',
     pending: 'Pending',
     amount: 'Amount',
+    verify: 'Confirm payment',
+    bankReference: 'Bank reference',
+    verificationError: 'Could not confirm payment.',
   },
   users: {
     staffAccess: {

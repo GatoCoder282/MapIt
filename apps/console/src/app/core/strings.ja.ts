@@ -17,6 +17,9 @@ export const STRINGS_JA = {
     checkedIn: '記録済み',
     pending: '未記録',
     amount: '金額',
+    verify: '入金を確認',
+    bankReference: '銀行参照番号',
+    verificationError: '入金を確認できませんでした。',
   },
   users: {
     staffAccess: {

@@ -1142,6 +1142,7 @@ paths:
         "tags": ["payments"],
         "operationId": "verifyPayment",
         "summary": "verifyPayment",
+        "description": "ADMIN y MANAGER pueden verificar manualmente un cobro bancario de un establecimiento autorizado. STAFF no puede hacerlo.",
         "security": [{ "bearerAuth": [] }],
         "parameters":
           [

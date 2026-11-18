@@ -105,7 +105,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/payment-methods", "/api/v1/payment-methods/**")
                         .hasRole(UserRole.ADMIN.name())
                         .requestMatchers("/api/v1/payments/*/verify")
-                        .hasRole(UserRole.ADMIN.name())
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
                         .requestMatchers(HttpMethod.GET, "/api/v1/payments")
                         .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
                         .requestMatchers("/api/v1/establishments/*/staff-access", "/api/v1/establishments/*/staff-access/**")

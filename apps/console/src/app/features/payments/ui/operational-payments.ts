@@ -26,6 +26,7 @@ import { OperationalPaymentsStore } from '../model/operational-payments-store';
                 <th>{{ strings.date }}</th>
                 <th>{{ strings.status }}</th>
                 <th>{{ strings.amount }}</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -37,11 +38,46 @@ import { OperationalPaymentsStore } from '../model/operational-payments-store';
                   <td>{{ item.createdAt }}</td>
                   <td>{{ item.status }}</td>
                   <td>{{ item.amount }} {{ item.currency }}</td>
+                  <td>
+                    @if (
+                      item.provider === 'STATIC_BANK_QR' &&
+                      item.status === 'PENDING_MANUAL_VERIFICATION'
+                    ) {
+                      <button
+                        type="button"
+                        [disabled]="store.verifying()"
+                        (click)="store.select(item.id)"
+                      >
+                        {{ strings.verify }}
+                      </button>
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
+        @if (store.selectedPaymentId()) {
+          <form (submit)="$event.preventDefault(); store.verify()">
+            <label
+              >{{ strings.bankReference }}
+              <input
+                type="text"
+                maxlength="120"
+                required
+                [value]="store.bankReference()"
+                [disabled]="store.verifying()"
+                (input)="store.setBankReference($any($event.target).value)"
+              />
+            </label>
+            <button type="submit" [disabled]="store.verifying() || !store.bankReference().trim()">
+              {{ strings.verify }}
+            </button>
+            @if (store.verificationError()) {
+              <p role="alert">{{ strings.verificationError }}</p>
+            }
+          </form>
+        }
         <nav aria-label="Páginas">
           <button type="button" [disabled]="store.offset() === 0" (click)="store.move(-20)">
             {{ strings.previous }}
