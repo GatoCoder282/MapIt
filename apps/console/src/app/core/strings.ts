@@ -21,6 +21,23 @@ const VERTICAL_LABELS = {
 } as const;
 
 const STRINGS_ES = {
+  operational: {
+    reservations: 'Reservas del establecimiento',
+    payments: 'Cobros del establecimiento',
+    loading: 'Cargando…',
+    empty: 'No hay registros.',
+    error: 'No se pudieron cargar los datos.',
+    retry: 'Reintentar',
+    previous: 'Anterior',
+    next: 'Siguiente',
+    reference: 'Referencia',
+    date: 'Fecha',
+    status: 'Estado',
+    arrival: 'Llegada',
+    checkedIn: 'Registrada',
+    pending: 'Pendiente',
+    amount: 'Importe',
+  },
   brand: {
     name: 'MapIt',
   },

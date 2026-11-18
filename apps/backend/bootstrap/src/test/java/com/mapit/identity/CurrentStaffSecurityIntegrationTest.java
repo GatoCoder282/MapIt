@@ -212,6 +212,7 @@ class CurrentStaffSecurityIntegrationTest {
     String a = tenant();
     String b = tenant();
     UUID admin = user(a, "admin@arrival.test", UserRole.ADMIN);
+    UUID manager = user(a, "manager@arrival.test", UserRole.MANAGER);
     UUID granted = user(a, "granted@arrival.test", UserRole.STAFF);
     UUID ungranted = user(a, "ungranted@arrival.test", UserRole.STAFF);
     UUID foreign = user(b, "foreign@arrival.test", UserRole.STAFF);
@@ -262,6 +263,23 @@ class CurrentStaffSecurityIntegrationTest {
     assertThat(jdbc.queryForObject("select count(*) from payment_receipt", Long.class)).isZero();
 
     String token = receipt.presentationValue();
+    assertThat(arrivalStatus(a, admin, UserRole.ADMIN, a1, token, true)).isEqualTo(200);
+    assertThat(arrivalStatus(a, manager, UserRole.MANAGER, a1, token, true)).isEqualTo(200);
+    assertThat(arrivalStatus(a, manager, UserRole.MANAGER, a2, token, true)).isEqualTo(404);
+    http().get().uri("/api/v1/establishments/" + a1 + "/reservations?limit=20&offset=0")
+        .header("Authorization", signed(granted, a, UserRole.STAFF)).exchange().expectStatus().isOk()
+        .expectBody().jsonPath("$.items[0].id").isEqualTo(reservation.toString())
+        .jsonPath("$.items[0].personId").doesNotExist();
+    http().get().uri("/api/v1/establishments/" + a1 + "/reservations")
+        .header("Authorization", signed(ungranted, a, UserRole.STAFF)).exchange().expectStatus().isForbidden();
+    http().get().uri("/api/v1/establishments/" + a1 + "/reservations")
+        .header("Authorization", signed(foreign, b, UserRole.STAFF)).exchange().expectStatus().isForbidden();
+    http().get().uri("/api/v1/payments?establishmentId=" + a1)
+        .header("Authorization", signed(manager, a, UserRole.MANAGER)).exchange().expectStatus().isOk();
+    http().get().uri("/api/v1/payments?establishmentId=" + a1)
+        .header("Authorization", signed(granted, a, UserRole.STAFF)).exchange().expectStatus().isForbidden();
+    http().get().uri("/api/v1/establishments/" + a1 + "/staff-access")
+        .header("Authorization", signed(manager, a, UserRole.MANAGER)).exchange().expectStatus().isForbidden();
     assertThat(arrivalStatus(a, ungranted, a1, token, true)).isEqualTo(403);
     assertThat(arrivalStatus(a, ungranted, a1, token, false)).isEqualTo(403);
     assertThat(arrivalStatus(a, ungranted, a2, token, false)).isEqualTo(403);
@@ -283,6 +301,8 @@ class CurrentStaffSecurityIntegrationTest {
     http().get().uri("/api/v1/reservations").header("Authorization", signed(granted, a, UserRole.STAFF))
         .exchange().expectStatus().isForbidden();
     inTenant(a, () -> jdbc.update("update establishment_staff_access set can_check_in=false where tenant_id=? and establishment_id=? and user_id=?", a, a1, granted));
+    http().get().uri("/api/v1/establishments/" + a1 + "/reservations")
+        .header("Authorization", signed(granted, a, UserRole.STAFF)).exchange().expectStatus().isForbidden();
     assertThat(arrivalStatus(a, granted, a1, token, true)).isEqualTo(403);
     assertThat(arrivalStatus(a, granted, a1, token, false)).isEqualTo(403);
     inTenant(a, () -> assertThat(jdbc.queryForObject(
@@ -290,8 +310,12 @@ class CurrentStaffSecurityIntegrationTest {
   }
 
   private int arrivalStatus(String tenant, UUID operator, UUID establishment, String token, boolean lookup) {
+    return arrivalStatus(tenant, operator, UserRole.STAFF, establishment, token, lookup);
+  }
+
+  private int arrivalStatus(String tenant, UUID operator, UserRole role, UUID establishment, String token, boolean lookup) {
     return http().post().uri("/api/v1/establishments/" + establishment + "/check-ins" + (lookup ? "/lookup" : ""))
-        .header("Authorization", signed(operator, tenant, UserRole.STAFF))
+        .header("Authorization", signed(operator, tenant, role))
         .contentType(MediaType.APPLICATION_JSON).body(Map.of("token", token))
         .exchange().returnResult(Void.class).getStatus().value();
   }

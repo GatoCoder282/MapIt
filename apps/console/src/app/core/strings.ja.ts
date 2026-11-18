@@ -1,5 +1,22 @@
 /* Catálogo estático generado para ja; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_JA = {
+  operational: {
+    reservations: '店舗の予約',
+    payments: '店舗の支払い',
+    loading: '読み込み中…',
+    empty: '記録がありません。',
+    error: 'データを読み込めませんでした。',
+    retry: '再試行',
+    previous: '前へ',
+    next: '次へ',
+    reference: '参照番号',
+    date: '日時',
+    status: '状態',
+    arrival: '来店',
+    checkedIn: '記録済み',
+    pending: '未記録',
+    amount: '金額',
+  },
   users: {
     staffAccess: {
       title: '割り当て済みの事業所',

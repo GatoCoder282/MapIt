@@ -107,7 +107,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/payments/*/verify")
                         .hasRole(UserRole.ADMIN.name())
                         .requestMatchers(HttpMethod.GET, "/api/v1/payments")
-                        .hasRole(UserRole.ADMIN.name())
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
                         .requestMatchers("/api/v1/establishments/*/staff-access", "/api/v1/establishments/*/staff-access/**")
                         .hasRole(UserRole.ADMIN.name())
                         .requestMatchers(HttpMethod.GET, "/api/v1/establishments/accessible")
@@ -115,7 +115,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/establishments")
                         .hasRole(UserRole.ADMIN.name())
                         .requestMatchers("/api/v1/establishments/*/check-ins", "/api/v1/establishments/*/check-ins/**")
-                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.STAFF.name())
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name(), UserRole.STAFF.name())
                         // MAP-124: la ruta vive debajo de /sectors/**, que aún conserva
                         // acceso público temporal para HU-2.03. Esta regla específica debe
                         // evaluarse antes y exige los roles definidos por HU-3.01.
@@ -142,6 +142,8 @@ public class SecurityConfig {
                                 UserRole.ADMIN.name(),
                                 UserRole.MANAGER.name(),
                                 UserRole.STAFF.name())
+                        .requestMatchers(HttpMethod.GET, "/api/v1/establishments/*/reservations")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name(), UserRole.STAFF.name())
                         // HU-5.03: la bitácora contiene trazabilidad interna del tenant y
                         // su consulta corresponde exclusivamente al administrador.
                         .requestMatchers(HttpMethod.GET, ApiPaths.AUDIT_LOGS)

@@ -2264,6 +2264,29 @@ paths:
         schema:
           type: string
           format: uuid
+    get:
+      tags: [reservations]
+      summary: Consultar reservas operativas del establecimiento
+      description: Listado paginado para ADMIN, MANAGER y STAFF asignado. Solo expone datos operativos.
+      operationId: listEstablishmentReservations
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+      responses:
+        "200":
+          description: Reservas del establecimiento autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationalReservationPage"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     post:
       tags: [reservations]
       summary: Crear una reserva interna
@@ -2381,12 +2404,9 @@ paths:
         reciente a la más antigua. El tenant se obtiene exclusivamente del JWT:
         nunca viaja en la petición. STAFF no puede usar este listado general:
         carece de filtro por establecimiento; debe recibir 403. La lectura
-        operativa acotada por establecimiento pertenece a MAP-260 y requiere
-        un permiso independiente de `can_check_in`.
-
-        Seguridad objetivo de HU-1.04: la restricción STAFF todavía NO está
-        implementada por el backend y queda asignada a MAP-244; modificar esta
-        descripción contractual no protege la ruta.
+        operativa acotada por establecimiento está disponible mediante
+        `GET /establishments/{establishmentId}/reservations`. Para STAFF requiere
+        una asignación vigente; no existe un permiso adicional de check-in.
 
         **Techo conocido:** la respuesta es un array plano, sin paginación. Está pensada
         para métricas agregadas (totales, crecimiento semanal, reparto por estado). Si un
@@ -5379,6 +5399,27 @@ components:
           format: date-time
           readOnly: true
 
+    OperationalReservationPage:
+      type: object
+      additionalProperties: false
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OperationalReservation" }
+        total: { type: integer, format: int64 }
+        limit: { type: integer }
+        offset: { type: integer }
+    OperationalReservation:
+      type: object
+      additionalProperties: false
+      required: [id, startsAt, endsAt, status, checkedIn]
+      properties:
+        id: { type: string, format: uuid }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        status: { type: string, enum: [CREATED, CONFIRMED, ACTIVE, RELEASED, CANCELLED] }
+        checkedIn: { type: boolean }
     Reservation:
       type: object
       required:

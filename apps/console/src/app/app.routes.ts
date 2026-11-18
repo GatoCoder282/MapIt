@@ -164,10 +164,23 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'reservations',
+        loadComponent: () =>
+          import('./features/reservations/ui/operational-reservations').then(
+            (m) => m.OperationalReservations,
+          ),
+      },
+      {
         path: 'reservations/new',
         canDeactivate: [operationalExitGuard],
         loadComponent: () =>
           import('./features/reservations/ui/reservation-form').then((m) => m.ReservationForm),
+      },
+      {
+        path: 'payments',
+        canActivate: [roleGuard('ADMIN', 'MANAGER')],
+        loadComponent: () =>
+          import('./features/payments/ui/operational-payments').then((m) => m.OperationalPayments),
       },
       {
         path: 'payment-methods',
@@ -184,7 +197,7 @@ export const routes: Routes = [
       {
         path: 'check-in',
         canDeactivate: [operationalExitGuard],
-        canActivate: [roleGuard('ADMIN', 'STAFF')],
+        canActivate: [roleGuard('ADMIN', 'MANAGER', 'STAFF')],
         loadComponent: () => import('./features/check-in/ui/check-in').then((m) => m.CheckIn),
       },
       {

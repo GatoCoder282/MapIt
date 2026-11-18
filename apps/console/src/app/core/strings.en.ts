@@ -1,5 +1,22 @@
 /* Catálogo estático generado para en; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_EN = {
+  operational: {
+    reservations: 'Establishment reservations',
+    payments: 'Establishment payments',
+    loading: 'Loading…',
+    empty: 'No records.',
+    error: 'Could not load data.',
+    retry: 'Retry',
+    previous: 'Previous',
+    next: 'Next',
+    reference: 'Reference',
+    date: 'Date',
+    status: 'Status',
+    arrival: 'Arrival',
+    checkedIn: 'Recorded',
+    pending: 'Pending',
+    amount: 'Amount',
+  },
   users: {
     staffAccess: {
       title: 'Assigned establishments',
