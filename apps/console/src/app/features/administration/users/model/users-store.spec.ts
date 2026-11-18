@@ -141,6 +141,28 @@ describe('UsersStore', () => {
     expect(store.canManage({ ...manager, active: false })).toBe(false);
   });
 
+  it('sincroniza tabla y detalle con la respuesta confirmada sin cerrar la selección', () => {
+    store.load();
+    api.detail.mockReturnValueOnce(of(manager));
+    store.detail(manager);
+    const refresh = new Subject<TenantUserPage>();
+    api.list.mockReturnValueOnce(refresh.asObservable());
+    store.ask(manager, 'role');
+    store.confirm();
+    expect(store.status()).toBe('ready');
+    expect(store.users()[0]?.role).toBe('STAFF');
+    expect(store.selected()?.role).toBe('STAFF');
+    expect(store.page()).toBe(0);
+    refresh.next({ ...page, content: [{ ...manager, role: 'STAFF' }, admin] });
+    expect(store.selected()?.role).toBe('STAFF');
+
+    api.list.mockReturnValueOnce(new Subject<TenantUserPage>().asObservable());
+    store.ask(store.users()[0]!, 'deactivate');
+    store.confirm();
+    expect(store.users()[0]?.active).toBe(false);
+    expect(store.selected()?.active).toBe(false);
+  });
+
   it('ante 409 refresca el estado y explica el conflicto; 401 exige reingreso', () => {
     api.changeRole.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409 })));
     store.ask(manager, 'role');

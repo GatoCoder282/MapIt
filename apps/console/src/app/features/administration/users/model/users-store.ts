@@ -94,9 +94,9 @@ export class UsersStore {
       this.cooldownTimer = setTimeout(() => this.scheduleCooldown(), next - now + 1);
   }
 
-  load(page = this.page()): void {
+  load(page = this.page(), background = false): void {
     const version = ++this.version;
-    this.status.set('loading');
+    if (!background) this.status.set('loading');
     this.error.set('');
     this.api
       .list(page, this.size)
@@ -105,6 +105,11 @@ export class UsersStore {
         next: (result) => {
           if (version !== this.version) return;
           this.users.set(result.content);
+          const selected = this.selected();
+          if (selected) {
+            const current = result.content.find((user) => user.id === selected.id);
+            if (current) this.selected.set(current);
+          }
           this.page.set(result.page);
           this.totalPages.set(result.totalPages);
           this.totalElements.set(result.totalElements);
@@ -113,7 +118,7 @@ export class UsersStore {
         error: (error: unknown) => {
           if (version !== this.version) return;
           this.error.set(this.message(error));
-          this.status.set('error');
+          if (!background) this.status.set('error');
         },
       });
   }
@@ -220,13 +225,16 @@ export class UsersStore {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
+        next: (updated) => {
           this.pending.set(null);
-          this.selected.set(null);
+          this.users.update((users) =>
+            users.map((user) => (user.id === updated.id ? updated : user)),
+          );
+          if (this.selected()?.id === updated.id) this.selected.set(updated);
           this.feedback.set(
             action.kind === 'role' ? STRINGS.users.roleChanged : STRINGS.users.deactivated,
           );
-          this.load();
+          this.load(this.page(), true);
         },
         error: (error: unknown) => {
           this.pending.set(null);

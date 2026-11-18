@@ -42,8 +42,8 @@ test.describe('HU-1.04 — administración de usuarios', () => {
     test.setTimeout(150_000);
     const admin = await companyAdminFixture(request);
     const email = `member-${randomUUID()}@mapit.test`;
-    const adminLogin = await request.post(`${API}/auth/login`, {
-      data: { tenantSlug: admin.slug, email: admin.email, password: admin.password },
+    const adminLogin = await request.post(`${API}/auth/global-login`, {
+      data: { email: admin.email, password: admin.password },
     });
     expect(adminLogin.status()).toBe(200);
     const adminToken = ((await adminLogin.json()) as { accessToken: string }).accessToken;
@@ -52,12 +52,13 @@ test.describe('HU-1.04 — administración de usuarios', () => {
     page.on('response', (response) => {
       if (response.status() === 401) unauthorizedPaths.push(new URL(response.url()).pathname);
     });
-    await page.goto(`/empresa/${admin.slug}/login`);
+    await page.goto('/login');
     await page.getByRole('textbox', { name: /correo/i }).fill(admin.email);
     await page.getByLabel('Contraseña', { exact: true }).fill(admin.password);
     const browserLogin = page.waitForResponse(
       (response) =>
-        response.url().endsWith('/api/v1/auth/login') && response.request().method() === 'POST',
+        response.url().endsWith('/api/v1/auth/global-login') &&
+        response.request().method() === 'POST',
     );
     await page.getByRole('button', { name: /iniciar sesi/i }).click();
     expect((await browserLogin).status()).toBe(200);
@@ -68,6 +69,8 @@ test.describe('HU-1.04 — administración de usuarios', () => {
       ),
     );
     expect(sessionStored, `sesión Angular; 401 en ${unauthorizedPaths.join(', ')}`).toBe(true);
+    await page.getByRole('radio', { name: /Sede Home/ }).check();
+    await page.getByRole('button', { name: 'Continuar' }).click();
     await page.goto('/users');
     await expect
       .poll(async () =>
@@ -116,9 +119,8 @@ test.describe('HU-1.04 — administración de usuarios', () => {
     await expect(invitationRow).not.toContainText(/entregado al destinatario/i);
     const firstLink = await invitationLink(request, email);
     const otherTenant = await companyAdminFixture(request);
-    const otherLogin = await request.post(`${API}/auth/login`, {
+    const otherLogin = await request.post(`${API}/auth/global-login`, {
       data: {
-        tenantSlug: otherTenant.slug,
         email: otherTenant.email,
         password: otherTenant.password,
       },
@@ -208,13 +210,13 @@ test.describe('HU-1.04 — administración de usuarios', () => {
     const employeeContext = await browser.newContext({ baseURL: CONSOLE });
     try {
       const employee = await employeeContext.newPage();
-      await employee.goto(`/empresa/${admin.slug}/login`);
+      await employee.goto('/login');
       await employee.getByRole('textbox', { name: /correo/i }).fill(email);
       await employee.getByLabel('Contraseña', { exact: true }).fill(MEMBER_PASSWORD);
       await employee.getByRole('button', { name: /iniciar sesi/i }).click();
       await expect(employee).toHaveURL(/\/home/);
-      const memberLogin = await request.post(`${API}/auth/login`, {
-        data: { tenantSlug: admin.slug, email, password: MEMBER_PASSWORD },
+      const memberLogin = await request.post(`${API}/auth/global-login`, {
+        data: { email, password: MEMBER_PASSWORD },
       });
       expect(memberLogin.status()).toBe(200);
       const oldJwt = ((await memberLogin.json()) as { accessToken: string }).accessToken;
@@ -230,8 +232,8 @@ test.describe('HU-1.04 — administración de usuarios', () => {
       expect(stale.status()).toBe(401);
       await employee.goto('/home');
       await expect(employee).toHaveURL(/\/login/, { timeout: 15_000 });
-      const freshLogin = await request.post(`${API}/auth/login`, {
-        data: { tenantSlug: admin.slug, email, password: MEMBER_PASSWORD },
+      const freshLogin = await request.post(`${API}/auth/global-login`, {
+        data: { email, password: MEMBER_PASSWORD },
       });
       expect(freshLogin.status()).toBe(200);
       const staffJwt = ((await freshLogin.json()) as { accessToken: string }).accessToken;
@@ -245,7 +247,7 @@ test.describe('HU-1.04 — administración de usuarios', () => {
       await page.unroute('**/api/v1/users?*');
       await page.reload();
       await expect(account).toBeVisible();
-      await employee.goto(`/empresa/${admin.slug}/login`);
+      await employee.goto('/login');
       await employee.getByRole('textbox', { name: /correo/i }).fill(email);
       await employee.getByLabel('Contraseña', { exact: true }).fill(MEMBER_PASSWORD);
       await employee.getByRole('button', { name: /iniciar sesi/i }).click();
@@ -266,13 +268,44 @@ test.describe('HU-1.04 — administración de usuarios', () => {
       await page.getByTestId('users-confirm').click();
       await expect(account).toContainText(/Staff/i);
 
+      await account.getByRole('button', { name: /Detalle/i }).click();
+      await expect(page.getByRole('heading', { name: 'Establecimientos asignados' })).toBeVisible();
+      await account.getByTestId('users-change-role').click();
+      await page.getByTestId('users-confirm').click();
+      await expect(account).toContainText(/Gerente/i);
+      await expect(page.getByRole('region', { name: 'Detalle' })).toContainText(/Gerente/i);
+      await account.getByTestId('users-change-role').click();
+      await page.getByTestId('users-confirm').click();
+      await expect(account).toContainText(/Staff/i);
+      await expect(page.getByRole('heading', { name: 'Establecimientos asignados' })).toBeVisible();
+      const assignment = page.getByRole('checkbox', { name: /Sede Home/ });
+      await assignment.check();
+      await page.getByRole('button', { name: 'Guardar cambios' }).click();
+      await expect(page.getByText('Asignaciones guardadas y verificadas.')).toBeVisible();
+      await expect(assignment).toBeChecked();
+      await assignment.uncheck();
+      await page.getByRole('button', { name: 'Guardar cambios' }).click();
+      await expect(page.getByText('Asignaciones guardadas y verificadas.')).toBeVisible();
+      await expect(assignment).not.toBeChecked();
+      await assignment.check();
+      await page.getByRole('button', { name: 'Guardar cambios' }).click();
+      await expect(assignment).toBeChecked();
+
+      await employee.goto('/login');
+      await employee.getByRole('textbox', { name: /correo/i }).fill(email);
+      await employee.getByLabel('Contraseña', { exact: true }).fill(MEMBER_PASSWORD);
+      await employee.getByRole('button', { name: /iniciar sesi/i }).click();
+      await expect(employee).toHaveURL(/\/home/);
+
       await account.getByTestId('users-deactivate').click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await page.getByTestId('users-confirm').click();
       await expect(account).toContainText(/Inactivo/i);
       await expect(account.getByTestId('users-deactivate')).toHaveCount(0);
-      const blocked = await request.post(`${API}/auth/login`, {
-        data: { tenantSlug: admin.slug, email, password: MEMBER_PASSWORD },
+      await employee.reload();
+      await expect(employee).toHaveURL(/\/login/, { timeout: 15_000 });
+      const blocked = await request.post(`${API}/auth/global-login`, {
+        data: { email, password: MEMBER_PASSWORD },
       });
       expect(blocked.status()).toBe(401);
       expect(
@@ -280,6 +313,38 @@ test.describe('HU-1.04 — administración de usuarios', () => {
           await request.get(`${API}/users`, { headers: { Authorization: `Bearer ${oldJwt}` } })
         ).status(),
       ).toBe(401);
+
+      const managerEmail = `manager-${randomUUID()}@mapit.test`;
+      const managerInvite = await request.post(`${API}/users`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+        data: { email: managerEmail, role: 'MANAGER' },
+      });
+      expect(managerInvite.status()).toBe(202);
+      const managerLink = await invitationLink(request, managerEmail);
+      const managerActivation = await request.post(`${API}/auth/activate`, {
+        data: {
+          tenantSlug: admin.slug,
+          token: managerLink.token,
+          password: MEMBER_PASSWORD,
+          passwordConfirm: MEMBER_PASSWORD,
+        },
+      });
+      expect(managerActivation.ok()).toBe(true);
+      await page.reload();
+      const managerAccount = page
+        .getByTestId('users-account-row')
+        .filter({ hasText: managerEmail });
+      await expect(managerAccount).toBeVisible();
+      await employee.goto('/login');
+      await employee.getByRole('textbox', { name: /correo/i }).fill(managerEmail);
+      await employee.getByLabel('Contraseña', { exact: true }).fill(MEMBER_PASSWORD);
+      await employee.getByRole('button', { name: /iniciar sesi/i }).click();
+      await expect(employee).toHaveURL(/\/home/);
+      await managerAccount.getByTestId('users-deactivate').click();
+      await page.getByTestId('users-confirm').click();
+      await expect(managerAccount).toContainText(/Inactivo/i);
+      await employee.reload();
+      await expect(employee).toHaveURL(/\/login/, { timeout: 15_000 });
     } finally {
       await employeeContext.close();
     }
