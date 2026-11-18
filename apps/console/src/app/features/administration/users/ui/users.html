@@ -290,6 +290,9 @@
           <dd>{{ user.createdAt | localDate: locale() : 'mediumDate' }}</dd>
         </div>
       </dl>
+      @if (user.active && user.role === 'STAFF') {
+        <mapit-staff-establishments [user]="user" />
+      }
     </section>
   }
 

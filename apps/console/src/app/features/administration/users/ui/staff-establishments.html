@@ -1,0 +1,59 @@
+@if (store.canManage(user())) {
+  <section class="staff-establishments" aria-labelledby="staff-establishments-title">
+    <div class="heading">
+      <div>
+        <h3 id="staff-establishments-title">{{ strings.title }}</h3>
+        <p>{{ strings.description }}</p>
+      </div>
+    </div>
+
+    @if (store.status() === 'loading') {
+      <p class="state" role="status">{{ strings.loading }}</p>
+    } @else if (store.status() === 'error') {
+      <p class="notice error" role="alert">{{ store.error() }}</p>
+      <button class="button secondary" type="button" (click)="store.load(user())">{{ strings.retry }}</button>
+    } @else if (store.status() === 'ready') {
+      @if (!store.assignments().length) {
+        <p class="state empty">{{ strings.empty }}</p>
+      } @else {
+        <div class="assignment-list">
+          @for (item of store.assignments(); track item.establishment.id) {
+            <label class="assignment" [class.assigned]="item.desired">
+              <input
+                type="checkbox"
+                [checked]="item.desired"
+                [disabled]="store.saving()"
+                (change)="store.toggle(item.establishment.id)"
+              />
+              <span class="venue-name">{{ item.establishment.name }}</span>
+              <span class="assignment-state">{{
+                item.granted !== item.desired
+                  ? item.desired
+                    ? strings.toAssign
+                    : strings.toRevoke
+                  : item.granted
+                    ? strings.assigned
+                    : strings.unassigned
+              }}</span>
+            </label>
+          }
+        </div>
+        <div class="actions">
+          @if (store.pendingCount()) {
+            <p class="pending" role="status">{{ strings.pending }}</p>
+          }
+          <button class="button primary" type="button" [disabled]="!store.canSave()" (click)="store.save(user())">
+            {{ store.saving() ? strings.saving : strings.save }}
+          </button>
+        </div>
+      }
+    }
+
+    @if (store.feedback()) {
+      <p class="notice success" role="status">{{ store.feedback() }}</p>
+    }
+    @if (store.error() && store.status() === 'ready') {
+      <p class="notice error" role="alert">{{ store.error() }}</p>
+    }
+  </section>
+}

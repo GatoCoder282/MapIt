@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import type { TenantUser, TenantUserInvitation, TenantUserPage } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
 import { I18nService } from '@mapit/i18n';
 import { of } from 'rxjs';
 
 import { UsersApi } from '../data/users-api';
+import { StaffAccessApi } from '../data/staff-access-api';
 import { Users } from './users';
 
 const member: TenantUser = {
@@ -16,6 +18,7 @@ const member: TenantUser = {
   createdAt: '2026-01-01T00:00:00Z',
 };
 const administrator: TenantUser = { ...member, id: 'admin', fullName: 'Luis', role: 'ADMIN' };
+const staff: TenantUser = { ...member, id: 'staff', fullName: 'Marta', role: 'STAFF' };
 const page: TenantUserPage = {
   content: [member, administrator],
   page: 0,
@@ -52,6 +55,20 @@ describe('Users (ADMIN)', () => {
       providers: [
         { provide: UsersApi, useValue: api },
         { provide: I18nService, useValue: { locale: signal('es-ES') } },
+        {
+          provide: AuthSession,
+          useValue: {
+            user: signal({ id: 'admin', tenantId: 'tenant-a', role: 'ADMIN' }).asReadonly(),
+          },
+        },
+        {
+          provide: StaffAccessApi,
+          useValue: {
+            establishments: () => of([]),
+            staff: () => of([]),
+            save: () => of(null),
+          },
+        },
       ],
     });
   });
@@ -132,5 +149,27 @@ describe('Users (ADMIN)', () => {
     );
     confirm?.click();
     expect(api.deactivate).toHaveBeenCalledWith('member');
+  });
+
+  it('integra asignaciones solo en el detalle de un STAFF activo', async () => {
+    api.list.mockReturnValueOnce(of({ ...page, content: [staff, member, administrator] }));
+    api.detail.mockReturnValueOnce(of(staff));
+    const fixture = TestBed.createComponent(Users);
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    const detailButtons = element.querySelectorAll<HTMLButtonElement>(
+      '.accounts-table .actions-cell .button.text',
+    );
+    detailButtons[0]?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(element.querySelector('mapit-staff-establishments')).not.toBeNull();
+    expect(element.textContent).toContain('Establecimientos asignados');
+
+    api.detail.mockReturnValueOnce(of(member));
+    detailButtons[3]?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(element.querySelector('mapit-staff-establishments')).toBeNull();
   });
 });

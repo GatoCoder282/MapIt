@@ -1,5 +1,27 @@
 /* Catálogo estático generado para en; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_EN = {
+  users: {
+    staffAccess: {
+      title: 'Assigned establishments',
+      description: 'Select the establishments this staff member can access.',
+      loading: 'Loading establishments and assignments…',
+      empty: 'Your company does not have any establishments to assign yet.',
+      assigned: 'Assigned',
+      unassigned: 'Not assigned',
+      toAssign: 'Pending assignment',
+      toRevoke: 'Pending revocation',
+      pending: 'You have unsaved changes.',
+      save: 'Save changes',
+      saving: 'Saving…',
+      saved: 'Assignments saved and verified.',
+      retry: 'Retry',
+      loadError: 'Assignments could not be loaded. Try again.',
+      saveError: 'Changes could not be saved. Review the assignments and try again.',
+      partialError:
+        'Some changes were not saved. Review the updated assignments before continuing.',
+      verifyError: 'The state could not be verified after saving. Reload the assignments.',
+    },
+  },
   checkIn: {
     eyebrow: 'Administration',
     resultTitle: 'Reservation found',

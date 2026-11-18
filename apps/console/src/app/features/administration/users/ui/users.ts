@@ -12,10 +12,11 @@ import { I18nService, LocalizedDatePipe } from '@mapit/i18n';
 
 import { STRINGS } from '../../../../core/strings';
 import { UsersStore } from '../model/users-store';
+import { StaffEstablishments } from './staff-establishments';
 
 @Component({
   selector: 'mapit-users',
-  imports: [ReactiveFormsModule, LocalizedDatePipe],
+  imports: [ReactiveFormsModule, LocalizedDatePipe, StaffEstablishments],
   providers: [UsersStore],
   templateUrl: './users.html',
   styleUrl: './users.scss',

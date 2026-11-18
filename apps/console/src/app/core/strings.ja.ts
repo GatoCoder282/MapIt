@@ -1,5 +1,26 @@
 /* Catálogo estático generado para ja; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_JA = {
+  users: {
+    staffAccess: {
+      title: '割り当て済みの事業所',
+      description: 'このスタッフがアクセスできる事業所を選択してください。',
+      loading: '事業所と割り当てを読み込み中…',
+      empty: '割り当て可能な事業所がまだありません。',
+      assigned: '割り当て済み',
+      unassigned: '未割り当て',
+      toAssign: '割り当て待ち',
+      toRevoke: '解除待ち',
+      pending: '未保存の変更があります。',
+      save: '変更を保存',
+      saving: '保存中…',
+      saved: '割り当てを保存して確認しました。',
+      retry: '再試行',
+      loadError: '割り当てを読み込めませんでした。再試行してください。',
+      saveError: '変更を保存できませんでした。割り当てを確認して再試行してください。',
+      partialError: '一部の変更を保存できませんでした。更新された状態を確認してください。',
+      verifyError: '保存後の状態を確認できませんでした。割り当てを再読み込みしてください。',
+    },
+  },
   checkIn: {
     eyebrow: '管理',
     resultTitle: '予約が見つかりました',
