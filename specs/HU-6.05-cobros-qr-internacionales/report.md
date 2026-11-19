@@ -12,10 +12,10 @@ y validar los registros/documentos legales de MapIt, completar el onboarding de 
 establecimientos, obtener la aprobación comercial y de sandbox del proveedor, y
 aceptar sus costos por escrito.
 
-La conclusión se refiere a la ruta inicial propuesta con dLocal for Platforms; no
-afirma que todos los proveedores QR del mercado tengan requisitos idénticos. El QR
-bancario manual ya disponible en MapIt se conserva como alternativa y no confirma
-pagos automáticamente.
+La evaluación cubre la ruta inicial propuesta con dLocal for Platforms. Cada
+proveedor alternativo requiere revisar sus propios requisitos y costos. El QR
+bancario manual ya disponible en MapIt se conserva como alternativa y mantiene la
+confirmación manual del pago.
 
 ## Documentación legal y onboarding
 
@@ -24,8 +24,8 @@ opera MapIt y después crear cuentas de usuario para los comercios que forman pa
 de ella. Para una empresa, su guía KYC contempla información de compañía, datos del
 representante legal y beneficiarios finales (UBO). Los requisitos cambian según el
 país y el tipo de entidad; dLocal Sales debe confirmar por escrito qué registros y
-documentos bolivianos sirven. Una CI personal no sustituye la documentación de la
-entidad.
+documentos bolivianos sirven. Además de la CI personal del representante, se
+requiere la documentación de la entidad.
 
 Hay además un dato distinto de los registros de la empresa: la API de QR de
 Bolivia marca `payer.document` como obligatorio y la documentación del mercado

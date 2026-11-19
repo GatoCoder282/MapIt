@@ -13,8 +13,8 @@
 
 ## Patrones de diseño aplicados
 
-| Patrón | Por qué aquí | Alternativa descartada |
-| --- | --- | --- |
+| Patrón    | Por qué aquí                                                      | Alternativa descartada                                                           |
+| --------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | No aplica | Este PR produce un informe y no agrega comportamiento ejecutable. | Diseñar un adaptador antes de confirmar elegibilidad, cuentas, costos y sandbox. |
 
 ## Dependencias externas

@@ -28,5 +28,12 @@ producto ni un costo verificable para tramitar los documentos legales. Las
 tarifas de dLocal Go no se usan como referencia de Platforms.
 
 No se modificó código, contrato ni esquema. El método de QR bancario manual
-permanece como fallback. El bloqueo es comercial/documental, no una imposibilidad
-técnica permanente.
+permanece como fallback. La integración es técnicamente viable cuando se resuelvan
+los bloqueos comerciales y documentales.
+
+El entorno local no tiene Node, Corepack ni pnpm, por lo que no se pudo ejecutar
+`pnpm check` ni Prettier localmente. En CI del PR #70, el job Backend y el job de
+sincronización del contrato pasaron; `fmt:check` señaló `spec.md` y `plan.md`, y
+se corrigió el formato en este commit. El job de integración seguía en curso al
+registrar esta nota. La verificación remota final y la captura de checks quedan
+pendientes.
