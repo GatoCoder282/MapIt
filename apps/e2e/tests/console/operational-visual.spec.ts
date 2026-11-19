@@ -121,6 +121,20 @@ test('operational visual captures', async ({ page, request }, testInfo) => {
       json: { ...config, environment: 'production' },
     });
   });
+  // El tenant se crea con API real y ya puede tener eventos de alta/activación.
+  // Esta captura comprueba el estado vacío de auditoría con una respuesta aislada.
+  await page.route('**/api/v1/audit-logs*', (route) => {
+    const url = new URL(route.request().url());
+    return route.fulfill({
+      json: {
+        content: [],
+        page: Number(url.searchParams.get('page') ?? 0),
+        size: Number(url.searchParams.get('size') ?? 10),
+        totalElements: 0,
+        totalPages: 0,
+      },
+    });
+  });
   const accessibleLoad = page.waitForResponse(
     (response) => new URL(response.url()).pathname.endsWith('/establishments/accessible'),
     { timeout: 30_000 },
