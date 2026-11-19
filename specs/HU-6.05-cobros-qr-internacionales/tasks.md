@@ -11,7 +11,9 @@
 - [ ] Confirmar sandbox, credenciales y destino de liquidación por establecimiento.
 - [ ] Definir captura, propósito, acceso y retención del CI/NIT del pagador.
 - [ ] Implementar el slice de producción después de cerrar los gates anteriores.
-- [ ] Ejecutar `pnpm check`, revisar los workflows del PR y adjuntar la captura de checks.
+- [ ] Ejecutar `pnpm check` local si el entorno cuenta con Node 24 y pnpm 11.
+- [x] Revisar CI remoto de PR #70: frontend, backend, contrato, integración y E2E pasan.
+- [ ] Capturar y adjuntar la vista Checks a PR #70.
 
 ## Notas de ejecución
 
@@ -31,9 +33,16 @@ No se modificó código, contrato ni esquema. El método de QR bancario manual
 permanece como fallback. La integración es técnicamente viable cuando se resuelvan
 los bloqueos comerciales y documentales.
 
-El entorno local no tiene Node, Corepack ni pnpm, por lo que no se pudo ejecutar
-`pnpm check` ni Prettier localmente. En CI del PR #70, el job Backend y el job de
-sincronización del contrato pasaron; `fmt:check` señaló `spec.md` y `plan.md`, y
-se corrigió el formato en este commit. El job de integración seguía en curso al
-registrar esta nota. La verificación remota final y la captura de checks quedan
-pendientes.
+El entorno local no tiene Node, Corepack ni pnpm, por lo que no se ejecutaron
+`pnpm check` ni Prettier localmente. En el primer CI de PR #70, `fmt:check` señaló
+`spec.md` y `plan.md`; el formato se corrigió. El comando
+`gh pr checks 70 --repo GatoCoder282/MapIt` confirmó que el run `44595740356`
+pasó frontend, backend, contrato, integración y E2E; SonarQube manual quedó omitido.
+
+La captura de la vista Checks sigue pendiente: el helper local de Computer Use
+devolvió este error incluso tras reiniciarlo:
+
+> Computer Use native pipe is unavailable: failed to connect native pipe: The system cannot find the file specified. (os error 2)
+
+El PR permanece en borrador hasta adjuntar esa evidencia.
+
