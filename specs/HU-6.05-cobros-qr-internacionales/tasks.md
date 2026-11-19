@@ -12,7 +12,7 @@
 - [ ] Definir captura, propósito, acceso y retención del CI/NIT del pagador.
 - [ ] Implementar el slice de producción después de cerrar los gates anteriores.
 - [ ] Ejecutar `pnpm check` local si el entorno cuenta con Node 24 y pnpm 11.
-- [x] Revisar CI remoto de PR #70: frontend, backend, contrato, integración y E2E pasan.
+- [x] Revisar CI remoto del PR #70: backend, contrato, frontend, integración y E2E.
 - [ ] Capturar y adjuntar la vista Checks a PR #70.
 
 ## Notas de ejecución
@@ -39,10 +39,7 @@ El entorno local no tiene Node, Corepack ni pnpm, por lo que no se ejecutaron
 `gh pr checks 70 --repo GatoCoder282/MapIt` confirmó que el run `44595740356`
 pasó frontend, backend, contrato, integración y E2E; SonarQube manual quedó omitido.
 
-La captura de la vista Checks sigue pendiente: el helper local de Computer Use
-devolvió este error incluso tras reiniciarlo:
-
-> Computer Use native pipe is unavailable: failed to connect native pipe: The system cannot find the file specified. (os error 2)
-
-El PR permanece en borrador hasta adjuntar esa evidencia.
+La captura de la vista Checks sigue pendiente porque el helper local de Computer
+Use no conectó con la tubería nativa, incluso tras reiniciarlo. El PR permanece en
+borrador hasta adjuntar esa evidencia.
 
