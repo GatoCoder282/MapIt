@@ -31,8 +31,8 @@
 
 ## MAP-266 — Notificaciones y E2E
 
-- [ ] Notificar el resultado sin contraseñas ni datos internos.
-- [ ] Cubrir duplicados, permisos, cross-tenant y flujo completo en integración/E2E.
+- [x] Notificar el resultado sin contraseñas ni datos internos.
+- [x] Cubrir duplicados, permisos, cross-tenant y flujo completo en integración/E2E.
 
 ## MAP-267 — Flag y rollback
 
@@ -61,3 +61,5 @@
 - MAP-264: prueba de integración con PostgreSQL 17 y JWT real pasó (401 sin sesión, 403 para ADMIN, 200 para SUPER_ADMIN, 404 para ID inexistente; respuesta sin hash). Prueba del store, build de consola, `pnpm be:test`, `pnpm api:lint` y tipos pasaron. `pnpm check` completo terminó en verde: formato, lint, tipos, pruebas y builds frontend, contrato API y backend/ArchUnit.
 - MAP-265: se añadieron acciones de aprobar y rechazar para SUPER_ADMIN, con bloqueo de fila, decisión idempotente y auditoría en `platform`. La aprobación exige contacto verificado y reutiliza el alta de tenant y la invitación segura de CU-25; la consola permite decidir desde el detalle. La migración V35 amplía la bitácora inmutable y el DBML acompaña el cambio.
 - MAP-265: integración PostgreSQL 17 pasó con JWT real, invitación, rechazo, repetición idempotente, aprobaciones concurrentes y reversión completa si falla el correo. Pruebas específicas de consola 2/2. El primer `pnpm check` falló por una regla de lint corregida y un timeout de 5 s en una prueba preexistente de métodos de pago; esa prueba pasó aislada 8/8. La repetición completa quedó en verde: Console 373, Public Web 152, librerías 85, builds, contrato y backend/ArchUnit.
+- MAP-266: los correos de aprobación y rechazo se envían después del commit, una sola vez por decisión. El contenido incluye únicamente nombre del negocio y resultado; el enlace de activación del primer ADMIN sigue llegando por separado mediante CU-25. La integración verifica emisión única, ausencia de correo tras rollback, permisos por rol, RLS cross-tenant, duplicados, concurrencia y reversión transaccional.
+- MAP-266: E2E real con `pnpm dev`, `pnpm db:seed:flags` y `pnpm --filter @mapit/e2e exec playwright test tests/business-onboarding/flow.spec.ts --project=business-onboarding --no-deps` pasó 1/1. Recorrió formulario público anónimo, Mailpit, verificación, aprobación en Console, notificación de resultado, invitación, idempotencia y activación. El reporte local `apps/e2e/playwright-report/index.html` contiene una captura de la aprobación. La prueba restauró la flag `OFF` al terminar. CI ahora carga las flags antes de E2E y adjunta el reporte desde la ruta real. `pnpm check` completo quedó en verde: Console 373, Public Web 152, librerías 85, builds, contrato y backend/ArchUnit. `pnpm --filter @mapit/e2e typecheck` también pasó.

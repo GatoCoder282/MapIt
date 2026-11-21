@@ -12,6 +12,7 @@ test.use({
 });
 
 test('entra directamente desde /login con el correo de la empresa', async ({ request, page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   const { email, password } = await companyAdminFixture(request);
 
   if (process.env['API_BASE_URL']) {
