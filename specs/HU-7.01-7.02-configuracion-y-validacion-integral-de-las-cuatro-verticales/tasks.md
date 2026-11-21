@@ -41,6 +41,16 @@
 - [x] Regresión HU-6.01/6.02/6.03 (`PublicAvailability*`, `PublicReservation*`, `PublicPaymentFlow*`).
 - [x] `pnpm api:check`, `pnpm check`, `pnpm be:test`, `pnpm be:it`, `pnpm fe:test`.
 
+## MAP-327 — Continuidad de MAP-235 (Sprint 7)
+
+- [x] Revisar las dependencias MAP-232/233/234/247/248 y la cobertura existente de MAP-235.
+- [x] Repetir validación de contrato y tests de integración de perfil y reservas por vertical.
+- [x] Añadir una regresión de autorización para la creación de reservas internas.
+- [x] Ejecutar `pnpm check` en la rama MAP-327.
+- [ ] Ejecutar las suites globales de backend, frontend e integración, y registrar resultados reales.
+- [ ] Verificar flags OFF/ON, RLS, fechas, concurrencia, 409 y variantes de las cuatro verticales contra la rama integrada.
+- [ ] Revisar la aceptación E2E de MAP-249 y adjuntar evidencia de checks verdes del PR cuando exista.
+
 ## MAP-249 — E2E y aceptación reproducible de Restaurante, Discoteca, Salón y Hotel
 
 - [x] `apps/e2e/tests/public-web/verticals.spec.ts`: una reserva pública por vertical y negativos por API.
@@ -48,6 +58,14 @@
 - [ ] Captura de los checks de CI en verde adjunta a cada PR (pendiente: requiere los PR abiertos).
 
 ## Notas de ejecución
+
+### MAP-327 — Primer incremento (20/11/2026)
+
+- La tarea Jira MAP-327 continúa MAP-235. Las dependencias MAP-232/233/234/247/248 y MAP-249 están en una rama acumulada del equipo, todavía fuera de `main`; se tomó como base la rama remota de MAP-235 para probar el código real sin duplicarlo.
+- `pnpm api:lint` válido con dos advertencias preexistentes en `/health` y `/demo-items`. `pnpm api:check` falló inicialmente porque el cliente local generado tenía una huella antigua; después de `pnpm api:gen`, `pnpm api:check` pasó. El código generado está ignorado y no se commitea.
+- `VerticalProfileIntegrationTest` y `VerticalReservationIntegrationTest` pasaron con Testcontainers. La nueva prueba comprueba `403` para un `SUPER_ADMIN` al intentar crear una reserva interna y verifica que no se escribió ninguna reserva.
+- `pnpm check` pasó: formato, lint, tipos, 300 tests de Console, 134 de Public Web, 69 de librerías, builds frontend, contrato y build/tests/ArchUnit de backend. `pnpm be:it` completo sigue pendiente.
+- Pendiente en este incremento: suites globales, revisión de MAP-249 y evidencia de checks remotos. No se declaran verificadas todavía.
 
 ### Preparación
 

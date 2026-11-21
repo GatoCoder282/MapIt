@@ -378,6 +378,25 @@ class VerticalReservationIntegrationTest {
   }
 
   @Test
+  void solo_el_staff_autorizado_puede_crear_reservas_internas() {
+    staffReservationAs(
+            HOTEL,
+            ROOM,
+            "2026-11-02T19:00:00Z",
+            "2026-11-04T16:00:00Z",
+            UserRole.SUPER_ADMIN)
+        .expectStatus()
+        .isForbidden();
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from reservation where tenant_id = ? and establishment_id = ?",
+                Integer.class,
+                TENANT_A,
+                HOTEL))
+        .isZero();
+  }
+
+  @Test
   void nunca_se_reserva_un_elemento_de_otro_tenant_ni_de_otro_establecimiento() {
     publicReservation(TENANT_A, "restaurante", TABLE_B, "2026-11-02", "19:00", null, "21:00")
         .expectStatus()
@@ -419,6 +438,11 @@ class VerticalReservationIntegrationTest {
 
   private RestTestClient.ResponseSpec staffReservation(
       UUID establishment, UUID element, String startsAt, String endsAt) {
+    return staffReservationAs(establishment, element, startsAt, endsAt, UserRole.STAFF);
+  }
+
+  private RestTestClient.ResponseSpec staffReservationAs(
+      UUID establishment, UUID element, String startsAt, String endsAt, UserRole role) {
     String token =
         tokens
             .issue(
@@ -427,7 +451,7 @@ class VerticalReservationIntegrationTest {
                     TenantId.of(TENANT_A),
                     "staff@verticales.test",
                     "Staff",
-                    UserRole.STAFF))
+                    role))
             .value();
     return http()
         .post()
