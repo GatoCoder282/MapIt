@@ -1,7 +1,7 @@
 # Plan — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Base auditada:** `origin/main` en `983dee7887ce6e47cfcdebc69dffd33d9ed64886` · **Fecha:** 2026-11-21.
-> Propuestas sujetas a las decisiones D-1–D-5 de [spec.md](spec.md); todavía sin implementación.
+> MAP-292: incremento de dominio autorizado por el usuario; persistencia e integración sujetas a D-1–D-5 de [spec.md](spec.md).
 
 ## 1. Inventario reutilizable y carencias
 
@@ -33,6 +33,16 @@ La auditoría no ejecutó la aplicación ni verificó entrega real, permisos con
 - `apps/console/src/app/features/notifications/{data,model,ui}/`: feature MVVM con Signals. Si shell y Mi cuenta necesitan estado compartido, contrato/store de la app en `core/`; nunca imports entre features ni dependencias de negocio en `ui-kit`.
 
 No se propone un nuevo módulo Gradle ni una segunda conexión WebSocket para este MVP. Si el acuerdo de D-2 cambia el propietario del contexto, corregir este plan antes de implementar.
+
+### Contratos de dominio del incremento MAP-292
+
+- Paquete `com.mapit.operations.domain.notification`, Java puro, `@NullMarked`, sin dependencias nuevas. Dos tipos basados en hechos existentes y categorías derivadas del tipo, según la matriz mínima de la spec; no implementar preferencias ni destinatarios todavía.
+- `NotificationRecipient`: tenant y UUID de usuario obligatorios. `NotificationScope`: destinatario y concesiones inmutables por tipo/establecimiento; ninguna concesión implícita ni bypass de rol. Todas las operaciones de lectura/contador/marcado requieren ese ámbito.
+- `NotificationEvent`: ID estable, tenant, tipo, instante del hecho y solo UUID de establecimiento/reserva. El tenant del evento debe coincidir con el del destinatario. Sin texto libre, PII, URL o mapa arbitrario. `NotificationKey`: destinatario + evento estable + tipo; no depende del ID generado para la fila, fecha de entrega ni estado leído.
+- `Notification`: inmutable; creación no anterior al hecho; `readAt` ausente significa no leída, y si existe no puede preceder a la creación. Marcar requiere ámbito autorizado, conserva la primera lectura y no modifica el original. No visible y no existente comparten resultado vacío en el puerto.
+- `NotificationRepository`: creación idempotente, listado paginado, contador no leídas y marcado individual. No hay búsqueda global por ID, listado solo por tenant ni actualización genérica. Una reentrega compatible devuelve la fila original sin resetear lectura; un mismo ID de evento con datos incompatibles se rechaza sin sobrescribirla. La unicidad atómica real queda para el adaptador/constraint PostgreSQL.
+- Paginación de dominio por cursor `(createdAt, id)` descendente, límite 1–100; desempate UUID por su representación canónica, compatible con orden unsigned de UUID en PostgreSQL. El cursor está ligado al ámbito completo, incluidos permisos por tipo, y se invalida al cambiarlo. La página valida límites, orden, pertenencia y duplicados y copia su colección. Esto no define aún el formato HTTP/opaco del cursor.
+- Pruebas del modelo/ámbito/página y un contrato de repositorio ejercitado con doble en memoria **solo en test**; no se registra un bean ni se afirma persistencia real. Repetir ese contrato y pruebas SQL/RLS cuando exista JDBC. No se garantiza autorización de producción mediante una interfaz o un doble de test.
 
 ## 3. Persistencia y consumo durable — MAP-292 / MAP-293
 
@@ -140,4 +150,4 @@ No se requiere un bus nuevo, CQRS global ni una infraestructura externa de mensa
 
 Commits futuros propuestos por incremento real: `feat(operations): modelar notificaciones propias (MAP-292)`, `feat(operations): persistir bandeja aislada por tenant (MAP-292)`, `feat(contract): definir bandeja personal (MAP-294)`, `feat(operations): generar avisos autorizados (MAP-293)`, `feat(realtime): entregar avisos personales (MAP-295)`, `feat(console): agregar centro de notificaciones (MAP-296)`, `feat(operations): aplicar preferencias optativas (MAP-297)` y commits de flag/pruebas cuando proceda. Cada commit incluye las pruebas directamente afectadas; no crear commits vacíos ni una rama nueva sin autorización.
 
-Para esta entrega documental: Prettier solo sobre los tres Markdown, revisión de enlaces locales, `git diff --check`, lint-staged y commitlint. Sin suites globales, API codegen, migraciones ni servicios. Las pruebas funcionales anteriores quedan pendientes hasta que haya implementación; no se informa un resultado de integración por inspeccionar código.
+La preparación documental se verificó con Prettier sobre los tres Markdown, enlaces locales, `git diff --check`, lint-staged y commitlint. El incremento de dominio ejecuta solo `:modules:operations:operations-domain:test --tests "com.mapit.operations.domain.notification.*"` y `:modules:operations:operations-domain:spotlessJavaCheck` mediante el wrapper Node existente, además de formato documental y hooks. Sin suites globales, API codegen, migraciones ni servicios. Las pruebas funcionales de SQL/RLS, autorización vigente, HTTP/STOMP y UI siguen pendientes; no se informa un resultado de integración por ejercitar un doble en memoria.

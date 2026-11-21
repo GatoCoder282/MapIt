@@ -1,6 +1,6 @@
 # HU-7.06 — Centro de notificaciones operativas y preferencias
 
-> **Estado:** Especificación inicial; decisiones de integración pendientes; sin implementación.
+> **Estado:** MAP-292 en implementación de dominio/puertos; persistencia e integración pendientes.
 > **Ticket:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) · **Fecha:** 2026-11-21 · **Responsable:** Rodrigo Villarroel Ayala.
 
 ## Enunciado
@@ -57,6 +57,21 @@ Fuera de alcance: SMS, push externo o del navegador, proveedores de mensajería 
 
 **Dependencia corregida:** comentario de Jira del 2026-11-20: MAP-260 ahora corresponde al despliegue real de Unleash; no garantiza funcionalidades de Staff/check-in. El check-in localizado en código debe probarse por su propio flujo.
 
+### Matriz mínima para el dominio MAP-292
+
+La instrucción del usuario del 2026-11-21 autoriza este incremento de modelo, puertos y pruebas sin PostgreSQL. Se adopta la siguiente clasificación técnica interna; los nombres de categorías no se atribuyen a Jira ni publican todavía un contrato HTTP. No se implementan productores o resolución de destinatarios en MAP-292.
+
+| Tipo interno / hecho existente                          | Categoría interna | Destinatarios candidatos y autorización mínima                                                                                                                                                                            | Estado                                                                               |
+| ------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `RESERVATION_CREATED` / auditoría `RESERVATION_CREATED` | `RESERVATIONS`    | Usuario activo del tenant; candidato `ADMIN`, `MANAGER` o `STAFF` conforme al GET de reservas actual, más acceso efectivo al establecimiento/recurso. Sin privilegios heredados de una sala STOMP                         | Tipo de dominio; falta publicación que incluya alta pública y resolver destinatarios |
+| `RESERVATION_CHECKED_IN` / `reservation.checked_in`     | `OPERATIONS`      | Usuario activo del tenant y permiso efectivo de check-in del establecimiento; regla conservadora actual `ADMIN` o `STAFF` con concesión `can_check_in`. No otorgar esta capacidad a `MANAGER` por tener acceso a reservas | Tipo de dominio; productor ya existe, pero fanout no implementado                    |
+| `space-element.state.changed.v1`                        | Pendiente         | Sin selección de transiciones y destinatarios aprobada, no convertir todo cambio del mapa en aviso                                                                                                                        | Hecho existente, fuera del catálogo implementado                                     |
+| Cancelación de reserva                                  | Pendiente         | Requiere productor real y política; pago cancelado no basta                                                                                                                                                               | Fuera del catálogo implementado                                                      |
+| Solicitud / aprobación / rechazo de negocio             | Pendiente         | Requiere identidad y ámbito de plataforma/solicitante de MAP-257; ningún rol se añade por suposición                                                                                                                      | Dependiente de MAP-257; sin tipos inventados                                         |
+| Seguridad obligatoria                                   | Pendiente         | Catálogo y canal independiente pendientes; no hay preferencia editable ni evento simulado                                                                                                                                 | Fuera del catálogo implementado                                                      |
+
+Cada operación de bandeja exige tenant, destinatario y un mapa explícito de establecimientos autorizados **por tipo**. Un mapa vacío deniega todo; el acceso a un tipo no concede acceso a otro. Este valor deberá construirse en aplicación desde el principal y permisos vigentes, nunca deserializarse de un body del cliente. No prueba identidad, pertenencia real a BD ni revocación por sí solo; esas garantías esperan adaptadores y MAP-238.
+
 ## 6. Reglas de negocio y seguridad
 
 - **RN-1:** La API opera sobre el destinatario autenticado. No acepta `userId`, `tenantId`, roles, privilegios, destinatarios ni payloads de eventos controlados por el cliente.
@@ -109,4 +124,4 @@ Runtime con `mapit_app`, nunca owner para evitar RLS. `TenantScope.SET_LOCAL_SQL
 | D-4 | Catálogo de categorías, defaults de preferencias, retención y canal de seguridad independiente                                      | Acordar reglas y productores; no prometer eventos inexistentes                    |
 | D-5 | Flag release OFF con evaluación por tenant/sesión, fallo cerrado y política de frescura                                             | Compatibilizar generador y adaptadores sin copiar MAP-285 ni cambiar otros flags  |
 
-Esta entrega crea solo la documentación inicial. El contrato OpenAPI del MVP se aplaza de forma explícita: D-1, D-3 y D-4 afectan su semántica y todavía no están cerradas. [plan.md](plan.md) contiene una propuesta de operaciones, no endpoints implementados. No se añaden código, flags, migraciones ni cliente generado y no se declara completada ninguna subtarea funcional.
+El incremento MAP-292 se limita al dominio y contratos de persistencia con pruebas sin DB. El contrato OpenAPI del MVP sigue aplazado: D-1, D-3 y D-4 no están cerradas para el conjunto de la historia. [plan.md](plan.md) contiene una propuesta de operaciones, no endpoints implementados. No se añaden adaptadores de producción, flags, migraciones ni cliente generado; MAP-292 no se declara completa sin persistencia/RLS.

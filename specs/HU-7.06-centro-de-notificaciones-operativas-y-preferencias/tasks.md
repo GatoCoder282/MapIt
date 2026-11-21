@@ -1,7 +1,7 @@
 # Tareas — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Historia:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) — HU-7.06 — Centro de notificaciones operativas y preferencias.
-> **Estado:** Preparación documental; ninguna subtarea funcional completada.
+> **Estado:** MAP-292 parcial: dominio y puertos validados sin PostgreSQL; persistencia/RLS pendientes.
 
 ## Preparación de esta etapa
 
@@ -16,6 +16,8 @@
 
 ## Decisiones previas a implementación
 
+- [x] Autorizar el incremento acotado de MAP-292 por instrucción del usuario del 2026-11-21: modelo, puertos y pruebas sin PostgreSQL; sin ampliar a productores ni endpoints.
+- [x] Definir matriz mínima interna de reserva creada/llegada con permisos existentes, separada de eventos pendientes de MAP-257; ámbitos por tipo sin capacidades de rol nuevas.
 - [ ] Revisar/aprobar la especificación inicial y resolver D-1–D-5; dejar evidencia de la decisión y su responsable.
 - [ ] Cerrar matriz tipo → productor → categoría → recurso/establecimiento → destinatarios/permisos vigentes.
 - [ ] Confirmar alcance de solicitudes de MAP-257, actor del solicitante y tratamiento separado del tenant `platform`.
@@ -25,8 +27,9 @@
 
 ## MAP-292 — S6 — Modelo persistente de notificaciones y migración
 
-- [ ] Modelar notificación, preferencia y hechos admitidos en `operations-domain`, con puertos hexagonales y paquete `@NullMarked`.
-- [ ] Probar invariantes y deduplicación por tenant/destinatario/evento/tipo sin PostgreSQL.
+- [x] Modelar notificación, hechos mínimos, categorías derivadas y ámbito propio en `operations-domain`, con paquete `@NullMarked`. Preferencias siguen en MAP-297.
+- [x] Diseñar puerto de creación idempotente, listado por cursor, contador y marcado propio; ningún método de lectura/marcado admite solo tenant o ID global.
+- [x] Probar invariantes, aislamiento de ámbito y clave estable por tenant/destinatario/evento/tipo sin PostgreSQL; ejercitar contrato de repositorio con doble solo de test.
 - [ ] Cerrar esquema e índices, FK compuestas, RLS y política de retención; no reservar números Flyway.
 - [ ] Tras integrar la base requerida, generar migración con numeración libre y actualizar DBML en el mismo commit.
 - [ ] Implementar JDBC con tenant transaccional y filtro explícito de usuario en lecturas, contador y escrituras.
@@ -116,3 +119,17 @@
 - Verificaciones documentales ejecutadas: `pnpm exec prettier --write` y `--check` limitados a estos tres Markdown, ambos correctos; script Node de enlaces relativos: tres enlaces válidos en tres documentos; `git diff --check` correcto. `commitlint` acepta el mensaje propuesto `docs(specs): definir centro de notificaciones (MAP-286)`.
 - No hay diferencias respecto a `origin/main` en contrato, código, herramientas, infraestructura ni documentación previa. Los hooks normales `lint-staged` y `commitlint` se ejecutan al crear el commit; no se omiten. El resultado final del commit y el estado de Git se informan en la entrega, sin insertar su propio hash en estos archivos.
 - PR, push y captura remota: pendientes por restricción expresa de esta etapa; ningún criterio funcional se declara validado.
+
+### 2026-11-21 — MAP-292: dominio, puertos y pruebas sin PostgreSQL
+
+- Jira MAP-292 reconsultado: **S6 — Modelo persistente de notificaciones y migración**, estado «Por hacer». Objetivo confirmado: entidad por usuario/tenant/establecimiento, tipo, evento-id idempotente, fechas, paginación, retención y protección de datos. Su migración y QA real siguen pendientes.
+- La instrucción del usuario autoriza este incremento de dominio sobre la spec existente; no cierra todas las decisiones de integración D-1–D-5 ni cambia el estado de Jira.
+- Implementación en `operations-domain/.../notification/`: `Notification`, `NotificationEvent`, `NotificationRecipient`, `NotificationCategory`, `NotificationType`, `NotificationKey`, `NotificationScope`, `NotificationCursor`, `NotificationPageRequest`, `NotificationPage`, `NotificationRepository` y `package-info.java`.
+- Matriz mínima en `spec.md`: reserva creada (`RESERVATIONS`) y llegada (`OPERATIONS`). `SecurityConfig` y `JdbcEstablishmentAccessRepository` son la evidencia de roles candidatos/acceso actual, no una nueva concesión desde el dominio. Solicitudes/aprobación/rechazo esperan MAP-257; cancelación necesita productor real; eventos operativos/seguridad necesitan política. No se conectó ningún productor ni se implementó resolución de destinatarios (MAP-293).
+- El evento lleva tenant y solo referencias mínimas; se rechaza combinarlo con destinatario de otro tenant. Categoría derivada del tipo, lectura inmutable/idempotente y ámbito explícito por usuario/tenant/tipo/establecimiento. Las colecciones son copias inmutables; cursor ligado al ámbito completo, límite 1–100 y orden estable.
+- Puerto sin consultas globales: `createIfAbsent`, `list`, `countUnread`, `markRead`. La clave de reentrega excluye ID de fila, fecha de entrega y lectura. El contrato prohíbe sobrescritura de eventos incompatibles y exige actualización/creación atómicas en el futuro adaptador.
+- Comando ejecutado: `node tools/scripts/gradle.mjs :modules:operations:operations-domain:test --tests "com.mapit.operations.domain.notification.*" :modules:operations:operations-domain:spotlessJavaCheck --console=plain`, con caché Gradle local existente. **BUILD SUCCESSFUL**.
+- Resultados XML: `NotificationTest` **31**, `NotificationPaginationTest` **15**, `NotificationRepositoryContractTest` **11**: **57 pruebas, 0 fallos, 0 errores, 0 omitidas**. Incluyen tenant del evento incompatible, otro usuario del mismo tenant, mismo UUID de usuario en otro tenant, permisos vacíos/diferentes por tipo, cursor ajeno, orden UUID en frontera signed, lectura repetida y reentrega sin resetear lectura.
+- El doble en memoria vive dentro del test del puerto; no es bean ni fallback de producción. Estas pruebas no demuestran unicidad concurrente en PostgreSQL, RLS, pertenencia real de usuarios/recursos, identidad vigente ni autorización HTTP/STOMP. No hay persistencia simulada expuesta a usuarios.
+- Pendiente para continuar MAP-292: cerrar retención/esquema, integrar base compatible con MAP-238 y elegir entonces numeración Flyway libre, migración/DBML, FK compuestas e índices, RLS con `mapit_app`, JDBC transaccional y pruebas SQL de aislamiento/concurrencia. No se reserva ninguna versión; V34–V39 no se tocan.
+- Sin cambio de OpenAPI, flags, autenticación, UI o dependencias Gradle; sin codegen, Docker, aplicación, suites completas ni builds globales. Formato de los tres Markdown, diff y hooks se verifican al preparar el commit de este incremento; resultados en la entrega.
