@@ -97,6 +97,13 @@
 
 ## Notas de ejecución
 
+### 2026-11-21 — MAP-288: evaluación contextual de disponibilidad
+
+- `FeatureFlagService.watchInContext` permite sondear una clave con contexto propio y fallback OFF, sin modificar el estado global ni la política de recuperación de flags existentes. Cancela/descarta respuestas al destruir el ámbito, limita la espera inicial a 5 s y apaga tras fallo o respuesta sin clave válida.
+- El contexto tenant usa `properties[tenantId]` del protocolo del cliente oficial de [Unleash](https://github.com/Unleash/unleash-proxy-client-js/blob/main/src/util.ts). Solo se envía la clave pública del proxy; nunca JWT ni token admin. La autorización real sigue en backend.
+- `pnpm.cmd exec ng test libs --no-watch --include '**/feature-flags/**/*.spec.ts'`: 18/18 correctas (7 contextuales nuevas). ESLint focalizado: cero warnings. La primera compilación detectó un acceso posiblemente undefined en un fixture; se corrigió antes de repetir la suite correctamente.
+- Registro `mapit.s6.my-account` permanece OFF; no se conecta ni activa Unleash real. El próximo incremento de Console compartirá este gate entre navegación, guard y ViewModel, reiniciándolo al cambiar de sesión.
+
 ### 2026-11-21 — MAP-288: sincronización de sesión
 
 - Inicio limpio en la rama existente, siete commits conservados y `main` en `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. Alcance autorizado: UI de nombre/correo reales; sin contraseña, administración de usuarios, migraciones ni despliegue.
