@@ -52,6 +52,12 @@
       "description": "Vertical Salón de eventos: butacas numeradas (CU-21). Permission toggle por tenant (contexto tenantId). Apagada: altas y reservas nuevas de salones responden 403 vertical-disabled.",
       "type": "permission",
       "enabled": true
+    },
+    {
+      "name": "mapit.s6.notification-center",
+      "description": "Centro de notificaciones operativas (MAP-299). Kill switch OFF por defecto; controla acceso al centro, nunca autorización ni creación/persistencia de hechos de negocio.",
+      "type": "kill-switch",
+      "enabled": false
     }
   ]
 }

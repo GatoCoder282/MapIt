@@ -1,6 +1,6 @@
 # HU-7.06 — Centro de notificaciones operativas y preferencias
 
-> **Estado:** MAP-292/MAP-293/MAP-294 parciales: dominio y aplicación sin adaptadores reales ni conexión a productores; persistencia e integración pendientes.
+> **Estado:** MAP-292/MAP-293/MAP-294 parciales; MAP-299 con registro y protección local, sin validación con Unleash real ni integración UI/HTTP.
 > **Ticket:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) · **Fecha:** 2026-11-21 · **Responsable:** Rodrigo Villarroel Ayala.
 
 ## Enunciado
@@ -118,12 +118,12 @@ Runtime con `mapit_app`, nunca owner para evitar RLS. `TenantScope.SET_LOCAL_SQL
 
 ## 10. Decisiones pendientes y límite de esta entrega
 
-| ID  | Propuesta técnica que debe validarse                                                                                                | Condición para avanzar                                                            |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| D-1 | Matriz por evento: permiso efectivo, ámbito, destinatario y categoría; solicitudes de plataforma separadas de operaciones de tenant | Acordar con MAP-238/MAP-257; no asumir que todos los roles reciben todo           |
-| D-2 | Inbox en `operations`, puente de identidad en `bootstrap`; canal personal del transporte STOMP existente                            | Confirmar límites sin imports entre módulos y política vigente de identidad       |
-| D-3 | Paginación por cursor, contador autorizado, lectura idempotente y snapshot para marcar todas                                        | Cerrar forma pública, límites, errores y pruebas de concurrencia antes de OpenAPI |
-| D-4 | Catálogo de categorías, defaults de preferencias, retención y canal de seguridad independiente                                      | Acordar reglas y productores; no prometer eventos inexistentes                    |
-| D-5 | Flag release OFF con evaluación por tenant/sesión, fallo cerrado y política de frescura                                             | Compatibilizar generador y adaptadores sin copiar MAP-285 ni cambiar otros flags  |
+| ID  | Propuesta técnica que debe validarse                                                                                                | Condición para avanzar                                                                                             |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| D-1 | Matriz por evento: permiso efectivo, ámbito, destinatario y categoría; solicitudes de plataforma separadas de operaciones de tenant | Acordar con MAP-238/MAP-257; no asumir que todos los roles reciben todo                                            |
+| D-2 | Inbox en `operations`, puente de identidad en `bootstrap`; canal personal del transporte STOMP existente                            | Confirmar límites sin imports entre módulos y política vigente de identidad                                        |
+| D-3 | Paginación por cursor, contador autorizado, lectura idempotente y snapshot para marcar todas                                        | Cerrar forma pública, límites, errores y pruebas de concurrencia antes de OpenAPI                                  |
+| D-4 | Catálogo de categorías, defaults de preferencias, retención y canal de seguridad independiente                                      | Acordar reglas y productores; no prometer eventos inexistentes                                                     |
+| D-5 | Kill switch permanente OFF con evaluación por tenant/usuario/sesión y fallo cerrado local; no condiciona negocio                    | Registro/protección local implementados; quedan conexión de sesión, gates operativos y validación SDK/proxy reales |
 
-MAP-292 aporta dominio y contratos de persistencia; MAP-294, casos de uso de bandeja; y MAP-293, resolución/creación internas desde referencias a hechos confirmados, por autorización del usuario para estos incrementos sin adaptadores. El contrato OpenAPI del MVP sigue aplazado: D-1, D-3 y D-4 no están cerradas para el conjunto de la historia. [plan.md](plan.md) contiene una propuesta de operaciones, no endpoints implementados. No se añaden adaptadores de producción, flags, migraciones ni cliente generado; MAP-292/MAP-293/MAP-294 no se declaran completas sin persistencia/RLS, autorización vigente, origen durable e integración.
+MAP-292 aporta dominio y contratos de persistencia; MAP-294, casos de uso de bandeja; y MAP-293, resolución/creación internas desde referencias a hechos confirmados. MAP-299 registra `mapit.s6.notification-center` como `kill-switch` permanente OFF en Java/TS/bootstrap y prepara evaluación contextual y limpieza local. Esta decisión técnica de tipo permite conservar el mecanismo de rollback sin un ciclo de retiro de release toggle; no sustituye autorización. La conexión real con sesión, gates y Unleash sigue pendiente. El contrato OpenAPI del MVP permanece aplazado; [plan.md](plan.md) contiene propuestas de operaciones, no endpoints. No se añaden persistencia, migraciones ni cliente generado, ni se declara completa la historia.

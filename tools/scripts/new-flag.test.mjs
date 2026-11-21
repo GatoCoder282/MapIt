@@ -12,6 +12,21 @@ const files = {
   json: 'infra/docker/unleash/flags.json',
 };
 
+test('MAP-299 registra una única clave OFF idéntica en Java, TypeScript y bootstrap', () => {
+  const java = readFileSync(join(ROOT, files.java), 'utf8');
+  const ts = readFileSync(join(ROOT, files.ts), 'utf8');
+  const bootstrap = JSON.parse(readFileSync(join(ROOT, files.json), 'utf8'));
+  assert.match(
+    java,
+    /MAPIT_S6_NOTIFICATION_CENTER\("mapit\.s6\.notification-center", Tipo.KILL_SWITCH, false\)/,
+  );
+  assert.match(ts, /'mapit\.s6\.notification-center': false/);
+  const entries = bootstrap.features.filter((flag) => flag.name === 'mapit.s6.notification-center');
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].enabled, false);
+  assert.equal(entries[0].type, 'kill-switch');
+});
+
 function fixture(t, newline = '\n') {
   const root = mkdtempSync(join(tmpdir(), 'mapit-flag-test-'));
   t.after(() => {

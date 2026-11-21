@@ -1,7 +1,7 @@
 # Tareas — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Historia:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) — HU-7.06 — Centro de notificaciones operativas y preferencias.
-> **Estado:** MAP-292/MAP-293/MAP-294 parciales: dominio, bandeja y procesamiento internos validados sin PostgreSQL; adaptadores, origen durable e integración pendientes.
+> **Estado:** MAP-292/MAP-293/MAP-294 parciales; MAP-299 con registro/protección local verificados. Persistencia, integración de sesión/superficies y Unleash real pendientes.
 
 ## Preparación de esta etapa
 
@@ -97,10 +97,11 @@
 
 ## MAP-299 — S6 — Feature toggle Centro de notificaciones Unleash
 
-- [ ] Resolver tooling multisegmento sin copiar MAP-285 ni cambiar flags ajenos.
-- [ ] Registrar `mapit.s6.notification-center` idéntico en Java/TS/Unleash, OFF; cerrar tipo, responsable y retiro si es release.
-- [ ] Añadir evaluación por tenant/sesión y fallo cerrado también después de un ON; invalidar caché/respuestas anteriores.
-- [ ] Probar OFF/ON, flag ausente, proveedor con error, cambio de contexto y evaluación tardía en frontend/backend.
+- [x] Resolver tooling multisegmento y cierre del enum sin copiar MAP-285 ni cambiar flags ajenos.
+- [x] Registrar `mapit.s6.notification-center` idéntico en Java/TS/bootstrap OFF; tipo kill switch permanente para rollback, responsable Rodrigo. Sin activación/seed en un servidor real.
+- [x] Preparar evaluación contextual y fallo cerrado después de ON, invalidación de caché/respuestas y frescura local, manteniendo comportamiento de otros flags.
+- [x] Probar localmente OFF/ON, flag ausente, proveedor con error, cambio de contexto y evaluación tardía en frontend/backend.
+- [ ] Conectar cambios reales de AuthSession al contexto frontend y construir contexto backend desde identidad validada; no usar JWT como nonce.
 - [ ] Aplicar gate a acceso UI/URL/API/canal personal; mantener autorización y eventos de negocio independientes.
 - [ ] Ejecutar runbook de `plan.md` con Unleash real: propagación, rollback sin pérdida de datos y restauración segura.
 
@@ -169,3 +170,18 @@
 - Los datos de pruebas y dobles solo viven en `src/test`; no se publican avisos reales ni se exponen implementaciones en memoria. Los casos usan `@Transactional`, pero atomicidad/rollback y unicidad concurrente dependen del futuro wiring/adaptador; no se declaran demostrados por unit tests.
 - Pendientes para cerrar MAP-293: fuente durable y snapshot de elegibilidad original por evento para reintentos sin ampliar históricos, selección por lotes, adaptadores reales de candidatos/autorización/persistencia, validación del origen confirmado y pertenencia del recurso, publicación de reserva pública/cancelación real, integración de MAP-257 y pruebas PostgreSQL/RLS/transaccionales. El centro sigue sin recibir eventos de producción.
 - Solo se actualizan estas tres specs y código/pruebas nuevos de notificaciones. Prettier y hooks de commit quedan limitados a lo afectado. Sin JDBC, Flyway, HTTP, STOMP, frontend, dependencias nuevas, Docker, push ni PR.
+
+### 2026-11-21 — MAP-299: registro y protección local del flag
+
+- Inicio limpio en la rama existente, HEAD `1249b22`. Jira MAP-299 reconsultado: **S6 — Feature toggle Centro de notificaciones Unleash**; objetivo confirmado OFF por defecto, rollout segmentado, fallback seguro y rollback sin interrumpir eventos. La subtarea no se declara completa sin infraestructura y gates reales.
+- Tooling independiente: commit `719d0fb` — `fix(tooling): generar flags de varios segmentos sin corromper enum (MAP-299)`. Cinco pruebas iniciales con fixtures temporales verifican LF/CRLF, nombres anteriores, defaults, `--on`, idempotencia y fallos sin modificación. No se leyó/copió la solución de MAP-285; su rama permanece intacta.
+- Registro ejecutado con `pnpm new:flag mapit.s6.notification-center kill_switch`: enum `MAPIT_S6_NOTIFICATION_CENTER`, catálogo TS y bootstrap con `false`. Se sustituyen los TODO. Kill switch permanente como decisión técnica de disponibilidad/rollback, sin retiro de release; no se modifica Unleash remoto ni se ejecuta el seed.
+- Componentes backend reutilizados: `FeatureFlagPort` añade sobrecarga con `FeatureFlagContext`; adaptadores Disabled/Unleash y subscriber/configuración existentes. Para esta clave, ninguna evaluación sin contexto completo o con fallback forzado ON la habilita. El SDK recibe tenant/usuario/nonce de sesión, y su salud debe provenir de un fetch correcto de los últimos 30 s. Sin caché local de resultados por identidad; error o falta de frescura devuelven OFF. Las rutas previas de otros flags mantienen comportamiento.
+- Componente frontend existente: `FeatureFlagService.setContext`, sin import de auth ni servicio paralelo. Borra valor, aborta petición y cambia revisiones al cambiar identidad o cerrar; sondeo contextual por proxy y timeout de 10 s, con descarte de respuestas tardías aunque ignoren abort. La nueva clave no usa el resultado global; errores, respuesta inválida, duplicados o ausencia de clave → OFF. No se escriben JWT, credenciales ni contexto en storage/logs.
+- Aún no hay enlace automático de AuthSession: el shell futuro debe proporcionar contexto validado de presentación y un nonce nuevo por login, actualizarlo al cambiar identidad/tenant y usar `setContext(null)` al salir. Backend deberá derivarlo de autenticación y autorizar antes del gate. No se inventa ruta, campana, controlador o suscripción; no se cambia selección/creación/persistencia de eventos ni el transporte compartido.
+- Backend: `node tools/scripts/gradle.mjs :modules:platform:platform-infrastructure:test --tests "com.mapit.platform.infrastructure.flags.*" :modules:platform:platform-infrastructure:spotlessJavaCheck :shared-kernel:spotlessJavaCheck --console=plain`: **BUILD SUCCESSFUL**, Spotless correcto; XML: `NotificationCenterFlagTest` **10**, `DisabledFeatureFlagAdapterTest` **2**, `UnleashLoggingSubscriberTest` **1**; **13 pruebas, cero fallos/errores/omitidas**.
+- Frontend: `pnpm exec ng test libs --no-watch --include "**/feature-flags/src/lib/*.spec.ts"` validó catálogo **7**, logging **1** y guard inicial **13**. Tras ampliar validación de contexto/duplicados, se repitió solo `--include "**/feature-flags/src/lib/notification-center-flag.spec.ts"`: **15/15**. Son **23 casos distintos** validados en tres archivos, sin suites globales; advertencia de Angular sobre partial compilation cambia automáticamente a full y no falla el test.
+- `pnpm exec tsc -p libs/feature-flags/tsconfig.lib.json --noEmit` y ESLint de los seis archivos TS afectados con `--max-warnings=0`: correctos. Se corrigieron errores iniciales de tipado/lint en la nueva validación/tests; no quedan errores de checks.
+- `node --test tools/scripts/new-flag.test.mjs`: **6/6**, incluidas comprobaciones cruzadas del registro real Java/TS/bootstrap. Prettier solo en archivos afectados, `git diff --check` y hooks de commit normales; sin codegen ni builds globales.
+- Runbook actualizado en `plan.md` §8: desactivar solo esta clave, verificar contexto/propagación y negocio, no borrar datos ni revertir migraciones, restaurar por segmento y reconciliar al disponer de API. Pendientes Unleash real: registro/estrategias y OFF efectivo, frescura SDK/proxy, upstream caído con proxy 200 cacheado, segmentación, OFF/ON, dos sesiones/tenants y rollback de superficies todavía inexistentes. No se afirma fallo cerrado end-to-end por estos mocks.
+- Sin cambios a main, MAP-285, autenticación/JWT, API generada, OpenAPI o eventos de negocio. Sin push, PR, merge, squash, Docker ni arranque de aplicación; MAP-299 permanece parcial por integración real.

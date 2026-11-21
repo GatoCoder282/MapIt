@@ -128,21 +128,28 @@ MAP-285 se integra posteriormente para alojar preferencias. No importar su featu
 
 ## 8. Flag y rollback — MAP-299
 
-La clave objetivo es exactamente `mapit.s6.notification-center`, OFF por defecto en Java, TS y bootstrap Unleash. **En esta entrega no se registra ni activa.** Propuesta: release toggle con responsable, retiro e issue de limpieza acordados antes de registrarlo. No abrir issues ni modificar Unleash como parte de esta preparación.
+La clave exacta `mapit.s6.notification-center` está registrada OFF en Java, TS y bootstrap mediante `pnpm new:flag ... kill_switch`. Se elige un **kill switch permanente** para disponibilidad/rollback del centro, sustituyendo la propuesta inicial de release toggle. No requiere fecha de retiro de release; responsable de este incremento: Rodrigo. No se ha creado/activado la flag en un servidor real ni ejecutado seed/setup.
 
-El generador actual rechaza tres segmentos; coordinar la corrección compartida de MAP-285/MAP-291 cuando llegue a `main`, o acordar un incremento independiente sin copiar su código. Usar `pnpm new:flag` solo cuando sea compatible. No parchear globalmente defaults ni la política de otros flags.
+El commit `719d0fb` corrige de forma independiente el generador para dos o más segmentos y el cierre del enum Java (booleano final, LF/CRLF); conserva claves previas, defaults, `--on` e idempotencia. No se copió código ni commits de MAP-285. Los tres registros y su default OFF tienen comprobación cruzada automatizada.
 
-Cerrar evaluación contextual y frescura para esta clave: al cambiar sesión/tenant invalidar caché y evaluaciones en vuelo; error, ausencia o evaluación no confiable → OFF. El backend `isEnabledFor` ya admite tenant, pero el adaptador actual delega caché al SDK; el frontend actual conserva ON tras errores. Un default `false` por sí solo no prueba fallo cerrado después de un ON. Añadir pruebas específicas antes de habilitar el centro.
+Protección local preparada, restringida a esta clave:
+
+- Backend: `FeatureFlagContext` identifica tenant/usuario y un nonce opaco de sesión, nunca JWT. La sobrecarga contextual de `FeatureFlagPort` falla OFF si un adaptador no la soporta. `UnleashFeatureFlagAdapter` envía las tres dimensiones al SDK y no cachea resultados por usuario. Las evaluaciones globales/solo-tenant del centro devuelven OFF, incluso con fallback explícito `true`; `DisabledFeatureFlagAdapter` tampoco permite ese override. Otros flags conservan las rutas anteriores.
+- El subscriber existente observa disponibilidad del proveedor: inicio sin fetch correcto, error, UNAVAILABLE, reloj regresivo o más de **30 segundos** sin fetch correcto cierran solo la evaluación contextual nueva. También se vuelve a comprobar salud después de evaluar el SDK. Las cachés/fallbacks de otros flags y sus logs de transición se mantienen.
+- Frontend: `FeatureFlagService.setContext({tenantId,userId,sessionId})` copia/valida contexto y borra el ON anterior. `setContext(null)` elimina contexto/valor y aborta evaluación al salir; el teardown también lo hace. Revisiones de contexto/petición y abort descartan respuestas/errores tardíos, incluso A → B → A. No se conservan valores por tenant ni se persiste contexto en storage.
+- La nueva clave ignora la respuesta global del proxy: solo una evaluación contextual válida puede dar ON. Ausencia/error/HTTP no exitoso/JSON inválido/clave duplicada o ausente → OFF. Se consulta por el mismo proxy con clave pública, `credentials: omit` y `cache: no-store`, sin enviar JWT. El sondeo reutiliza el intervalo configurado (15 s por defecto); cada evaluación contextual tiene timeout de **10 s**, con descarte de respuestas que ignoren abort. Ante un fallo detectable, OFF llega en el siguiente sondeo/timeout; estos plazos locales no garantizan la propagación real completa.
+- Integración de sesión pendiente: el shell futuro deberá observar `AuthSession`, establecer un nonce nuevo por login y llamar a `setContext` al cambiar identidad/tenant o salir. La librería no importa `@mapit/auth` y no se modifica AuthSession. El backend deberá construir contexto desde autenticación validada y comprobar autorización separadamente antes de usar el gate. No hay controlador, ruta, campana ni canal de notificaciones conectados en esta etapa.
+- La selección/creación/persistencia de hechos no importa flags ni se cambia con este incremento. No se añade el gate a `ProcessNotificationEvent` ni se corta el transporte compartido de mapas/pagos.
 
 Runbook objetivo:
 
 1. Registrar contexto y estado previo; desactivar únicamente `mapit.s6.notification-center` en el entorno/segmentos afectados.
-2. Esperar el plazo de propagación/frescura documentado y comprobar campana, URL directa, API y entrega personal OFF, incluidas sesiones ya abiertas. Autenticación sigue aplicándose antes del gate.
+2. Comprobar evaluación contextual OFF en backend y frontend; al integrar superficies, verificar también campana, URL directa, API y entrega personal en sesiones ya abiertas. Esas superficies todavía no existen. Medir propagación SDK/proxy y distinguirla de los límites locales de frescura/timeout; autenticación/autorización preceden al gate.
 3. Ejecutar reserva/check-in/aprobación disponibles y verificar que negocio, auditoría y registro durable siguen igual; no apagar `realtime.websocket` para revertir solo el centro.
 4. No revertir migraciones ni borrar bandeja, preferencias o eventos. Revisar backlog y capacidad del worker con métricas sin PII.
 5. Restaurar ON solo en segmento de prueba, reconciliar por API y verificar lectura/contador/deduplicación/dos sesiones; después ampliar según validación.
 
-Pendiente con infraestructura real: propagación y frescura SDK/proxy, segmentación efectiva, error del proveedor después de ON, reconexión y rollback/restauración con usuarios de dos tenants. No se ejecuta nada de ello en esta etapa documental.
+Pendiente con infraestructura real: crear/verificar registro y OFF efectivo, estrategias/propiedades de contexto, segmentación, propagación SDK/proxy, fallo tras ON y restauración con dos tenants/sesiones. Un proxy puede responder 200 con valores cacheados aunque el servidor upstream esté caído: el guard local frontend no puede detectar esa condición sin evidencia de frescura del proxy; el guard backend debe seguir siendo obligatorio al integrar HTTP. No se declara probado el fallo cerrado end-to-end ni se ejecuta seed/servidores en esta etapa. El procedimiento no revierte migraciones ni borra datos.
 
 ## 9. Patrones de diseño aplicados
 
