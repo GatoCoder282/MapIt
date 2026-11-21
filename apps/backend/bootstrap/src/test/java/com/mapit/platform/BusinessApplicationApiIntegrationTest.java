@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Tag;
@@ -29,9 +30,15 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import com.mapit.identity.domain.AccessTokenIssuer;
+import com.mapit.identity.domain.AuthenticatedUser;
+import com.mapit.identity.domain.UserRole;
+import com.mapit.platform.domain.BusinessApplicationDecisionEmailPort;
+import com.mapit.platform.domain.BusinessApplicationStatus;
 import com.mapit.platform.domain.BusinessApplicationVerificationEmailPort;
 import com.mapit.shared.flags.FeatureFlag;
 import com.mapit.shared.flags.FeatureFlagPort;
+import com.mapit.shared.tenant.TenantId;
 
 /** MAP-262: recepción y verificación públicas con persistencia real y rate limit compartido. */
 @Tag("integration")
@@ -68,10 +75,13 @@ class BusinessApplicationApiIntegrationTest {
   @LocalServerPort int port;
   @Autowired JdbcTemplate jdbc;
   @Autowired PlatformTransactionManager transactions;
+  @Autowired AccessTokenIssuer tokens;
   @MockitoBean BusinessApplicationVerificationEmailPort email;
+  @MockitoBean BusinessApplicationDecisionEmailPort decisionEmail;
 
   @Test
   void solicitud_duplicada_es_neutra_no_crea_tenant_y_token_se_consumen_una_vez() {
+    ENABLED.set(false);
     var http = http();
     Long tenantsBefore = jdbc.queryForObject("select count(*) from tenant", Long.class);
     http.post().uri(PATH).body(BODY.replace("Ana@Example.com", "correo-invalido"))
@@ -110,6 +120,38 @@ class BusinessApplicationApiIntegrationTest {
     http.post().uri(PATH).header("X-Forwarded-For", "203.0.113.12")
         .body(BODY.replace("Ana@Example.com", "otra@example.com"))
         .exchange().expectStatus().isEqualTo(429);
+
+    // Rollback del toggle: nuevas altas se cierran, pero la revisión y la
+    // trazabilidad de solicitudes anteriores siguen disponibles.
+    ENABLED.set(false);
+    http.post().uri(PATH).body(BODY.replace("Ana@Example.com", "despues@example.com"))
+        .exchange().expectStatus().isEqualTo(503);
+    UUID actor = UUID.randomUUID();
+    UUID applicationId = new TransactionTemplate(transactions).execute(status -> {
+      jdbc.queryForObject("select set_config('app.tenant_id', 'platform', true)", String.class);
+      jdbc.update("""
+          insert into app_user (id, tenant_id, email, password_hash, full_name, role)
+          values (?, 'platform', ?, 'unused-test-hash', 'Super Admin', 'SUPER_ADMIN')
+          """, actor, "rollback-" + actor + "@example.test");
+      return jdbc.queryForObject("select id from business_application where contact_email = 'ana@example.com'",
+          UUID.class);
+    });
+    String bearer = "Bearer " + tokens.issue(new AuthenticatedUser(actor, TenantId.of("platform"),
+        "rollback@example.test", "Super Admin", UserRole.SUPER_ADMIN)).value();
+    http.get().uri("/api/v1/business-applications?search=Hotel%20Norte")
+        .header("Authorization", bearer).exchange().expectStatus().isOk();
+    http.get().uri("/api/v1/business-applications/" + applicationId)
+        .header("Authorization", bearer).exchange().expectStatus().isOk();
+    http.post().uri("/api/v1/business-applications/" + applicationId + "/reject")
+        .header("Authorization", bearer).body("{\"reason\":\"Datos insuficientes\"}")
+        .exchange().expectStatus().isOk();
+    verify(decisionEmail, times(1)).send("ana@example.com", "Hotel Norte", BusinessApplicationStatus.REJECTED);
+    new TransactionTemplate(transactions).executeWithoutResult(status -> {
+      jdbc.queryForObject("select set_config('app.tenant_id', 'platform', true)", String.class);
+      assertThat(jdbc.queryForObject("select status from business_application where id = ?",
+          String.class, applicationId)).isEqualTo("REJECTED");
+      assertThat(jdbc.queryForObject("select count(*) from tenant", Long.class)).isEqualTo(tenantsBefore);
+    });
   }
 
   private RestTestClient http() {
