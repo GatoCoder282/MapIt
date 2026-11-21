@@ -3,6 +3,7 @@ import { type Routes } from '@angular/router';
 
 import { STRINGS } from './core/strings';
 import { operationalExitGuard } from './core/operational-exit-guard';
+import { myAccountGuard } from './core/my-account-access';
 
 /**
  * Rutas de la consola de staff.
@@ -65,8 +66,9 @@ export const routes: Routes = [
       },
       {
         path: 'profile',
-        data: { title: STRINGS.shell.nav.profile },
-        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+        canActivate: [authGuard, myAccountGuard],
+        canDeactivate: [operationalExitGuard],
+        loadComponent: () => import('./features/my-account/ui/my-account').then((m) => m.MyAccount),
       },
     ],
   },
@@ -77,6 +79,13 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./layout/staff-shell').then((m) => m.StaffShell),
     children: [
+      {
+        path: 'my-account',
+        data: { requiresEstablishment: false },
+        canActivate: [authGuard, myAccountGuard],
+        canDeactivate: [operationalExitGuard],
+        loadComponent: () => import('./features/my-account/ui/my-account').then((m) => m.MyAccount),
+      },
       {
         path: 'home',
         loadComponent: () => import('./features/home/ui/home').then((m) => m.Home),

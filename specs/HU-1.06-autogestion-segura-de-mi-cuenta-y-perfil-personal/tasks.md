@@ -41,12 +41,14 @@
 
 ## 4. MAP-288 — S6 — UI Mi cuenta y preferencias básicas
 
-- [ ] Crear feature MVVM `my-account/{data,model,ui}`, cliente generado y pruebas de ViewModel/transporte.
-- [ ] Añadir navegación/ruta staff separada de usuarios, sin bloqueo por selección/alta de establecimiento.
-- [ ] Implementar carga, errores, guardado, éxito, validación y borradores; no mostrar éxito sin persistencia confirmada.
-- [ ] Actualizar solo el nombre confirmado de la sesión, preservando identidad, token y preferencia de almacenamiento.
+- [x] Crear feature MVVM `my-account/{data,model,ui}`, cliente generado y pruebas de ViewModel/transporte.
+- [x] Añadir navegación/ruta staff separada de usuarios, sin bloqueo por selección/alta de establecimiento.
+- [x] Implementar carga, errores, guardado, éxito, validación y borradores para nombre/correo disponibles; no mostrar éxito sin persistencia confirmada.
+- [x] Actualizar solo el nombre confirmado de la sesión, preservando identidad, token y preferencia de almacenamiento.
 - [ ] Integrar idioma de cuenta con `I18nService`; catálogos `es`, `en`, `ja-JP`, fallback español y storage bloqueado.
-- [ ] Limpiar datos ante logout/cambio de identidad y descartar respuestas tardías; probar accesibilidad y presentación móvil.
+- [x] Conservar selector de idioma local y añadir textos es/en/ja-JP sin exponer persistencia remota inexistente.
+- [x] Limpiar datos ante logout/cambio de identidad, descartar respuestas tardías y probar semántica accesible del DOM.
+- [ ] Comprobar presentación móvil real, teclado/lector de pantalla y E2E con stack autorizado.
 
 ## 5. MAP-289 — S6 — Cambio seguro de contraseña
 
@@ -96,6 +98,22 @@
 - [ ] Realizar Squash and Merge solo en la entrega posterior autorizada. No hay push, PR ni merge en la etapa documental.
 
 ## Notas de ejecución
+
+### 2026-11-21 — MAP-288: pantalla, rutas y verificaciones
+
+- Feature MVVM `my-account`: adaptador del cliente OpenAPI generado (GET `/me`, PATCH exclusivamente `{fullName}`), store con Signals y componente OnPush. No se usan datos de sesión como sustituto de GET ni se añade un selector de usuario/tenant. Correo readonly; sin teléfono, idioma remoto ni contraseña.
+- Estados de carga/error/reintento/guardado/éxito, validación de 1–120 puntos de código Unicode y una sola línea, normalización de blancos externos, bloqueo de duplicados y descarte de borrador. Solo la respuesta PATCH confirma el nombre en `AuthSession`; se conservan JWT/vencimiento/rol/identidad y almacenamiento. Cancelar una petición al destruir ámbito no revierte una transacción que el servidor ya haya iniciado.
+- `MyAccountAccess` evalúa la flag por tenant de sesión y revisión, con nueva evaluación OFF al cambiar de sesión incluso con la misma identidad. Guard espera evaluación inicial; navegación y store comparten ese resultado. OFF oculta accesos y bloquea URL directa, retira el formulario y descarta resultados anteriores. Backend conserva sus comprobaciones propias.
+- `/my-account` usa el shell staff con metadata `requiresEstablishment:false`; no fuerza selector ni alta del primer negocio, incluido ADMIN sin establecimientos. `/admin/profile` sustituye su placeholder por la misma feature bajo el guard SUPER_ADMIN; no se modifica gestión de usuarios/tenant. Se reutiliza la guarda de borradores/escrituras, que no depende de establecimiento.
+- Catálogos completos `es/en/ja-JP`; selector local existente conservado y descrito como preferencia de este navegador. Semántica DOM probada: labels, email readonly copiable, aria-invalid/describedby, alert/status y botones bloqueados. CSS usa los tokens globales existentes, ancho fluido y acciones apiladas en móvil. No se atribuye a JSDOM verificación visual, contraste computado, lector de pantalla ni breakpoints reales.
+- Herramienta de contexto de `impeccable` no disponible (motor local no instalado); se leyeron directamente DESIGN del UI kit, convenciones existentes y referencias Operate. No se instaló el motor ni se inició navegador/aplicación.
+- `pnpm.cmd fe:test`: **653/653**, Console 404 (46 archivos), Public Web 148 (24 archivos) y libs 101 (18 archivos). Incluye 30 pruebas nuevas de transporte/store/UI/gate/rutas personales, 2 de navegación y 1 de conservación de contexto, además de AuthSession y flags. Tests usan dobles exclusivamente para simular respuestas en memoria; la aplicación usa el cliente real.
+- Verificación final tras el ajuste semántico del enlace del usuario: suite focalizada de Mi cuenta y StaffShell **49/49**; Prettier sobre todos los archivos del incremento, ESLint final de test/plantilla y `git diff --check` correctos.
+- Fallos corregidos durante desarrollo: tipado estricto de fixtures, ubicación de prueba de rutas dentro de la propia feature para respetar límites de imports, aserción del valor del input en lugar de textContent y antigua expectativa de ausencia absoluta de canDeactivate en plataforma (ahora contempla el formulario personal). La repetición completa pasa.
+- `pnpm.cmd fe:typecheck`, `pnpm.cmd fe:lint` global (0 warnings), `pnpm.cmd api:gen` real y `pnpm.cmd api:check`: correctos. Contrato sin cambios y salidas generadas ignoradas, sin versionar.
+- `pnpm.cmd exec ng build console`: correcto. Se corrigió el warning nuevo de Mi cuenta eliminando la importación SCSS que duplicaba tokens ya emitidos globalmente; no se amplían presupuestos. Persisten advertencias del bundle inicial (788,04 kB frente a 600 kB), estilos de otros componentes y CommonJS de qrcode/dijkstrajs/STOMP. Public Web emite NG0956 en su test existente de negocios; libs conserva warning de compilación parcial/completa. Ninguna advertencia provoca fallo.
+- Integración real HTTP/PostgreSQL/RLS, proxy Unleash real, Playwright, revisión móvil/teclado/lector de pantalla y captura de Checks del futuro PR: **NO EJECUTADOS/PENDIENTES**. La restricción de no arrancar aplicación/Docker impide verificarlos ahora. MAP-287 sigue parcial por contacto/idioma, MAP-288 no se cierra en su alcance completo y MAP-314 no se declara terminado.
+- Para completar: revisar/integrar MAP-238 antes de persistencia pendiente y MAP-289; coordinar cambios compartidos en AuthSession/rutas/shells sin copiar gestión administrativa ni revocación. Resolver política de contraseña/concurrencia/límites y validar invalidación real de JWT/HTTP/STOMP en MAP-289. No hay migraciones, MAP-286, push, PR, merge, squash ni cambios a main.
 
 ### 2026-11-21 — MAP-288: compatibilidad con contexto operativo
 

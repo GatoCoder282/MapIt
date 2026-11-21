@@ -1,6 +1,6 @@
 # Plan — HU-1.06 Autogestión segura de mi cuenta y perfil personal
 
-> **Ticket:** MAP-285 · **Incremento actual:** backend parcial MAP-287 · **Estado:** nombre/correo implementados; persistencia de contacto/idioma y dependencias de tokens pendientes según [spec.md](spec.md).
+> **Ticket:** MAP-285 · **Incremento actual:** UI MAP-288 sobre backend parcial MAP-287 · **Estado:** nombre/correo implementados en API y Console; persistencia de contacto/idioma, contraseña y QA con stack pendientes según [spec.md](spec.md).
 
 ## 1. Enfoque y límites de entrega
 
@@ -86,6 +86,8 @@ El adaptador fija `TenantScope.SET_LOCAL_SQL` en la misma transacción, con filt
 Migración expansiva: columnas opcionales para filas existentes, sin nueva tabla de usuarios ni duplicación de RLS. Confirmar siguiente versión después de integrar cambios de compañeros; no tocar V32, V33 ni V34–V39 del PR #69. Si cambiara el diseño y apareciera una tabla nueva, actualizar spec §9, índices, RLS y pruebas antes de crearla.
 
 ## 6. Console e i18n — MAP-288/MAP-314
+
+Incremento ejecutado: UI de nombre y correo, con `MyAccountAccess` compartido por guard, navegación y ViewModel. La evaluación inicial de la flag es contextual por tenant y OFF hasta respuesta válida; cada revisión de sesión destruye la evaluación anterior. Un fallo posterior apaga solo esta evaluación, sin cambiar la política global de otros flags. `AuthSession.revision` también evita que las respuestas de perfil de una sesión anterior modifiquen la nueva; actualizar el nombre no incrementa esa revisión. `EstablishmentContext` usa esta revisión y los datos de identidad, conservando la selección operativa al editar el nombre. No se muestran contacto ni idioma editables: el selector existente conserva únicamente su preferencia local. Las tareas siguientes describen también el alcance futuro aún pendiente de almacenamiento y contraseña.
 
 - Crear `apps/console/src/app/features/my-account/data/my-account-api.ts`, `model/my-account-store.ts` y `ui/my-account.{ts,html,scss}`, con pruebas del transporte, ViewModel y bindings relevantes.
 - Consumir servicios/modelos desde `@mapit/api-client`; nada de imports profundos ni duplicación de DTOs de contrato.

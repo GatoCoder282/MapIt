@@ -1,0 +1,74 @@
+<section class="account-page" aria-labelledby="account-title">
+  <header>
+    <h1 id="account-title">{{ strings.myAccount.title }}</h1>
+    <p>{{ strings.myAccount.intro }}</p>
+  </header>
+
+  @if (!store.available()) {
+    <p role="status">{{ strings.myAccount.unavailable }}</p>
+  } @else {
+    @if (store.loading()) {
+      <p role="status">{{ strings.myAccount.loading }}</p>
+    }
+    @if (store.error()) {
+      <div class="error" role="alert">
+        <p>{{ store.error() }}</p>
+        @if (!store.profile()) {
+          <button type="button" class="secondary" (click)="store.load()" [disabled]="store.loading()">
+            {{ strings.myAccount.retry }}
+          </button>
+        }
+      </div>
+    }
+    @if (store.profile(); as profile) {
+      <form (submit)="submit($event)" [attr.aria-busy]="store.saving()" novalidate>
+        <div class="field">
+          <label for="account-name">{{ strings.myAccount.fullName }}</label>
+          <input
+            #name
+            id="account-name"
+            name="fullName"
+            type="text"
+            autocomplete="name"
+            required
+            [value]="store.draft()"
+            (input)="store.setName(name.value)"
+            [readOnly]="store.saving()"
+            [attr.aria-invalid]="!store.valid()"
+            [attr.aria-describedby]="store.valid() ? 'name-hint' : 'name-hint name-error'"
+          />
+          <p id="name-hint" class="hint">{{ strings.myAccount.nameHint }}</p>
+          @if (!store.valid()) {
+            <p id="name-error" class="validation">{{ strings.myAccount.nameInvalid }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="account-email">{{ strings.myAccount.email }}</label>
+          <input
+            id="account-email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            [value]="profile.email"
+            readonly
+            aria-describedby="email-hint"
+          />
+          <p id="email-hint" class="hint">{{ strings.myAccount.emailHint }}</p>
+        </div>
+        <div class="actions">
+          <button type="submit" class="primary" [disabled]="!store.canSave()">
+            {{ store.saving() ? strings.myAccount.saving : strings.myAccount.save }}
+          </button>
+          <button type="button" class="secondary" [disabled]="!store.dirty() || store.saving()" (click)="store.reset()">
+            {{ strings.myAccount.reset }}
+          </button>
+        </div>
+        <p class="save-status" role="status">{{ store.saved() ? strings.myAccount.saved : '' }}</p>
+      </form>
+      <p class="language-note">{{ strings.myAccount.languageHint }}</p>
+      @if (store.sessionWarning()) {
+        <p role="status">{{ store.sessionWarning() }}</p>
+      }
+    }
+  }
+</section>

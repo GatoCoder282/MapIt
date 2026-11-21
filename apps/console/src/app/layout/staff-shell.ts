@@ -7,7 +7,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { distinctUntilChanged, filter, map } from 'rxjs';
 
@@ -18,6 +18,7 @@ import { EstablishmentSelector } from './establishment-selector';
 
 import { STRINGS } from '../core/strings';
 import { EstablishmentContext } from '../core/establishment-context';
+import { MyAccountAccess } from '../core/my-account-access';
 
 /**
  * Chrome de la consola de staff del tenant: sidebar full-height con las
@@ -27,7 +28,7 @@ import { EstablishmentContext } from '../core/establishment-context';
  */
 @Component({
   selector: 'mapit-staff-shell',
-  imports: [RouterOutlet, Sidebar, EstablishmentSelector, LanguageSelector],
+  imports: [RouterOutlet, RouterLink, Sidebar, EstablishmentSelector, LanguageSelector],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +36,7 @@ import { EstablishmentContext } from '../core/establishment-context';
 export class StaffShell {
   protected readonly strings = STRINGS;
   protected readonly session = inject(AuthSession);
+  protected readonly myAccountAccess = inject(MyAccountAccess);
   protected readonly establishmentContext = inject(EstablishmentContext);
   protected readonly menuOpen = signal(false);
   protected readonly initialEstablishmentsLoaded = signal(false);
@@ -54,6 +56,13 @@ export class StaffShell {
   );
   private observedIdentity: string | null = null;
   private hasObservedIdentity = false;
+  protected readonly withoutEstablishment = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => this.isIndependentRoute()),
+    ),
+    { initialValue: this.isIndependentRoute() },
+  );
 
   protected readonly needsFirstEstablishment = computed(
     () =>
@@ -103,7 +112,11 @@ export class StaffShell {
     });
 
     effect(() => {
-      if (this.needsFirstEstablishment() && !this.onEstablishmentSetup()) {
+      if (
+        this.needsFirstEstablishment() &&
+        !this.onEstablishmentSetup() &&
+        !this.withoutEstablishment()
+      ) {
         void this.router.navigateByUrl(this.firstEstablishmentUrl, { replaceUrl: true });
       }
     });
@@ -116,7 +129,7 @@ export class StaffShell {
       )
       .subscribe((requested) => {
         this.selectorRequested.set(requested);
-        if (requested) {
+        if (requested && !this.withoutEstablishment()) {
           this.previousEstablishmentId.set(
             untracked(() => this.establishmentContext.active()?.id ?? null),
           );
@@ -136,8 +149,17 @@ export class StaffShell {
     });
   }
 
+  private isIndependentRoute(): boolean {
+    let route = this.route.snapshot?.firstChild;
+    while (route?.firstChild) route = route.firstChild;
+    return route?.data['requiresEstablishment'] === false;
+  }
+
   protected readonly navItems = computed<readonly SidebarNavItem[]>(() => [
     { label: STRINGS.staffShell.nav.home, route: '/home', icon: 'home', exact: true },
+    ...(this.myAccountAccess.enabled()
+      ? [{ label: STRINGS.myAccount.title, route: '/my-account', icon: 'profile' }]
+      : []),
     { label: STRINGS.staffShell.nav.map, route: '/spaces/setup', icon: 'map' },
     { label: STRINGS.staffShell.nav.businesses, route: '/establishments', icon: 'businesses' },
     { label: STRINGS.staffShell.nav.users, route: '/users', icon: 'users' },

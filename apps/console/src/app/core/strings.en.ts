@@ -1,5 +1,27 @@
 /* Catálogo estático generado para en; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_EN = {
+  myAccount: {
+    title: 'My account',
+    intro: 'View your account details and update your display name.',
+    fullName: 'Display name',
+    nameHint: 'Between 1 and 120 characters, on a single line.',
+    nameInvalid: 'Enter a name between 1 and 120 characters on a single line.',
+    email: 'Account email',
+    emailHint: 'This email identifies your account and cannot be edited here.',
+    loading: 'Loading your profile…',
+    saving: 'Saving…',
+    save: 'Save changes',
+    reset: 'Discard changes',
+    retry: 'Reload profile',
+    saved: 'Your name has been updated.',
+    unavailable: 'My account is currently unavailable.',
+    languageHint: 'The language selected in the top bar is saved in this browser.',
+    errors: {
+      load: 'Your profile could not be loaded. Please try again.',
+      save: 'Your name could not be saved. Your changes are still here; please try again.',
+      unavailable: 'Your profile is unavailable. Check your session or reload.',
+    },
+  },
   checkIn: {
     eyebrow: 'Administration',
     resultTitle: 'Reservation found',

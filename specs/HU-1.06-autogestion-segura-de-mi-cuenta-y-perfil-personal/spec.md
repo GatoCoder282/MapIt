@@ -1,6 +1,6 @@
 # HU-1.06 — Autogestión segura de mi cuenta y perfil personal
 
-> **Estado:** Backend parcial de nombre/correo; contacto, idioma y aceptación funcional pendientes · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
+> **Estado:** Backend y UI de nombre/correo implementados; contacto, idioma remoto, contraseña y aceptación funcional pendientes · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
 
 ## Enunciado
 
@@ -37,6 +37,7 @@ Fuentes consultadas el 2026-11-21: Jira, código de `main`, rama remota de MAP-2
 - U03: persistir nombre, contacto e idioma soportado sobre `app_user`; correo de identidad de solo lectura.
 - U04: en esta etapa solo documentación y un commit local, sin push, PR, merge, aplicación, Docker, setup ni dev. `main` no se modifica.
 - U05: etapa de contrato/registro autorizada después de `0d11dfa`: tres operaciones OpenAPI y flag OFF con commits separados, sin endpoints funcionales ni dependencias de autenticación nuevas. U04 describe el límite de la entrega inicial, no impide estos cambios posteriores.
+- U06: incremento MAP-288 autorizado sobre los siete commits existentes: pantalla de nombre/correo reales y PATCH de nombre, misma rama, sin contraseña ni campos no persistibles. Conservar el idioma local de navegador y comprobar UI/guard/navegación sin iniciar aplicación o Docker. D05 se concreta mediante una sola feature en ambos shells; la aceptación visual/E2E queda pendiente.
 
 ### 1.3 Propuestas técnicas pendientes de validación
 

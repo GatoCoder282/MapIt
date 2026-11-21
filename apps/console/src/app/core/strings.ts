@@ -21,6 +21,28 @@ const VERTICAL_LABELS = {
 } as const;
 
 const STRINGS_ES = {
+  myAccount: {
+    title: 'Mi cuenta',
+    intro: 'Consulta los datos de tu cuenta y actualiza tu nombre visible.',
+    fullName: 'Nombre visible',
+    nameHint: 'Entre 1 y 120 caracteres, en una sola línea.',
+    nameInvalid: 'Escribe un nombre de entre 1 y 120 caracteres en una sola línea.',
+    email: 'Correo de identidad',
+    emailHint: 'Este correo identifica tu cuenta y no se puede editar aquí.',
+    loading: 'Cargando tu perfil…',
+    saving: 'Guardando…',
+    save: 'Guardar cambios',
+    reset: 'Descartar cambios',
+    retry: 'Volver a cargar',
+    saved: 'Tu nombre se ha actualizado.',
+    unavailable: 'Mi cuenta no está disponible en este momento.',
+    languageHint: 'El idioma elegido en la barra superior se guarda en este navegador.',
+    errors: {
+      load: 'No se pudo cargar tu perfil. Vuelve a intentarlo.',
+      save: 'No se pudo guardar el nombre. Tus cambios siguen aquí; vuelve a intentarlo.',
+      unavailable: 'Tu perfil no está disponible. Comprueba tu sesión o vuelve a cargar.',
+    },
+  },
   brand: {
     name: 'MapIt',
   },

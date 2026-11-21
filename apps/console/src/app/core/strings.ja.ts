@@ -1,5 +1,27 @@
 /* Catálogo estático generado para ja; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_JA = {
+  myAccount: {
+    title: 'マイアカウント',
+    intro: 'アカウント情報の確認と表示名の変更ができます。',
+    fullName: '表示名',
+    nameHint: '1〜120文字で、改行せずに入力してください。',
+    nameInvalid: '表示名を1〜120文字で、改行せずに入力してください。',
+    email: 'アカウントのメールアドレス',
+    emailHint: 'アカウントを識別するメールアドレスです。ここでは変更できません。',
+    loading: 'プロフィールを読み込み中…',
+    saving: '保存中…',
+    save: '変更を保存',
+    reset: '変更を破棄',
+    retry: '再読み込み',
+    saved: '表示名を更新しました。',
+    unavailable: '現在マイアカウントは利用できません。',
+    languageHint: '上部のバーで選択した言語は、このブラウザーに保存されます。',
+    errors: {
+      load: 'プロフィールを読み込めませんでした。もう一度お試しください。',
+      save: '表示名を保存できませんでした。入力内容は保持されています。もう一度お試しください。',
+      unavailable: 'プロフィールを利用できません。セッションを確認するか、再読み込みしてください。',
+    },
+  },
   checkIn: {
     eyebrow: '管理',
     resultTitle: '予約が見つかりました',
