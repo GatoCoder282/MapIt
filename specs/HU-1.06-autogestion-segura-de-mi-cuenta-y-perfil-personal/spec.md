@@ -10,7 +10,7 @@ La funcionalidad «Mi cuenta» es distinta de «Usuarios y permisos». Ambas uti
 
 ## 1. Contexto, fuentes y alcance de esta etapa
 
-Esta entrega crea únicamente `spec.md`, `plan.md` y `tasks.md`. No modifica OpenAPI, migraciones, autenticación, backend, frontend ni configuración de Unleash. No implementa MAP-286.
+La entrega inicial `0d11dfa` creó únicamente `spec.md`, `plan.md` y `tasks.md`. La etapa siguiente, autorizada por el solicitante, define OpenAPI y registra la flag OFF con pruebas, sin controladores, migraciones, cambios de autenticación ni revocación. No implementa MAP-286.
 
 Fuentes consultadas el 2026-11-21: Jira, código de `main`, rama remota de MAP-238 y [PR #69](https://github.com/GatoCoder282/MapIt/pull/69). Después de `git fetch --no-tags origin`, `main` y `origin/main` apuntan a `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. El PR #69 está **abierto y no integrado**, con head `20e25e5a5ce34ce1308db8c85c0af78d16a0d8a9`. Sus mecanismos no se consideran disponibles en esta base.
 
@@ -34,6 +34,7 @@ Fuentes consultadas el 2026-11-21: Jira, código de `main`, rama remota de MAP-2
 - U02: contemplar `GET /api/v1/me`, `PATCH /api/v1/me` y `POST /api/v1/me/password`.
 - U03: persistir nombre, contacto e idioma soportado sobre `app_user`; correo de identidad de solo lectura.
 - U04: en esta etapa solo documentación y un commit local, sin push, PR, merge, aplicación, Docker, setup ni dev. `main` no se modifica.
+- U05: etapa de contrato/registro autorizada después de `0d11dfa`: tres operaciones OpenAPI y flag OFF con commits separados, sin endpoints funcionales ni dependencias de autenticación nuevas. U04 describe el límite de la entrega inicial, no impide estos cambios posteriores.
 
 ### 1.3 Propuestas técnicas pendientes de validación
 
@@ -48,6 +49,8 @@ Los detalles siguientes no aparecen definidos literalmente en Jira. Constituyen 
 | D05 | Ruta staff `/my-account`; `/admin/profile` carga la misma feature bajo el shell de plataforma.                                                                | Rutas de MAP-288/314.                    |
 | D06 | Registrar el toggle como `release`, con fecha de retiro e issue de limpieza; definir fallback y caducidad de caché después de ON.                             | Registro/rollout de MAP-291.             |
 | D07 | Reutilizar el limitador PostgreSQL con presupuestos específicos por cuenta e IP, sin cambiar los límites del login por implicación.                           | MAP-289 y sus pruebas.                   |
+
+Para la etapa de contrato se concretan D01/D02 en `openapi.yaml`: `fullName`, `contactPhone`, `preferredLanguage`, DTOs cerrados y errores compartidos; teléfono de hasta 32 caracteres con dígitos y separadores `+ ( ) espacio . / -`, y nombre de una línea sin blancos externos. D03 se documenta como obligación futura de éxito del cambio de contraseña, sin afirmar revocación disponible. D04/D07 y la persistencia continúan pendientes; la publicación del contrato no cierra aceptación funcional.
 
 ## 2. Actores
 

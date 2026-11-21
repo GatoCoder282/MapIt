@@ -30,6 +30,8 @@ servers:
     description: Relativo (contenedor)
 
 tags:
+  - name: my-account
+    description: Perfil propio de staff; contrato previsto de MAP-285, aún sin implementación REST
   - { name: public-payments, description: Checkout público mediante capability }
   - { name: payment-policies, description: Política monetaria del establecimiento }
   - { name: receipts, description: Comprobantes verificables }
@@ -2463,6 +2465,169 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
+
+  /me:
+    get:
+      tags: [my-account]
+      summary: Consultar mi perfil personal
+      operationId: getMyProfile
+      x-implementation-status: planned
+      x-feature-flag: mapit.s6.my-account
+      security: [{ bearerAuth: [] }]
+      description: |
+        Contrato previsto de MAP-287; esta entrega no incorpora un controlador.
+        No habilitar la función hasta implementar y probar autorización y RLS.
+        ADMIN, MANAGER y STAFF acceden solo a su cuenta; SUPER_ADMIN utiliza la
+        misma operación sobre su cuenta del tenant técnico platform.
+
+        Usuario y tenant proceden exclusivamente del principal autenticado tras
+        validar el JWT y la vigencia de la cuenta, tenant y rol. No se admite
+        userId, tenantId ni otra identidad objetivo por ruta, query, body o header.
+        Filtrar por usuario y tenant, también entre usuarios del mismo tenant.
+        La flag controla disponibilidad por tenant, nunca concede autorización;
+        autenticación y permisos se validan incluso cuando está apagada.
+        La respuesta no incluye hashes, tokens, membresías ni privilegios.
+        Todas las respuestas deben llevar Cache-Control: no-store.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Perfil propio persistido
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/MyAccountDisabled"
+
+    patch:
+      tags: [my-account]
+      summary: Actualizar los campos permitidos de mi perfil
+      operationId: updateMyProfile
+      x-implementation-status: planned
+      x-feature-flag: mapit.s6.my-account
+      security: [{ bearerAuth: [] }]
+      description: |
+        Contrato previsto de MAP-287, aún sin controlador ni migración de datos
+        personales. Aplican la identidad propia, roles, RLS y disponibilidad de GET /me.
+        Actualización atómica: una propiedad omitida conserva su valor; null solo
+        limpia contacto o idioma; el cuerpo vacío es inválido.
+
+        Solo se aceptan fullName, contactPhone y preferredLanguage. Rechazar con
+        400 cualquier otra propiedad, incluidos userId, id, tenantId, tenantSlug,
+        email, role, roles, memberships, privileges, permissions, active y estado
+        administrativo. Ni SUPER_ADMIN puede seleccionar otra cuenta. El correo
+        de identidad permanece intacto, conservando la unicidad global de MAP-256.
+        Rechazar también identidades objetivo en query o headers; no usarlas para
+        resolver la cuenta. Un error no modifica parcialmente ningún campo.
+        Todas las respuestas deben llevar Cache-Control: no-store.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMyProfileRequest"
+      responses:
+        "200":
+          description: Perfil propio actualizado y persistido
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/MyAccountDisabled"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /me/password:
+    post:
+      tags: [my-account]
+      summary: Cambiar mi contraseña verificando la contraseña actual
+      operationId: changeMyPassword
+      x-implementation-status: planned
+      x-feature-flag: mapit.s6.my-account
+      security: [{ bearerAuth: [] }]
+      description: |
+        Contrato futuro de MAP-289 dentro de MAP-285. Aún no existe este
+        controlador ni revocación por cuenta en la base actual. No habilitarlo
+        antes de integrar y validar la identidad vigente y revocación de MAP-238
+        (PR #69), incluyendo HTTP, STOMP y las carreras de emisión de JWT.
+
+        Mismos roles y resolución exclusiva del principal que GET /me, sin
+        identidad objetivo ni cambios de correo, tenant, roles, membresías,
+        privilegios o estado administrativo. La flag no sustituye autorización.
+        Verificar currentPassword, confirmación y contraseña nueva distinta.
+        Reutilizar la política backend: al menos 8 caracteres, mayúscula,
+        minúscula, dígito y símbolo; máximo efectivo de 72 bytes UTF-8 por BCrypt.
+        No truncar. La validación en bytes y la igualdad entre campos se aplican
+        en backend: maxLength por sí solo no expresa esas reglas.
+
+        Reutilizar el limitador existente con presupuestos propios por cuenta
+        autenticada y origen. Los límites concretos se fijarán y probarán en
+        MAP-289 antes de habilitar el endpoint; no se prometen cuotas existentes.
+        Contraseña actual incorrecta, nueva débil/igual, confirmación distinta o
+        propiedades desconocidas producen 400 Problem sin modificar credenciales
+        ni invalidar tokens. 401 se reserva a una sesión no válida.
+
+        El éxito 204 exige persistir hash nuevo e invalidar JWT anteriores de la
+        cuenta, incluido el actual, atómicamente con el mecanismo de MAP-238.
+        Tras éxito se requiere nuevo login; no se devuelve ni renueva ningún JWT.
+        No hay listado de sesiones, refresh tokens ni acción independiente de
+        cerrar otras sesiones. El logout local no constituye revocación backend.
+        Todas las respuestas deben llevar Cache-Control: no-store. Nunca incluir
+        contraseñas, hashes o tokens en respuestas, logs ni detalles de error.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeMyPasswordRequest"
+      responses:
+        "204":
+          description: Contraseña actualizada y JWT previos invalidados; requiere nuevo login
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/MyAccountDisabled"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/AuthRateLimited"
 
   /auth/global-login:
     post:
@@ -5178,6 +5343,89 @@ components:
           type: [string, "null"]
           maxLength: 32
 
+    PersonalProfile:
+      type: object
+      additionalProperties: false
+      description: Proyección del perfil propio de app_user, sin credenciales ni campos administrativos.
+      required: [fullName, email, contactPhone, preferredLanguage]
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          readOnly: true
+          description: Correo de identidad normalizado y globalmente único; no editable por Mi cuenta.
+        contactPhone:
+          type: [string, "null"]
+          maxLength: 32
+          readOnly: true
+          description: Contacto informativo; nunca acredita identidad ni habilita recuperación.
+        preferredLanguage:
+          type: [string, "null"]
+          enum: [es, en, ja-JP, null]
+          readOnly: true
+          description: Idioma de interfaz; null utiliza la preferencia local existente y después español.
+
+    UpdateMyProfileRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: |
+        PATCH cerrado: omisión conserva valor; null limpia solo campos opcionales.
+        No se acepta email, userId, tenantId, roles, membresías, privilegios,
+        permisos ni estado administrativo. Backend debe rechazar propiedades
+        desconocidas además de validar el esquema, sin aplicar cambios parciales.
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: "^\\S(?:[^\\r\\n]*\\S)?$"
+          description: Nombre visible no vacío, en una línea y sin blancos externos.
+        contactPhone:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 32
+          pattern: "^[+0-9() ./-]*[0-9][+0-9() ./-]*$"
+          description: Teléfono informativo con dígitos y separadores; null elimina el contacto.
+        preferredLanguage:
+          type: [string, "null"]
+          enum: [es, en, ja-JP, null]
+          description: Idiomas soportados por MAP-240; null restaura el fallback local/español.
+
+    ChangeMyPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword, newPasswordConfirm]
+      description: |
+        Prueba de control de la cuenta autenticada, sin identidad objetivo.
+        No persistir ni registrar este cuerpo. Backend comprueba composición,
+        límite de 72 bytes UTF-8, contraseña nueva distinta y confirmación igual.
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 72
+          writeOnly: true
+          description: Contraseña actual; como máximo 72 bytes UTF-8, sin truncar ni normalizar.
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 72
+          writeOnly: true
+          description: Nueva contraseña con política backend de composición y máximo 72 bytes UTF-8.
+        newPasswordConfirm:
+          type: string
+          minLength: 8
+          maxLength: 72
+          writeOnly: true
+          description: Debe coincidir exactamente con newPassword; máximo 72 bytes UTF-8.
+
     LoginResponse:
       type: object
       required: [accessToken, tokenType, expiresAt, user]
@@ -6318,6 +6566,20 @@ components:
           examples: ["BAR"]
 
   responses:
+    MyAccountDisabled:
+      description: |
+        Funcionalidad Mi cuenta deshabilitada para el tenant autenticado
+        (mapit.s6.my-account OFF o sin configuración). Evaluar solo después de
+        autenticación y autorización; no permite consultar otra identidad.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
     AuthRateLimited:
       description: Límite de intentos excedido
       headers:

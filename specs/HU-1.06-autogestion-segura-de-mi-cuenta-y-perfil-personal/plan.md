@@ -6,7 +6,7 @@
 
 Ampliar `identity` y `app_user` para ofrecer una API personal distinta de la gestión administrativa de usuarios. Console tendrá una única feature `my-account`, reutilizada por staff y SUPER_ADMIN. La autorización siempre procede del backend; los guards y la flag controlan navegación/disponibilidad.
 
-En esta etapa se crean solo los tres documentos. No se modifica `openapi.yaml`, código, esquema, autenticación ni flags. Toda implementación de MAP-287/288/289/290/291/314 se hará en la misma rama de MAP-285, con commits pequeños; no se abrirán ramas hijas. La instrucción expresa del solicitante prevalece sobre los ejemplos de ramas apiladas de `CONTRIBUTING.md`.
+La etapa inicial `0d11dfa` creó solo los tres documentos. La siguiente etapa autorizada añade OpenAPI y registro OFF de la flag con pruebas; no modifica esquema, autenticación ni controladores. Toda implementación de MAP-287/288/289/290/291/314 se hará en la misma rama de MAP-285, con commits pequeños; no se abrirán ramas hijas. La instrucción expresa del solicitante prevalece sobre los ejemplos de ramas apiladas de `CONTRIBUTING.md`.
 
 ## 2. Base observada y dependencias
 
@@ -37,7 +37,7 @@ No se necesitan Strategy, State, una nueva jerarquía de perfiles ni otra infrae
 
 ## 4. Contrato primero
 
-Los paths están confirmados por el solicitante; los nombres de DTO/operationId y respuestas siguientes son propuesta D02. Se incorporarán primero a `packages/api-contract/openapi.yaml` y se validarán antes del código. Como `servers` ya contiene `/api/v1`, las claves serán `/me` y `/me/password`.
+Los paths están confirmados por el solicitante; los nombres de DTO/operationId y respuestas siguientes concretan D02 en el incremento de contrato, antes del código. Como `servers` ya contiene `/api/v1`, las claves son `/me` y `/me/password`. Las tres operaciones llevan `x-implementation-status: planned` y `x-feature-flag: mapit.s6.my-account`; no describen controladores ya disponibles. Contraseña exige la implementación y pruebas de MAP-238 antes de habilitarse.
 
 | Método | Path público          | operationId propuesto | Body/respuesta propuesta                                                                                                 |
 | ------ | --------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |

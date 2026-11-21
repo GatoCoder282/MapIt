@@ -18,8 +18,8 @@
 ## 2. Decisiones antes del código
 
 - [ ] Revisar `spec.md` con los responsables y registrar la aceptación funcional de los criterios; no marcar criterios implementados durante la documentación.
-- [ ] D01: concretar contacto permitido, nombres de campos, límites, formato de teléfono, PATCH/null y precedencia de idioma.
-- [ ] D02: cerrar DTOs, operationId, códigos HTTP/Problem, no-store y rechazo de identidad objetivo/propiedades desconocidas.
+- [x] D01, contrato: concretar contacto permitido, nombres de campos, límites, formato de teléfono, PATCH/null y precedencia de idioma; persistencia/UI pendientes.
+- [x] D02, contrato: definir DTOs, operationId, códigos HTTP/Problem, no-store y rechazo de identidad objetivo/propiedades desconocidas; validación efectiva backend pendiente.
 - [ ] Volver a verificar PR #69 y coordinar con identidad la integración de MAP-238 en la base; cualquier actualización de rama queda para una etapa posterior autorizada.
 - [ ] D03/D04: acordar contraseña actual, confirmación, invalidación de JWT y nuevo login; revisar mecanismo común, STOMP y carreras de emisión.
 - [ ] D05: validar rutas staff/plataforma y acceso sin establecimiento seleccionado.
@@ -28,8 +28,8 @@
 
 ## 3. MAP-287 — S6 — Perfil personal y API de lectura/edición
 
-- [ ] Editar primero OpenAPI para GET/PATCH `/me`; definir esquemas cerrados, campos de solo lectura y errores.
-- [ ] Ejecutar `api:lint` y `api:gen`; verificar que se generó realmente el cliente TS sin versionar `generated/`.
+- [x] Editar primero OpenAPI para GET/PATCH `/me`; definir esquemas cerrados, campos de solo lectura y errores.
+- [x] Ejecutar `api:lint` y `api:gen`; verificar que se generó realmente el cliente TS sin versionar `generated/`.
 - [ ] Incorporar el registro OFF/gate de MAP-291 antes de exponer las operaciones.
 - [ ] Crear migración expansiva de `app_user` con número disponible y DBML en el mismo commit; no modificar migraciones existentes ni crear identidad paralela.
 - [ ] Implementar puertos/proyección personal y casos de uso en las capas de identity; actor y tenant del contexto validado.
@@ -50,7 +50,7 @@
 ## 5. MAP-289 — S6 — Cambio seguro de contraseña
 
 - [ ] Resolver D03/D04/D07 y verificar MAP-238 integrado antes de cambiar credenciales/tokens; no crear mecanismo paralelo.
-- [ ] Definir primero OpenAPI de POST `/me/password`, prueba de control, errores, rate limit y efecto real sobre JWT.
+- [x] Definir primero OpenAPI de POST `/me/password`, prueba de control, errores y obligación futura sobre JWT; presupuestos concretos y ejecución del cambio pendientes de MAP-289/MAP-238.
 - [ ] Alinear composición/longitud de política, máximo BCrypt en bytes UTF-8, contrato y mensajes; probar caracteres multibyte.
 - [ ] Reutilizar `PasswordVerifier`/`PasswordHasher`, validación de confirmación y rechazo de nueva contraseña igual.
 - [ ] Reutilizar almacenamiento de límites con presupuestos propios de usuario/IP, independientes del rollback de credenciales.
@@ -117,3 +117,14 @@
 - `git rev-parse main origin/main` conserva en ambas referencias la base `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. No hay modificaciones previas del usuario sobrescritas.
 - Commit local preparado con mensaje `docs(specs): definir autogestion de cuenta (MAP-285)`; el resultado y hash se comprueban en el historial Git al terminar, sin incorporar una autorreferencia al hash de este mismo documento.
 - No se han ejecutado tests de aplicación ni se afirma cobertura funcional. Las suites, infraestructura, workflows del PR y captura quedan pendientes para implementación/QA; no hay push, PR ni cambios en Jira.
+
+### 2026-11-21 — contrato MAP-287 (incremento posterior a 0d11dfa)
+
+- Alcance autorizado: contrato GET/PATCH `/me` y POST `/me/password`, generación local TS y registro posterior OFF de `mapit.s6.my-account`, con tres commits separados. No se modifica autenticación ni se crean controladores, migraciones o ramas; no se usa Docker. MAP-286 queda fuera.
+- `PersonalProfile`, `UpdateMyProfileRequest` y `ChangeMyPasswordRequest` concretan los campos previstos. Esquemas cerrados; email solo lectura, nombre 1–120 de una línea sin blancos externos, teléfono opcional de 1–32 con dígitos/separadores y lenguajes `es/en/ja-JP/null`. PATCH vacío inválido, omisión conserva y null limpia solo opcionales.
+- Reutilizadas respuestas `BadRequest`, `Unauthorized`, `Forbidden`, `Conflict`, `AuthRateLimited`, esquema `Problem` y cabeceras RequestId/NoStore. `MyAccountDisabled` define el 404 de disponibilidad tras autenticación/permisos. No se cambia el modelo administrativo ni otras operaciones.
+- Las operaciones se marcan `x-implementation-status: planned`; la documentación de éxito de contraseña exige revocación real de MAP-238, aún no disponible, sin emitir JWT nuevo ni simular sesiones. Límites concretos de intentos y solución de concurrencia se mantienen pendientes.
+- `pnpm.cmd api:lint`: contrato válido; dos warnings en las operaciones existentes `/health` y `/demo-items` por ausencia de 4xx, fuera del incremento. No se alteran esas operaciones.
+- `pnpm.cmd api:gen`: generación real completada con Java 25 y el JAR oficial 7.26.0 en la caché usada por el repositorio, descargado de Maven Central; sin Docker ni instalación global. Inspeccionados `MyAccountService`, los tres modelos, nullables y propiedades de respuesta readonly. La salida sigue ignorada y no se versiona.
+- `pnpm.cmd api:check`: hash sincronizado con el cliente generado. Las tres operaciones siguen sin implementación REST; estos comandos no prueban autorización ni revocación backend.
+- `pnpm.cmd fe:typecheck`: Console y Public Web compilan tipos con el nuevo cliente generado. Los formularios, tests de autorización, integración/RLS y E2E continúan pendientes para la implementación.
