@@ -154,6 +154,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/establishments/*/payment-policy", "/api/v1/establishments/*/payment-policy/**", "/api/v1/establishments/*/payment-readiness")
                         .hasRole(UserRole.ADMIN.name())
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
+                        .requestMatchers("/api/v1/business-applications", "/api/v1/business-applications/**")
+                        .hasRole(UserRole.SUPER_ADMIN.name())
                         // Administración de tenants (CU-01/CU-03): operación exclusiva
                         // del SUPER_ADMIN de plataforma. Cualquier otro rol autenticado
                         // recibe 403; sin JWT recibe 401 por el entry point.

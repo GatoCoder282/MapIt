@@ -123,6 +123,73 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /business-applications:
+    get:
+      tags: [business-applications]
+      summary: Listar solicitudes de incorporación para Super Admin
+      description: Requiere rol SUPER_ADMIN. Nunca expone hashes de verificación.
+      operationId: listBusinessApplications
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/BusinessApplicationStatus"
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 120
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Página de solicitudes de plataforma
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessApplicationPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /business-applications/{id}:
+    get:
+      tags: [business-applications]
+      summary: Revisar una solicitud de incorporación
+      operationId: getBusinessApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Solicitud de plataforma
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessApplicationDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /public/tenants/{tenantSlug}/establishments/{establishmentSlug}:
     {
       "get":
@@ -5460,6 +5527,55 @@ components:
           minLength: 32
           maxLength: 200
           writeOnly: true
+
+    BusinessApplicationStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED]
+
+    BusinessApplicationDetail:
+      type: object
+      required:
+        [
+          id,
+          businessName,
+          vertical,
+          location,
+          contactName,
+          contactEmail,
+          status,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        businessName: { type: string }
+        vertical:
+          $ref: "#/components/schemas/BusinessVertical"
+        location: { type: string }
+        contactName: { type: string }
+        contactEmail: { type: string, format: email }
+        contactPhone: { type: string }
+        status:
+          $ref: "#/components/schemas/BusinessApplicationStatus"
+        contactVerifiedAt: { type: string, format: date-time }
+        decidedAt: { type: string, format: date-time }
+        rejectionReason: { type: string }
+        approvedTenantId: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    BusinessApplicationPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessApplicationDetail"
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
 
     Tenant:
       type: object

@@ -1,6 +1,10 @@
 package com.mapit.platform.domain;
 
 import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.jspecify.annotations.Nullable;
 
 /** Persistencia de solicitudes previas a la creación de un tenant. */
 public interface BusinessApplicationRepository {
@@ -10,4 +14,8 @@ public interface BusinessApplicationRepository {
 
   /** Consume atómicamente un token vigente; nunca devuelve datos del solicitante. */
   boolean verifyContact(String tokenHash, Instant now);
+
+  BusinessApplicationPage search(@Nullable String search, @Nullable BusinessApplicationStatus status, int page, int size);
+
+  Optional<BusinessApplication> findById(UUID id);
 }

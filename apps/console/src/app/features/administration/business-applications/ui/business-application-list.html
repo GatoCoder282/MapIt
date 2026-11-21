@@ -1,0 +1,54 @@
+<main class="requests">
+  <h1>{{ copy.title }}</h1>
+  <p>{{ copy.intro }}</p>
+  <form (submit)="filter($event, search.value, status.value)">
+    <label>{{ copy.search }} <input #search type="search" maxlength="120" [value]="store.search()" /></label>
+    <label
+      >{{ copy.status }}
+      <select #status [value]="store.status()">
+        <option value="">{{ copy.all }}</option>
+        <option value="PENDING">{{ copy.pending }}</option>
+        <option value="APPROVED">{{ copy.approved }}</option>
+        <option value="REJECTED">{{ copy.rejected }}</option>
+      </select>
+    </label>
+    <button type="submit">{{ copy.search }}</button>
+  </form>
+  @if (store.loading()) {
+    <p role="status">{{ copy.loading }}</p>
+  }
+  @if (store.error()) {
+    <p role="alert">
+      {{ copy.failed }} <button type="button" (click)="store.load()">{{ copy.retry }}</button>
+    </p>
+  }
+  @if (!store.loading() && !store.error() && store.result(); as page) {
+    @if (page.content.length === 0) {
+      <p>{{ copy.empty }}</p>
+    } @else {
+      <ul class="request-list">
+        @for (item of page.content; track item.id) {
+          <li>
+            <div>
+              <strong>{{ item.businessName }}</strong
+              ><span>{{ item.contactEmail }}</span>
+            </div>
+            <span>{{
+              item.status === 'PENDING' ? copy.pending : item.status === 'APPROVED' ? copy.approved : copy.rejected
+            }}</span>
+            <a [routerLink]="['/admin/business-applications', item.id]">{{ copy.detail }}</a>
+          </li>
+        }
+      </ul>
+      <nav class="pagination" [attr.aria-label]="copy.pagination">
+        <button type="button" [disabled]="page.page === 0" (click)="store.changePage(page.page - 1)">
+          {{ copy.previous }}
+        </button>
+        <span>{{ page.page + 1 }} / {{ page.totalPages }}</span>
+        <button type="button" [disabled]="page.page + 1 >= page.totalPages" (click)="store.changePage(page.page + 1)">
+          {{ copy.next }}
+        </button>
+      </nav>
+    }
+  }
+</main>
