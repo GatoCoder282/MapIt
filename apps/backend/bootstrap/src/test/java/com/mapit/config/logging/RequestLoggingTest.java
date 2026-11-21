@@ -124,7 +124,7 @@ class RequestLoggingTest {
       request.addHeader("Authorization", "Bearer secret-canary");
       var response = new MockHttpServletResponse();
       new RequestLoggingFilter().doFilter(request, response, (req, res) ->
-          new JwtAuthenticationFilter(token -> Optional.empty()).doFilter(req, res, (a, b) -> {
+           new JwtAuthenticationFilter(token -> Optional.empty(), signed -> Optional.empty()).doFilter(req, res, (a, b) -> {
             throw new AssertionError("Invalid token must not reach endpoint");
           }));
       assertThat(response.getStatus()).isEqualTo(401);
@@ -173,7 +173,7 @@ class RequestLoggingTest {
           var principal = new AuthenticatedPrincipal(UUID.randomUUID(), TenantId.of(tenant), "private@example.test", UserRole.ADMIN);
           try {
             new RequestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) ->
-                new JwtAuthenticationFilter(token -> Optional.of(principal)).doFilter(req, res, (a, b) -> {
+                  new JwtAuthenticationFilter(token -> Optional.of(principal), signed -> Optional.of(signed)).doFilter(req, res, (a, b) -> {
                   try { barrier.await(5, TimeUnit.SECONDS); }
                   catch (Exception ex) { throw new IllegalStateException(ex); }
                   assertThat(MDC.get("tenant_id")).isEqualTo(tenant);

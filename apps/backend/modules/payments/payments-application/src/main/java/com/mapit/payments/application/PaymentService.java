@@ -20,6 +20,7 @@ import com.mapit.payments.domain.PaymentRepository;
 import com.mapit.payments.domain.PaymentReservationAccessPort;
 import com.mapit.payments.domain.ReservationPaymentPort;
 import com.mapit.shared.security.ActorContext;
+import com.mapit.shared.security.EstablishmentAuthorizationPort;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 
@@ -34,6 +35,7 @@ public class PaymentService {
   private final Clock clock;
   private final @Nullable PaymentReservationAccessPort access;
   private final PaymentEventPublisherPort publisher;
+  private final @Nullable EstablishmentAuthorizationPort establishmentAuthorization;
 
   public PaymentService(PaymentRepository payments, PaymentMethodRepository methods,
       ReservationPaymentPort reservations, PaymentGatewayPort gateway,
@@ -45,9 +47,18 @@ public class PaymentService {
       ReservationPaymentPort reservations, PaymentGatewayPort gateway,
       TenantContext tenants, ActorContext actors, Clock clock,
       @Nullable PaymentReservationAccessPort access, PaymentEventPublisherPort publisher) {
+    this(payments, methods, reservations, gateway, tenants, actors, clock, access, publisher, null);
+  }
+
+  public PaymentService(PaymentRepository payments, PaymentMethodRepository methods,
+      ReservationPaymentPort reservations, PaymentGatewayPort gateway,
+      TenantContext tenants, ActorContext actors, Clock clock,
+      @Nullable PaymentReservationAccessPort access, PaymentEventPublisherPort publisher,
+      @Nullable EstablishmentAuthorizationPort establishmentAuthorization) {
     this.payments = payments; this.methods = methods; this.reservations = reservations;
     this.gateway = gateway; this.tenants = tenants; this.actors = actors; this.clock = clock;
     this.access = access; this.publisher = publisher;
+    this.establishmentAuthorization = establishmentAuthorization;
   }
 
   @Transactional
@@ -135,7 +146,7 @@ public class PaymentService {
     return settle(payment, event.outcome(), now, "WEBHOOK", null, event.eventId());
   }
 
-  /** El adaptador HTTP exige ADMIN y el actor se obtiene del contexto autenticado. */
+  /** La ruta HTTP exige ADMIN/MANAGER; se comprueba además el establecimiento del pago. */
   @Transactional
   public Payment verifyManually(UUID paymentId, String bankReference) {
     if (bankReference == null || bankReference.isBlank() || bankReference.length() > 120) {
@@ -143,6 +154,10 @@ public class PaymentService {
     }
     TenantId tenant = tenants.require();
     Payment before = payments.find(tenant, paymentId).orElseThrow(PaymentMethodService.NotFound::new);
+    if (establishmentAuthorization != null &&
+        !establishmentAuthorization.canManagePayments(tenant, actors.requireUserId(), before.establishmentId())) {
+      throw new PaymentMethodService.NotFound();
+    }
     lockReservation(tenant, before.reservationId());
     Payment payment = payments.lock(tenant, paymentId).orElseThrow(PaymentMethodService.NotFound::new);
     if (payment.provider() != PaymentProvider.STATIC_BANK_QR) throw new IllegalArgumentException("El método no admite verificación manual");

@@ -56,6 +56,10 @@ class SpaceElementApiIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private com.mapit.identity.domain.AccessTokenIssuer tokens;
   private static final UUID ADMIN = UUID.fromString("80000000-0000-0000-0000-000000000007");
+  private static final UUID MANAGER = UUID.fromString("80000000-0000-0000-0000-000000000008");
+  private static final UUID STAFF = UUID.fromString("80000000-0000-0000-0000-000000000009");
+  private static final UUID PLATFORM_ADMIN = UUID.fromString("80000000-0000-0000-0000-000000000010");
+  private static final UUID OTHER_ADMIN = UUID.fromString("80000000-0000-0000-0000-000000000011");
 
   private RestTestClient client() {
     return RestTestClient.bindToServer().baseUrl("http://localhost:" + port)
@@ -63,7 +67,14 @@ class SpaceElementApiIntegrationTest {
   }
 
   private String bearer(com.mapit.identity.domain.UserRole role, String tenant) {
-    return tokens.issue(new com.mapit.identity.domain.AuthenticatedUser(ADMIN, com.mapit.shared.tenant.TenantId.of(tenant),
+    UUID actor = "other-tenant".equals(tenant) ? OTHER_ADMIN : switch (role) {
+      case ADMIN -> ADMIN;
+      case MANAGER -> MANAGER;
+      case STAFF -> STAFF;
+      case SUPER_ADMIN -> PLATFORM_ADMIN;
+    };
+    String actualTenant = role == com.mapit.identity.domain.UserRole.SUPER_ADMIN ? "platform" : tenant;
+    return tokens.issue(new com.mapit.identity.domain.AuthenticatedUser(actor, com.mapit.shared.tenant.TenantId.of(actualTenant),
         "metadata@example.test", "Metadata tester", role)).value();
   }
 
@@ -86,6 +97,11 @@ class SpaceElementApiIntegrationTest {
             + "on conflict (id) do nothing",
         TENANT, "Demo", "demo");
     jdbcTemplate.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values(?,?,'metadata@example.test','unused','Metadata tester','ADMIN') on conflict do nothing", ADMIN, TENANT);
+    jdbcTemplate.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values(?,?,'manager-metadata@example.test','unused','Manager','MANAGER') on conflict do nothing", MANAGER, TENANT);
+    jdbcTemplate.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values(?,?,'staff-metadata@example.test','unused','Staff','STAFF') on conflict do nothing", STAFF, TENANT);
+    jdbcTemplate.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values(?,'platform','platform-metadata@example.test','unused','Platform','SUPER_ADMIN') on conflict do nothing", PLATFORM_ADMIN);
+    jdbcTemplate.update("insert into tenant(id,name,slug,vertical) values ('other-tenant','Other','other-tenant','RESTAURANT') on conflict do nothing");
+    jdbcTemplate.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values(?,'other-tenant','other-metadata@example.test','unused','Other','ADMIN') on conflict do nothing", OTHER_ADMIN);
     jdbcTemplate.update(
         "insert into establishment (id, tenant_id, name, type, slug) values (?, ?, ?, 'RESTAURANT', 'est-api') "
             + "on conflict (id) do nothing",

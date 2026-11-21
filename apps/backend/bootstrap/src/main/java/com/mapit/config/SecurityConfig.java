@@ -95,6 +95,8 @@ public class SecurityConfig {
                         // Conserva el status real de validación/404 durante el despacho de error.
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/platform/admin-recoveries")
+                        .hasRole(UserRole.SUPER_ADMIN.name())
                         .requestMatchers(HttpMethod.POST, ApiPaths.AUTH_GLOBAL_LOGIN)
                         .permitAll()
                         .requestMatchers("/api/v1/sectors/*/elements", "/api/v1/sectors/*/elements/*",
@@ -103,15 +105,17 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/payment-methods", "/api/v1/payment-methods/**")
                         .hasRole(UserRole.ADMIN.name())
                         .requestMatchers("/api/v1/payments/*/verify")
-                        .hasRole(UserRole.ADMIN.name())
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
                         .requestMatchers(HttpMethod.GET, "/api/v1/payments")
-                        .hasRole(UserRole.ADMIN.name())
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
                         .requestMatchers("/api/v1/establishments/*/staff-access", "/api/v1/establishments/*/staff-access/**")
                         .hasRole(UserRole.ADMIN.name())
                         .requestMatchers(HttpMethod.GET, "/api/v1/establishments/accessible")
                         .hasAnyRole(UserRole.ADMIN.name(), UserRole.STAFF.name(), UserRole.MANAGER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/establishments")
+                        .hasRole(UserRole.ADMIN.name())
                         .requestMatchers("/api/v1/establishments/*/check-ins", "/api/v1/establishments/*/check-ins/**")
-                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.STAFF.name())
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name(), UserRole.STAFF.name())
                         // MAP-124: la ruta vive debajo de /sectors/**, que aún conserva
                         // acceso público temporal para HU-2.03. Esta regla específica debe
                         // evaluarse antes y exige los roles definidos por HU-3.01.
@@ -138,18 +142,21 @@ public class SecurityConfig {
                                 UserRole.ADMIN.name(),
                                 UserRole.MANAGER.name(),
                                 UserRole.STAFF.name())
+                        .requestMatchers(HttpMethod.GET, "/api/v1/establishments/*/reservations")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name(), UserRole.STAFF.name())
                         // HU-5.03: la bitácora contiene trazabilidad interna del tenant y
                         // su consulta corresponde exclusivamente al administrador.
                         .requestMatchers(HttpMethod.GET, ApiPaths.AUDIT_LOGS)
                         .hasRole(UserRole.ADMIN.name())
-                        // CU-12: el listado de reservas del tenant es del mismo staff
-                        // operativo que las da de alta. Sin token, 401; con un rol sin
-                        // acceso, 403.
+                        // T05: administración de cuentas, nunca rutas públicas ni rol de plataforma.
+                        .requestMatchers("/api/v1/users", "/api/v1/users/**", "/api/v1/user-invitations/**")
+                        .hasRole(UserRole.ADMIN.name())
+                        // HU-1.04: STAFF no puede enumerar reservas del tenant hasta
+                        // que MAP-260 aporte lectura por establecimiento independiente.
                         .requestMatchers(HttpMethod.GET, "/api/v1/reservations")
                         .hasAnyRole(
                                 UserRole.ADMIN.name(),
-                                UserRole.MANAGER.name(),
-                                UserRole.STAFF.name())
+                                UserRole.MANAGER.name())
                         // MAP-229: política monetaria por establecimiento, solo ADMIN.
                         .requestMatchers("/api/v1/establishments/*/payment-policy", "/api/v1/establishments/*/payment-policy/**", "/api/v1/establishments/*/payment-readiness")
                         .hasRole(UserRole.ADMIN.name())

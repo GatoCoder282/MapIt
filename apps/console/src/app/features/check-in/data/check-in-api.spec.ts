@@ -109,7 +109,7 @@ describe('CheckInApi (solo fixture)', () => {
     await expect(api.lookup(PREVIEW_RECEIPT_TOKEN, PREVIEW_ESTABLISHMENT_ID)).rejects.toMatchObject(
       { code: 'forbidden' },
     );
-    user.set({ ...DEMO_OPERATOR, role: 'MANAGER' });
+    user.set({ ...DEMO_OPERATOR, role: 'SUPER_ADMIN' });
     await expect(api.lookup(PREVIEW_RECEIPT_TOKEN, PREVIEW_ESTABLISHMENT_ID)).rejects.toMatchObject(
       { code: 'forbidden' },
     );

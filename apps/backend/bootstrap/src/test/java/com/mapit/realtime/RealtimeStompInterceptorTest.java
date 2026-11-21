@@ -58,7 +58,7 @@ class RealtimeStompInterceptorTest {
             ESTABLISHMENT,
             Optional.empty()))
         .thenReturn(true);
-    interceptor = new RealtimeStompInterceptor(tokens, rooms, flags);
+    interceptor = new RealtimeStompInterceptor(tokens, signed -> Optional.of(signed), rooms, flags);
   }
 
   @Test
@@ -116,6 +116,22 @@ class RealtimeStompInterceptorTest {
   @Test
   void rechaza_publicacion_desde_el_cliente() {
     assertThatThrownBy(() -> interceptor.preSend(message(StompCommand.SEND, "/topic/x", null, null), channel))
+        .isInstanceOf(MessagingException.class);
+  }
+
+  @Test
+  void connect_y_subscribe_rechazan_una_identidad_que_perdio_vigencia() {
+    var active = new java.util.concurrent.atomic.AtomicBoolean(true);
+    var guarded = new RealtimeStompInterceptor(tokens,
+        signed -> active.get() ? Optional.of(signed) : Optional.empty(), rooms, flags);
+    Message<?> connected = guarded.preSend(message(StompCommand.CONNECT, null, "Bearer jwt", null), channel);
+    StompHeaderAccessor subscription = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+    subscription.setDestination("/topic/establishments/" + ESTABLISHMENT);
+    subscription.setUser(StompHeaderAccessor.wrap(connected).getUser());
+    active.set(false);
+    assertThatThrownBy(() -> guarded.preSend(message(subscription), channel))
+        .isInstanceOf(MessagingException.class);
+    assertThatThrownBy(() -> guarded.preSend(message(StompCommand.CONNECT, null, "Bearer jwt", null), channel))
         .isInstanceOf(MessagingException.class);
   }
 

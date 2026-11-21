@@ -6,12 +6,14 @@ import java.util.HexFormat;
 
 import org.springframework.stereotype.Component;
 
+import com.mapit.shared.invitation.InvitationSecrets;
+
 /**
  * Genera tokens de invitación: 32 bytes aleatorios criptográficos en base64url
  * (sin padding) para la URL, y solo su hash SHA-256 para persistencia.
  */
 @Component
-public class SecureTokenGenerator {
+public class SecureTokenGenerator implements InvitationSecrets {
 
   /** 32 bytes ≈ 256 bits de entropía: fuerza bruta inviable antes de la caducidad. */
   private static final int TOKEN_BYTES = 32;
