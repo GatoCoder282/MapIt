@@ -1,6 +1,6 @@
 # Tareas — HU-1.06 Autogestión segura de mi cuenta y perfil personal
 
-> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** documentación inicial; implementación pendiente.
+> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** contrato definido y flag registrada OFF; implementación funcional pendiente.
 
 ## 1. Preparación documental de MAP-287 — etapa actual
 
@@ -71,7 +71,7 @@
 ## 7. MAP-291 — S6 — Feature toggle Mi cuenta Unleash y rollback
 
 - [x] Adaptar y probar el generador para claves de varios segmentos, preservando dos segmentos, flags existentes, idempotencia y LF/CRLF.
-- [ ] Registrar `mapit.s6.my-account` OFF en Java, TS y bootstrap; el gate funcional no forma parte de esta etapa.
+- [x] Registrar `mapit.s6.my-account` OFF en Java, TS y bootstrap; el gate funcional no forma parte de esta etapa.
 - [ ] Usar `FeatureFlagPort.isEnabledFor` en backend con tenant autenticado; autorización independiente tanto OFF como ON.
 - [ ] Implementar contexto del proxy desde Console sin enviar JWT staff, limpiar al cambiar sesión y descartar respuestas antiguas.
 - [ ] Cubrir valor inicial pendiente, flag ausente, proveedor sin configurar, OFF/ON, tenant/entorno y fallo después de ON.
@@ -136,3 +136,15 @@
 - La inspección encontró además que la inserción Java buscaba `");` aunque las entradas reales terminan en `boolean);`: se corrige el punto de inserción y se preserva LF/CRLF. No se modifica el sistema de evaluación ni los adaptadores Unleash.
 - `node --test tools/scripts/new-flag.test.mjs`: 4/4 pruebas correctas. Ejecutan el CLI real sobre copias temporales de los tres catálogos y verifican nueva clave OFF, preservación de entradas, idempotencia, LF/CRLF, claves de dos segmentos, `--on`, `kill_switch` y rechazo de entradas inválidas sin escrituras.
 - ESLint focalizado en generador, prueba Node y convención TS: correcto, cero warnings. `pnpm.cmd exec ng test libs --no-watch --include '**/feature-flag.catalog.spec.ts'`: 6/6 correctas; warning existente del builder por usar compilación completa en lugar de parcial para aplicaciones.
+
+### 2026-11-21 — registro OFF de Mi cuenta MAP-291
+
+- Ejecutado `pnpm.cmd new:flag mapit.s6.my-account release`, sin `--on`: registro coherente OFF en enum Java, catálogo TS y bootstrap JSON; descripciones TODO sustituidas. Tipo release, retiro previsto `2027-02-21`, seguimiento de esta preparación en MAP-291. Asociar issue específico de limpieza antes del rollout sigue pendiente; no se inventa un ID ni se crean issues externos en esta etapa.
+- El registro es local/versionado: no se ejecutó seed, no se abrió Unleash ni se creó/activó una flag remota. No hay controlador, ruta de UI, migración o uso de la flag como autorización. El gate, contexto tenant del proxy, propagación y fallo después de ON siguen pendientes.
+- `node --test tools/scripts/new-flag.test.mjs`: 5/5 correctas con registro único OFF en los tres catálogos, metadata release y regresión CLI. ESLint focalizado correcto, cero warnings.
+- `pnpm.cmd exec ng test libs --no-watch --include '**/feature-flags/**/*.spec.ts'`: 11/11 correctas (catálogo, logging y nueva prueba de Mi cuenta); sin URL, primer fetch fallido o respuesta sin la clave conservan OFF. La prueba no afirma cambio de política tras una evaluación ON.
+- `pnpm.cmd be:test`: BUILD SUCCESSFUL, 87 tareas; unitarios y ArchUnit de todos los módulos correctos. `DisabledFeatureFlagAdapterTest`: 3 pruebas, cero fallos/errores, incluida la nueva comprobación de default OFF para `demo`/`platform` sin Unleash.
+- La suite existente emitió un log de error de la tarea programada outbox por PostgreSQL no disponible durante el cierre de contexto; el build y los tests finalizaron correctamente. No se arranca infraestructura ni se modifica ese módulo para silenciarlo.
+- Comparación en memoria contra el commit anterior al registro: claves, tipos y valores de las flags previas preservados en Java/TS/bootstrap. No se cambió código de evaluación ni autorización.
+- Spotless Java Check en `shared-kernel` y `platform-infrastructure`: correcto. No se aplicó formato Java global ni se modificaron fuentes ajenas al incremento.
+- `pnpm.cmd fe:typecheck` tras registrar la nueva clave: correcto en Console/Public Web. Prettier focalizado y `git diff --check`: correctos. Integración/RLS, E2E, rollout remoto, CI/PR y captura siguen pendientes; no se ha ejecutado `pnpm check` porque no hay push y esta etapa valida sus incrementos focalizados.

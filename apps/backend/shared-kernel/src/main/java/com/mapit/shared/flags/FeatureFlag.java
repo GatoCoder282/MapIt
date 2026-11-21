@@ -34,7 +34,10 @@ public enum FeatureFlag {
   VERTICAL_HOTEL("vertical.hotel", Tipo.PERMISSION, true),
 
   /** Vertical Salón de eventos: butacas numeradas (CU-21). Por defecto encendida, como hotel. */
-  VERTICAL_EVENT_HALL("vertical.event-hall", Tipo.PERMISSION, true);
+  VERTICAL_EVENT_HALL("vertical.event-hall", Tipo.PERMISSION, true),
+
+  /** Mi cuenta (HU-1.06 / MAP-285): release OFF; nunca sustituye autorización. */
+  MAPIT_S6_MY_ACCOUNT("mapit.s6.my-account", Tipo.RELEASE, false);
 
   /**
    * Tipos canónicos de toggle. El tipo determina cuánto debe vivir la flag:

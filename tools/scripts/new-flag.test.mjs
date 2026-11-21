@@ -11,6 +11,20 @@ const tsPath = 'libs/feature-flags/src/lib/feature-flag.catalog.ts';
 const jsonPath = 'infra/docker/unleash/flags.json';
 const catalogs = [javaPath, tsPath, jsonPath];
 
+test('Mi cuenta está registrada una sola vez y OFF en los tres catálogos (MAP-291)', () => {
+  const bootstrap = JSON.parse(readFileSync(join(ROOT, jsonPath), 'utf8'));
+  const entries = bootstrap.features.filter((flag) => flag.name === 'mapit.s6.my-account');
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].enabled, false);
+  assert.equal(entries[0].type, 'release');
+  assert.match(entries[0].expiresAt, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(
+    readFileSync(join(ROOT, javaPath), 'utf8'),
+    /MAPIT_S6_MY_ACCOUNT\("mapit\.s6\.my-account", Tipo\.RELEASE, false\)[;,]/,
+  );
+  assert.match(readFileSync(join(ROOT, tsPath), 'utf8'), /'mapit\.s6\.my-account': false/);
+});
+
 function fixture(t, newline = '\n') {
   const root = mkdtempSync(join(tmpdir(), 'mapit-new-flag-'));
   t.after(() => {

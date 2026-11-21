@@ -26,6 +26,10 @@ describe('catálogo de feature flags', () => {
     expect(FLAGS_POR_DEFECTO['payments.qr']).toBe(false);
   });
 
+  it('mantiene Mi cuenta apagada hasta completar la implementación segura (MAP-291)', () => {
+    expect(FLAGS_POR_DEFECTO['mapit.s6.my-account']).toBe(false);
+  });
+
   it('deja el tiempo real encendido: su kill switch debe fallar a favor', () => {
     // Si Unleash no responde, se usa este valor. Para un kill switch, el default
     // correcto es "encendido": la funcionalidad opera salvo que se apague a propósito.

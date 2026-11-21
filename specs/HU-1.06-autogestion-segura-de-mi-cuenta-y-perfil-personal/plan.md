@@ -110,6 +110,8 @@ No reutilizar el rescate excepcional de ADMIN como recuperación general. Si se 
 
 ## 8. Feature flag y rollback — MAP-291
 
+Estado del incremento de registro: `mapit.s6.my-account` creada mediante generador en los tres catálogos, tipo release y OFF, con retiro previsto `2027-02-21`. Generador compatible con varios segmentos y probado con LF/CRLF. Esta entrega no implementa gate, evaluación por tenant frontend, seed o activación remota; sigue pendiente la asociación de un issue específico de limpieza antes del rollout. El registro no garantiza autorización ni cambia la política de caché de los adaptadores existentes.
+
 Registrar `mapit.s6.my-account` OFF en enum Java (`shared-kernel/.../FeatureFlag.java`), catálogo TS (`libs/feature-flags/.../feature-flag.catalog.ts`) y `infra/docker/unleash/flags.json`. Antes, adaptar la validación de `tools/scripts/new-flag.mjs` para claves con más de dos segmentos y probar compatibilidad con las actuales. Tipo, retiro e issue de limpieza de D06 pendientes; no crear otro nombre de flag.
 
 El registro/gate básico debe llegar antes de exponer MAP-287, aunque el cierre completo de rollout sea posterior. Backend usa `FeatureFlagPort.isEnabledFor` con tenant autenticado, incluyendo `platform`; valida identidad y autorización aunque la flag esté OFF. La flag no concede roles ni permisos.

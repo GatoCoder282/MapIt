@@ -35,6 +35,9 @@ export const FLAGS_POR_DEFECTO = {
 
   /** Vertical Salón de eventos: butacas numeradas (CU-21). Encendida por defecto (HU-7.01/7.02 D3). */
   'vertical.event-hall': true,
+
+  /** Mi cuenta (HU-1.06 / MAP-285): OFF hasta completar API y autorización. */
+  'mapit.s6.my-account': false,
 } as const satisfies Record<string, boolean>;
 
 export type FeatureFlagKey = keyof typeof FLAGS_POR_DEFECTO;
