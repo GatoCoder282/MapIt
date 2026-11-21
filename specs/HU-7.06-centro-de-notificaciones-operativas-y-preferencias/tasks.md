@@ -1,7 +1,7 @@
 # Tareas — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Historia:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) — HU-7.06 — Centro de notificaciones operativas y preferencias.
-> **Estado:** MAP-292 y MAP-294 parciales: dominio y casos de uso validados sin PostgreSQL; persistencia/RLS, autorización real y HTTP pendientes.
+> **Estado:** MAP-292/MAP-293/MAP-294 parciales: dominio, bandeja y procesamiento internos validados sin PostgreSQL; adaptadores, origen durable e integración pendientes.
 
 ## Preparación de esta etapa
 
@@ -37,6 +37,9 @@
 
 ## MAP-293 — S6 — Generar eventos de negocio y destinatarios autorizados
 
+- [x] Implementar resolución interna con candidatos del evento, exclusión cross-tenant, ámbito vigente y predicado de establecimiento según tipo; sin destinatarios ni roles desde payloads externos.
+- [x] Implementar creación mediante clave estable y `createIfAbsent`, conservando avisos canónicos/lecturas, sin depender del feature toggle ni conectar productores.
+- [x] Probar selección y reentrega con dobles de puertos: matriz mínima, usuarios/tenants ajenos, establecimiento/tipo, repetidos, ausencia de destinatarios y fallo de autorización antes de escribir.
 - [ ] Publicar hechos estables en la transacción real; cubrir reserva staff y reserva pública sin depender de auditoría de actor no nulo.
 - [ ] Conectar llegada al productor existente y añadir cancelación solo donde exista transición real de reserva.
 - [ ] Integrar solicitud/aprobación/rechazo con MAP-257 cuando sus contratos y destinatarios estén disponibles.
@@ -152,3 +155,17 @@
 - Dobles exclusivos de tests: prueban orquestación, ámbitos y contrato, incluidas llegadas posteriores a una instantánea simulada; no prueban RLS, snapshot/atomicidad SQL, revalidación real de identidad o autorización HTTP/STOMP. Las respuestas incorrectas del adaptador se rechazan sin devolver sus datos, pero esa comprobación no sustituye filtros de escritura/RLS.
 - Pendientes: JDBC/Flyway/DBML y RLS de MAP-292, adaptador de autorización vigente con MAP-238, wiring transaccional real, formato de cursor HTTP seguro, contrato OpenAPI y errores/feature gate antes de exponer HTTP. También lectura conjunta consistente de página/contador y pruebas de integración/concurrencia con PostgreSQL. Sin reservar migraciones ni tocar V34–V39.
 - Se actualizan solo estas especificaciones y código/pruebas de notificaciones de `operations`; sin cambios a MAP-285, flags, autenticación, frontend, OpenAPI ni dependencias. Prettier se limita a estos tres Markdown y los hooks normales se ejecutan al commit. Sin Docker, aplicación, push ni PR.
+
+### 2026-11-21 — MAP-293: selección y creación internas
+
+- Git inicialmente limpio, rama existente, HEAD `8bf8b7d`; sin modificar `main`, MAP-285 ni los incrementos anteriores.
+- Jira reconsultado: **MAP-293 — S6 — Generar eventos de negocio y destinatarios autorizados**, «Por hacer»; requiere solicitud/decisión, reservas/cancelaciones/check-in, destinatarios por rol/tenant/establecimiento y deduplicación. **MAP-257 — HU-1.05 — Solicitud y aprobación de incorporación de negocios** también «Por hacer»; no se encontraron sus productores en esta base. No se crean tipos, productores ni eventos productivos ficticios para cubrirla.
+- Se revisaron solo los emisores existentes de `RESERVATION_CREATED` y `reservation.checked_in`, la matriz y los predicados actuales `canReadOperations`/`canCheckIn` de `EstablishmentAuthorizationPort`. No se modifica `CreateReservation`, `CheckInService` ni `PaymentOutboxPublisher`; la reserva pública sigue requiriendo su publicación durable propia.
+- Nuevos: puerto de dominio `NotificationRecipientCandidatesPort` y casos de uso `ResolveNotificationRecipients`/`ProcessNotificationEvent`. El primero pide candidatos internos ligados al hecho estable, excluye otro tenant antes de autorizar, deduplica usuarios y exige ámbito coincidente más el predicado existente por tipo. El segundo valida el instante, resuelve todo antes de crear y reutiliza `NotificationRepository.createIfAbsent`, verificando la clave y el evento canónicos devueltos.
+- `NotificationAuthorizationPort` se reutiliza para revalidar cuentas/tenants y concesiones de los candidatos internos; esto no les concede actuar como el usuario autenticado ni crea autenticación propia. El rol efectivo se comprueba por el adaptador del permiso existente; no se añade otro enum de roles ni se hereda el acceso financiero o una sala STOMP.
+- Sin registro como beans ni listeners, sin parser de payloads externos ni listas de destinatarios en el comando. No hay dependencia/import de flags en estos casos de uso, y no se alteran procesos del negocio. No se ha probado una reserva real con Unleash OFF/ON: ese ensayo sigue pendiente de infraestructura e integración.
+- Ejecutado: `node tools/scripts/gradle.mjs :modules:operations:operations-application:test --tests "com.mapit.operations.application.notification.ResolveNotificationRecipientsTest" --tests "com.mapit.operations.application.notification.ProcessNotificationEventTest" :modules:operations:operations-application:spotlessJavaCheck :modules:operations:operations-domain:spotlessJavaCheck --console=plain`. **BUILD SUCCESSFUL**; Spotless correcto en ambos módulos.
+- XML: `ResolveNotificationRecipientsTest` **18** y `ProcessNotificationEventTest` **12**: **30 pruebas, 0 fallos, 0 errores, 0 omitidas**. No se repiten suites previas. La matriz se representa con respuestas controladas de los puertos existentes; no acredita SQL/roles reales. También cubre mismo UUID en otro tenant, ámbito ajeno, candidatos duplicados/vacíos, preservación de lectura en reentrega y respuesta de repositorio incompatible.
+- Los datos de pruebas y dobles solo viven en `src/test`; no se publican avisos reales ni se exponen implementaciones en memoria. Los casos usan `@Transactional`, pero atomicidad/rollback y unicidad concurrente dependen del futuro wiring/adaptador; no se declaran demostrados por unit tests.
+- Pendientes para cerrar MAP-293: fuente durable y snapshot de elegibilidad original por evento para reintentos sin ampliar históricos, selección por lotes, adaptadores reales de candidatos/autorización/persistencia, validación del origen confirmado y pertenencia del recurso, publicación de reserva pública/cancelación real, integración de MAP-257 y pruebas PostgreSQL/RLS/transaccionales. El centro sigue sin recibir eventos de producción.
+- Solo se actualizan estas tres specs y código/pruebas nuevos de notificaciones. Prettier y hooks de commit quedan limitados a lo afectado. Sin JDBC, Flyway, HTTP, STOMP, frontend, dependencias nuevas, Docker, push ni PR.

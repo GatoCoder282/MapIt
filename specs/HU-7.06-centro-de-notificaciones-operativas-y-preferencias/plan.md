@@ -1,7 +1,7 @@
 # Plan — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Base auditada:** `origin/main` en `983dee7887ce6e47cfcdebc69dffd33d9ed64886` · **Fecha:** 2026-11-21.
-> MAP-292/MAP-294: incrementos de dominio y aplicación autorizados por el usuario; persistencia e integración sujetas a D-1–D-5 de [spec.md](spec.md).
+> MAP-292/MAP-293/MAP-294: incrementos de dominio y aplicación autorizados por el usuario; persistencia e integración sujetas a D-1–D-5 de [spec.md](spec.md).
 
 ## 1. Inventario reutilizable y carencias
 
@@ -71,6 +71,14 @@ La migración se generará solo sobre la base integrada y numeración libre ento
 3. Filtrar destinatarios activos antes de insertar y revalidar identidad y permisos al consultar, contar, marcar y entregar. No remitir automáticamente al actor si su regla no lo incluye. No recalcular destinatarios históricos hacia usuarios nuevos sin regla expresa.
 4. Para plataforma, resolver una identidad de plataforma autorizada y un evento con ámbito definido. No poner una FK de usuario `platform` en una fila del tenant del negocio. MAP-257 debe aportar el vínculo verificable entre solicitud y destinatario de su decisión.
 5. Si un tipo no tiene productor o política cerrados, dejarlo pendiente con prueba de no emisión; no crear avisos simulados ni declarar la historia completa.
+
+### Incremento interno MAP-293
+
+- Añadir `NotificationRecipientCandidatesPort.findCandidates(event)` al dominio: candidatos internos del hecho confirmado, nunca destinatarios deserializados de un payload externo. La futura fuente debe mantener la elegibilidad original del evento para reintentos; no ampliar históricos a usuarios nuevos por recalcular indiscriminadamente la membresía actual. Falta implementar ese snapshot/fuente durable y su paginación por lotes.
+- `ResolveNotificationRecipients` descarta candidatos cross-tenant antes de consultar permisos, elimina candidatos repetidos y reutiliza `NotificationAuthorizationPort` para identidad/tenant activos y concesiones por tipo. Un ámbito para otro destinatario se rechaza, no se reutiliza. Para cada elegido también exige `EstablishmentAuthorizationPort.canReadOperations` en reserva creada o `canCheckIn` en llegada. Son los predicados existentes, con sus reglas actuales de roles; no añadir un catálogo paralelo de roles ni consultar `canManagePayments`.
+- `ProcessNotificationEvent` procesa solo un `NotificationEvent` interno, usa un único instante de `Clock`, resuelve todos los destinatarios antes de escribir y crea candidatos inmutables con UUID de fila y el mismo evento estable. Reutiliza `NotificationRepository.createIfAbsent`; devuelve los avisos canónicos, incluidos los ya existentes, sin afirmar que todos son filas nuevas. La reentrega conserva ID, creación y primera lectura originales; una respuesta de repositorio con otra clave/evento falla sin devolver esos datos.
+- No hay dependencia de feature flags en selección/creación ni cambios a productores. El futuro consumidor debe correr fuera de la petición de negocio y dentro de una transacción real, con tenant, reintentos, unicidad y estado durable; no se prueba ese comportamiento con un doble en memoria. No registrar beans antes de tener adaptadores, como en MAP-294.
+- Pruebas nuevas: matriz de permisos de roles representada mediante dobles de los puertos existentes, otra empresa con mismo UUID de usuario, establecimiento/tipo no concedidos, ámbito ajeno, candidatos duplicados/vacíos, eventos repetidos con lectura previa, respuesta incompatible y fallo de autorización antes de persistir. No es QA de los adaptadores reales ni integración de MAP-257.
 
 ## 5. Propuesta de API MVP — MAP-294 (OpenAPI pendiente)
 
