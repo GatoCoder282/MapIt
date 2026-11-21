@@ -18,4 +18,14 @@ export class BusinessApplicationDetailPage {
   constructor() {
     this.store.loadDetail(inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '');
   }
+
+  protected approve(event: Event, id: string, slug: string): void {
+    event.preventDefault();
+    if (!this.store.deciding()) this.store.approve(id, slug.trim());
+  }
+
+  protected reject(event: Event, id: string, reason: string): void {
+    event.preventDefault();
+    if (!this.store.deciding()) this.store.reject(id, reason.trim());
+  }
 }

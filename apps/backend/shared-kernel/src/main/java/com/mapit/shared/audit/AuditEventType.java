@@ -9,7 +9,11 @@ public enum AuditEventType {
   RESERVATION_STATUS_CHANGED(
       AuditResourceType.RESERVATION, Set.of("previousStatus", "newStatus")),
   SPACE_ELEMENT_STATE_CHANGED(
-      AuditResourceType.SPACE_ELEMENT, Set.of("previousState", "newState", "sectorId"));
+      AuditResourceType.SPACE_ELEMENT, Set.of("previousState", "newState", "sectorId")),
+  BUSINESS_APPLICATION_APPROVED(
+      AuditResourceType.BUSINESS_APPLICATION, Set.of("approvedTenantId")),
+  BUSINESS_APPLICATION_REJECTED(
+      AuditResourceType.BUSINESS_APPLICATION, Set.of("status"));
 
   private final AuditResourceType resourceType;
   private final Set<String> allowedDetailKeys;

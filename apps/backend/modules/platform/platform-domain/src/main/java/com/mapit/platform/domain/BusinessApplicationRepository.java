@@ -18,4 +18,9 @@ public interface BusinessApplicationRepository {
   BusinessApplicationPage search(@Nullable String search, @Nullable BusinessApplicationStatus status, int page, int size);
 
   Optional<BusinessApplication> findById(UUID id);
+
+  /** Bloquea una solicitud durante toda la transacción de decisión. */
+  Optional<BusinessApplication> findByIdForUpdate(UUID id);
+
+  void saveDecision(BusinessApplication application);
 }

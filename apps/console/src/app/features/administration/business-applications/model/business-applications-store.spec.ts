@@ -21,4 +21,21 @@ describe('BusinessApplicationsStore', () => {
     expect(list).toHaveBeenLastCalledWith('Hotel', 'PENDING', 0);
     expect(store.result()?.totalElements).toBe(0);
   });
+
+  it('actualiza el detalle después de aprobar sin duplicar la acción', () => {
+    const approved = { id: 'request-1', status: 'APPROVED', approvedTenantId: 'tenant-1' };
+    const approve = vi.fn(() => of(approved));
+    TestBed.configureTestingModule({
+      providers: [
+        BusinessApplicationsStore,
+        { provide: BusinessApplicationsApi, useValue: { approve } },
+      ],
+    });
+    const store = TestBed.inject(BusinessApplicationsStore);
+    store.approve('request-1', 'tenant-1');
+    expect(approve).toHaveBeenCalledWith('request-1', 'tenant-1');
+    expect(store.selected()?.status).toBe('APPROVED');
+    expect(store.deciding()).toBe(false);
+    expect(store.decisionError()).toBe(false);
+  });
 });

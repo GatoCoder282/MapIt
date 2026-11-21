@@ -5,6 +5,7 @@ import type {
   BusinessApplicationPage,
   BusinessApplicationStatus,
 } from '@mapit/api-client';
+import type { Observable } from 'rxjs';
 import { BusinessApplicationsApi } from '../data/business-applications-api';
 
 @Injectable()
@@ -18,6 +19,8 @@ export class BusinessApplicationsStore {
   readonly selected = signal<BusinessApplicationDetail | null>(null);
   readonly loading = signal(false);
   readonly error = signal(false);
+  readonly deciding = signal(false);
+  readonly decisionError = signal(false);
   private request = 0;
 
   load(): void {
@@ -76,5 +79,28 @@ export class BusinessApplicationsStore {
           }
         },
       });
+  }
+
+  approve(id: string, slug: string): void {
+    this.decide(this.api.approve(id, slug));
+  }
+
+  reject(id: string, reason: string): void {
+    this.decide(this.api.reject(id, reason));
+  }
+
+  private decide(result: Observable<BusinessApplicationDetail>): void {
+    this.deciding.set(true);
+    this.decisionError.set(false);
+    result.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (detail) => {
+        this.selected.set(detail);
+        this.deciding.set(false);
+      },
+      error: () => {
+        this.decisionError.set(true);
+        this.deciding.set(false);
+      },
+    });
   }
 }

@@ -93,6 +93,28 @@ class JdbcBusinessApplicationRepository implements BusinessApplicationRepository
         (rs, row) -> map(rs), id).stream().findFirst();
   }
 
+  @Override
+  public Optional<BusinessApplication> findByIdForUpdate(UUID id) {
+    return jdbc.query("select * from business_application where tenant_id = 'platform' and id = ? for update",
+        (rs, row) -> map(rs), id).stream().findFirst();
+  }
+
+  @Override
+  public void saveDecision(BusinessApplication application) {
+    int changed = jdbc.update("""
+        update business_application
+        set status = ?, decided_by = ?, decided_at = ?, rejection_reason = ?,
+            approved_tenant_id = ?, verification_token_hash = null, verification_expires_at = null
+        where tenant_id = 'platform' and id = ? and status = 'PENDING'
+        """, application.status().name(), application.decidedBy(),
+        Timestamp.from(application.decidedAt()), application.rejectionReason(),
+        application.approvedTenantId() == null ? null : application.approvedTenantId().value(),
+        application.id());
+    if (changed != 1) {
+      throw new IllegalStateException("La solicitud ya no está pendiente");
+    }
+  }
+
   private BusinessApplication map(ResultSet rs) throws SQLException {
     Timestamp verified = rs.getTimestamp("contact_verified_at");
     Timestamp decided = rs.getTimestamp("decided_at");

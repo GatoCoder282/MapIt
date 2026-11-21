@@ -252,9 +252,9 @@ Table audit_log {
   tenant_id     text        [not null, ref: > tenant.id]
   actor_id      uuid        [not null, note: 'FK compuesta (tenant_id, actor_id) > app_user(tenant_id, id)']
   occurred_at   timestamptz [not null]
-  resource_type text        [not null, note: 'RESERVATION | SPACE_ELEMENT']
+  resource_type text        [not null, note: 'RESERVATION | SPACE_ELEMENT | BUSINESS_APPLICATION']
   resource_id   uuid        [not null, note: 'Referencia polimórfica al recurso auditado']
-  event_type    text        [not null, note: 'RESERVATION_CREATED | RESERVATION_STATUS_CHANGED | SPACE_ELEMENT_STATE_CHANGED']
+  event_type    text        [not null, note: 'RESERVATION_CREATED | RESERVATION_STATUS_CHANGED | SPACE_ELEMENT_STATE_CHANGED | BUSINESS_APPLICATION_APPROVED | BUSINESS_APPLICATION_REJECTED']
   details       jsonb       [not null, default: `{}`]
 
   Indexes {

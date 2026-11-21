@@ -27,4 +27,18 @@ export class BusinessApplicationsApi {
   detail(id: string): Observable<BusinessApplicationDetail> {
     return this.client.getBusinessApplication({ id });
   }
+
+  approve(id: string, slug: string): Observable<BusinessApplicationDetail> {
+    return this.client.approveBusinessApplication({
+      id,
+      businessApplicationApprovalRequest: { slug },
+    });
+  }
+
+  reject(id: string, reason: string): Observable<BusinessApplicationDetail> {
+    return this.client.rejectBusinessApplication({
+      id,
+      businessApplicationRejectionRequest: { reason },
+    });
+  }
 }
