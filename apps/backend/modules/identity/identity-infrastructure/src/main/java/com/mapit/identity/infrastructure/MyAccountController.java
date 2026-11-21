@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -33,11 +32,8 @@ import com.mapit.identity.domain.PersonalProfile;
 /** API personal parcial: nombre/correo reales; contacto e idioma esperan migración. */
 @RestController
 public class MyAccountController {
-    private static final Set<String> FIELDS = Set.of("fullName", "contactPhone", "preferredLanguage");
-    private static final Set<String> LANGUAGES = Set.of("es", "en", "ja-JP");
     private static final Set<String> IDENTITY_HEADERS = Set.of(
             "x-tenant-id", "x-user-id", "x-tenant-slug", "tenantid", "userid", "tenantslug", "x-role");
-    private static final Pattern PHONE = Pattern.compile("^[+0-9() ./-]*[0-9][+0-9() ./-]*$");
     private final OwnProfileService profiles;
 
     public MyAccountController(OwnProfileService profiles) {
@@ -53,22 +49,12 @@ public class MyAccountController {
     public ResponseEntity<PersonalProfile> update(HttpServletRequest request,
             @RequestBody Map<String, @Nullable Object> body) {
         var actor = actor(request);
-        if (body.isEmpty() || !FIELDS.containsAll(body.keySet())) invalid();
-        @Nullable String name = null;
-        if (body.containsKey("fullName")) {
-            if (!(body.get("fullName") instanceof String)) invalid();
-            name = (String) body.get("fullName");
-            OwnProfileService.validateFullName(name);
-        }
-        Object phone = body.get("contactPhone");
-        if (phone != null && (!(phone instanceof String text) || text.length() > 32 || !PHONE.matcher(text).matches())) invalid();
-        Object language = body.get("preferredLanguage");
-        if (language != null && (!(language instanceof String text) || !LANGUAGES.contains(text))) invalid();
-        if (body.containsKey("contactPhone") || body.containsKey("preferredLanguage")) {
+        var patch = OwnProfilePatchPayload.read(body);
+        if (patch.requiresPendingPersistence()) {
             profiles.read(actor); // Identidad/permiso y flag antes del error de disponibilidad.
             throw new OwnProfileFailure(Reason.FIELDS_UNAVAILABLE);
         }
-        return ok(profiles.updateFullName(actor, name));
+        return ok(profiles.updateFullName(actor, patch.fullName().value()));
     }
 
     private static AuthenticatedPrincipal actor(HttpServletRequest request) {

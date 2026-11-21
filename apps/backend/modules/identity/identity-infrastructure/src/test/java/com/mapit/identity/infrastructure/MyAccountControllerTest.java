@@ -145,6 +145,33 @@ class MyAccountControllerTest {
         assertThat(result).doesNotContain("private-sql-and-credentials");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"fullName\":\"Nombre\",\"contactPhone\":null}",
+            "{\"fullName\":\"Nombre\",\"preferredLanguage\":null}",
+            "{\"fullName\":\"Nombre\",\"contactPhone\":\"+591 123\",\"preferredLanguage\":\"ja-JP\"}"
+    })
+    void validPendingFieldsKeepTemporary503AndNeverPartiallyWriteName(String body) {
+        patch(body).expectStatus().isEqualTo(503)
+                .expectHeader().valueEquals("Cache-Control", "no-store")
+                .expectBody().jsonPath("$.type").isEqualTo(LoginProblemTypes.BASE + "profile-fields-unavailable");
+        verify(repository).findOwn(A);
+        verify(repository, never()).updateOwnFullName(any(), anyString());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"fullName\":null,\"contactPhone\":\"123\"}",
+            "{\"fullName\":\"Nombre\",\"contactPhone\":\"123\",\"preferredLanguage\":\"fr\"}",
+            "{\"fullName\":\"Nombre\",\"contactPhone\":null,\"preferredLanguage\":true}",
+            "{\"fullName\":\"Nombre\",\"contactPhone\":\"\",\"preferredLanguage\":\"es\"}",
+            "{\"fullName\":\"Nombre\",\"contactPhone\":null,\"role\":\"SUPER_ADMIN\"}"
+    })
+    void validatesWholePatchBeforeAnyPersistenceOrUnavailableResponse(String body) {
+        patch(body).expectStatus().isBadRequest();
+        verifyNoInteractions(repository);
+    }
+
     private RestTestClient.ResponseSpec patch(String body) {
         return client.patch().uri("/api/v1/me").contentType(MediaType.APPLICATION_JSON).body(body).exchange();
     }

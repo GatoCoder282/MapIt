@@ -35,6 +35,7 @@
 - [x] Implementar puertos/proyección y casos de uso de nombre/correo existentes; actor y tenant del principal validado.
 - [x] Implementar controlador propio y JDBC de nombre/correo con SET LOCAL y filtros por tenant/usuario/rol/estado; escritura exclusiva de full_name.
 - [x] Cubrir campos prohibidos, validación, usuario A/B mismo tenant, otro tenant y `platform` en unitarios/REST en memoria; sin escrituras parciales.
+- [x] Preparar comando PATCH validado con presencia/valor/null y lector cerrado reutilizable; mantener 503 para teléfono/idioma hasta persistencia real.
 - [ ] Completar lectura/escritura de contacto e idioma reales después de la migración compatible; no cerrar MAP-287 con solo nombre/correo.
 - [ ] Probar con `mapit_app` real, contexto SQL ausente y reutilización del pool; excluir contexto especial de login en estas consultas.
 - [ ] Verificar migración con filas previas y persistencia tras nueva lectura; registrar comandos y resultados reales.
@@ -102,6 +103,15 @@
 - [ ] Realizar Squash and Merge solo en la entrega posterior autorizada. No hay push, PR ni merge en la etapa documental.
 
 ## Notas de ejecución
+
+### 2026-11-21 — MAP-287: validación independiente del PATCH pendiente
+
+- Inicio limpio en rama existente, HEAD 5f36212 y 17 commits conservados. Alcance autorizado: solo validaciones/preparación/pruebas focalizadas, sin migración, JDBC nuevo, UI, cambios de contrato o integración de MAP-238. Se reutilizan las reglas de nombre y errores de aplicación existentes.
+- `OwnProfilePatch` es inmutable, valida todo el comando y distingue campo ausente de presente/null. Ausente conserva el valor anterior; null limpia solo contacto/idioma, nunca nombre. Teléfono ASCII con patrón contratado y 1–32 caracteres; idioma exacto es/en/ja-JP. No normaliza valores ni tiene propiedades de identidad/autoridad. Representaciones redactadas. La futura escritura debe usar presencia explícita, sin reescribir valores antiguos de campos omitidos.
+- `OwnProfilePatchPayload` rechaza cuerpo vacío, claves desconocidas/privilegiadas y tipos no string sin coerción. El controlador lo consume antes de persistencia; nombre válido solo sigue operativo, GET no añade contacto/idioma ficticios, y cualquier opcional presente válido (también null o cuerpo mixto) mantiene 503 profile-fields-unavailable sin escribir nombre. Payload mixto inválido devuelve 400 antes de consultar/escribir el repositorio. No se incorporan campos a PersonalProfile ni columnas a SQL.
+- Pruebas ejecutadas únicamente: OwnProfilePatchTest **27/27**, OwnProfilePatchPayloadTest **17/17**, MyAccountControllerTest **49/49** y ArchitectureTest **12/12**. **105/105**, todas sin servidor/PostgreSQL/Docker. Cubren ausencia/null/valores, límites 1/32/33, patrón y códigos exactos, tipos, claves privilegiadas/null, validación completa, inmutabilidad y 503 sin actualización parcial.
+- Comando focalizado: `node tools/scripts/gradle.mjs :modules:identity:identity-application:test --tests com.mapit.identity.application.OwnProfilePatchTest :modules:identity:identity-infrastructure:test --tests com.mapit.identity.infrastructure.OwnProfilePatchPayloadTest --tests com.mapit.identity.infrastructure.MyAccountControllerTest`; ArchUnit por separado con `:bootstrap:test --tests com.mapit.architecture.ArchitectureTest`. Caché Gradle existente mediante GRADLE_USER_HOME; BUILD SUCCESSFUL. SpotlessJavaCheck de application/infrastructure y formato documental/diff correctos; hooks normales de commit.
+- No se ejecutan suites completas, build global, frontend, api:gen ni otros checks sin relación con el cambio. Contrato sin cambios. Persistencia, migración/DBML e integración PostgreSQL/RLS permanecen pendientes de la base acordada; no se declara MAP-287 completa ni se retira 503. Sin cambio de rama, main, autenticación, MAP-286, merge/rebase/push/PR/squash ni servicios iniciados.
 
 ### 2026-11-21 — MAP-289: dependencias y entrega parcial
 
