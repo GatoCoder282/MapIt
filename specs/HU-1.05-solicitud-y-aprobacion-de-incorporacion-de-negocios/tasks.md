@@ -2,10 +2,10 @@
 
 ## MAP-261 — Modelo y migración
 
-- [ ] Crear la entidad de dominio `BusinessApplication` y sus estados con invariantes probadas.
-- [ ] Crear migración Flyway nueva para `business_application`, con restricciones, índices y RLS.
-- [ ] Actualizar `docs/db/mapit.dbml` en el mismo commit de la migración.
-- [ ] Probar migración y aislamiento desde el rol de runtime; ejecutar checks aplicables.
+- [x] Crear la entidad de dominio `BusinessApplication` y sus estados con invariantes probadas.
+- [x] Crear migración Flyway nueva para `business_application`, con restricciones, índices y RLS.
+- [x] Actualizar `docs/db/mapit.dbml` en el mismo commit de la migración.
+- [x] Probar migración y aislamiento desde el rol de runtime; ejecutar checks aplicables.
 
 ## MAP-262 — API pública y antiabuso
 
@@ -47,3 +47,8 @@
 ## Notas de ejecución
 
 - 20/11/2026: se confirmó en Jira que MAP-257 es la historia y MAP-261–267 son sus siete subtareas. La especificación está en la rama de historia. MAP-261 comienza con modelo y persistencia; la API y UI quedan en subtareas posteriores.
+- MAP-261: `BusinessApplication` inicia en `PENDING` bajo `platform`, normaliza el contacto y exige verificación antes de aprobar. La migración V34 añade la tabla, restricciones, índices, RLS y una referencia al tenant aprobado; el modelo DBML se actualizó en el mismo incremento.
+- Verificación local: 4 pruebas de dominio y 2 pruebas de integración con PostgreSQL 17 y `mapit_app` pasaron. La integración comprobó que sin tenant o desde `demo` no se leen ni alteran solicitudes de `platform`, y que la unicidad de solicitudes pendientes se aplica en la base.
+- La primera corrida de integración falló porque dos fixtures reutilizaban el mismo hash de verificación; se corrigieron los datos de prueba y la repetición pasó. Una primera corrida de `pnpm check` tuvo un timeout de 5 s en un test de check-in ajeno a MAP-261; ese test pasó aislado (2/2) y la segunda corrida completa de `pnpm check` terminó en verde: Console 371, Public Web 148, librerías 84, builds, contrato y backend/ArchUnit.
+- `pnpm be:it` completo pasó en 13 min 33 s: 184 tests de integración, 0 fallos, 0 errores y 0 omitidos.
+- Pendiente para la revisión final de la historia: CI del PR, captura de checks y E2E del flujo de solicitud, que todavía no existe en MAP-261.
