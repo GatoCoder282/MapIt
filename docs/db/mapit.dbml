@@ -10,7 +10,8 @@
 //
 //  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
 //  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5),
-//  `realtime_event_outbox` (V11, MAP-103/HUT-01), `audit_log` (V20, MAP-222)
+//  `realtime_event_outbox` (V11, MAP-103/HUT-01), `audit_log` (V20, MAP-222),
+//  `business_application` (V34, MAP-261)
 //  y el rol de runtime `mapit_app`
 //  (V9, MAP-175: NOSUPERUSER + NOBYPASSRLS;
 //  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
@@ -70,6 +71,35 @@ Table auth_attempt_limit {
     (tenant_id, expires_at)
   }
   Note: 'RLS en platform. Contadores de autenticación compartidos entre instancias.'
+}
+
+Table business_application {
+  id                      uuid        [pk, note: 'default gen_random_uuid()']
+  tenant_id               text        [not null, ref: > tenant.id, note: 'Siempre platform antes de la aprobación']
+  business_name           varchar(120) [not null]
+  vertical                text        [not null, note: 'RESTAURANT | NIGHTCLUB | EVENT_HALL | HOTEL']
+  location                varchar(200) [not null]
+  contact_name            varchar(120) [not null]
+  contact_email           varchar(254) [not null, note: 'Normalizado a minúsculas']
+  contact_phone           varchar(32)
+  status                  text        [not null, default: 'PENDING', note: 'PENDING | APPROVED | REJECTED']
+  verification_token_hash text
+  verification_expires_at timestamptz
+  contact_verified_at     timestamptz
+  decided_by              uuid        [note: 'FK compuesta (tenant_id, decided_by) a app_user']
+  decided_at              timestamptz
+  rejection_reason        varchar(500)
+  approved_tenant_id      text        [ref: > tenant.id]
+  created_at              timestamptz [not null]
+  updated_at              timestamptz [not null]
+
+  Indexes {
+    (tenant_id, id) [name: 'business_application_tenant_id_id_idx']
+    (tenant_id, status, created_at, id) [name: 'business_application_inbox_idx']
+    (tenant_id, contact_email, business_name) [name: 'business_application_pending_contact_name_uidx', unique, note: 'Parcial: solo PENDING; lower del nombre']
+    verification_token_hash [name: 'business_application_verification_hash_uidx', unique, note: 'Parcial: hash no nulo']
+  }
+  Note: 'HU-1.05 / MAP-261. RLS forzada; CHECK tenant_id = platform. Una solicitud PENDING no crea tenant ni usuario.'
 }
 
 // ── ESPACIO (CU-04 … CU-08) ──────────────────────────────────
