@@ -57,6 +57,8 @@ describe('Mi cuenta UI', () => {
     expect(host.querySelector('label[for="account-email"]')?.textContent).toContain('Correo');
     expect(email.getAttribute('aria-describedby')).toBe('email-hint');
     expect(host.querySelector('input[name="contactPhone"]')).toBeNull();
+    expect(host.querySelector('mapit-password-change-form')).toBeNull();
+    expect(host.querySelector('input[type="password"]')).toBeNull();
     expect(host.querySelector('select')).toBeNull();
     expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
     name.value = 'Ana Nueva';

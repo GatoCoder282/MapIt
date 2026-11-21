@@ -22,6 +22,19 @@ const VERTICAL_LABELS = {
 
 const STRINGS_ES = {
   myAccount: {
+    password: {
+      title: 'Cambiar contraseña',
+      unavailable: 'El cambio de contraseña todavía no está disponible.',
+      current: 'Contraseña actual',
+      next: 'Nueva contraseña',
+      confirm: 'Confirmar nueva contraseña',
+      byteLimit: 'Máximo 72 bytes UTF-8; los caracteres pueden ocupar varios bytes',
+      mismatch: 'La confirmación debe coincidir con la nueva contraseña.',
+      reused: 'Elige una contraseña distinta de la actual.',
+      currentInvalid: 'La contraseña actual debe tener entre 1 y 72 bytes UTF-8 válidos.',
+      clear: 'Limpiar campos',
+      submit: 'Cambiar contraseña',
+    },
     title: 'Mi cuenta',
     intro: 'Consulta los datos de tu cuenta y actualiza tu nombre visible.',
     fullName: 'Nombre visible',

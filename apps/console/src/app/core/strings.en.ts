@@ -1,6 +1,19 @@
 /* Catálogo estático generado para en; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_EN = {
   myAccount: {
+    password: {
+      title: 'Change password',
+      unavailable: 'Password changes are not available yet.',
+      current: 'Current password',
+      next: 'New password',
+      confirm: 'Confirm new password',
+      byteLimit: 'Maximum 72 UTF-8 bytes; characters may use more than one byte',
+      mismatch: 'Confirmation must match the new password.',
+      reused: 'Choose a password different from your current one.',
+      currentInvalid: 'The current password must contain 1–72 valid UTF-8 bytes.',
+      clear: 'Clear fields',
+      submit: 'Change password',
+    },
     title: 'My account',
     intro: 'View your account details and update your display name.',
     fullName: 'Display name',

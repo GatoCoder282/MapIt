@@ -101,6 +101,15 @@
 
 ## Notas de ejecución
 
+### 2026-11-21 — MAP-289: formulario preparado sin disponibilidad
+
+- Añadidos reglas, ViewModel y componente `PasswordChangeForm` dentro de my-account, sin imports entre features ni cambios de rutas/plantilla Mi cuenta. El componente no está montado y no se presenta al usuario; `canSubmit=false` fijo y submit impide el evento nativo, sin MyAccountService, HTTP, output de secretos ni resultado de éxito.
+- Reutiliza tokens y etiquetas de composición de STRINGS.login.passwordStrength, añade textos es/en/ja-JP. Campos password/current-password/new-password, labels y errores asociados. Valida composición, UTF-8, reutilización literal y confirmación; el backend valida hash/política de forma autoritativa. Se conservan valores exactos sin normalizar.
+- Secretos solo en Signals locales/inputs mientras existe el componente de preparación. Ámbito de sesión/usuario/tenant/rol y flag limpia/enmascara inmediatamente; destrucción/limpiar elimina referencias. No usa AuthSession/localStorage/sessionStorage, no promete borrado criptográfico de strings inmutables de JavaScript/JVM ni controla gestores de contraseñas del navegador.
+- Suite focalizada **19/19**: reglas 8, store 5, formulario 2 y Mi cuenta 4 (comprueba ausencia del formulario nuevo en la pantalla actual). Pruebas de envío forzado sin HTTP, cero escrituras de storage, confirmación, tres idiomas, pérdida de ámbito/destrucción, UTF-8 72/73 bytes y Unicode BMP. Responsive/lector de pantalla real no ejecutados.
+- `pnpm.cmd fe:test` completo **676/676**: Console 424, Public Web 148, libs 104. `pnpm.cmd fe:typecheck`, `pnpm.cmd fe:lint` global (cero warnings), Prettier y diff correctos. `ng build console` correcto; mantiene avisos de presupuestos (bundle inicial 789,70 kB / 600 kB), estilos ajenos y CommonJS. Los tests mantienen warnings previos NG0956 y compilación parcial/completa.
+- `pnpm.cmd api:lint` y `api:check` correctos, con los dos warnings preexistentes health/demo. Contrato/password planned no modificado, generación existente disponible y sincronizada; no se versionan salidas generadas ni se crea un cliente/password transport alternativo.
+
 ### 2026-11-21 — MAP-289: preparación backend independiente
 
 - Comando redactado `OwnPasswordChange`, razones constantes en `OwnPasswordChangeFailure`, validador que reutiliza PasswordPolicy/PasswordVerifier y lector cerrado de payload. Sin consultas de identidad por email/ID cliente, escritura/hash nuevo, controlador ni revocación. El futuro llamador debe aportar el hash propio confiable después de autenticación/eligibilidad/RLS y limitar antes de BCrypt; el validador no acredita autoridad.

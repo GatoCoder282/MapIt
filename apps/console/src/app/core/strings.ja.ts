@@ -1,6 +1,19 @@
 /* Catálogo estático generado para ja; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_JA = {
   myAccount: {
+    password: {
+      title: 'パスワードの変更',
+      unavailable: 'パスワードの変更はまだ利用できません。',
+      current: '現在のパスワード',
+      next: '新しいパスワード',
+      confirm: '新しいパスワードの確認',
+      byteLimit: 'UTF-8で最大72バイト。文字によって複数バイトを使用します',
+      mismatch: '確認用パスワードを新しいパスワードと一致させてください。',
+      reused: '現在とは異なるパスワードを選んでください。',
+      currentInvalid: '現在のパスワードは、有効なUTF-8で1〜72バイトにしてください。',
+      clear: '入力を消去',
+      submit: 'パスワードを変更',
+    },
     title: 'マイアカウント',
     intro: 'アカウント情報の確認と表示名の変更ができます。',
     fullName: '表示名',
