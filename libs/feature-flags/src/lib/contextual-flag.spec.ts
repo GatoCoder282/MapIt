@@ -95,7 +95,7 @@ it.each([{}, { toggles: [] }, { toggles: [{ name: key, enabled: 'true' }] }])(
   },
 );
 
-it('ignora respuestas antiguas tras destruir el contexto o vencer el timeout', async () => {
+it('ignora una respuesta ON después del timeout', async () => {
   let resolve!: (value: ReturnType<typeof response>) => void;
   vi.stubGlobal(
     'fetch',
@@ -115,5 +115,80 @@ it('ignora respuestas antiguas tras destruir el contexto o vencer el timeout', a
   watched.destroy();
   resolve(response(true));
   await vi.advanceTimersByTimeAsync(20000);
+  expect(watched.enabled()).toBe(false);
+});
+
+it('destruye el contexto antes de responder y aísla el nuevo tenant', async () => {
+  const pending = new Map<string, (value: ReturnType<typeof response>) => void>();
+  const fetchMock = vi.fn((url: string, options?: RequestInit) => {
+    const tenant = new URL(url).searchParams.get('properties[tenantId]');
+    if (!tenant) return Promise.resolve(response(true)); // Evaluación global independiente.
+    return new Promise<ReturnType<typeof response>>((resolve) => {
+      pending.set(tenant, resolve);
+      expect(options?.signal?.aborted).toBe(false);
+    });
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  const flags = setup();
+  const previous = flags.watchInContext(key, { tenantId: 'tenant-a' });
+  const oldSignal = (fetchMock.mock.calls[1]![1] as RequestInit).signal;
+  previous.destroy();
+  expect(oldSignal?.aborted).toBe(true);
+  const current = flags.watchInContext(key, { tenantId: 'tenant-b' });
+  pending.get('tenant-a')!(response(true));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(previous.enabled()).toBe(false);
+  expect(current.enabled()).toBe(false);
+  expect(current.ready()).toBe(false);
+  pending.get('tenant-b')!(response(false));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(current.ready()).toBe(true);
+  expect(current.enabled()).toBe(false);
+});
+
+it('ON → fallo → OFF → ON recupera solo la evaluación vigente', async () => {
+  let state: 'on' | 'off' | 'missing' | 'failure' = 'on';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => {
+      if (state === 'failure') return Promise.reject(new Error('offline'));
+      return Promise.resolve(
+        state === 'missing'
+          ? { ok: true, json: () => Promise.resolve({ toggles: [] }) }
+          : response(state === 'on'),
+      );
+    }),
+  );
+  const watched = setup().watchInContext(key, { tenantId: 'tenant-a' });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(watched.enabled()).toBe(true);
+  for (const value of ['failure', 'on', 'missing', 'on', 'off', 'on'] as const) {
+    state = value;
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(watched.enabled()).toBe(value === 'on');
+    expect(watched.ready()).toBe(true);
+  }
+});
+
+it('un sondeo bloqueado caduca el último ON antes de aceptar un fetch tardío', async () => {
+  let resolve!: (value: ReturnType<typeof response>) => void;
+  let blocked = false;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() =>
+      blocked
+        ? new Promise<ReturnType<typeof response>>((done) => {
+            resolve = done;
+          })
+        : Promise.resolve(response(true)),
+    ),
+  );
+  const watched = setup().watchInContext(key, { tenantId: 'tenant-a' });
+  await vi.advanceTimersByTimeAsync(0);
+  blocked = true;
+  await vi.advanceTimersByTimeAsync(15000);
+  expect(watched.enabled()).toBe(false);
+  resolve(response(true));
+  await vi.advanceTimersByTimeAsync(0);
   expect(watched.enabled()).toBe(false);
 });

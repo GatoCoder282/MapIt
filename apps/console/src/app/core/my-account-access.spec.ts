@@ -82,4 +82,27 @@ describe('MyAccountAccess', () => {
     expect(evaluations[0]!.destroy).toHaveBeenCalledOnce();
     expect(watch).toHaveBeenCalledOnce();
   });
+
+  it.each(['id', 'tenantId'] as const)(
+    'cambiar %s limpia la evaluación sin depender del logout',
+    (field) => {
+      const access = TestBed.inject(MyAccountAccess);
+      TestBed.tick();
+      evaluations[0]!.enabled.set(true);
+      evaluations[0]!.ready.set(true);
+      user.update((value) => value && { ...value, [field]: 'new-value' });
+      expect(access.state()).toEqual({ ready: false, enabled: false });
+      TestBed.tick();
+      expect(evaluations[0]!.destroy).toHaveBeenCalledOnce();
+      expect(watch).toHaveBeenLastCalledWith('mapit.s6.my-account', {
+        tenantId: field === 'tenantId' ? 'new-value' : 'tenant-a',
+      });
+      evaluations[0]!.enabled.set(true);
+      evaluations[0]!.ready.set(true);
+      expect(access.enabled()).toBe(false);
+      evaluations[1]!.ready.set(true);
+      evaluations[1]!.enabled.set(true);
+      expect(access.enabled()).toBe(true);
+    },
+  );
 });

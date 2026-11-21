@@ -65,6 +65,23 @@ class OwnProfileServiceTest {
     }
 
     @Test
+    void rollbackAndRecoveryKeepProfilesAndTenantIsolation() {
+        profiles.add(a, "A"); profiles.add(b, "B"); profiles.add(c, "C");
+        service.updateFullName(a, "Confirmado");
+        flags.enabled = false;
+        assertFailure(() -> service.read(a), Reason.DISABLED);
+        assertFailure(() -> service.updateFullName(a, "No guardar"), Reason.DISABLED);
+        flags.enabled = true;
+        flags.unavailable = true;
+        assertFailure(() -> service.updateFullName(a, "No guardar"), Reason.DISABLED);
+        flags.unavailable = false;
+        assertThat(service.read(a).fullName()).isEqualTo("Confirmado");
+        assertThat(service.read(b).fullName()).isEqualTo("B");
+        assertThat(service.read(c).fullName()).isEqualTo("C");
+        assertThat(profiles.writes).isEqualTo(1);
+    }
+
+    @Test
     void sameUserIdInDifferentTenantAndObsoleteRoleDoNotResolve() {
         profiles.add(a, "A");
         var otherTenant = new AuthenticatedPrincipal(a.id(), c.tenantId(), a.email(), a.role());

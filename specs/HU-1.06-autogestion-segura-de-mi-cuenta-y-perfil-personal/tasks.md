@@ -99,6 +99,15 @@
 
 ## Notas de ejecución
 
+### 2026-11-21 — MAP-291: cobertura adicional y regresión
+
+- Frontend nuevo: cambio de usuario/tenant sin depender del logout, destrucción antes de responder (aborta petición y aísla siguiente tenant), ON→fallo/ausencia/OFF→ON, sondeo bloqueado tras ON, rollback durante PATCH con resultado tardío descartado y nueva lectura al recuperar. Rutas reales probadas sin autenticación para ambas URLs y staff denegado en `/admin/profile` incluso ON. Se conservan pruebas existentes OFF/ON, sesión nueva con la misma identidad, navegación, perfil readonly y aislamiento del store.
+- Backend nuevo: ausencia/JWT alterado/expirado tanto OFF como ON, rol de negocio con tenant platform denegado 403 tanto GET como PATCH, ciclo rollback/recuperación conservando los tres perfiles propios. Pruebas en memoria; no se atribuye a esos dobles evidencia de PostgreSQL/RLS real.
+- `pnpm.cmd fe:test`: **661/661** (Console 409, Public Web 148, libs 104). Console incluye 6 de MyAccountAccess, 16 de MyAccountStore y 7 de rutas; watcher contextual 10. Warning existente NG0956 de negocios en Public Web y compilación parcial/completa en libs, sin fallos.
+- Gradle: identity-application **31/31**, incluido OwnProfileServiceTest **16/16**; bootstrap focalizado **19/19** (MyAccountSecurityTest **7/7**, ArchitectureTest **12/12**); flags platform **11/11**. Identity-infrastructure **63/63**, validada UP-TO-DATE por Gradle sin volver a ejecutarse porque no cambió. Se distingue esa reutilización de ejecución nueva. No se ejecuta `be:test` global porque contiene contextos de aplicación ajenos al alcance; no hay servidor Boot ni Docker.
+- Comandos backend: `node tools/scripts/gradle.mjs :modules:identity:identity-application:test :modules:identity:identity-infrastructure:test :bootstrap:test --tests 'com.mapit.identity.MyAccountSecurityTest' --tests 'com.mapit.architecture.ArchitectureTest'`; pruebas de flags por su paquete en platform-infrastructure y SpotlessJavaCheck de los tres módulos modificados. BUILD SUCCESSFUL. Java/Gradle usan la caché de usuario indicada en la nota anterior.
+- `pnpm.cmd fe:typecheck`, `pnpm.cmd fe:lint` global con cero warnings, `node --test tools/scripts/new-flag.test.mjs` **5/5**, `pnpm.cmd api:lint` y `pnpm.cmd api:check`: correctos. API lint conserva únicamente los warnings preexistentes health/demo. Contrato y cliente generado sin cambios; no se necesita regenerarlos en este incremento.
+
 ### 2026-11-21 — auditoría MAP-291 antes de cambios
 
 - Árbol limpio en la rama indicada, 11 commits conservados; `main/origin/main` siguen en `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. Jira MAP-291 consultado: **S6 — Feature toggle Mi cuenta Unleash y rollback**, requiere rollout tenant/entorno, fallback, pruebas y QA antes de Listo; estado Por hacer. No se cambia Jira.

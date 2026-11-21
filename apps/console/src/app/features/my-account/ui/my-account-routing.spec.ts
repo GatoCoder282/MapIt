@@ -93,10 +93,20 @@ describe('rutas reales de Mi cuenta', () => {
     return { harness, router: TestBed.inject(Router), enabled, ready, read };
   }
 
-  it('rechaza acceso directo sin autenticación aunque la flag esté ON', async () => {
-    const { harness, router, read } = await setup({ enabled: true, authenticated: false });
-    await harness.navigateByUrl('/my-account');
-    expect(router.url).toBe('/login');
+  it.each(['/my-account', '/admin/profile'])(
+    'rechaza acceso directo a %s sin autenticación aunque la flag esté ON',
+    async (url) => {
+      const { harness, router, read } = await setup({ enabled: true, authenticated: false });
+      await harness.navigateByUrl(url);
+      expect(router.url).toBe('/login');
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rol staff no puede usar /admin/profile aunque la flag esté ON', async () => {
+    const { harness, router, read } = await setup({ enabled: true });
+    await harness.navigateByUrl('/admin/profile');
+    expect(router.url).toBe('/home');
     expect(read).not.toHaveBeenCalled();
   });
 

@@ -77,13 +77,30 @@ class MyAccountSecurityTest {
 
     @Test
     void unauthenticatedInvalidAndExpiredJwtAreRejectedEvenWhenFlagOff() {
+        for (boolean enabled : new boolean[] {false, true}) {
+            context.getBean(AtomicBoolean.class).set(enabled);
         client.get().uri("/api/v1/me").exchange().expectStatus().isUnauthorized();
         client.patch().uri("/api/v1/me").contentType(MediaType.APPLICATION_JSON).body("{\"fullName\":\"Nombre\"}")
                 .exchange().expectStatus().isUnauthorized();
         read("altered.jwt.value").expectStatus().isUnauthorized();
         var expired = new JjwtTokenService(SECRET, "mapit-profile-test", 15, Clock.fixed(NOW.minusSeconds(3600), ZoneOffset.UTC));
         read(token(expired, A)).expectStatus().isUnauthorized();
+        }
         verify(repository, never()).findOwn(any());
+    }
+
+    @Test
+    void flagDoesNotGrantPlatformPrivilegesInEitherState() {
+        var invalidRole = new AuthenticatedPrincipal(A.id(), TenantId.of("platform"), A.email(), UserRole.ADMIN);
+        for (boolean enabled : new boolean[] {false, true}) {
+            context.getBean(AtomicBoolean.class).set(enabled);
+            read(token(invalidRole)).expectStatus().isForbidden();
+            client.patch().uri("/api/v1/me").header("Authorization", "Bearer " + token(invalidRole))
+                    .contentType(MediaType.APPLICATION_JSON).body(Map.of("fullName", "Intruso"))
+                    .exchange().expectStatus().isForbidden();
+        }
+        verify(repository, never()).findOwn(any());
+        verify(repository, never()).updateOwnFullName(any(), anyString());
     }
 
     @Test

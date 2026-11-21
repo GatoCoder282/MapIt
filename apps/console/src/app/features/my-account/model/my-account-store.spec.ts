@@ -179,4 +179,25 @@ describe('MyAccountStore', () => {
     store.load();
     expect(api.read).toHaveBeenCalledTimes(1);
   });
+
+  it('rollback durante PATCH descarta el resultado y ON vuelve a leer el valor persistido', () => {
+    read.next(profile);
+    store.setName('En curso');
+    store.save();
+    enabled.set(false);
+    expect(store.profile()).toBeNull();
+    write.next({ ...profile, fullName: 'En curso' });
+    expect(updateFullName).not.toHaveBeenCalled();
+    TestBed.tick();
+    expect(store.saved()).toBe(false);
+    read = new Subject();
+    enabled.set(true);
+    TestBed.tick();
+    expect(store.loading()).toBe(true);
+    expect(store.draft()).toBe('');
+    read.next({ ...profile, fullName: 'Valor realmente persistido' });
+    expect(store.draft()).toBe('Valor realmente persistido');
+    expect(store.saved()).toBe(false);
+    expect(store.dirty()).toBe(false);
+  });
 });
