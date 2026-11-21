@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +35,8 @@ import com.mapit.identity.domain.AccessTokenIssuer;
 import com.mapit.identity.domain.AuthenticatedUser;
 import com.mapit.identity.domain.UserRole;
 import com.mapit.platform.domain.AdminInvitationEmailPort;
+import com.mapit.platform.domain.BusinessApplicationDecisionEmailPort;
+import com.mapit.platform.domain.BusinessApplicationStatus;
 import com.mapit.shared.tenant.TenantId;
 
 /** MAP-264: la bandeja usa RLS de platform y autorización real por rol. */
@@ -62,6 +67,7 @@ class BusinessApplicationReviewIntegrationTest {
   @Autowired PlatformTransactionManager transactions;
   @Autowired AccessTokenIssuer tokens;
   @MockitoBean AdminInvitationEmailPort invitationEmail;
+  @MockitoBean BusinessApplicationDecisionEmailPort decisionEmail;
 
   @Test
   void solo_super_admin_ve_listado_filtrado_y_detalle_sin_hash() {
@@ -98,6 +104,14 @@ class BusinessApplicationReviewIntegrationTest {
     http.get().uri("/api/v1/business-applications/" + UUID.randomUUID())
         .header("Authorization", "Bearer " + superAdmin)
         .exchange().expectStatus().isNotFound();
+
+    new TransactionTemplate(transactions).executeWithoutResult(tx -> {
+      jdbc.queryForObject("select set_config('app.tenant_id', 'foreign-business', true)", String.class);
+      assertThat(jdbc.queryForObject("select count(*) from business_application where id = ?",
+          Integer.class, id)).isZero();
+      assertThat(jdbc.update("update business_application set location = 'alterada' where id = ?", id))
+          .isZero();
+    });
   }
 
   @Test
@@ -140,6 +154,10 @@ class BusinessApplicationReviewIntegrationTest {
         .body("{\"reason\":\"Datos insuficientes\"}").exchange().expectStatus().isOk();
     http.post().uri(rejection).header("Authorization", authorization)
         .body("{\"reason\":\"Otro motivo\"}").exchange().expectStatus().isEqualTo(409);
+    verify(decisionEmail, times(1)).send("owner-" + approvedId + "@example.test",
+        "Hotel " + approvedId, BusinessApplicationStatus.APPROVED);
+    verify(decisionEmail, times(1)).send("owner-" + rejectedId + "@example.test",
+        "Hotel " + rejectedId, BusinessApplicationStatus.REJECTED);
 
     new TransactionTemplate(transactions).executeWithoutResult(tx -> {
       jdbc.queryForObject("select set_config('app.tenant_id', 'platform', true)", String.class);
@@ -229,6 +247,8 @@ class BusinessApplicationReviewIntegrationTest {
       assertThat(jdbc.queryForObject("select count(*) from audit_log where resource_id = ?",
           Integer.class, id)).isZero();
     });
+    verify(decisionEmail, never()).send("failure-" + id + "@example.test",
+        "Hotel Rollback", BusinessApplicationStatus.APPROVED);
   }
 
   private static void approveConcurrently(RestTestClient http, String bearer, UUID id, CountDownLatch start) {

@@ -6,8 +6,11 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.mapit.platform.domain.BusinessApplication;
+import com.mapit.platform.domain.BusinessApplicationDecisionEmailPort;
 import com.mapit.platform.domain.BusinessApplicationRepository;
 import com.mapit.platform.domain.BusinessApplicationStatus;
 import com.mapit.platform.domain.PlatformApplicationScope;
@@ -29,10 +32,12 @@ public class DecideBusinessApplication {
   private final AuditEventRecorder audit;
   private final ActorContext actors;
   private final Clock clock;
+  private final BusinessApplicationDecisionEmailPort decisionEmail;
 
   public DecideBusinessApplication(BusinessApplicationRepository applications,
       PlatformApplicationScope scope, TenantService tenants, TenantRepository tenantRepository,
-      AuditEventRecorder audit, ActorContext actors, Clock clock) {
+      AuditEventRecorder audit, ActorContext actors, Clock clock,
+      BusinessApplicationDecisionEmailPort decisionEmail) {
     this.applications = applications;
     this.scope = scope;
     this.tenants = tenants;
@@ -40,6 +45,7 @@ public class DecideBusinessApplication {
     this.audit = audit;
     this.actors = actors;
     this.clock = clock;
+    this.decisionEmail = decisionEmail;
   }
 
   @Transactional
@@ -68,6 +74,7 @@ public class DecideBusinessApplication {
         clock.instant(), AuditResourceType.BUSINESS_APPLICATION, id,
         AuditEventType.BUSINESS_APPLICATION_APPROVED,
         Map.of("approvedTenantId", tenant.id().value())));
+    notifyAfterCommit(decided);
     return decided;
   }
 
@@ -91,7 +98,20 @@ public class DecideBusinessApplication {
     audit.record(new AuditEvent(UUID.randomUUID(), BusinessApplication.PLATFORM, actor,
         clock.instant(), AuditResourceType.BUSINESS_APPLICATION, id,
         AuditEventType.BUSINESS_APPLICATION_REJECTED, Map.of("status", "REJECTED")));
+    notifyAfterCommit(decided);
     return decided;
+  }
+
+  private void notifyAfterCommit(BusinessApplication decided) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      throw new IllegalStateException("La notificación requiere una transacción activa");
+    }
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+      @Override
+      public void afterCommit() {
+        decisionEmail.send(decided.contactEmail(), decided.businessName(), decided.status());
+      }
+    });
   }
 
   private BusinessApplication locked(UUID id) {
