@@ -98,6 +98,16 @@ class SubmitBusinessApplicationTest {
   }
 
   private static class MemoryRepository implements BusinessApplicationRepository {
+    @Override
+    public com.mapit.platform.domain.BusinessApplicationPage search(
+        String search, com.mapit.platform.domain.BusinessApplicationStatus status, int page, int size) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public java.util.Optional<BusinessApplication> findById(java.util.UUID id) {
+      return java.util.Optional.empty();
+    }
     BusinessApplication application;
     Instant expiresAt;
     String tokenHash;

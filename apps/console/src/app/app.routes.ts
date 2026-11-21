@@ -48,6 +48,20 @@ export const routes: Routes = [
           import('./features/administration/tenants/ui/tenant-list').then((m) => m.TenantList),
       },
       {
+        path: 'business-applications',
+        loadComponent: () =>
+          import('./features/administration/business-applications/ui/business-application-list').then(
+            (m) => m.BusinessApplicationList,
+          ),
+      },
+      {
+        path: 'business-applications/:id',
+        loadComponent: () =>
+          import('./features/administration/business-applications/ui/business-application-detail').then(
+            (m) => m.BusinessApplicationDetailPage,
+          ),
+      },
+      {
         path: 'tenants/new',
         loadComponent: () =>
           import('./features/administration/tenant-registration/ui/tenant-registration').then(

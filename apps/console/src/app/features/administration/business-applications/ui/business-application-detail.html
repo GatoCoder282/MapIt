@@ -1,0 +1,34 @@
+<main class="requests">
+  <a routerLink="/admin/business-applications">{{ copy.back }}</a>
+  <h1>{{ copy.detail }}</h1>
+  @if (store.loading()) {
+    <p role="status">{{ copy.loading }}</p>
+  }
+  @if (store.error()) {
+    <p role="alert">{{ copy.notFound }}</p>
+  }
+  @if (store.selected(); as item) {
+    <dl>
+      <dt>{{ copy.business }}</dt>
+      <dd>{{ item.businessName }}</dd>
+      <dt>{{ copy.vertical }}</dt>
+      <dd>{{ item.vertical }}</dd>
+      <dt>{{ copy.location }}</dt>
+      <dd>{{ item.location }}</dd>
+      <dt>{{ copy.contact }}</dt>
+      <dd>{{ item.contactName }}</dd>
+      <dt>{{ copy.email }}</dt>
+      <dd>{{ item.contactEmail }}</dd>
+      @if (item.contactPhone) {
+        <dt>{{ copy.phone }}</dt>
+        <dd>{{ item.contactPhone }}</dd>
+      }
+      <dt>{{ copy.status }}</dt>
+      <dd>
+        {{ item.status === 'PENDING' ? copy.pending : item.status === 'APPROVED' ? copy.approved : copy.rejected }}
+      </dd>
+      <dt>{{ copy.verified }}</dt>
+      <dd>{{ item.contactVerifiedAt ? copy.yes : copy.no }}</dd>
+    </dl>
+  }
+</main>

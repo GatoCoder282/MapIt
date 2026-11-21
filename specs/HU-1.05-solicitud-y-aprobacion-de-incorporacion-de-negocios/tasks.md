@@ -20,8 +20,8 @@
 
 ## MAP-264 — Bandeja Super Admin
 
-- [ ] Crear contrato y API de listado, filtros y detalle protegidos por rol.
-- [ ] Crear pantalla Console y probar autorización y ausencia de fugas entre ámbitos.
+- [x] Crear contrato y API de listado, filtros y detalle protegidos por rol.
+- [x] Crear pantalla Console y probar autorización y ausencia de fugas entre ámbitos.
 
 ## MAP-265 — Decisión y onboarding
 
@@ -57,3 +57,5 @@
 - Dos intentos de `pnpm check` terminaron rojos únicamente por límites de 5 s en pruebas existentes de consola bajo carga: `tenants-table.spec.ts` en el primero y `staff-shell.spec.ts` en el segundo. Cada archivo pasó al repetirse aislado (16/16 y 17/17). Formato, lint, tipos, builds, contrato y backend/ArchUnit pasaron en ambos intentos. La suite completa deberá quedar verde en CI antes de revisión del PR final.
 - MAP-263: el formulario de la web pública consume el cliente OpenAPI generado, valida los campos antes de enviar y muestra confirmación neutra, error y límite de solicitudes. La entrada desde Negocios aparece con la flag ON; con OFF se conserva la información de acceso por invitación. El enlace de verificación elimina el token de la URL antes de invocar la API.
 - MAP-263: pruebas específicas de estado y visibilidad 6/6. `pnpm check` completo en verde: Console 371, Public Web 152, librerías 85, builds, contrato y backend/ArchUnit.
+- MAP-264: el contrato y cliente generados agregan listado filtrable y detalle sin exponer hashes de tokens. El backend consulta exclusivamente bajo RLS de `platform` y exige SUPER_ADMIN antes de llegar al controlador. La consola tiene bandeja, filtros, paginación y vista de detalle en `/admin/business-applications`.
+- MAP-264: prueba de integración con PostgreSQL 17 y JWT real pasó (401 sin sesión, 403 para ADMIN, 200 para SUPER_ADMIN, 404 para ID inexistente; respuesta sin hash). Prueba del store, build de consola, `pnpm be:test`, `pnpm api:lint` y tipos pasaron. `pnpm check` completo terminó en verde: formato, lint, tipos, pruebas y builds frontend, contrato API y backend/ArchUnit.

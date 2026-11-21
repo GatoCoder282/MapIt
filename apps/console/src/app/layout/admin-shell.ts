@@ -47,6 +47,11 @@ export class AdminShell {
   protected readonly navItems = computed<readonly NavItem[]>(() => [
     { label: STRINGS.shell.nav.dashboard, route: '/admin/dashboard', icon: 'dashboard' },
     { label: STRINGS.shell.nav.tenants, route: '/admin/tenants', icon: 'tenants' },
+    {
+      label: STRINGS.shell.nav.businessApplications,
+      route: '/admin/business-applications',
+      icon: 'tenants',
+    },
     { label: STRINGS.shell.nav.settings, route: '/admin/settings', icon: 'settings' },
     ...(this.myAccountAccess.enabled()
       ? [{ label: STRINGS.myAccount.title, route: '/admin/profile', icon: 'profile' }]
