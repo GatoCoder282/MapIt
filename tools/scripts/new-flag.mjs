@@ -29,10 +29,10 @@ if (!clave) {
       `  Tipos: ${TIPOS.join(', ').toLowerCase()}`,
   );
 }
-if (!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(clave)) {
+if (!/^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/.test(clave)) {
   die(
     `Clave inválida: "${clave}"`,
-    `  Convención del proyecto: <dominio>.<feature>, todo en minúsculas.\n  Ejemplo: payments.qr`,
+    `  Convención: dos o más segmentos en minúsculas separados por puntos.\n  Ejemplo: mapit.s6.notification-center`,
   );
 }
 if (!TIPOS.includes(tipoArg)) {
@@ -60,16 +60,15 @@ let java = readFileSync(rutaJava, 'utf8');
 if (java.includes(`"${clave}"`)) {
   log.warn(`la flag ya existe en el enum de Java`);
 } else {
-  const ultima = java.lastIndexOf('");\n');
-  java =
-    java.slice(0, ultima + 3) +
-    `\n\n  /** TODO: describir para qué es esta flag y a qué CU pertenece. */\n` +
-    `  ${constante}("${clave}", Tipo.${tipoArg}, ${porDefecto});` +
-    java.slice(ultima + 3);
-  // El último elemento de un enum de Java termina en `;` y los anteriores en `,`.
-  // Al insertar una entrada nueva al final, la que antes cerraba el enum debe
-  // pasar de `;` a `,`.
-  java = java.replace(/\);\n\n {2}\/\*\* TODO/, '),\n\n  /** TODO');
+  const ultima = /^([ \t]+[A-Z][A-Z0-9_]*\("[^"\r\n]+",\s*Tipo\.[A-Z_]+,\s*(?:true|false)\));\r?$/m;
+  if (!ultima.test(java)) die('No se encontró el cierre del catálogo Java; no se modifica.');
+  java = java.replace(
+    ultima,
+    (_, entrada) =>
+      `${entrada},\n\n` +
+      `  /** TODO: describir para qué es esta flag y a qué CU pertenece. */\n` +
+      `  ${constante}("${clave}", Tipo.${tipoArg}, ${porDefecto});`,
+  );
   writeFileSync(rutaJava, java, 'utf8');
   log.ok('añadida al enum de Java');
 }
