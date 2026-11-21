@@ -74,11 +74,13 @@
 ## 7. MAP-291 — S6 — Feature toggle Mi cuenta Unleash y rollback
 
 - [x] Adaptar y probar el generador para claves de varios segmentos, preservando dos segmentos, flags existentes, idempotencia y LF/CRLF.
-- [x] Registrar `mapit.s6.my-account` OFF en Java, TS y bootstrap; el gate funcional no forma parte de esta etapa.
+- [x] Registrar `mapit.s6.my-account` OFF en Java, TS y bootstrap, sin duplicar la clave.
 - [x] Usar `FeatureFlagPort.isEnabledFor` en GET/PATCH con tenant autenticado; elegibilidad/autorización independiente tanto OFF como ON. Password pendiente de MAP-289.
-- [ ] Implementar contexto del proxy desde Console sin enviar JWT staff, limpiar al cambiar sesión y descartar respuestas antiguas.
-- [ ] Cubrir valor inicial pendiente, flag ausente, proveedor sin configurar, OFF/ON, tenant/entorno y fallo después de ON.
-- [ ] Definir y probar antigüedad de caché y propagación del rollback frontend/backend; no alterar otras flags incidentalmente.
+- [x] Implementar contexto del proxy desde Console sin enviar JWT staff, limpiar al cambiar sesión y descartar respuestas antiguas.
+- [x] Cubrir localmente valor inicial pendiente, flag ausente, proveedor sin configurar, OFF/ON, tenant/sesión y fallo después de ON.
+- [x] Definir y probar caducidad local del backend (30 s), callbacks seguros de snapshot y timeout/rollback frontend, sin alterar otras flags.
+- [x] Documentar procedimiento selectivo OFF/ON, recuperación y límites de propagación, sin pérdida de datos.
+- [ ] Validar entorno/credenciales reales y medir propagación SDK/proxy/navegador, incluida caché ON del proxy al fallar upstream.
 - [ ] Registrar la flag real en Unleash y probar rollout cuando se autorice infraestructura; retiro/issue si se acuerda tipo release.
 - [ ] Ensayar rollback conservando perfiles, hash actual, login/usuarios y revocaciones previas; sin migración destructiva ni downgrade inseguro.
 
@@ -98,6 +100,14 @@
 - [ ] Realizar Squash and Merge solo en la entrega posterior autorizada. No hay push, PR ni merge en la etapa documental.
 
 ## Notas de ejecución
+
+### 2026-11-21 — MAP-291: runbook y cierre pendiente de QA
+
+- `spec.md` §5.1 y `plan.md` §8 describen la política implementada, TTL, semántica de snapshot/304, límites de temporizadores y procedimiento selectivo de rollback/recuperación. Se corrigen notas de plan/tareas que todavía describían gate/contexto como no implementados. Los criterios de aceptación globales CA-07/CA-12 no se marcan completos por pruebas locales.
+- Runbook: capturar clave/proyecto/entorno/estrategias; OFF solo de Mi cuenta en ese entorno (o excluir tenant de todas las estrategias OR con verificación); comprobar ambos shells y GET/PATCH; preservar datos, credenciales y operaciones previas; recuperar con snapshot/evaluación nuevos y relectura. No ejecutar seed global, modificar JSON como supuesto cambio en caliente, apagar proveedor global ni revertir esquema.
+- Pendientes explícitos: estado remoto/metadata y limpieza de release, restricciones reales y `platform`, alineación de credenciales backend/proxy, caché upstream, latencias/backoff, caída/recuperación de servidor/proxy, PostgreSQL/RLS/persistencia, E2E y regresión del negocio con stack. El navegador no puede distinguir un ON cacheado por un proxy que aún responde 200; hasta validar ese escenario no se garantiza ocultamiento de extremo a extremo. El gate backend cierra nuevas solicitudes al fallar/caducar, independientemente de que un enlace permanezca temporalmente visible.
+- No se iniciaron aplicación, Docker, dev ni setup. No hay nuevas migraciones, implementación de contraseña, MAP-286, cambios de autenticación/JWT, push/PR/merge/squash ni escrituras en Jira/Unleash. MAP-238 se conserva como dependencia pendiente según el contexto del solicitante; su estado remoto no se vuelve a consultar en este incremento.
+- Para cerrar MAP-291: completar QA anterior, resolver cualquier divergencia del proxy/SDK real y adjuntar evidencia de rollout/rollback y Checks del PR futuro. Para cerrar MAP-285: completar persistencia pendiente de MAP-287 y UI de preferencias, MAP-289 sobre MAP-238 revisado/integrado, QA multi-tenant/MAP-290, alcance completo SUPER_ADMIN/MAP-314 y entrega final. No se declara Listo sin esas verificaciones.
 
 ### 2026-11-21 — MAP-291: cobertura adicional y regresión
 

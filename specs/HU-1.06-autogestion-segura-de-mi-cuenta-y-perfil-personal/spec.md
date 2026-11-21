@@ -38,6 +38,7 @@ Fuentes consultadas el 2026-11-21: Jira, código de `main`, rama remota de MAP-2
 - U04: en esta etapa solo documentación y un commit local, sin push, PR, merge, aplicación, Docker, setup ni dev. `main` no se modifica.
 - U05: etapa de contrato/registro autorizada después de `0d11dfa`: tres operaciones OpenAPI y flag OFF con commits separados, sin endpoints funcionales ni dependencias de autenticación nuevas. U04 describe el límite de la entrega inicial, no impide estos cambios posteriores.
 - U06: incremento MAP-288 autorizado sobre los siete commits existentes: pantalla de nombre/correo reales y PATCH de nombre, misma rama, sin contraseña ni campos no persistibles. Conservar el idioma local de navegador y comprobar UI/guard/navegación sin iniciar aplicación o Docker. D05 se concreta mediante una sola feature en ambos shells; la aceptación visual/E2E queda pendiente.
+- U07: incremento MAP-291 autorizado sobre los once commits existentes: auditar y completar registro/fallo cerrado, aislamiento de evaluaciones y rollback, con pruebas y runbook. Sin activar servicios/flags remotas, cambiar JWT/autenticación ni implementar otras historias. Los límites locales de caché y callbacks descritos abajo son decisiones técnicas del incremento, no valores literales de Jira.
 
 ### 1.3 Propuestas técnicas pendientes de validación
 
@@ -95,6 +96,15 @@ Para la etapa de contrato se concretan D01/D02 en `openapi.yaml`: `fullName`, `c
 - Cambio concurrente de identidad, logout o respuesta tardía: no mostrar ni persistir datos de la cuenta anterior en la nueva sesión.
 - Fallo de almacenamiento del navegador: informar conforme al comportamiento existente; no convertir una persistencia fallida en éxito remoto ficticio.
 - Flag OFF o evaluación no fiable: aplicar fallback acordado, ocultar la entrada nueva y bloquear la superficie nueva sin afectar login/usuarios existentes. La autorización sigue ejecutándose independientemente de la flag.
+
+### 5.1 Política local de disponibilidad y rollback — MAP-291
+
+- Registro único `mapit.s6.my-account` OFF en enum Java, catálogo TS y bootstrap Unleash versionado. No se ha verificado ni cambiado su estado remoto. Tipo release, retiro previsto 2027-02-21; issue específico de retirada y rollout real pendientes.
+- Frontend: ámbito por revisión de sesión/usuario/tenant/rol, OFF inicial, sin heredar ON global, limpieza al salir/cambiar identidad y descarte/aborto de respuestas anteriores. La flag ausente, error del proxy o evaluación inválida devuelve OFF; no cambia el fallback global de otras flags.
+- Con temporizadores activos, sondeo contextual por defecto cada 15 s y timeout máximo 5 s. Una pestaña suspendida puede demorar actualizaciones. Un proxy que responde desde caché no informa al navegador de la frescura del servidor upstream; el ocultamiento en ese escenario requiere QA real y no se presenta como demostrado.
+- Backend: evaluación por tenant explícito después de autenticación/elegibilidad; sin tenant, flag ausente, proveedor deshabilitado, excepción/error del SDK o snapshot sin confirmar → OFF. Mi cuenta requiere snapshot aplicado/respaldado tras fetch real; un backup restaurado no basta. Confirmación caduca a los 30 s con reloj monotónico; NOT_CHANGED/304 renueva solo un snapshot previamente confirmado. No altera decisiones de otras flags ni cachea permisos de usuario.
+- OFF bloquea nuevas operaciones personales y la navegación tras propagación, sin cerrar sesiones, cambiar JWT/roles/contraseñas, borrar datos ni revertir migraciones. Una operación ya autorizada puede terminar; cancelar HTTP no revierte su transacción. Recuperación exige evaluación vigente y lectura fresca, sin reenviar borradores descartados.
+- El runbook selectivo está en `plan.md` §8. No se utiliza el seed global ni se apaga el proveedor completo para este rollback. CA-07/CA-12 quedan abiertos hasta QA real por tenant/entorno, proxy/servidor, persistencia y regresión de negocio; las pruebas automáticas locales no sustituyen esa evidencia.
 
 ## 6. Reglas de negocio y datos
 
