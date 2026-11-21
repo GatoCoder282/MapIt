@@ -9,9 +9,9 @@
 
 ## MAP-262 — API pública y antiabuso
 
-- [ ] Editar OpenAPI antes del código y regenerar clientes.
-- [ ] Validar datos, duplicados y rate limit; emitir verificación del contacto sin enumeración.
-- [ ] Probar respuestas neutras, fallos de flag y no creación de tenant antes de aprobar.
+- [x] Editar OpenAPI antes del código y regenerar clientes.
+- [x] Validar datos, duplicados y rate limit; emitir verificación del contacto sin enumeración.
+- [x] Probar respuestas neutras, fallos de flag y no creación de tenant antes de aprobar.
 
 ## MAP-263 — Formulario público
 
@@ -52,3 +52,6 @@
 - La primera corrida de integración falló porque dos fixtures reutilizaban el mismo hash de verificación; se corrigieron los datos de prueba y la repetición pasó. Una primera corrida de `pnpm check` tuvo un timeout de 5 s en un test de check-in ajeno a MAP-261; ese test pasó aislado (2/2) y la segunda corrida completa de `pnpm check` terminó en verde: Console 371, Public Web 148, librerías 84, builds, contrato y backend/ArchUnit.
 - `pnpm be:it` completo pasó en 13 min 33 s: 184 tests de integración, 0 fallos, 0 errores y 0 omitidos.
 - Pendiente para la revisión final de la historia: CI del PR, captura de checks y E2E del flujo de solicitud, que todavía no existe en MAP-261.
+- MAP-262: OpenAPI define solicitud y verificación públicas con respuestas neutras. El backend guarda solo el hash del token, aplica límites por IP real y por IP/correo en PostgreSQL, renueva solicitudes pendientes no verificadas y envía el correo después de confirmar la transacción. No crea tenant ni usuario. La flag de Jira `mapit.s6.business-applications` queda apagada por defecto en backend, frontend y Unleash.
+- MAP-262: `pnpm api:lint`, `pnpm api:gen`, `pnpm api:check`, `pnpm be:test` y la integración `BusinessApplicationApiIntegrationTest` pasaron. La integración cubre HTTP 400, 503, 202, 429, duplicados, token renovado/de un solo uso y ausencia de un tenant nuevo. `public-web` pasó 148/148; `libs`, 85/85; las pruebas unitarias nuevas de aplicación pasaron 4/4.
+- Dos intentos de `pnpm check` terminaron rojos únicamente por límites de 5 s en pruebas existentes de consola bajo carga: `tenants-table.spec.ts` en el primero y `staff-shell.spec.ts` en el segundo. Cada archivo pasó al repetirse aislado (16/16 y 17/17). Formato, lint, tipos, builds, contrato y backend/ArchUnit pasaron en ambos intentos. La suite completa deberá quedar verde en CI antes de revisión del PR final.

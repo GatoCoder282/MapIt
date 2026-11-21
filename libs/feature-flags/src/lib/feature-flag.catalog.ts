@@ -38,6 +38,8 @@ export const FLAGS_POR_DEFECTO = {
 
   /** Mi cuenta (HU-1.06 / MAP-285): OFF hasta completar API y autorización. */
   'mapit.s6.my-account': false,
+  /** Incorporación de negocios con revisión humana (HU-1.05). */
+  'mapit.s6.business-applications': false,
 } as const satisfies Record<string, boolean>;
 
 export type FeatureFlagKey = keyof typeof FLAGS_POR_DEFECTO;

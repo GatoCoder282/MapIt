@@ -18,6 +18,10 @@ describe('catálogo de feature flags', () => {
     }
   });
 
+  it('mantiene la incorporación apagada cuando Unleash no responde', () => {
+    expect(FLAGS_POR_DEFECTO['mapit.s6.business-applications']).toBe(false);
+  });
+
   it('incluye la flag de demostración usada por ambas apps', () => {
     expect(FLAGS_POR_DEFECTO['demo.hello']).toBe(true);
   });
