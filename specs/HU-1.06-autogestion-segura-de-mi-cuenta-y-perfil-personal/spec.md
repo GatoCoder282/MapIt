@@ -12,6 +12,8 @@ La funcionalidad «Mi cuenta» es distinta de «Usuarios y permisos». Ambas uti
 
 La entrega inicial `0d11dfa` creó únicamente `spec.md`, `plan.md` y `tasks.md`. La etapa siguiente, autorizada por el solicitante, define OpenAPI y registra la flag OFF con pruebas, sin controladores, migraciones, cambios de autenticación ni revocación. No implementa MAP-286.
 
+El incremento backend posterior a `856e329`, autorizado por el solicitante, implementa únicamente los campos existentes mientras #69 sigue abierto: GET devuelve nombre/correo reales; PATCH persiste solo el nombre. Contacto e idioma se omiten de la respuesta mientras no exista almacenamiento (no se sustituyen por null simulado) y sus escrituras, incluso null, fallan con 503 sin cambios parciales. Se conserva el diseño de sus futuras columnas sin crear migración ni reservar número. Esta entrega no completa MAP-287 ni implementa contraseña.
+
 Fuentes consultadas el 2026-11-21: Jira, código de `main`, rama remota de MAP-238 y [PR #69](https://github.com/GatoCoder282/MapIt/pull/69). Después de `git fetch --no-tags origin`, `main` y `origin/main` apuntan a `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. El PR #69 está **abierto y no integrado**, con head `20e25e5a5ce34ce1308db8c85c0af78d16a0d8a9`. Sus mecanismos no se consideran disponibles en esta base.
 
 ### 1.1 Requisitos confirmados en Jira

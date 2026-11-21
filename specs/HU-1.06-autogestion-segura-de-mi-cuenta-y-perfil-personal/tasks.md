@@ -148,3 +148,12 @@
 - Comparación en memoria contra el commit anterior al registro: claves, tipos y valores de las flags previas preservados en Java/TS/bootstrap. No se cambió código de evaluación ni autorización.
 - Spotless Java Check en `shared-kernel` y `platform-infrastructure`: correcto. No se aplicó formato Java global ni se modificaron fuentes ajenas al incremento.
 - `pnpm.cmd fe:typecheck` tras registrar la nueva clave: correcto en Console/Public Web. Prettier focalizado y `git diff --check`: correctos. Integración/RLS, E2E, rollout remoto, CI/PR y captura siguen pendientes; no se ha ejecutado `pnpm check` porque no hay push y esta etapa valida sus incrementos focalizados.
+
+### 2026-11-21 — backend parcial MAP-287: casos de uso
+
+- Estado inicial limpio en la rama indicada; conservados `0d11dfa`, `9bed32e`, `8d6a20f`, `856e329`. `main/origin/main` permanecen en `fd22d78903a5a2697c1fc20a4769a2f254d8e526`.
+- GitHub confirma PR #69 abierto, sin integrar, head `20e25e5a5ce34ce1308db8c85c0af78d16a0d8a9`. Se aplica la autorización del solicitante para avanzar solo campos existentes, sin copiar autenticación ni reservar migración V34–V39 u otro número.
+- Contrato actualizado antes del código: GET/PATCH parciales, respuesta con nombre/correo reales y omisión de contacto/idioma no persistibles, PATCH 503 para esos campos (también null y cuerpos mixtos). No hay datos de perfil simulados ni actualizaciones parciales. Password continúa planned, sin controlador.
+- `pnpm.cmd api:lint`, `api:gen` y `api:check`: correctos, cliente TS real regenerado e ignorado. Persisten solo los dos warnings de health/demo ajenos al cambio.
+- Dominio/puerto y `OwnProfileService`: consulta/edición propias transaccionales, estado/rol elegible antes de flag por tenant, caída de proveedor falla cerrado; ningún setter de correo o autoridad. Pruebas unitarias en memoria son exclusivamente dobles de test, no adaptadores de producción ni evidencia de RLS real.
+- Unitarios de `identity-application` y Spotless de domain/application: correctos, sin contexto Spring Boot, servidor ni Docker. Los escenarios nuevos cubren consulta/actualización propias, UUID/tenant/rol equivocados, flag OFF/ON/fallo, nombre inválido y conflicto de actualización.

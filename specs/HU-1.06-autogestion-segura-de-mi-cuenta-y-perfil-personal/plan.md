@@ -62,6 +62,10 @@ Flujo futuro: editar contrato → `pnpm api:lint` → `pnpm api:gen` → comprob
 
 ## 5. Backend y datos — MAP-287
 
+Incremento compatible con la base anterior a MAP-238: `PersonalProfile` proyecta solo `fullName/email`; `PersonalProfileRepository` lee/actualiza únicamente la fila elegible del principal. `OwnProfileService` implementa los dos casos de uso transaccionales, valida pertenencia de SUPER_ADMIN a `platform`, cuenta/tenant activos y rol persistido coincidente antes de evaluar la flag por tenant. Estos filtros son elegibilidad de la fila personal; no son una copia de la validación/revocación global de MAP-238.
+
+El adaptador JDBC exige una transacción y usa SET LOCAL más filtros de tenant/usuario/rol/estado. UPDATE solo escribe `full_name` y devuelve `RETURNING full_name,email`. REST omite campos sin almacenamiento y rechaza su escritura con `503 profile-fields-unavailable` antes de cualquier actualización. OpenAPI documenta esta transición, manteniendo `fullName/email` obligatorios y contacto/idioma opcionales en respuesta. Cuando se integre MAP-238, definir la migración expansiva real, ampliar proyección/repositorio y ejecutar integración/RLS antes de completar la historia; ningún número se reserva en esta rama.
+
 Ubicación base: `apps/backend/modules/identity/`, paquetes `com.mapit.identity`.
 
 | Capa/archivo probable                                                       | Responsabilidad                                                                 |

@@ -31,7 +31,7 @@ servers:
 
 tags:
   - name: my-account
-    description: Perfil propio de staff; contrato previsto de MAP-285, aún sin implementación REST
+    description: Perfil propio de staff (MAP-285); implementación incremental con campos pendientes de migración
   - { name: public-payments, description: Checkout público mediante capability }
   - { name: payment-policies, description: Política monetaria del establecimiento }
   - { name: receipts, description: Comprobantes verificables }
@@ -2471,12 +2471,14 @@ paths:
       tags: [my-account]
       summary: Consultar mi perfil personal
       operationId: getMyProfile
-      x-implementation-status: planned
+      x-implementation-status: partial
       x-feature-flag: mapit.s6.my-account
       security: [{ bearerAuth: [] }]
       description: |
-        Contrato previsto de MAP-287; esta entrega no incorpora un controlador.
-        No habilitar la función hasta implementar y probar autorización y RLS.
+        Incremento parcial de MAP-287 compatible con la base sin MAP-238.
+        Lee fullName y email reales de app_user. Mientras no exista la migración
+        de contacto/idioma, esas propiedades se omiten: no son valores simulados
+        ni se promete persistencia. MAP-287 sigue incompleto y la flag nace OFF.
         ADMIN, MANAGER y STAFF acceden solo a su cuenta; SUPER_ADMIN utiliza la
         misma operación sobre su cuenta del tenant técnico platform.
 
@@ -2510,17 +2512,22 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/MyAccountDisabled"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
     patch:
       tags: [my-account]
       summary: Actualizar los campos permitidos de mi perfil
       operationId: updateMyProfile
-      x-implementation-status: planned
+      x-implementation-status: partial
       x-feature-flag: mapit.s6.my-account
       security: [{ bearerAuth: [] }]
       description: |
-        Contrato previsto de MAP-287, aún sin controlador ni migración de datos
-        personales. Aplican la identidad propia, roles, RLS y disponibilidad de GET /me.
+        Incremento parcial de MAP-287: fullName se persiste en la columna existente.
+        Aplican la identidad propia, roles, RLS y disponibilidad de GET /me.
+        Mientras no exista la migración de contacto/idioma, cualquier intento de
+        escribir contactPhone o preferredLanguage, incluido null, responde 503
+        profile-fields-unavailable sin guardar ningún otro campo del cuerpo.
         Actualización atómica: una propiedad omitida conserva su valor; null solo
         limpia contacto o idioma; el cuerpo vacío es inválido.
 
@@ -2562,6 +2569,8 @@ paths:
           $ref: "#/components/responses/MyAccountDisabled"
         "409":
           $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ProfileFieldsUnavailable"
 
   /me/password:
     post:
@@ -5347,7 +5356,7 @@ components:
       type: object
       additionalProperties: false
       description: Proyección del perfil propio de app_user, sin credenciales ni campos administrativos.
-      required: [fullName, email, contactPhone, preferredLanguage]
+      required: [fullName, email]
       properties:
         fullName:
           type: string
@@ -5364,12 +5373,12 @@ components:
           type: [string, "null"]
           maxLength: 32
           readOnly: true
-          description: Contacto informativo; nunca acredita identidad ni habilita recuperación.
+          description: Contacto informativo; omitido hasta disponer de persistencia, null si no hay valor almacenado. Nunca acredita identidad ni habilita recuperación.
         preferredLanguage:
           type: [string, "null"]
           enum: [es, en, ja-JP, null]
           readOnly: true
-          description: Idioma de interfaz; null utiliza la preferencia local existente y después español.
+          description: Omitido hasta disponer de persistencia; null utiliza la preferencia local existente y después español.
 
     UpdateMyProfileRequest:
       type: object
@@ -6566,6 +6575,21 @@ components:
           examples: ["BAR"]
 
   responses:
+    ProfileFieldsUnavailable:
+      description: |
+        No se puede persistir contacto/idioma hasta incorporar la migración
+        compatible con MAP-238 (type https://mapit.local/problems/profile-fields-unavailable),
+        o hay una dependencia de persistencia no disponible. Ningún campo se
+        guarda parcialmente; no sustituir almacenamiento por memoria o valores simulados.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
     MyAccountDisabled:
       description: |
         Funcionalidad Mi cuenta deshabilitada para el tenant autenticado
