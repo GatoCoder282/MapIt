@@ -99,6 +99,20 @@
 
 ## Notas de ejecución
 
+### 2026-11-21 — auditoría MAP-291 antes de cambios
+
+- Árbol limpio en la rama indicada, 11 commits conservados; `main/origin/main` siguen en `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. Jira MAP-291 consultado: **S6 — Feature toggle Mi cuenta Unleash y rollback**, requiere rollout tenant/entorno, fallback, pruebas y QA antes de Listo; estado Por hacer. No se cambia Jira.
+- Ya existen clave única/OFF en Java, TS y bootstrap JSON, generador de varios segmentos, gate backend posterior a elegibilidad y evaluación contextual frontend con revisión de sesión, limpieza, timeout y descarte. No se repiten esas implementaciones ni se registra una flag remota.
+- Hueco detectado: el SDK backend retiene ON cacheado sin caducidad aunque falle la red; capturar excepciones de `isEnabledFor` no detecta ese caso. Ajuste planeado en §8 del plan, exclusivo de Mi cuenta. Fuente inspeccionada: sources.jar local oficial de Unleash 11.0.2 (`FeatureRepositoryImpl`, `FeatureBackupHandlerFile`, `ClientFeaturesResponse`, `UnleashConfig`), sin iniciar SDK/servidor.
+- El seed existente no es un rollback selectivo: recorre todas las flags, añade estrategias y reimpone sus defaults. No se ejecutará ni cambiará en esta subtarea; el runbook usará la consola administrativa para la única clave y entorno seleccionados. El skill `new-feature-flag` mencionado por AGENTS no está en el catálogo/directorio local; no se crea una clave nueva ni se necesita regenerar el registro existente.
+
+### 2026-11-21 — MAP-291: protección backend de caché
+
+- Añadido `MyAccountFlagAvailability`, enlazado al SDK por su configuración y consumido solo al evaluar Mi cuenta. Conserva logging anterior por delegación; las evaluaciones/fallbacks de otras flags no cambian. Requiere tenant explícito; ningún fallback true ni proveedor deshabilitado puede activar esta clave.
+- Estado inicial OFF, CHANGED pendiente hasta snapshot aplicado/respaldado, NOT_CHANGED renueva solo snapshot confirmado, error/UNAVAILABLE apaga, caducidad a los 30 s con reloj monotónico. Un backup restaurado o un snapshot fallido seguido de 304 no habilita; debe confirmarse un snapshot nuevo. No se cambia autenticación, JWT, reservas ni estrategias del proveedor.
+- `:modules:platform:platform-infrastructure:test --tests 'com.mapit.platform.infrastructure.flags.*'`: **11/11**, incluidas 7 nuevas de disponibilidad/adaptador. Prueban OFF/ON, ausencia/contexto tenant/platform, caducidad exacta, fallo tras ON, recuperación, backup/304 y conservación de otras flags. SpotlessJavaCheck correcto.
+- La primera ejecución Gradle intentó una caché no escribible `C:/.gradle`; se repitió con `GRADLE_USER_HOME=C:/Users/rotru/.gradle` y autorización de la herramienta, sin modificar entorno versionado, instalar herramientas o arrancar servicios.
+
 ### 2026-11-21 — MAP-288: pantalla, rutas y verificaciones
 
 - Feature MVVM `my-account`: adaptador del cliente OpenAPI generado (GET `/me`, PATCH exclusivamente `{fullName}`), store con Signals y componente OnPush. No se usan datos de sesión como sustituto de GET ni se añade un selector de usuario/tenant. Correo readonly; sin teléfono, idioma remoto ni contraseña.

@@ -20,9 +20,11 @@ public final class UnleashFeatureFlagAdapter implements FeatureFlagPort {
   static final String TENANT_PROPERTY = "tenantId";
 
   private final Unleash unleash;
+  private final MyAccountFlagAvailability myAccountAvailability;
 
-  public UnleashFeatureFlagAdapter(Unleash unleash) {
+  public UnleashFeatureFlagAdapter(Unleash unleash, MyAccountFlagAvailability myAccountAvailability) {
     this.unleash = unleash;
+    this.myAccountAvailability = myAccountAvailability;
   }
 
   @Override
@@ -32,6 +34,8 @@ public final class UnleashFeatureFlagAdapter implements FeatureFlagPort {
 
   @Override
   public boolean isEnabled(FeatureFlag flag, boolean valorPorDefecto) {
+    // Mi cuenta siempre necesita tenant explícito; ningún fallback puede activarla.
+    if (flag == FeatureFlag.MAPIT_S6_MY_ACCOUNT) return false;
     return unleash.isEnabled(flag.clave(), valorPorDefecto);
   }
 
@@ -39,6 +43,14 @@ public final class UnleashFeatureFlagAdapter implements FeatureFlagPort {
   public boolean isEnabledFor(FeatureFlag flag, TenantId tenantId) {
     UnleashContext context =
         UnleashContext.builder().addProperty(TENANT_PROPERTY, tenantId.value()).build();
-    return unleash.isEnabled(flag.clave(), context, flag.valorPorDefecto());
+    if (flag != FeatureFlag.MAPIT_S6_MY_ACCOUNT) {
+      return unleash.isEnabled(flag.clave(), context, flag.valorPorDefecto());
+    }
+    if (!myAccountAvailability.isFresh()) return false;
+    try {
+      return unleash.isEnabled(flag.clave(), context, false) && myAccountAvailability.isFresh();
+    } catch (RuntimeException unavailable) {
+      return false;
+    }
   }
 }
