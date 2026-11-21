@@ -1,6 +1,6 @@
 # Plan — HU-1.06 Autogestión segura de mi cuenta y perfil personal
 
-> **Ticket:** MAP-285 · **Primer incremento:** documentación de MAP-287 · **Estado:** diseño inicial; propuestas D01–D07 pendientes según [spec.md](spec.md).
+> **Ticket:** MAP-285 · **Incremento actual:** backend parcial MAP-287 · **Estado:** nombre/correo implementados; persistencia de contacto/idioma y dependencias de tokens pendientes según [spec.md](spec.md).
 
 ## 1. Enfoque y límites de entrega
 
@@ -152,7 +152,7 @@ Comandos para etapas futuras, no ejecutados en esta entrega:
 - `pnpm be:it` y Playwright aplicable solo con infraestructura autorizada y disponible; no arrancar servicios automáticamente.
 - `pnpm api:check`, `pnpm check` antes de cada push futuro; `check` no sustituye integración, E2E ni `api:lint`.
 
-Esta etapa solo requiere revisión documental, Prettier de los tres Markdown, validación de enlaces locales y `git diff --check`. No hay código nuevo que justifique arrancar suites de aplicación.
+La etapa inicial solo requirió revisión documental. El incremento backend se valida con unitarios de identidad, REST en memoria, pruebas de la cadena de seguridad sin servidor y ArchUnit; integración PostgreSQL/RLS y E2E quedan pendientes porque no se autoriza arrancar infraestructura ni aplicación.
 
 ## 10. Incrementos y commits propuestos
 

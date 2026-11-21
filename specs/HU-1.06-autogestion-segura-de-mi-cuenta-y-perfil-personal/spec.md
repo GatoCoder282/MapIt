@@ -1,6 +1,6 @@
 # HU-1.06 — Autogestión segura de mi cuenta y perfil personal
 
-> **Estado:** Borrador técnico inicial; sin implementación ni aceptación funcional cerrada · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
+> **Estado:** Backend parcial de nombre/correo; contacto, idioma y aceptación funcional pendientes · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
 
 ## Enunciado
 

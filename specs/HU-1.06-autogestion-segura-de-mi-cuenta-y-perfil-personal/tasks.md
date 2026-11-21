@@ -1,6 +1,6 @@
 # Tareas — HU-1.06 Autogestión segura de mi cuenta y perfil personal
 
-> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** contrato definido y flag registrada OFF; implementación funcional pendiente.
+> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** backend parcial de nombre/correo, flag OFF; contacto/idioma y aceptación funcional pendientes.
 
 ## 1. Preparación documental de MAP-287 — etapa actual
 
@@ -157,3 +157,12 @@
 - `pnpm.cmd api:lint`, `api:gen` y `api:check`: correctos, cliente TS real regenerado e ignorado. Persisten solo los dos warnings de health/demo ajenos al cambio.
 - Dominio/puerto y `OwnProfileService`: consulta/edición propias transaccionales, estado/rol elegible antes de flag por tenant, caída de proveedor falla cerrado; ningún setter de correo o autoridad. Pruebas unitarias en memoria son exclusivamente dobles de test, no adaptadores de producción ni evidencia de RLS real.
 - Unitarios de `identity-application` y Spotless de domain/application: correctos, sin contexto Spring Boot, servidor ni Docker. Los escenarios nuevos cubren consulta/actualización propias, UUID/tenant/rol equivocados, flag OFF/ON/fallo, nombre inválido y conflicto de actualización.
+
+### 2026-11-21 — backend parcial MAP-287: REST y JDBC
+
+- `JdbcPersonalProfileRepository` exige transacción (MANDATORY), fija SET LOCAL del tenant y usa SQL parametrizado con filtros de tenant/id/rol y cuenta/tenant activos. UPDATE solo asigna full_name y retorna valores reales; no toca hash, email, autoridad o estado. Sin nuevas columnas ni tablas.
+- `MyAccountController` reutiliza el principal de Spring Security y la cadena JWT existente sin modificarla. GET/PATCH devuelven no-store y errores Problem; rechazan querys de selección de identidad, headers de identidad conocidos y payloads abiertos/privilegiados. No hay endpoint de contraseña ni acceso por ID.
+- Los campos aún sin almacenamiento se omiten de GET. PATCH de contacto/idioma válido, incluido null o mezclado con nombre, devuelve 503 antes de escribir; valores inválidos devuelven 400. No se ofrece éxito simulado.
+- Tests REST con RestTestClient ligado al controlador (sin servidor) y pruebas JDBC/obligatoriedad transaccional. La primera corrida encontró una interacción de inicialización del mock JdbcTemplate en el fixture; se aislaron las llamadas de la operación y se corrigió el orden de imports indicado por Spotless. No fueron fallos de aislamiento de producción.
+- Unitarios de `identity-infrastructure`: 63 correctos, incluidos rechazo sin principal confiable, campos privilegiados/desconocidos, IDs ajenos, OFF/ON, 503 sin escrituras parciales, errores seguros y SQL limitado. No equivalen a validar PostgreSQL/RLS: eso queda pendiente de integración con infraestructura autorizada.
+- Spotless de infraestructura corregido y correcto. El typecheck de Console/Public Web pasó con los campos de respuesta opcionales regenerados. La cadena global de seguridad, JWT, gestión administrativa y las migraciones existentes permanecen intactas.
