@@ -43,3 +43,5 @@ La captura de la vista Checks sigue pendiente porque el helper local de Computer
 Use no conectó con la tubería nativa, incluso tras reiniciarlo. El PR permanece en
 borrador hasta adjuntar esa evidencia.
 
+En el run `44600845592`, `pnpm fmt:check` señaló este archivo por un salto CRLF aislado al final.
+Se normalizó a LF antes de volver a ejecutar los checks.
