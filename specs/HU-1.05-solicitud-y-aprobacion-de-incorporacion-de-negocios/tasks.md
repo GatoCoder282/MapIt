@@ -15,8 +15,8 @@
 
 ## MAP-263 — Formulario público
 
-- [ ] Crear formulario responsive y accesible con textos de catálogo y estados de carga/error.
-- [ ] Probar ViewModel y visibilidad con flag OFF/ON.
+- [x] Crear formulario responsive y accesible con textos de catálogo y estados de carga/error.
+- [x] Probar ViewModel y visibilidad con flag OFF/ON.
 
 ## MAP-264 — Bandeja Super Admin
 
@@ -55,3 +55,5 @@
 - MAP-262: OpenAPI define solicitud y verificación públicas con respuestas neutras. El backend guarda solo el hash del token, aplica límites por IP real y por IP/correo en PostgreSQL, renueva solicitudes pendientes no verificadas y envía el correo después de confirmar la transacción. No crea tenant ni usuario. La flag de Jira `mapit.s6.business-applications` queda apagada por defecto en backend, frontend y Unleash.
 - MAP-262: `pnpm api:lint`, `pnpm api:gen`, `pnpm api:check`, `pnpm be:test` y la integración `BusinessApplicationApiIntegrationTest` pasaron. La integración cubre HTTP 400, 503, 202, 429, duplicados, token renovado/de un solo uso y ausencia de un tenant nuevo. `public-web` pasó 148/148; `libs`, 85/85; las pruebas unitarias nuevas de aplicación pasaron 4/4.
 - Dos intentos de `pnpm check` terminaron rojos únicamente por límites de 5 s en pruebas existentes de consola bajo carga: `tenants-table.spec.ts` en el primero y `staff-shell.spec.ts` en el segundo. Cada archivo pasó al repetirse aislado (16/16 y 17/17). Formato, lint, tipos, builds, contrato y backend/ArchUnit pasaron en ambos intentos. La suite completa deberá quedar verde en CI antes de revisión del PR final.
+- MAP-263: el formulario de la web pública consume el cliente OpenAPI generado, valida los campos antes de enviar y muestra confirmación neutra, error y límite de solicitudes. La entrada desde Negocios aparece con la flag ON; con OFF se conserva la información de acceso por invitación. El enlace de verificación elimina el token de la URL antes de invocar la API.
+- MAP-263: pruebas específicas de estado y visibilidad 6/6. `pnpm check` completo en verde: Console 371, Public Web 152, librerías 85, builds, contrato y backend/ArchUnit.

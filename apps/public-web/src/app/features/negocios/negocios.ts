@@ -9,6 +9,8 @@ import { BusinessComparison } from './ui/business-comparison/business-comparison
 import { BusinessIntro } from './ui/business-intro/business-intro';
 import { PublicRuntimeConfig } from '../../core/runtime-config';
 import { STRINGS } from '../../core/strings';
+import { FeatureFlagService } from '@mapit/feature-flags';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'mp-negocios',
@@ -22,12 +24,16 @@ import { STRINGS } from '../../core/strings';
     BusinessEditor,
     BusinessJoin,
     BusinessOperation,
+    RouterLink,
   ],
   templateUrl: './negocios.html',
   styleUrl: './negocios.scss',
 })
 export class Negocios {
   protected readonly runtime = inject(PublicRuntimeConfig);
+  protected readonly businessApplicationsEnabled = inject(FeatureFlagService).isEnabled(
+    'mapit.s6.business-applications',
+  );
   protected readonly copy = STRINGS.landing.showcase;
   protected readonly venueIcons = [
     'M4 20v-5m6 5V9m6 11V4m5 16V2',

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { I18nService, provideI18n } from '@mapit/i18n';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import { PublicRuntimeConfig } from '../../core/runtime-config';
 import { Negocios } from './negocios';
 
@@ -10,6 +11,7 @@ describe('Negocios', () => {
       imports: [Negocios],
       providers: [
         provideRouter([]),
+        { provide: FeatureFlagService, useValue: { isEnabled: () => () => false } },
         {
           provide: PublicRuntimeConfig,
           useValue: { config: () => ({ consoleBaseUrl: '/console' }) },
@@ -74,6 +76,7 @@ describe('Negocios', () => {
       providers: [
         provideRouter([]),
         provideI18n(),
+        { provide: FeatureFlagService, useValue: { isEnabled: () => () => false } },
         {
           provide: PublicRuntimeConfig,
           useValue: { config: () => ({ consoleBaseUrl: '/console' }) },
