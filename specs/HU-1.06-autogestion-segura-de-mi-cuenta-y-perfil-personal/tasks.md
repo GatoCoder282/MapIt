@@ -54,12 +54,14 @@
 
 - [ ] Resolver D03/D04/D07 y verificar MAP-238 integrado antes de cambiar credenciales/tokens; no crear mecanismo paralelo.
 - [x] Definir primero OpenAPI de POST `/me/password`, prueba de control, errores y obligación futura sobre JWT; presupuestos concretos y ejecución del cambio pendientes de MAP-289/MAP-238.
-- [ ] Alinear composición/longitud de política, máximo BCrypt en bytes UTF-8, contrato y mensajes; probar caracteres multibyte.
-- [ ] Reutilizar `PasswordVerifier`/`PasswordHasher`, validación de confirmación y rechazo de nueva contraseña igual.
-- [ ] Reutilizar almacenamiento de límites con presupuestos propios de usuario/IP, independientes del rollback de credenciales.
+- [x] Preparar validador independiente conforme a composición existente, contrato y máximo BCrypt de 72 bytes UTF-8; probar multibyte/Unicode inválido sin cambiar login global.
+- [x] Reutilizar PasswordVerifier para actual/reutilización y validar confirmación; probar con PasswordHasher/BCrypt reales, sin generar hash nuevo en producción.
+- [x] Preparar puerto/método de limitación con almacenamiento existente y buckets propios de cuenta/tenant y dirección; unitarios de cuotas/separación/transacción declarada.
+- [ ] Validar cuotas operativas, persistencia/concurrencia/RLS de los buckets y conectar el presupuesto antes de BCrypt en el futuro caso de uso.
 - [ ] Actualizar hash y corte de tokens atómicamente; probar rollback, concurrencia, emisión de JWT e instante límite de `iat`.
 - [ ] Verificar JWT previos denegados por HTTP/STOMP y login nuevo operativo, conforme al contrato final.
-- [ ] Añadir formulario a la misma feature y extraer reglas de login a `core/` si son compartidas; sin imports entre features.
+- [x] Preparar formulario/estado/reglas dentro de my-account, no montado, sin transporte y con envío bloqueado; etiquetas/tokens existentes reutilizados, tres idiomas y pruebas.
+- [ ] Conectar formulario/cliente generado y handlers seguros solo después de endpoint con revocación real; verificar cierre local tras 204/nuevo login.
 - [ ] Documentar cierre local tras éxito y exclusión de listado/«cerrar otras sesiones»; no simular revocación ni recuperación general.
 
 ## 6. MAP-290 — S6 — QA de identidad y regresión multi-tenant
@@ -100,6 +102,14 @@
 - [ ] Realizar Squash and Merge solo en la entrega posterior autorizada. No hay push, PR ni merge en la etapa documental.
 
 ## Notas de ejecución
+
+### 2026-11-21 — MAP-289: dependencias y entrega parcial
+
+- `spec.md` distingue U08 y la preparación sin disponibilidad. `plan.md` §7.1/7.2 recoge piezas/garantías y dependencias exactas. Revisados CurrentStaffIdentity, JdbcCurrentStaffIdentity, JwtAuthenticationFilter, JjwtTokenService, RealtimeStompInterceptor y V36 del head confirmado de #69. No se toman su merge_commit_sha de prueba ni sus checks como integración en main.
+- Bloqueado por base no integrada: revalidación efectiva con issuedAt y staff_tokens_valid_after en HTTP/STOMP. Trabajo adicional requerido aun después de integrar: lookup propio/RLS + operación atómica hash/corte, concurrencia entre dos cambios/login/emisión de JWT, precisión iat, límites persistidos antes de BCrypt, errores 400/429, cliente/formulario operativo y QA con tokens anteriores. No se crea mecanismo alternativo ni recuperación general.
+- No ejecutados: PostgreSQL/RLS, commit real del contador/ventanas/concurrencia, cambios de contraseña reales, invalidación JWT/STOMP, E2E y revisión visual/móvil/lector de pantalla. Requieren infraestructura y funcionalidad aún bloqueadas. No se ejecuta be:test global ni pnpm check completo: se seleccionan unitarios sin servidor y ArchUnit; los tests de contexto/servidor y la integración no se declaran exitosos.
+- Verificación final de la etapa: suites backend application 41, infraestructura 70 y bootstrap focalizado 20, todas correctas; frontend completo 676; typecheck/lint/OpenAPI/hash/formato correctos con warnings indicados. Compilación/Spotless de los módulos afectados pasan. La flag de Mi cuenta conserva OFF y no sirve para habilitar contraseña; el formulario no tiene un camino de envío.
+- MAP-289 permanece incompleta y no se cambia su estado Jira. La rama conserva todos los commits anteriores, main/origin/main permanecen en fd22d789 y no hay push, PR, merge, squash, Docker, setup, dev ni aplicación. Sin migraciones, cambios de política/autenticación/JWT globales o MAP-286. Siguiente incremento: integrar/revisar #69 por el flujo autorizado y resolver diseño/QA de escritura atómica antes de implementar el endpoint.
 
 ### 2026-11-21 — MAP-289: formulario preparado sin disponibilidad
 

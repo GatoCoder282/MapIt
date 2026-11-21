@@ -39,6 +39,7 @@ Fuentes consultadas el 2026-11-21: Jira, código de `main`, rama remota de MAP-2
 - U05: etapa de contrato/registro autorizada después de `0d11dfa`: tres operaciones OpenAPI y flag OFF con commits separados, sin endpoints funcionales ni dependencias de autenticación nuevas. U04 describe el límite de la entrega inicial, no impide estos cambios posteriores.
 - U06: incremento MAP-288 autorizado sobre los siete commits existentes: pantalla de nombre/correo reales y PATCH de nombre, misma rama, sin contraseña ni campos no persistibles. Conservar el idioma local de navegador y comprobar UI/guard/navegación sin iniciar aplicación o Docker. D05 se concreta mediante una sola feature en ambos shells; la aceptación visual/E2E queda pendiente.
 - U07: incremento MAP-291 autorizado sobre los once commits existentes: auditar y completar registro/fallo cerrado, aislamiento de evaluaciones y rollback, con pruebas y runbook. Sin activar servicios/flags remotas, cambiar JWT/autenticación ni implementar otras historias. Los límites locales de caché y callbacks descritos abajo son decisiones técnicas del incremento, no valores literales de Jira.
+- U08: incremento MAP-289 autorizado sobre catorce commits: componentes independientes de validación y presupuesto, contratos/errores seguros y formulario preparado sin disponibilidad. No conectar HTTP ni escribir hash hasta integrar/revisar revocación efectiva de MAP-238; no declarar MAP-289 completa. Cuotas concretas y detalles de validación son decisiones técnicas documentadas, no requisitos literales de Jira.
 
 ### 1.3 Propuestas técnicas pendientes de validación
 
@@ -107,6 +108,8 @@ Para la etapa de contrato se concretan D01/D02 en `openapi.yaml`: `fullName`, `c
 - El runbook selectivo está en `plan.md` §8. No se utiliza el seed global ni se apaga el proveedor completo para este rollback. CA-07/CA-12 quedan abiertos hasta QA real por tenant/entorno, proxy/servidor, persistencia y regresión de negocio; las pruebas automáticas locales no sustituyen esa evidencia.
 
 ## 6. Reglas de negocio y datos
+
+Preparación MAP-289: comando redactado sin identidad objetivo, validador contra hash confiable suministrado por el futuro caso de uso, payload cerrado y limitador con buckets propios. No existe caso de uso escritor ni controlador de contraseña. POST `/api/v1/me/password` permanece ausente aun con sesión válida/flag ON; el contrato OpenAPI sigue planned. El formulario no está montado ni puede enviar HTTP. Esto no acredita revocación ni cambio efectivo de contraseña.
 
 ### 6.1 Identidad y propiedades protegidas
 
