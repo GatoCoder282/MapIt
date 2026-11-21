@@ -97,6 +97,13 @@
 
 ## Notas de ejecución
 
+### 2026-11-21 — MAP-288: sincronización de sesión
+
+- Inicio limpio en la rama existente, siete commits conservados y `main` en `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. Alcance autorizado: UI de nombre/correo reales; sin contraseña, administración de usuarios, migraciones ni despliegue.
+- `AuthSession.updateFullName` acepta solo nombre confirmado y revisión de sesión vigente. Conserva JWT, vencimiento, identidad, rol y almacenamiento elegido; no reinicia la sesión ni su temporizador. La revisión cambia incluso al volver a ingresar con la misma cuenta/token, para invalidar respuestas antiguas.
+- `pnpm.cmd exec ng test libs --no-watch --include '**/auth-session.spec.ts'`: 18/18 correctas; incluye persistencia/restauración, expiración, almacenamiento bloqueado, validación y respuestas de sesiones anteriores. El builder mantiene su advertencia existente de compilación completa.
+- El cliente OpenAPI se regeneró realmente con `pnpm.cmd api:gen`, sin Docker ni salidas generadas versionadas. La implementación consumirá exclusivamente los campos disponibles de MAP-287; contacto e idioma siguen pendientes de persistencia.
+
 ### 2026-11-21 — preparación documental
 
 - Historia consultada: MAP-285, **HU-1.06 — Autogestión segura de mi cuenta y perfil personal**. Las seis subtareas tienen estado Jira «Por hacer» en la consulta; sus nombres exactos figuran en las secciones 3–8. Ninguna se marca terminada por esta entrega.
