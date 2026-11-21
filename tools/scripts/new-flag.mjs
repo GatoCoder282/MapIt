@@ -29,10 +29,10 @@ if (!clave) {
       `  Tipos: ${TIPOS.join(', ').toLowerCase()}`,
   );
 }
-if (!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(clave)) {
+if (!/^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/.test(clave)) {
   die(
     `Clave inválida: "${clave}"`,
-    `  Convención del proyecto: <dominio>.<feature>, todo en minúsculas.\n  Ejemplo: payments.qr`,
+    `  Convención: dos o más segmentos en minúsculas separados por puntos.\n  Ejemplos: payments.qr, mapit.s6.my-account`,
   );
 }
 if (!TIPOS.includes(tipoArg)) {
@@ -60,16 +60,21 @@ let java = readFileSync(rutaJava, 'utf8');
 if (java.includes(`"${clave}"`)) {
   log.warn(`la flag ya existe en el enum de Java`);
 } else {
-  const ultima = java.lastIndexOf('");\n');
-  java =
-    java.slice(0, ultima + 3) +
-    `\n\n  /** TODO: describir para qué es esta flag y a qué CU pertenece. */\n` +
-    `  ${constante}("${clave}", Tipo.${tipoArg}, ${porDefecto});` +
-    java.slice(ultima + 3);
-  // El último elemento de un enum de Java termina en `;` y los anteriores en `,`.
-  // Al insertar una entrada nueva al final, la que antes cerraba el enum debe
-  // pasar de `;` a `,`.
-  java = java.replace(/\);\n\n {2}\/\*\* TODO/, '),\n\n  /** TODO');
+  // La última entrada termina en boolean);, no en ");. Reconocer la entrada
+  // completa evita insertar dentro del package y conserva LF/CRLF en Windows.
+  const cierre = /^([ \t]+[A-Z][A-Z0-9_]*\("[^"\r\n]+", Tipo\.[A-Z_]+, (?:true|false)\));(?=\r?$)/m;
+  if (!cierre.test(java)) {
+    die(
+      'No se encontró el cierre del enum FeatureFlag',
+      '  Revisa el formato antes de generar la flag.',
+    );
+  }
+  const salto = java.includes('\r\n') ? '\r\n' : '\n';
+  java = java.replace(
+    cierre,
+    `$1,${salto}${salto}  /** TODO: describir para qué es esta flag y a qué CU pertenece. */${salto}` +
+      `  ${constante}("${clave}", Tipo.${tipoArg}, ${porDefecto});`,
+  );
   writeFileSync(rutaJava, java, 'utf8');
   log.ok('añadida al enum de Java');
 }
@@ -80,10 +85,11 @@ let ts = readFileSync(rutaTs, 'utf8');
 if (ts.includes(`'${clave}'`)) {
   log.warn('la flag ya existe en el catálogo de TypeScript');
 } else {
+  const salto = ts.includes('\r\n') ? '\r\n' : '\n';
   ts = ts.replace(
-    /\n\} as const satisfies/,
-    `\n\n  /** TODO: describir para qué es esta flag y a qué CU pertenece. */\n` +
-      `  '${clave}': ${porDefecto},\n} as const satisfies`,
+    /\r?\n\} as const satisfies/,
+    `${salto}${salto}  /** TODO: describir para qué es esta flag y a qué CU pertenece. */${salto}` +
+      `  '${clave}': ${porDefecto},${salto}} as const satisfies`,
   );
   writeFileSync(rutaTs, ts, 'utf8');
   log.ok('añadida al catálogo de TypeScript');

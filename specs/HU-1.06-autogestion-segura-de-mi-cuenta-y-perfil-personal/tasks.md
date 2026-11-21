@@ -70,7 +70,8 @@
 
 ## 7. MAP-291 — S6 — Feature toggle Mi cuenta Unleash y rollback
 
-- [ ] Adaptar y probar el generador para `mapit.s6.my-account`, preservando claves existentes; registro temprano OFF en Java, TS y bootstrap.
+- [x] Adaptar y probar el generador para claves de varios segmentos, preservando dos segmentos, flags existentes, idempotencia y LF/CRLF.
+- [ ] Registrar `mapit.s6.my-account` OFF en Java, TS y bootstrap; el gate funcional no forma parte de esta etapa.
 - [ ] Usar `FeatureFlagPort.isEnabledFor` en backend con tenant autenticado; autorización independiente tanto OFF como ON.
 - [ ] Implementar contexto del proxy desde Console sin enviar JWT staff, limpiar al cambiar sesión y descartar respuestas antiguas.
 - [ ] Cubrir valor inicial pendiente, flag ausente, proveedor sin configurar, OFF/ON, tenant/entorno y fallo después de ON.
@@ -128,3 +129,10 @@
 - `pnpm.cmd api:gen`: generación real completada con Java 25 y el JAR oficial 7.26.0 en la caché usada por el repositorio, descargado de Maven Central; sin Docker ni instalación global. Inspeccionados `MyAccountService`, los tres modelos, nullables y propiedades de respuesta readonly. La salida sigue ignorada y no se versiona.
 - `pnpm.cmd api:check`: hash sincronizado con el cliente generado. Las tres operaciones siguen sin implementación REST; estos comandos no prueban autorización ni revocación backend.
 - `pnpm.cmd fe:typecheck`: Console y Public Web compilan tipos con el nuevo cliente generado. Los formularios, tests de autorización, integración/RLS y E2E continúan pendientes para la implementación.
+
+### 2026-11-21 — generador de flags MAP-291
+
+- `new-flag.mjs` admite dos o más segmentos en minúsculas. Se actualiza la prueba de convención del catálogo TS sin alterar ninguna clave o default existente.
+- La inspección encontró además que la inserción Java buscaba `");` aunque las entradas reales terminan en `boolean);`: se corrige el punto de inserción y se preserva LF/CRLF. No se modifica el sistema de evaluación ni los adaptadores Unleash.
+- `node --test tools/scripts/new-flag.test.mjs`: 4/4 pruebas correctas. Ejecutan el CLI real sobre copias temporales de los tres catálogos y verifican nueva clave OFF, preservación de entradas, idempotencia, LF/CRLF, claves de dos segmentos, `--on`, `kill_switch` y rechazo de entradas inválidas sin escrituras.
+- ESLint focalizado en generador, prueba Node y convención TS: correcto, cero warnings. `pnpm.cmd exec ng test libs --no-watch --include '**/feature-flag.catalog.spec.ts'`: 6/6 correctas; warning existente del builder por usar compilación completa en lugar de parcial para aplicaciones.

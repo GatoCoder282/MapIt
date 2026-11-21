@@ -10,10 +10,10 @@ import { VERTICAL_FLAGS } from './vertical-flags';
  * solo lado en vez de usar `pnpm new:flag`.
  */
 describe('catálogo de feature flags', () => {
-  it('usa la convención <dominio>.<feature>', () => {
+  it('usa dos o más segmentos separados por puntos', () => {
     for (const clave of Object.keys(FLAGS_POR_DEFECTO)) {
       expect(clave, `"${clave}" no sigue la convención`).toMatch(
-        /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/,
+        /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/,
       );
     }
   });
