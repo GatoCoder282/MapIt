@@ -97,6 +97,11 @@
 
 ## Notas de ejecución
 
+### 2026-11-21 — MAP-288: compatibilidad con contexto operativo
+
+- La revisión detectó que `EstablishmentContext` invalidaba la selección ante cualquier objeto `SessionUser` nuevo, incluido un cambio de nombre confirmado. Ahora compara revisión de sesión, usuario, tenant y rol; conserva la selección si solo cambia el nombre, y sigue invalidando inmediatamente al reautenticar incluso la misma cuenta.
+- `establishment-context.spec.ts`: 14/14 correctas en la suite focalizada, incluida la nueva regresión de selección conservada. `pnpm.cmd fe:typecheck` y `pnpm.cmd fe:lint`: correctos (lint global con cero warnings). No se cambian permisos, catálogo de establecimientos ni backend.
+
 ### 2026-11-21 — MAP-288: evaluación contextual de disponibilidad
 
 - `FeatureFlagService.watchInContext` permite sondear una clave con contexto propio y fallback OFF, sin modificar el estado global ni la política de recuperación de flags existentes. Cancela/descarta respuestas al destruir el ámbito, limita la espera inicial a 5 s y apaga tras fallo o respuesta sin clave válida.
