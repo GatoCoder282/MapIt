@@ -68,8 +68,61 @@ tags:
     description: Reserva anónima desde el portal público (HU-6.02)
   - name: customer-history
     description: Acceso temporal y consulta del historial propio en el portal público (HU-6.04)
+  - name: business-applications
+    description: Solicitudes públicas de incorporación de negocios (HU-1.05)
 
 paths:
+  /public/business-applications:
+    post:
+      tags: [business-applications]
+      summary: Solicitar incorporación de un negocio
+      description: |
+        Recibe datos mínimos y responde de forma neutra incluso si ya existe una
+        solicitud pendiente. No crea tenant ni usuario. Solo funciona con la flag
+        `mapit.s6.business-applications` encendida. El límite se aplica antes
+        de consultar duplicados; el tenant técnico lo fija el servidor.
+      operationId: submitBusinessApplication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessApplicationCreateRequest"
+      responses:
+        "202":
+          description: Respuesta neutra; si se aceptó, se enviará verificación por correo
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /public/business-applications/verify-contact:
+    post:
+      tags: [business-applications]
+      summary: Verificar correo de una solicitud de incorporación
+      description: |
+        Consume un token opaco de un solo uso. La respuesta es neutra ante
+        token inválido o caducado y no revela la existencia de la solicitud.
+        Permanece disponible si la flag pública se apaga después del envío.
+      operationId: verifyBusinessApplicationContact
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessApplicationVerificationRequest"
+      responses:
+        "202":
+          description: Verificación procesada de forma neutra
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /public/tenants/{tenantSlug}/establishments/{establishmentSlug}:
     {
       "get":
@@ -5368,6 +5421,45 @@ components:
       type: string
       description: Vertical de negocio inicial del tenant.
       enum: [RESTAURANT, NIGHTCLUB, EVENT_HALL, HOTEL]
+
+    BusinessApplicationCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [businessName, vertical, location, contactName, contactEmail]
+      properties:
+        businessName:
+          type: string
+          minLength: 2
+          maxLength: 120
+        vertical:
+          $ref: "#/components/schemas/BusinessVertical"
+        location:
+          type: string
+          minLength: 2
+          maxLength: 200
+        contactName:
+          type: string
+          minLength: 2
+          maxLength: 120
+        contactEmail:
+          type: string
+          format: email
+          maxLength: 254
+        contactPhone:
+          type: string
+          minLength: 6
+          maxLength: 32
+
+    BusinessApplicationVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 200
+          writeOnly: true
 
     Tenant:
       type: object

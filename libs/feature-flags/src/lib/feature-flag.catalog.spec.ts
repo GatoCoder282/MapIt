@@ -10,12 +10,16 @@ import { VERTICAL_FLAGS } from './vertical-flags';
  * solo lado en vez de usar `pnpm new:flag`.
  */
 describe('catálogo de feature flags', () => {
-  it('usa la convención <dominio>.<feature>', () => {
+  it('usa segmentos legibles, incluidos los tres de la clave exigida por HU-1.05', () => {
     for (const clave of Object.keys(FLAGS_POR_DEFECTO)) {
       expect(clave, `"${clave}" no sigue la convención`).toMatch(
-        /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/,
+        /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)?$/,
       );
     }
+  });
+
+  it('mantiene la incorporación apagada cuando Unleash no responde', () => {
+    expect(FLAGS_POR_DEFECTO['mapit.s6.business-applications']).toBe(false);
   });
 
   it('incluye la flag de demostración usada por ambas apps', () => {
