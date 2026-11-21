@@ -108,6 +108,27 @@ class NotificationRepositoryContractTest {
         assertThat(repository.countUnread(scope(OWNER))).isEqualTo(2);
     }
 
+    @Test
+    void marcado_total_es_propio_idempotente_y_respeta_el_corte_y_lecturas_previas() {
+        Notification own = notice(30);
+        Notification alreadyRead = notice(31).markRead(scope(OWNER), CREATED_AT).orElseThrow();
+        Notification later = notice(32, 32, OWNER, NotificationType.RESERVATION_CREATED,
+                ESTABLISHMENT, CREATED_AT.plusSeconds(2));
+        Notification foreign = notice(33, 33, OTHER_USER, NotificationType.RESERVATION_CREATED,
+                ESTABLISHMENT, CREATED_AT);
+        repository.createIfAbsent(own);
+        repository.createIfAbsent(alreadyRead);
+        repository.createIfAbsent(later);
+        repository.createIfAbsent(foreign);
+
+        assertThat(repository.markAllRead(scope(OWNER), CREATED_AT.plusSeconds(1))).isEqualTo(1);
+        assertThat(repository.markAllRead(scope(OWNER), CREATED_AT.plusSeconds(1))).isZero();
+        assertThat(repository.countUnread(scope(OWNER))).isEqualTo(1);
+        assertThat(repository.countUnread(scope(OTHER_USER))).isEqualTo(1);
+        assertThat(repository.list(new NotificationPageRequest(scope(OWNER), 10, null)).content())
+                .contains(alreadyRead, later);
+    }
+
     /** Solo fixture: ningún bean, fallback ni adaptador de producción usa esta implementación. */
     private static final class InMemoryRepository implements NotificationRepository {
         private final Map<NotificationKey, Notification> rows = new HashMap<>();
@@ -154,6 +175,19 @@ class NotificationRepositoryContractTest {
                     .flatMap(row -> row.markRead(scope, readAt));
             updated.ifPresent(notification -> rows.put(notification.key(), notification));
             return updated;
+        }
+
+        @Override
+        public long markAllRead(NotificationScope scope, Instant readAt) {
+            Objects.requireNonNull(scope);
+            Objects.requireNonNull(readAt);
+            List<Notification> snapshot = rows.values().stream().filter(scope::permits)
+                    .filter(Notification::isUnread).filter(row -> !row.createdAt().isAfter(readAt)).toList();
+            for (Notification notification : snapshot) {
+                Notification read = notification.markRead(scope, readAt).orElseThrow();
+                rows.put(read.key(), read);
+            }
+            return snapshot.size();
         }
     }
 }

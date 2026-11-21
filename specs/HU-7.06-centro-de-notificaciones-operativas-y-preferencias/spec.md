@@ -1,6 +1,6 @@
 # HU-7.06 — Centro de notificaciones operativas y preferencias
 
-> **Estado:** MAP-292 en implementación de dominio/puertos; persistencia e integración pendientes.
+> **Estado:** MAP-292 y MAP-294 parciales: dominio y aplicación sin adaptadores reales ni HTTP; persistencia e integración pendientes.
 > **Ticket:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) · **Fecha:** 2026-11-21 · **Responsable:** Rodrigo Villarroel Ayala.
 
 ## Enunciado
@@ -78,7 +78,7 @@ Cada operación de bandeja exige tenant, destinatario y un mapa explícito de es
 - **RN-2:** Otra persona del mismo tenant tampoco puede consultar, contar o marcar los avisos ajenos. Un identificador no visible responde como inexistente, sin revelar pertenencia.
 - **RN-3:** Un evento fallido o revertido no produce notificaciones. La entrega puede repetirse; la persistencia y las mutaciones son idempotentes.
 - **RN-4:** Listado y contador aplican los mismos filtros de destinatario y autorización vigente. Las consultas son limitadas y el orden es determinista.
-- **RN-5:** Marcar leída conserva el primer `readAt`; marcar todas afecta solo las filas visibles y autorizadas en la instantánea de la escritura. Una llegada concurrente posterior sigue no leída.
+- **RN-5:** Marcar leída conserva el primer `readAt`; marcar todas afecta solo las filas no leídas, visibles y autorizadas en la instantánea de la escritura, con creación no posterior al corte obtenido del reloj del servidor al iniciar la acción. Una llegada posterior al corte o a la instantánea sigue no leída. El cliente no aporta fechas ni IDs de destinatarios para ese marcado.
 - **RN-6:** No hay HTML arbitrario, secretos, JWT, datos de pago, contacto del cliente ni cuerpos de petición en avisos/logs. El detalle usa claves de mensaje y referencias mínimas permitidas; cualquier enlace se vuelve a autorizar al abrirlo.
 - **RN-7:** Las preferencias solo pueden modificar categorías optativas propias. Intentar silenciar seguridad o enviar categorías/campos desconocidos se rechaza íntegramente antes de escribir.
 - **RN-8:** Apagar el centro no cambia autenticación, aprobaciones, reservas, pagos, auditoría ni la generación de hechos. La UI o el broker caídos no deben convertirse en requisitos síncronos para confirmar negocio.
@@ -124,4 +124,4 @@ Runtime con `mapit_app`, nunca owner para evitar RLS. `TenantScope.SET_LOCAL_SQL
 | D-4 | Catálogo de categorías, defaults de preferencias, retención y canal de seguridad independiente                                      | Acordar reglas y productores; no prometer eventos inexistentes                    |
 | D-5 | Flag release OFF con evaluación por tenant/sesión, fallo cerrado y política de frescura                                             | Compatibilizar generador y adaptadores sin copiar MAP-285 ni cambiar otros flags  |
 
-El incremento MAP-292 se limita al dominio y contratos de persistencia con pruebas sin DB. El contrato OpenAPI del MVP sigue aplazado: D-1, D-3 y D-4 no están cerradas para el conjunto de la historia. [plan.md](plan.md) contiene una propuesta de operaciones, no endpoints implementados. No se añaden adaptadores de producción, flags, migraciones ni cliente generado; MAP-292 no se declara completa sin persistencia/RLS.
+MAP-292 aporta dominio y contratos de persistencia; la instrucción del usuario autoriza ahora el incremento MAP-294 de casos de uso y pruebas sin HTTP. La aplicación obtiene identidad y ámbito del servidor en cada operación, mantiene límite/cursor del dominio y usa reloj inyectado para el marcado. El contrato OpenAPI del MVP sigue aplazado: D-1, D-3 y D-4 no están cerradas para el conjunto de la historia. [plan.md](plan.md) contiene una propuesta de operaciones, no endpoints implementados. No se añaden adaptadores de producción, flags, migraciones ni cliente generado; MAP-292/MAP-294 no se declaran completas sin persistencia/RLS, autorización vigente e integración.

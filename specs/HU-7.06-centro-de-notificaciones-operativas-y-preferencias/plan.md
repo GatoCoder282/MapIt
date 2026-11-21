@@ -1,7 +1,7 @@
 # Plan — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Base auditada:** `origin/main` en `983dee7887ce6e47cfcdebc69dffd33d9ed64886` · **Fecha:** 2026-11-21.
-> MAP-292: incremento de dominio autorizado por el usuario; persistencia e integración sujetas a D-1–D-5 de [spec.md](spec.md).
+> MAP-292/MAP-294: incrementos de dominio y aplicación autorizados por el usuario; persistencia e integración sujetas a D-1–D-5 de [spec.md](spec.md).
 
 ## 1. Inventario reutilizable y carencias
 
@@ -74,6 +74,15 @@ La migración se generará solo sobre la base integrada y numeración libre ento
 
 ## 5. Propuesta de API MVP — MAP-294 (OpenAPI pendiente)
 
+### Incremento de aplicación sin HTTP autorizado por el usuario
+
+- Añadir `ListMyNotifications`, `CountMyUnreadNotifications`, `MarkMyNotificationRead` y `MarkAllMyNotificationsRead` en `operations-application/.../notification/`, con transacciones de lectura/escritura como los casos de uso existentes y `Clock` inyectado en escrituras.
+- `CurrentNotificationScope` reutiliza `ActorContext` y `TenantContext`: exige ambos en cada llamada y pide al nuevo puerto de dominio `NotificationAuthorizationPort` un ámbito vigente para esa identidad. Un resultado denegado o con otro tenant/usuario falla cerrado antes de acceder al repositorio; no se acepta un ámbito desde la API ni se cachea entre llamadas. El puerto nuevo solo cubre concesiones por tipo/establecimiento, no implementa autenticación ni revocación alternativas.
+- Extender `NotificationRepository` con `markAllRead(scope, readAt)`, sin otra interfaz de persistencia. Exigir una actualización atómica de no leídas del ámbito, visibles en su instantánea y con `createdAt <= readAt`; conservar lecturas previas y devolver cantidad modificada. No recorrer páginas ni hacer `count` seguido de actualizaciones individuales. El corte es una decisión técnica interna del incremento, no un parámetro de cliente.
+- Reusar límites, orden y validación de cursor del dominio. La aplicación verifica que la página devuelta corresponda a la petición; el marcado individual mantiene vacío para inexistente/ajena y valida identidad/ID de su resultado. Las cantidades negativas son un fallo del adaptador, no un contador válido. Las escrituras siguen exigiendo filtros correctos en el adaptador; una validación del resultado no sustituye el WHERE ni RLS.
+- No registrar `@Service` ni wiring ficticio hasta disponer de repositorio/autorización reales: clases construibles y testeables, con `@Transactional` preparado para el futuro registro como beans. Las transacciones efectivas y su rollback no se demuestran con instanciación directa en unit tests.
+- Pruebas focalizadas de contexto ausente, ámbito incorrecto/denegado, cursor de otro usuario/tenant/permisos, orden/límites, contador, primera lectura y marcado masivo sin cambios ajenos. El contrato del puerto y las pruebas en memoria no acreditan snapshot SQL, RLS o revocación de MAP-238.
+
 Rutas candidatas relativas al servidor `/api/v1`; todavía no se añaden a `openapi.yaml` ni se exponen controladores.
 
 | Método/ruta candidata                           | Semántica propuesta                                                                                                                                                                       |
@@ -142,7 +151,7 @@ No se requiere un bus nuevo, CQRS global ni una infraestructura externa de mensa
 1. Cerrar D-1–D-4 y revalidar base/MAP-238. MAP-292: tipos, invariantes y repositorios con pruebas de dominio sin DB; después migración/DBML numerados sobre base integrada y RLS.
 2. MAP-299: clave generada y política OFF/contexto/frescura verificadas; mantener OFF. Puede avanzar en paralelo lógico al modelo una vez resuelto el tooling compartido, sin traer MAP-285.
 3. MAP-293: un productor real y destinatarios de reserva primero; probar transacción/reentrega. Añadir llegada y cancelación real; solicitudes esperan contratos de MAP-257.
-4. MAP-294: contrato OpenAPI validado/generado, casos de uso y API propia segura sobre persistencia real; probar identidad/permisos, listado/contador y mutaciones atómicas.
+4. MAP-294: casos de uso internos sin HTTP, autorizados como incremento independiente; después contrato OpenAPI validado/generado antes de añadir API propia sobre persistencia real y autorización vigente. Probar identidad/permisos, listado/contador y mutaciones atómicas reales.
 5. MAP-295: canal personal, validación inbound/outbound y recuperación; regresión de mapas/pagos y canales públicos.
 6. MAP-296: campana/centro, i18n y pruebas focalizadas, sin condicionarlo a Mi cuenta.
 7. MAP-297: preferencias persistidas e integración con MAP-285 cuando esté disponible; mensajes obligatorios no silenciables.

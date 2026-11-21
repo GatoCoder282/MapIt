@@ -1,7 +1,7 @@
 # Tareas — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Historia:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) — HU-7.06 — Centro de notificaciones operativas y preferencias.
-> **Estado:** MAP-292 parcial: dominio y puertos validados sin PostgreSQL; persistencia/RLS pendientes.
+> **Estado:** MAP-292 y MAP-294 parciales: dominio y casos de uso validados sin PostgreSQL; persistencia/RLS, autorización real y HTTP pendientes.
 
 ## Preparación de esta etapa
 
@@ -47,6 +47,10 @@
 
 ## MAP-294 — S6 — Endpoints de listado y marcado como leído
 
+- [x] Implementar incremento interno autorizado: listado propio por cursor, contador y marcado individual/masivo, sin endpoints ni registro como beans con adaptadores inexistentes.
+- [x] Resolver identidad desde `ActorContext`/`TenantContext` y ámbito desde un puerto de autorización, en cada llamada y sin argumentos de usuario/tenant/establecimiento desde cliente.
+- [x] Ampliar `NotificationRepository` con marcado masivo único, acotado por ámbito/snapshot/corte del servidor, sin duplicar interfaz ni recorrer páginas.
+- [x] Probar unitariamente aislamiento, contexto ausente/denegado, cursor/límites, orden, contador y marcado idempotente sin modificaciones ajenas; sin acreditar todavía SQL/RLS.
 - [ ] Tras cerrar D-1/D-3/D-4, publicar contrato OpenAPI, reutilizando seguridad y Problem Details.
 - [ ] Ejecutar `pnpm api:lint`, `pnpm api:gen`, comprobar generación TS y no versionar `generated/`.
 - [ ] Implementar casos de uso y API de bandeja propia paginada/contador y marcado una/todas con persistencia real.
@@ -133,3 +137,18 @@
 - El doble en memoria vive dentro del test del puerto; no es bean ni fallback de producción. Estas pruebas no demuestran unicidad concurrente en PostgreSQL, RLS, pertenencia real de usuarios/recursos, identidad vigente ni autorización HTTP/STOMP. No hay persistencia simulada expuesta a usuarios.
 - Pendiente para continuar MAP-292: cerrar retención/esquema, integrar base compatible con MAP-238 y elegir entonces numeración Flyway libre, migración/DBML, FK compuestas e índices, RLS con `mapit_app`, JDBC transaccional y pruebas SQL de aislamiento/concurrencia. No se reserva ninguna versión; V34–V39 no se tocan.
 - Sin cambio de OpenAPI, flags, autenticación, UI o dependencias Gradle; sin codegen, Docker, aplicación, suites completas ni builds globales. Formato de los tres Markdown, diff y hooks se verifican al preparar el commit de este incremento; resultados en la entrega.
+
+### 2026-11-21 — MAP-294: casos de uso sin HTTP
+
+- Git inicialmente limpio en la rama existente, HEAD `6839711`. Se mantiene el incremento MAP-292 y la rama MAP-285 intacta. Sin nueva rama ni integración de otros tickets.
+- Jira MAP-294 reconsultado: **S6 — Endpoints de listado y marcado como leído**, estado «Por hacer». Objetivo confirmado: GET paginado y PATCH leída/todas leídas usando identidad de sesión y pruebas de privacidad/cross-tenant. La instrucción actual autoriza solo aplicación y pruebas: los endpoints siguen pendientes y no se marca la subtarea completa.
+- Clases nuevas de aplicación: `CurrentNotificationScope`, `ListMyNotifications`, `CountMyUnreadNotifications`, `MarkMyNotificationRead`, `MarkAllMyNotificationsRead`, errores seguros de autenticación/autorización y paquete `@NullMarked`.
+- Reutiliza `ActorContext`, `TenantContext`, `NotificationScope`, cursor/página y `NotificationRepository`. El nuevo `NotificationAuthorizationPort` cubre únicamente resolución de concesiones vigentes; su adaptador deberá reutilizar las garantías de MAP-238 y comprobar cuentas/tenants/permisos activos. No se copió autenticación ni se creó revocación propia.
+- El listado solo acepta límite/cursor; el contador y marcado masivo no aceptan identidad ni filtros arbitrarios; el marcado individual solo recibe ID de aviso. Todos resuelven identidad y permisos antes del acceso al repositorio. El cursor se invalida si cambia usuario, tenant o concesiones.
+- Se añade `markAllRead(scope, readAt)` al puerto existente: un UPDATE real futuro deberá usar ámbito y snapshot, conservar lecturas previas y excluir creaciones posteriores al corte del reloj del servidor. Las pruebas comprueban que la aplicación no itera páginas ni invoca escrituras individuales para marcar todas.
+- Los casos de uso llevan `@Transactional` de lectura/escritura, pero no `@Service`: su registro y transacciones efectivas esperan repositorio/autorización reales. Ningún bean simulado ni endpoint se registra en producción. El rollback y la concurrencia PostgreSQL no se validan instanciando estas clases directamente.
+- Ejecutado: `node tools/scripts/gradle.mjs :modules:operations:operations-application:test --tests "com.mapit.operations.application.notification.*" :modules:operations:operations-domain:test --tests "com.mapit.operations.domain.notification.NotificationRepositoryContractTest" :modules:operations:operations-application:spotlessJavaCheck :modules:operations:operations-domain:spotlessJavaCheck --console=plain`. **BUILD SUCCESSFUL**; Spotless correcto en ambos módulos.
+- Resultados XML: `CurrentNotificationScopeTest` **4**, `NotificationUseCasesTest` **37**, contrato de repositorio afectado **12**: **53 pruebas ejecutadas, 0 fallos, 0 errores, 0 omitidas**. Solo pruebas nuevas/directamente afectadas; no se repitieron las suites completas de dominio/backend/frontend.
+- Dobles exclusivos de tests: prueban orquestación, ámbitos y contrato, incluidas llegadas posteriores a una instantánea simulada; no prueban RLS, snapshot/atomicidad SQL, revalidación real de identidad o autorización HTTP/STOMP. Las respuestas incorrectas del adaptador se rechazan sin devolver sus datos, pero esa comprobación no sustituye filtros de escritura/RLS.
+- Pendientes: JDBC/Flyway/DBML y RLS de MAP-292, adaptador de autorización vigente con MAP-238, wiring transaccional real, formato de cursor HTTP seguro, contrato OpenAPI y errores/feature gate antes de exponer HTTP. También lectura conjunta consistente de página/contador y pruebas de integración/concurrencia con PostgreSQL. Sin reservar migraciones ni tocar V34–V39.
+- Se actualizan solo estas especificaciones y código/pruebas de notificaciones de `operations`; sin cambios a MAP-285, flags, autenticación, frontend, OpenAPI ni dependencias. Prettier se limita a estos tres Markdown y los hooks normales se ejecutan al commit. Sin Docker, aplicación, push ni PR.

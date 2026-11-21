@@ -24,7 +24,7 @@ public interface NotificationRepository {
     /** Filtra antes de ordenar/paginar, con el mismo ámbito efectivo que el contador/marcado. */
     NotificationPage list(NotificationPageRequest request);
 
-    /** Cuenta solo no leídas del ámbito autorizado; sin contexto/concesiones devuelve cero. */
+    /** Cuenta solo no leídas del ámbito autorizado; sin concesiones devuelve cero. */
     long countUnread(NotificationScope scope);
 
     /**
@@ -33,4 +33,12 @@ public interface NotificationRepository {
      * La actualización debe ser atómica ante dos sesiones y aplicar el ámbito en el WHERE.
      */
     Optional<Notification> markRead(NotificationScope scope, UUID notificationId, Instant readAt);
+
+    /**
+     * Una única escritura atómica: marca solo no leídas del ámbito, visibles en su instantánea
+     * y con createdAt no posterior a readAt, que procede del reloj del servidor. Conserva fechas
+     * de lectura previas. Devuelve filas modificadas (cero al repetir sin nuevas filas elegibles).
+     * No recorrer páginas: la instantánea, el filtro de ámbito y el corte deben estar en el UPDATE.
+     */
+    long markAllRead(NotificationScope scope, Instant readAt);
 }
