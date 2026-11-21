@@ -36,12 +36,12 @@
 
 ## MAP-267 — Flag y rollback
 
-- [ ] Configurar `mapit.s6.business-applications` OFF por defecto y fallback OFF.
-- [ ] Probar ON/OFF, Unleash indisponible y conservación de solicitudes anteriores.
+- [x] Configurar `mapit.s6.business-applications` OFF por defecto y fallback OFF.
+- [x] Probar ON/OFF, Unleash indisponible y conservación de solicitudes anteriores.
 
 ## Evidencia final
 
-- [ ] `pnpm check` y suites de integración pertinentes en verde.
+- [x] `pnpm check` y suites de integración pertinentes en verde.
 - [ ] Checks requeridos de CI verdes y captura de la pestaña Checks adjunta al PR.
 
 ## Notas de ejecución
@@ -63,3 +63,6 @@
 - MAP-265: integración PostgreSQL 17 pasó con JWT real, invitación, rechazo, repetición idempotente, aprobaciones concurrentes y reversión completa si falla el correo. Pruebas específicas de consola 2/2. El primer `pnpm check` falló por una regla de lint corregida y un timeout de 5 s en una prueba preexistente de métodos de pago; esa prueba pasó aislada 8/8. La repetición completa quedó en verde: Console 373, Public Web 152, librerías 85, builds, contrato y backend/ArchUnit.
 - MAP-266: los correos de aprobación y rechazo se envían después del commit, una sola vez por decisión. El contenido incluye únicamente nombre del negocio y resultado; el enlace de activación del primer ADMIN sigue llegando por separado mediante CU-25. La integración verifica emisión única, ausencia de correo tras rollback, permisos por rol, RLS cross-tenant, duplicados, concurrencia y reversión transaccional.
 - MAP-266: E2E real con `pnpm dev`, `pnpm db:seed:flags` y `pnpm --filter @mapit/e2e exec playwright test tests/business-onboarding/flow.spec.ts --project=business-onboarding --no-deps` pasó 1/1. Recorrió formulario público anónimo, Mailpit, verificación, aprobación en Console, notificación de resultado, invitación, idempotencia y activación. El reporte local `apps/e2e/playwright-report/index.html` contiene una captura de la aprobación. La prueba restauró la flag `OFF` al terminar. CI ahora carga las flags antes de E2E y adjunta el reporte desde la ruta real. `pnpm check` completo quedó en verde: Console 373, Public Web 152, librerías 85, builds, contrato y backend/ArchUnit. `pnpm --filter @mapit/e2e typecheck` también pasó.
+- MAP-267: la flag ya estaba declarada OFF por defecto en catálogo backend/frontend y en el seed de Unleash. Se añadió falla cerrada al perder Unleash después de haber recibido ON, tanto en el adaptador Java como en el servicio Angular. Al recuperarse el transporte, ambos vuelven a evaluar la flag. El envío público se bloquea con OFF; revisión, decisiones, verificación y datos anteriores permanecen operativos. Como el solicitante aún no pertenece a un tenant, este toggle de entrada se opera por entorno; la segmentación por tenant se reserva para capacidades posteriores a la aprobación.
+- MAP-267: pruebas unitarias del adaptador y frontend, integración PostgreSQL de rollback y E2E real pasaron. El E2E apaga Unleash tras verificar una solicitud, comprueba que desaparece el formulario público, aprueba la solicitud anterior y concluye la activación; adjunta capturas del estado OFF y de la aprobación y restaura el flag inicial al terminar.
+- MAP-267: `pnpm check` completo quedó en verde: Console 373/373, Public Web 152/152, librerías 86/86, builds, contrato API y backend/ArchUnit. El test de integración de rollback y el E2E dirigido pasaron 1/1 cada uno. Queda pendiente únicamente la evidencia de los checks de CI del futuro PR.

@@ -14,6 +14,10 @@ final class UnleashLoggingSubscriber implements UnleashSubscriber {
   private static final Logger LOG = LoggerFactory.getLogger(UnleashLoggingSubscriber.class);
   private final AtomicBoolean degraded = new AtomicBoolean();
 
+  boolean unavailable() {
+    return degraded.get();
+  }
+
   @Override
   public void onError(UnleashException exception) {
     failed();
@@ -32,7 +36,7 @@ final class UnleashLoggingSubscriber implements UnleashSubscriber {
   private void failed() {
     if (!degraded.getAndSet(true)) {
       LOG.atWarn().addKeyValue("event", "integration.failed").addKeyValue("integration", "unleash")
-          .log("Feature flag transport unavailable; cached values or defaults remain active");
+          .log("Feature flag transport unavailable; sensitive toggles use safe defaults");
     }
   }
 }

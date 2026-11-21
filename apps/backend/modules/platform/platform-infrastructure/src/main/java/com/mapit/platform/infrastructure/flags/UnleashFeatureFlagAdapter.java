@@ -20,9 +20,11 @@ public final class UnleashFeatureFlagAdapter implements FeatureFlagPort {
   static final String TENANT_PROPERTY = "tenantId";
 
   private final Unleash unleash;
+  private final UnleashLoggingSubscriber subscriber;
 
-  public UnleashFeatureFlagAdapter(Unleash unleash) {
+  public UnleashFeatureFlagAdapter(Unleash unleash, UnleashLoggingSubscriber subscriber) {
     this.unleash = unleash;
+    this.subscriber = subscriber;
   }
 
   @Override
@@ -32,11 +34,13 @@ public final class UnleashFeatureFlagAdapter implements FeatureFlagPort {
 
   @Override
   public boolean isEnabled(FeatureFlag flag, boolean valorPorDefecto) {
+    if (flag == FeatureFlag.BUSINESS_APPLICATIONS && subscriber.unavailable()) return false;
     return unleash.isEnabled(flag.clave(), valorPorDefecto);
   }
 
   @Override
   public boolean isEnabledFor(FeatureFlag flag, TenantId tenantId) {
+    if (flag == FeatureFlag.BUSINESS_APPLICATIONS && subscriber.unavailable()) return false;
     UnleashContext context =
         UnleashContext.builder().addProperty(TENANT_PROPERTY, tenantId.value()).build();
     return unleash.isEnabled(flag.clave(), context, flag.valorPorDefecto());

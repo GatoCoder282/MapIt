@@ -114,6 +114,21 @@ test('solicitud anónima → verificación → aprobación → correos → activ
       applicationId = body.content[0]!.id;
     }).toPass({ timeout: 15_000 });
 
+    // MAP-267: apagar el alta pública no interrumpe el trabajo pendiente del Admin.
+    const disabled = await request.post(`${UNLEASH}${FLAG_PATH}/environments/${ENVIRONMENT}/off`, {
+      headers,
+    });
+    expect(disabled.ok()).toBeTruthy();
+    await expect(async () => {
+      await page.goto(`${PUBLIC_URL}/incorporacion`);
+      await expect(page.getByRole('status')).toContainText(/no están disponibles/i);
+      await expect(page.getByRole('button', { name: /enviar solicitud/i })).toHaveCount(0);
+    }).toPass({ timeout: 60_000, intervals: [2_000, 5_000] });
+    await testInfo.attach('solicitudes-desactivadas', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+
     await page.goto(`${CONSOLE_URL}/login`);
     await page.getByTestId('login-email').fill(adminToken);
     await page.getByTestId('login-password').fill(adminPassword);

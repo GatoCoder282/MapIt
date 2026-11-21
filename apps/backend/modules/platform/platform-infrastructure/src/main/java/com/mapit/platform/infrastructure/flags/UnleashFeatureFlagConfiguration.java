@@ -20,16 +20,22 @@ public class UnleashFeatureFlagConfiguration {
       @Value("${mapit.unleash.url}") String url,
       @Value("${mapit.unleash.api-token}") String apiToken,
       @Value("${mapit.unleash.app-name}") String appName,
-      @Value("${mapit.unleash.environment}") String environment) {
+      @Value("${mapit.unleash.environment}") String environment,
+      UnleashLoggingSubscriber subscriber) {
     UnleashConfig config =
         UnleashConfig.builder()
             .unleashAPI(url)
             .apiKey(apiToken)
             .appName(appName)
             .environment(environment)
-            .subscriber(new UnleashLoggingSubscriber())
+            .subscriber(subscriber)
             .synchronousFetchOnInitialisation(false)
             .build();
     return new DefaultUnleash(config);
+  }
+
+  @Bean
+  UnleashLoggingSubscriber unleashLoggingSubscriber() {
+    return new UnleashLoggingSubscriber();
   }
 }
