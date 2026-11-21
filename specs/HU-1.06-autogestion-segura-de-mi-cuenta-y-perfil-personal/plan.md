@@ -72,8 +72,8 @@ Ubicación base: `apps/backend/modules/identity/`, paquetes `com.mapit.identity`
 | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `identity-domain/.../PersonalProfile.java`                                  | Proyección personal sin hash, tokens ni propiedades administrativas.            |
 | `identity-domain/.../PersonalProfileRepository.java`                        | Lectura/escritura acotada a tenant y usuario autenticados.                      |
-| `identity-application/.../GetOwnProfile.java`                               | Obtener actor/tenant del contexto confiable y consultar el perfil propio.       |
-| `identity-application/.../UpdateOwnProfile.java`                            | Validar campos permitidos, identidad vigente y actualización transaccional.     |
+| `identity-application/.../OwnProfileService.java` (`read`)                  | Consultar el perfil del principal validado con transacción de lectura.          |
+| `identity-application/.../OwnProfileService.java` (`updateFullName`)        | Validar nombre, elegibilidad y actualización transaccional de la fila propia.   |
 | `identity-infrastructure/.../MyAccountController.java`                      | DTOs cerrados, validación HTTP, errores y respuestas sin caché.                 |
 | `identity-infrastructure/.../JdbcPersonalProfileRepository.java`            | SQL parametrizado con `tenant_id = ? and id = ?`; columnas explícitas.          |
 | `bootstrap/.../db/migration/V<N>__agregar_contacto_e_idioma_a_app_user.sql` | D01: columnas opcionales, límites/checks y compatibilidad con filas existentes. |

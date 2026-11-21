@@ -32,9 +32,10 @@
 - [x] Ejecutar `api:lint` y `api:gen`; verificar que se generó realmente el cliente TS sin versionar `generated/`.
 - [ ] Incorporar el registro OFF/gate de MAP-291 antes de exponer las operaciones.
 - [ ] Crear migración expansiva de `app_user` con número disponible y DBML en el mismo commit; no modificar migraciones existentes ni crear identidad paralela.
-- [ ] Implementar puertos/proyección personal y casos de uso en las capas de identity; actor y tenant del contexto validado.
-- [ ] Implementar controlador propio y JDBC con filtros por tenant/usuario, RLS y actualización exclusiva de columnas permitidas.
-- [ ] Cubrir campos prohibidos, validación, usuario A/B mismo tenant, otro tenant y `platform`; ningún error deja mutaciones parciales.
+- [x] Implementar puertos/proyección y casos de uso de nombre/correo existentes; actor y tenant del principal validado.
+- [x] Implementar controlador propio y JDBC de nombre/correo con SET LOCAL y filtros por tenant/usuario/rol/estado; escritura exclusiva de full_name.
+- [x] Cubrir campos prohibidos, validación, usuario A/B mismo tenant, otro tenant y `platform` en unitarios/REST en memoria; sin escrituras parciales.
+- [ ] Completar lectura/escritura de contacto e idioma reales después de la migración compatible; no cerrar MAP-287 con solo nombre/correo.
 - [ ] Probar con `mapit_app` real, contexto SQL ausente y reutilización del pool; excluir contexto especial de login en estas consultas.
 - [ ] Verificar migración con filas previas y persistencia tras nueva lectura; registrar comandos y resultados reales.
 
@@ -72,7 +73,7 @@
 
 - [x] Adaptar y probar el generador para claves de varios segmentos, preservando dos segmentos, flags existentes, idempotencia y LF/CRLF.
 - [x] Registrar `mapit.s6.my-account` OFF en Java, TS y bootstrap; el gate funcional no forma parte de esta etapa.
-- [ ] Usar `FeatureFlagPort.isEnabledFor` en backend con tenant autenticado; autorización independiente tanto OFF como ON.
+- [x] Usar `FeatureFlagPort.isEnabledFor` en GET/PATCH con tenant autenticado; elegibilidad/autorización independiente tanto OFF como ON. Password pendiente de MAP-289.
 - [ ] Implementar contexto del proxy desde Console sin enviar JWT staff, limpiar al cambiar sesión y descartar respuestas antiguas.
 - [ ] Cubrir valor inicial pendiente, flag ausente, proveedor sin configurar, OFF/ON, tenant/entorno y fallo después de ON.
 - [ ] Definir y probar antigüedad de caché y propagación del rollback frontend/backend; no alterar otras flags incidentalmente.
@@ -166,3 +167,13 @@
 - Tests REST con RestTestClient ligado al controlador (sin servidor) y pruebas JDBC/obligatoriedad transaccional. La primera corrida encontró una interacción de inicialización del mock JdbcTemplate en el fixture; se aislaron las llamadas de la operación y se corrigió el orden de imports indicado por Spotless. No fueron fallos de aislamiento de producción.
 - Unitarios de `identity-infrastructure`: 63 correctos, incluidos rechazo sin principal confiable, campos privilegiados/desconocidos, IDs ajenos, OFF/ON, 503 sin escrituras parciales, errores seguros y SQL limitado. No equivalen a validar PostgreSQL/RLS: eso queda pendiente de integración con infraestructura autorizada.
 - Spotless de infraestructura corregido y correcto. El typecheck de Console/Public Web pasó con los campos de respuesta opcionales regenerados. La cadena global de seguridad, JWT, gestión administrativa y las migraciones existentes permanecen intactas.
+
+### 2026-11-21 — autorización y preparación de integración MAP-287
+
+- `MyAccountSecurityTest` usa `SecurityConfig`, `JwtAuthenticationFilter` y JJWT reales, montados en memoria sin Spring Boot ni servidor. Se prueban JWT ausente/alterado/expirado, flags OFF/ON sin saltar elegibilidad, ADMIN/MANAGER/STAFF/SUPER_ADMIN, claims de rol/tenant que no coinciden con la cuenta, selección ajena por body/query/header y PATCH limitado a nombre propio.
+- `:bootstrap:test --tests com.mapit.identity.MyAccountSecurityTest --tests com.mapit.architecture.ArchitectureTest`: 6 pruebas de cadena/JWT y 12 de arquitectura correctas. Spotless de bootstrap correcto. Ningún test ejecutado de esta etapa requiere iniciar aplicación, PostgreSQL o Docker.
+- `PersonalProfilePersistenceIntegrationTest` queda preparado con PostgreSQL 17/Testcontainers, Flyway actual, rol `mapit_app` sin bypass, un pool de una conexión y servicios/repositorios transaccionales reales. Cubre persistencia/relectura del nombre, filas ajenas del mismo/otro tenant intactas, correo de BD frente al claim, columnas de autoridad intactas, estado/rol vigentes, SUPER_ADMIN propio, OFF sin escritura y RLS/contexto del pool. El fixture respeta vertical obligatoria de tenant; no añade migraciones.
+- Integración PostgreSQL/RLS: **NO EJECUTADA**, requiere Docker y no está autorizado iniciarlo. El test se compila pero se excluye mediante tag integration del test unitario. E2E y ensayo de Unleash real: **NO EJECUTADOS**, requieren stack. No hay evidencia de aislamiento físico/RLS nueva hasta ejecutar esta integración, ni aceptación funcional completa de MAP-287.
+- Resultados focalizados: OwnProfileServiceTest 15/15, MyAccountControllerTest 41/41, JdbcPersonalProfileRepositoryTest 3/3, MyAccountSecurityTest 6/6 y ArchitectureTest 12/12. Además pasaron las suites unitarias existentes de identity-application/identity-infrastructure invocadas; infraestructura suma 63 tests.
+- Pendiente exacto antes de cerrar MAP-287: integrar/revisar MAP-238 sin duplicarlo, crear migración nueva con número disponible y DBML, persistir contacto/idioma y sus reglas PATCH/null, ejecutar integración/RLS y regresiones sobre esa base. MAP-288 podrá consumir el contrato para UI, pero no presentar contacto/idioma como disponibles ni activar un rollout completo antes de esos resultados.
+- Compilación final de `bootstrap:compileTestJava` y Spotless correctos tras revisar el fixture contra las migraciones actuales. No se ejecutó `pnpm be:test` completo en este incremento para evitar los tests existentes que levantan contexto/servidor de aplicación; se ejecutaron las suites de identidad y los tests bootstrap focalizados sin servidor. Tampoco `pnpm check`, push, PR o merge.
