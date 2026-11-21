@@ -101,6 +101,22 @@
 
 ## Notas de ejecución
 
+### 2026-11-21 — MAP-289: preparación backend independiente
+
+- Comando redactado `OwnPasswordChange`, razones constantes en `OwnPasswordChangeFailure`, validador que reutiliza PasswordPolicy/PasswordVerifier y lector cerrado de payload. Sin consultas de identidad por email/ID cliente, escritura/hash nuevo, controlador ni revocación. El futuro llamador debe aportar el hash propio confiable después de autenticación/eligibilidad/RLS y limitar antes de BCrypt; el validador no acredita autoridad.
+- Comprueba contraseña actual contra hash (dummy si ausente/corrupto mediante verificador existente), composición efectiva, nueva distinta contra el hash, confirmación exacta, 8 puntos de código para la nueva y 72 bytes UTF-8 válidos en las tres entradas. Rechaza UTF-16 malformado y sobredimensionado antes de BCrypt; no strip/normalización/truncamiento.
+- Reutilizado AuthAttemptLimiter mediante puerto de dominio y error seguro `OwnPasswordRateLimited`. Método independiente, buckets HMAC password-change por tenant/cuenta y dirección real; propuesta 5 por cuenta y 20 por dirección/900 s. REQUIRES_NEW/noRollbackFor propio; SQL, claves, constantes y errores de login preservados. No hay endpoint que consuma aún estos presupuestos; ventana/concurrencia/persistencia real y cuotas operativas requieren QA y revisión de despliegue/NAT.
+- Tests: OwnPasswordChangeValidatorTest **10/10**, preparación de infraestructura/BCrypt real **4/4**, limitador con JDBC simulado **3/3**, MyAccountSecurityTest **8/8** (nuevo POST ausente con JWT y flag OFF/ON, sin eco de credenciales) y ArchUnit **12/12**. Suites application **41/41**, infraestructura **70/70**, bootstrap focalizado **20/20**. No se ejecuta aplicación/servidor, BD o Docker.
+- SpotlessJavaCheck de domain/application/infrastructure/bootstrap correcto. Las pruebas de transacción del limitador verifican declaración y separación de buckets en memoria, no commit/concurrencia en PostgreSQL. Las verificaciones de logs capturan Logback sin credenciales/hash; errores/representación del comando son constantes.
+
+### 2026-11-21 — auditoría MAP-289 antes de cambios
+
+- Inicio limpio en rama existente, 14 commits conservados; main/origin/main siguen en fd22d789. Jira MAP-289 consultado: **S6 — Cambio seguro de contraseña**, exige prueba de control, política, límites y comportamiento de sesiones; no Listo sin QA. Alcance del solicitante: componentes independientes y formulario no operativo, sin endpoint ni escritura de hash.
+- PR #69 verificado abierto y no integrado, head `20e25e5a5ce34ce1308db8c85c0af78d16a0d8a9`, base main fd22d789. Revisados en ese SHA CurrentStaffIdentity, JdbcCurrentStaffIdentity, JwtAuthenticationFilter y V36: aporta issuedAt, corte `staff_tokens_valid_after` (deniega iat <= corte), revalidación de identidad/rol/tenant y uso HTTP/STOMP. No se copian, reservan migraciones ni modifican esos mecanismos.
+- Login actual: `/auth/global-login`, `AuthAttemptLimiter.check` por IP/email, AuthenticateUser normaliza email y consulta credenciales; PasswordVerifier verifica BCrypt (también hash dummy) y estado cuenta/tenant. PasswordPolicy de invitación admite 8–128 unidades UTF-16 y composición Unicode BMP; BCryptPasswordVerifier rechaza >72 bytes. El cambio aplicará además límite UTF-8 real y minLength del contrato sin alterar política/login global.
+- PasswordHasher/BCryptPasswordHasher existen; no se necesita producir hashes en un validador sin persistencia. El limitador existente usa HMAC, tabla auth_attempt_limit y REQUIRES_NEW; se ampliará con método y buckets propios sin tocar contadores/constantes de login. AuthAttemptLimiter y PasswordPolicy no aparecen entre los archivos cambiados por el PR #69; catálogos i18n sí son puntos de conciliación futura.
+- Diseño incremental en plan §7. El formulario se preparará sin montar ni exponer, con textos es/en/ja-JP y sin servicio HTTP. No se invocan APIs externas de escritura, Docker ni aplicación.
+
 ### 2026-11-21 — MAP-291: runbook y cierre pendiente de QA
 
 - `spec.md` §5.1 y `plan.md` §8 describen la política implementada, TTL, semántica de snapshot/304, límites de temporizadores y procedimiento selectivo de rollback/recuperación. Se corrigen notas de plan/tareas que todavía describían gate/contexto como no implementados. Los criterios de aceptación globales CA-07/CA-12 no se marcan completos por pruebas locales.

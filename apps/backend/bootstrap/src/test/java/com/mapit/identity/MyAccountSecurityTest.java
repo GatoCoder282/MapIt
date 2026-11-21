@@ -104,6 +104,23 @@ class MyAccountSecurityTest {
     }
 
     @Test
+    void passwordEndpointStaysAbsentEvenWithValidJwtAndFeatureOn() {
+        for (boolean enabled : new boolean[] {false, true}) {
+            context.getBean(AtomicBoolean.class).set(enabled);
+            client.post().uri("/api/v1/me/password").header("Authorization", "Bearer " + token(A))
+                    .contentType(MediaType.APPLICATION_JSON).body(Map.of("currentPassword", "private-current-canary",
+                            "newPassword", "private-next-canary", "newPasswordConfirm", "private-confirm-canary", "userId", B.id().toString()))
+                    .exchange().expectStatus().isNotFound().expectBody().consumeWith(response -> {
+                        var body = response.getResponseBody();
+                        if (body != null) org.assertj.core.api.Assertions.assertThat(new String(body, java.nio.charset.StandardCharsets.UTF_8))
+                                .doesNotContain("private-current-canary", "private-next-canary", "private-confirm-canary");
+                    });
+        }
+        verify(repository, never()).findOwn(any());
+        verify(repository, never()).updateOwnFullName(any(), anyString());
+    }
+
+    @Test
     void defaultOffAndOnDoNotBypassAccountEligibility() {
         read(token(A)).expectStatus().isNotFound();
         context.getBean(AtomicBoolean.class).set(true);
