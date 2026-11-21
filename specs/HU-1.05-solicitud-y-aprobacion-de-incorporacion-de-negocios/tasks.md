@@ -25,9 +25,9 @@
 
 ## MAP-265 — Decisión y onboarding
 
-- [ ] Aprobar/rechazar de forma transaccional e idempotente con contacto verificado.
-- [ ] Reutilizar el alta de tenant y la invitación del primer ADMIN de CU-25.
-- [ ] Emitir evento de auditoría inmutable y probar decisiones concurrentes.
+- [x] Aprobar/rechazar de forma transaccional e idempotente con contacto verificado.
+- [x] Reutilizar el alta de tenant y la invitación del primer ADMIN de CU-25.
+- [x] Emitir evento de auditoría inmutable y probar decisiones concurrentes.
 
 ## MAP-266 — Notificaciones y E2E
 
@@ -59,3 +59,5 @@
 - MAP-263: pruebas específicas de estado y visibilidad 6/6. `pnpm check` completo en verde: Console 371, Public Web 152, librerías 85, builds, contrato y backend/ArchUnit.
 - MAP-264: el contrato y cliente generados agregan listado filtrable y detalle sin exponer hashes de tokens. El backend consulta exclusivamente bajo RLS de `platform` y exige SUPER_ADMIN antes de llegar al controlador. La consola tiene bandeja, filtros, paginación y vista de detalle en `/admin/business-applications`.
 - MAP-264: prueba de integración con PostgreSQL 17 y JWT real pasó (401 sin sesión, 403 para ADMIN, 200 para SUPER_ADMIN, 404 para ID inexistente; respuesta sin hash). Prueba del store, build de consola, `pnpm be:test`, `pnpm api:lint` y tipos pasaron. `pnpm check` completo terminó en verde: formato, lint, tipos, pruebas y builds frontend, contrato API y backend/ArchUnit.
+- MAP-265: se añadieron acciones de aprobar y rechazar para SUPER_ADMIN, con bloqueo de fila, decisión idempotente y auditoría en `platform`. La aprobación exige contacto verificado y reutiliza el alta de tenant y la invitación segura de CU-25; la consola permite decidir desde el detalle. La migración V35 amplía la bitácora inmutable y el DBML acompaña el cambio.
+- MAP-265: integración PostgreSQL 17 pasó con JWT real, invitación, rechazo, repetición idempotente, aprobaciones concurrentes y reversión completa si falla el correo. Pruebas específicas de consola 2/2. El primer `pnpm check` falló por una regla de lint corregida y un timeout de 5 s en una prueba preexistente de métodos de pago; esa prueba pasó aislada 8/8. La repetición completa quedó en verde: Console 373, Public Web 152, librerías 85, builds, contrato y backend/ArchUnit.

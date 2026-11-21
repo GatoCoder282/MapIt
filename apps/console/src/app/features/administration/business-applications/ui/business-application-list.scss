@@ -16,12 +16,17 @@ label {
   gap: 0.35rem;
 }
 input,
+textarea,
 select {
   min-height: 2.75rem;
   padding: 0.6rem;
   border: 1px solid #a9b1cd;
   border-radius: 0.5rem;
   font: inherit;
+}
+textarea {
+  min-width: min(100%, 28rem);
+  min-height: 6rem;
 }
 button,
 a {

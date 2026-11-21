@@ -108,6 +108,16 @@ class SubmitBusinessApplicationTest {
     public java.util.Optional<BusinessApplication> findById(java.util.UUID id) {
       return java.util.Optional.empty();
     }
+
+    @Override
+    public java.util.Optional<BusinessApplication> findByIdForUpdate(java.util.UUID id) {
+      return java.util.Optional.empty();
+    }
+
+    @Override
+    public void saveDecision(BusinessApplication value) {
+      throw new UnsupportedOperationException();
+    }
     BusinessApplication application;
     Instant expiresAt;
     String tokenHash;

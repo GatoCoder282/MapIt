@@ -192,6 +192,76 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /business-applications/{id}/approve:
+    post:
+      tags: [business-applications]
+      summary: Aprobar solicitud e invitar al primer administrador
+      operationId: approveBusinessApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessApplicationApprovalRequest"
+      responses:
+        "200":
+          description: Solicitud aprobada o repetición idempotente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessApplicationDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /business-applications/{id}/reject:
+    post:
+      tags: [business-applications]
+      summary: Rechazar solicitud con motivo auditable
+      operationId: rejectBusinessApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessApplicationRejectionRequest"
+      responses:
+        "200":
+          description: Solicitud rechazada o repetición idempotente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessApplicationDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /public/tenants/{tenantSlug}/establishments/{establishmentSlug}:
     {
       "get":
@@ -6270,6 +6340,25 @@ components:
     BusinessApplicationStatus:
       type: string
       enum: [PENDING, APPROVED, REJECTED]
+
+    BusinessApplicationApprovalRequest:
+      type: object
+      required: [slug]
+      properties:
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+
+    BusinessApplicationRejectionRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
 
     BusinessApplicationDetail:
       type: object
