@@ -77,11 +77,9 @@ paths:
       tags: [notifications]
       operationId: listMyNotifications
       summary: Listar notificaciones propias por cursor
-      x-implementation-status: pending
+      x-implementation-status: implemented
       description: |
-        CONTRATO PENDIENTE DE IMPLEMENTACIÓN HTTP. No hay controlador ni persistencia
-        conectada; este contrato no habilita el servicio ni anuncia respuestas actuales.
-        El adaptador futuro reutilizará ListMyNotifications.
+        Implementado con ListMyNotifications, JDBC/RLS y permisos vigentes de MAP-238.
 
         Identidad y tenant proceden exclusivamente del principal autenticado validado.
         Revalida cuenta/tenant y permisos por tipo y establecimiento antes de consultar.
@@ -176,10 +174,9 @@ paths:
       tags: [notifications]
       operationId: countMyUnreadNotifications
       summary: Contar notificaciones propias no leídas
-      x-implementation-status: pending
+      x-implementation-status: implemented
       description: |
-        CONTRATO PENDIENTE DE IMPLEMENTACIÓN HTTP. Reutilizará CountMyUnreadNotifications
-        al disponer de JDBC/RLS, autorización vigente y controlador reales.
+        Implementado con CountMyUnreadNotifications, JDBC/RLS e identidad vigente de MAP-238.
         Identidad/tenant desde el principal validado; cuenta solo avisos propios no leídos
         con las mismas concesiones por tipo/establecimiento que el listado. Un ámbito
         autorizado sin avisos devuelve cero; un fallo no se presenta como cero.
@@ -221,10 +218,9 @@ paths:
       tags: [notifications]
       operationId: markMyNotificationRead
       summary: Marcar una notificación propia como leída
-      x-implementation-status: pending
+      x-implementation-status: implemented
       description: |
-        CONTRATO PENDIENTE DE IMPLEMENTACIÓN HTTP. Reutilizará MarkMyNotificationRead
-        al disponer de JDBC/RLS, autorización vigente y controlador reales.
+        Implementado con MarkMyNotificationRead, JDBC/RLS e identidad vigente de MAP-238.
         Identidad/tenant desde el principal validado; notificationId identifica solo el aviso.
         No admite cuerpo, fechas, roles, tenantId, userId, establecimiento ni parámetros
         desconocidos (400). El servidor obtiene la fecha desde su Clock.
@@ -278,10 +274,9 @@ paths:
       tags: [notifications]
       operationId: markAllMyNotificationsRead
       summary: Marcar todas las notificaciones propias autorizadas como leídas
-      x-implementation-status: pending
+      x-implementation-status: implemented
       description: |
-        CONTRATO PENDIENTE DE IMPLEMENTACIÓN HTTP. Reutilizará MarkAllMyNotificationsRead
-        al disponer de JDBC/RLS, autorización vigente y controlador reales.
+        Implementado con MarkAllMyNotificationsRead, JDBC/RLS e identidad vigente de MAP-238.
         No admite cuerpo, cursor, filtros, fechas, tenantId, userId, establecimiento ni
         parámetros desconocidos (400). Identidad/tenant desde el principal validado.
 

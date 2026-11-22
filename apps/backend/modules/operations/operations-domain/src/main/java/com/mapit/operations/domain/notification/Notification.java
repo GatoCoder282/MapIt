@@ -36,6 +36,8 @@ public record Notification(
         if (readAt != null && readAt.isBefore(createdAt)) {
             throw new IllegalArgumentException("La lectura no puede preceder a la creación");
         }
+        createdAt = createdAt.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        readAt = readAt == null ? null : readAt.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
     }
 
     public static Notification unread(

@@ -18,6 +18,7 @@ public interface NotificationRepository {
      * El evento completo debe coincidir: datos incompatibles con la misma clave o un ID de fila
      * ya usado para otro evento se rechazan sin sobrescritura. Un reintento no cambia ID, fechas
      * ni lectura de la fila original. Solo productores internos autorizados invocan este método.
+     * Tras caducidad/purga lanza NotificationExpiredException; conserva la clave sin recrear contenido.
      */
     Notification createIfAbsent(Notification notification);
 

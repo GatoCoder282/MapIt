@@ -21,6 +21,24 @@ import org.junit.jupiter.params.provider.MethodSource;
 import com.mapit.shared.audit.AuditEventType;
 
 class NotificationTest {
+    @Test
+    void normaliza_precision_postgresql_sin_redondear_el_cursor_ni_la_clave_de_reentrega() {
+        var occurred = OCCURRED_AT.plusNanos(123_456_789);
+        var event = new NotificationEvent(id(40), TENANT, NotificationType.RESERVATION_CREATED,
+                occurred, ESTABLISHMENT, RESERVATION);
+        var notification = new Notification(id(30), OWNER, event,
+                occurred.plusSeconds(1), occurred.plusSeconds(2));
+
+        assertThat(event.occurredAt()).isEqualTo(occurred.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        assertThat(notification.createdAt().getNano()).isEqualTo(123_456_000);
+        assertThat(notification.readAt().getNano()).isEqualTo(123_456_000);
+        var persistedEvent = new NotificationEvent(event.id(), TENANT, event.type(),
+                event.occurredAt(), ESTABLISHMENT, RESERVATION);
+        assertThat(persistedEvent).isEqualTo(event);
+        assertThat(Notification.unread(id(31), OWNER, persistedEvent, notification.createdAt()).key())
+                .isEqualTo(notification.key());
+    }
+
     @ParameterizedTest
     @EnumSource(NotificationType.class)
     void nace_no_leida_con_categoria_derivada_y_referencias_minimas(NotificationType type) {

@@ -21,5 +21,6 @@ public record NotificationEvent(
         Objects.requireNonNull(occurredAt, "occurredAt no puede ser null");
         Objects.requireNonNull(establishmentId, "establishmentId no puede ser null");
         Objects.requireNonNull(reservationId, "reservationId no puede ser null");
+        occurredAt = occurredAt.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
     }
 }

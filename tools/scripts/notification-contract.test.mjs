@@ -40,7 +40,7 @@ const operations = [
   ['/me/notifications/read-all', 'patch', 'markAllMyNotificationsRead'],
 ];
 
-test('solo las cuatro operaciones MVP, autenticadas y explícitamente pendientes', () => {
+test('solo las cuatro operaciones MVP, autenticadas y conectadas a implementación', () => {
   assert.deepEqual(
     Object.keys(contract.paths)
       .filter((path) => path.startsWith('/me/notification'))
@@ -50,7 +50,7 @@ test('solo las cuatro operaciones MVP, autenticadas y explícitamente pendientes
   for (const [path, method, operationId] of operations) {
     const op = contract.paths[path][method];
     assert.equal(op.operationId, operationId);
-    assert.equal(op['x-implementation-status'], 'pending');
+    assert.equal(op['x-implementation-status'], 'implemented');
     assert.deepEqual(op.security, [{ bearerAuth: [] }]);
     assert.equal(op.requestBody, undefined);
     const parameters = op.parameters.map(resolve);
