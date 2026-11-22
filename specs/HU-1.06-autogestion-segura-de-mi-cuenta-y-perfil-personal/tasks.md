@@ -104,6 +104,12 @@
 
 ## Notas de ejecución
 
+### 2026-11-22 — Regresión de null explícito con la configuración real de Jackson
+
+- La revisión final detectó `spring.jackson.default-property-inclusion: non_null`. Sin excepción local, un perfil sin teléfono/idioma incumpliría los cuatro campos requeridos de OpenAPI y el frontend rechazaría esa respuesta. No se cambia esa política global ni se añaden dependencias Jackson al dominio.
+- `PersonalProfileJsonConfiguration` registra un SimpleModule/mixin ALWAYS solo para PersonalProfile, siguiendo el patrón existente de PublicSpatialJsonConfiguration. El test REST usa ahora un mapper con NON_NULL y este módulo, equivalente a la política de la aplicación. Ningún otro DTO cambia su serialización.
+- `identity-infrastructure:test` filtrado a PersonalProfileJsonConfigurationTest (**2**) y MyAccountControllerTest (**49**): **51 correctas**. El nuevo test comprueba cuatro claves con null explícito, valores persistidos y que otro tipo siga omitiendo null. Total de esta etapa: **139 pruebas backend distintas correctas**; el controlador se repitió por el cambio real de mapper. Formato/compilación y hooks locales normales, sin servidores ni PostgreSQL. El ajuste se guarda en un commit fix independiente, sin reescribir commits.
+
 ### 2026-11-22 — MAP-288: teléfono e idioma en Mi cuenta
 
 - Ampliado el mismo formulario responsive y accesible, sin feature paralela ni cambios de administración. Teléfono opcional validado con el patrón contratado/32 caracteres; idioma es/en/ja-JP o preferencia local (null). Correo de solo lectura; contraseña preparada sigue oculta/inactiva. Reutiliza estilos, I18nService, catálogos y cliente generado.

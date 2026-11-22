@@ -20,11 +20,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mapit.identity.application.OwnProfileService;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.PersonalProfile;
@@ -34,6 +36,8 @@ import com.mapit.identity.domain.UserRole;
 import com.mapit.shared.flags.FeatureFlag;
 import com.mapit.shared.flags.FeatureFlagPort;
 import com.mapit.shared.tenant.TenantId;
+
+import tools.jackson.databind.json.JsonMapper;
 
 class MyAccountControllerTest {
     private static final AuthenticatedPrincipal A = new AuthenticatedPrincipal(UUID.randomUUID(), TenantId.of("tenant-a"), "a@example.test", UserRole.ADMIN);
@@ -50,7 +54,10 @@ class MyAccountControllerTest {
             return Optional.of(new PersonalProfile(java.util.Objects.requireNonNull(change.fullName().applyTo(PROFILE.fullName())), PROFILE.email(), change.contactPhone().applyTo(PROFILE.contactPhone()), change.preferredLanguage().applyTo(PROFILE.preferredLanguage())));
         });
         when(flags.isEnabledFor(FeatureFlag.MAPIT_S6_MY_ACCOUNT, A.tenantId())).thenReturn(true);
-        client = RestTestClient.bindToController(new MyAccountController(new OwnProfileService(repository, flags))).build();
+        var mapper = JsonMapper.builder().changeDefaultPropertyInclusion(value -> value.withValueInclusion(JsonInclude.Include.NON_NULL))
+                .addModule(new PersonalProfileJsonConfiguration().personalProfileJsonModule()).build();
+        client = RestTestClient.bindToController(new MyAccountController(new OwnProfileService(repository, flags)))
+                .configureServer(builder -> builder.setMessageConverters(new JacksonJsonHttpMessageConverter(mapper))).build();
         authenticate(A);
     }
 
