@@ -56,7 +56,7 @@ export class CheckInApi {
     return (
       !!user &&
       (!this.preview() || user.tenantId === PREVIEW_TENANT_ID) &&
-      ['ADMIN', 'STAFF'].includes(user.role)
+      ['ADMIN', 'MANAGER', 'STAFF'].includes(user.role)
     );
   });
   readonly publicOrigin = computed(

@@ -113,7 +113,8 @@ public class JjwtTokenService implements AccessTokenIssuer, AccessTokenVerifier 
                     UUID.fromString(requiredString(claims, Claims.SUBJECT)),
                     TenantId.of(requiredString(claims, CLAIM_TENANT)),
                     requiredString(claims, CLAIM_EMAIL),
-                    UserRole.valueOf(requiredString(claims, CLAIM_ROLE))));
+                    UserRole.valueOf(requiredString(claims, CLAIM_ROLE)),
+                    claims.getIssuedAt().toInstant()));
         } catch (JwtException | IllegalArgumentException exception) {
             return Optional.empty();
         }

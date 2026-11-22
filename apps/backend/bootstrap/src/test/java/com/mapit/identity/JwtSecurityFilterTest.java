@@ -36,7 +36,7 @@ class JwtSecurityFilterTest {
             throws ServletException, IOException {
         var filter = new JwtAuthenticationFilter(token -> "válido".equals(token)
                 ? Optional.of(PRINCIPAL)
-                : Optional.empty());
+                 : Optional.empty(), signed -> Optional.of(signed));
         var tenantContext = new SecurityTenantContext("demo");
         var request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer válido");
@@ -61,7 +61,7 @@ class JwtSecurityFilterTest {
     @Test
     void bearer_invalido_responde_401_y_no_continua_la_cadena()
             throws ServletException, IOException {
-        var filter = new JwtAuthenticationFilter(token -> Optional.empty());
+        var filter = new JwtAuthenticationFilter(token -> Optional.empty(), signed -> Optional.empty());
         var request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer alterado");
         var response = new MockHttpServletResponse();
@@ -72,5 +72,22 @@ class JwtSecurityFilterTest {
         assertThat(invoked).isFalse();
         assertThat(response.getStatus()).isEqualTo(401);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void jwt_firmado_no_autoriza_si_la_identidad_no_existe_o_la_bd_falla()
+            throws ServletException, IOException {
+        for (var identities : java.util.List.<com.mapit.identity.domain.CurrentStaffIdentity>of(
+                signed -> Optional.empty(), signed -> { throw new IllegalStateException("DB fuera"); })) {
+            var filter = new JwtAuthenticationFilter(token -> Optional.of(PRINCIPAL), identities);
+            var request = new MockHttpServletRequest();
+            request.addHeader("Authorization", "Bearer firmado");
+            var response = new MockHttpServletResponse();
+            var invoked = new AtomicBoolean();
+            filter.doFilter(request, response, (a, b) -> invoked.set(true));
+            assertThat(response.getStatus()).isEqualTo(401);
+            assertThat(invoked).isFalse();
+            assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        }
     }
 }

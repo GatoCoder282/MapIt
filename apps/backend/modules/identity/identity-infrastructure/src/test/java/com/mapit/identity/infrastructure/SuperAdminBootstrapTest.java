@@ -57,9 +57,9 @@ class SuperAdminBootstrapTest {
     bootstrap("secreto-seguro").run(new DefaultApplicationArguments());
 
     InOrder order = inOrder(jdbc);
-    // Primero se cuenta si ya existe un SUPER_ADMIN, luego SET LOCAL del tenant, y al final el insert.
-    order.verify(jdbc).queryForObject(anyString(), eq(Integer.class), eq("platform"));
+    // SET LOCAL antes del recuento; el rol mapit_app no puede leer sin contexto RLS.
     order.verify(jdbc).queryForObject(contains("set_config"), eq(String.class), eq("platform"));
+    order.verify(jdbc).queryForObject(anyString(), eq(Integer.class), eq("platform"));
     order
         .verify(jdbc)
         .update(

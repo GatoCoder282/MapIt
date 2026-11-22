@@ -67,10 +67,15 @@ class TenantAdministrationIntegrationTest {
   }
 
   private String tokenFor(UserRole role) {
+    String tenant = role == UserRole.SUPER_ADMIN ? "platform" : "demo";
+    UUID actor = UUID.randomUUID();
+    jdbcTemplate.update(
+        "insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,?,?,'unused','Tester',?)",
+        actor, tenant, "tester-" + actor + "@example.test", role.name());
     return tokens
         .issue(
             new AuthenticatedUser(
-                UUID.randomUUID(), TenantId.of("auth-a"), "tester@example.test", "Tester", role))
+                actor, TenantId.of(tenant), "tester-" + actor + "@example.test", "Tester", role))
         .value();
   }
 

@@ -1013,7 +1013,9 @@ export class WizardEstablishmentComponent {
     effect(() => {
       const queryParams = this.queryParams();
       if (!queryParams) return;
-      if (queryParams.get('manage') === '1') {
+      const status = this.context.status();
+      const active = this.context.active();
+      if (queryParams.get('manage') === '1' || (status === 'ready' && !active)) {
         if (!this.managementLoaded) {
           this.managementLoaded = true;
           this.loadEstablishments();
@@ -1022,8 +1024,6 @@ export class WizardEstablishmentComponent {
       }
 
       this.managementLoaded = false;
-      const status = this.context.status();
-      const active = this.context.active();
       if (status === 'idle' || status === 'loading') {
         this.modo.set('loading');
         return;
@@ -1252,7 +1252,7 @@ export class WizardEstablishmentComponent {
             return;
           }
           this.modo.set('list');
-          this.loadEstablishments();
+          void this.context.load();
         },
         error: () => {}, // el store ya fijÃ³ el mensaje visible
       });
