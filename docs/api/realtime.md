@@ -109,70 +109,43 @@ orden de dependencias.
 - No se implementa la vista completa de MAP-145/HU-3.02.
 - No se agregan mensajes de cliente, drag & drop, reservas ni estado de negocio dentro del broker.
 
-## MAP-295 — Invalidación privada de la bandeja (preparada, no habilitada)
+## MAP-295 — Invalidación privada de la bandeja
 
-Este contrato de transporte se añade para HU-7.06. **No es un destino operativo todavía**:
-el interceptor actual solo autoriza salas y no hay persistencia/dispatcher de notificaciones.
-No registrar el publicador ni configurar `RealtimeConfig.notificationSession` hasta completar
-identidad vigente de MAP-238, autorización privada y HTTP con JDBC/RLS. El flag
-`mapit.s6.notification-center` permanece OFF; activarlo no habilita este canal.
+Destino lógico de SUBSCRIBE: `/user/topic/notifications`. Principal del servidor
+`staff:{tenant}:{userUuid}`, derivado únicamente del JWT validado y revalidado mediante
+CurrentStaffIdentity de MAP-238. No hay nuevo socket ni credenciales de identidad del cliente.
+Se rechazan SEND, destinos físicos, otros usuarios, comodines y un segundo CONNECT sobre la
+misma sesión. El routing físico de Spring termina en `-user{sessionId}`; outbound exige esa
+coincidencia exacta con la sesión autenticada, identidad vigente y gate contextual ON.
 
-- Mismo endpoint `/ws`, mismo `RealtimeClient`, broker y `SimpMessagingTemplate` existentes.
-- SUBSCRIBE del cliente: **`/user/topic/notifications`**, sin IDs, filtros o tenant en el destino.
-  Se conserva el prefijo `/topic` del simple broker, sin añadir `/queue` ni otro broker.
-- Publicación servidor: `convertAndSendToUser("staff:" + tenantId + ":" + userId,
-"/topic/notifications", envelope)`. Tenant validado sin `:` y UUID canónico evitan colisiones.
-  La clave es interna, derivada del destinatario autorizado; no un valor enviado por el navegador.
-- Antes de conectar, bootstrap debe asociar ese nombre a un `Principal` validado y vigente.
-  **La Authentication actual no tiene ese nombre:** no se cambia su representación ni el
-  interceptor en esta preparación. La asociación es una dependencia explícita, no seguridad implementada.
-- Revalidar CONNECT, SUBSCRIBE y outbound con expiración/revocación MAP-238, cuenta/tenant
-  activos y gate contextual. Rechazar SEND, sesiones públicas/anónimas, destinos de otros usuarios,
-  `/topic/notifications` directo y destinos físicos resueltos por Spring. Outbound debe vincular
-  el sessionId del broker a identidad vigente, sin confiar en headers del cliente ni permitir
-  entrega privada para sesiones desconocidas. HTTP mantiene además la autorización del ámbito actual.
-
-Envelope cerrado de invalidación v1, máximo 512 caracteres en el receptor:
+Envelope mínimo, sin datos de aviso/tenant/usuario/PII:
 
 ```json
 {
-  "eventId": "00000000-0000-0000-0000-000000000003",
+  "eventId": "00000000-0000-0000-0000-000000000001",
   "eventType": "notification.inbox.invalidated.v1",
   "schemaVersion": 1,
   "occurredAt": "2026-11-22T12:00:00Z"
 }
 ```
 
-No contiene tenant/usuario, reserva, establecimiento, PII, contenido de aviso, estado leído ni
-contador. Fecha UTC ISO-8601; tipo/versión y UUID validados. Propiedades desconocidas o mensaje
-inválido se rechazan sin incluir el body en logs/errores. `eventId` identifica el cambio durable,
-no cada intento de entrega. Para creación, `NotificationInvalidation.created` usa el ID de la
-notificación canónica; una futura invalidación por lectura necesita su propio ID durable distinto.
+V42 captura hechos/candidatos en la transacción original; fanout y señales usan fases separadas.
+La primera persiste avisos/processed_at atómicamente. La segunda reclama versiones ya confirmadas,
+revalida permisos y envía por SimpMessagingTemplate. Creación y primer marcado de lectura generan
+versiones distintas; el ID de señal es estable por aviso/versión y se conserva al reintentar.
+`delivered_version` marca aceptación por el broker, **no recepción ni lectura del cliente**.
+Un rollback permite reenvío; broker sin suscriptores u OFF puede descartar señales. Los hechos,
+la bandeja y las preferencias persisten independientemente del flag; HTTP es la fuente de verdad.
 
-`StompNotificationInvalidationPublisher` implementa el puerto del dominio, **sin bean, listener,
-scheduler ni productor conectado**. Solo el futuro dispatcher, tras commit y autorización/gates,
-podrá invocarlo. No se usa el retorno de `ProcessNotificationEvent` dentro de su transacción para
-enviar mensajes. El broker puede perder señales o repetirlas; la aceptación de send no acredita
-recepción/lectura. Fallos se propagan para un reintento durable futuro. El outbox de reservas/mapas
-no se modifica, ni se marca una entrega inexistente como exitosa.
+La consola conecta el binding real de AuthSession al transporte compartido. Cambio de identidad
+cierra el socket anterior, olvida sus salas y descarta sus callbacks antes de conectar el nuevo;
+la superficie pública sin ese binding conserva su configuración. OFF del centro solo elimina su
+suscripción/estado; no detiene salas operativas. OFF de realtime conserva HTTP manual y recarga
+una bandeja abierta. La UI agrupa señales 100 ms, deduplica 256 IDs y reconcilia lista/contador tras
+conexión/reconexión, incluso si llegó un aviso durante lectura/escritura. Nunca aplica deltas.
 
-El receptor preparado requiere binding explícito tenant/usuario/nonce del socket. No existe ese
-callback en la configuración runtime actual: no se abre socket ni SUBSCRIBE privado por defecto.
-Cuando se habilite, reutiliza conexión/suscripción y reconexión existentes. Un cambio de identidad
-desuscribe solo el centro; un socket enlazado a otra sesión no puede recibir la nueva suscripción
-privada hasta reconectar. No se fuerza `disconnect()` del transporte compartido. Cambios de sesión,
-OFF, callbacks de sockets antiguos y respuestas HTTP tardías invalidan el estado local.
-
-La UI usa la señal para **reconsultar HTTP**, nunca `contador++` ni insertar avisos desde STOMP.
-Conexión/reconexión solicita primera página y contador. Agrupa señales en 100 ms, deduplica los
-últimos 256 IDs por sesión y conserva una invalidación pendiente durante lecturas/escrituras;
-al terminar repite la consulta si hubo cambios. La caché acotada no pretende entrega exactamente
-una vez: una señal expulsada puede provocar otra lectura, sin duplicar filas/contador. Fallo de
-canal permite reconciliación HTTP; fallo HTTP conserva error/contador desconocido, sin bucles de
-reintento ni éxito ficticio. Con WebSocket OFF o conector no disponible sigue el refresco HTTP
-manual existente. No se publica un estado de «conectado al centro» por observar la conexión global.
-
-Pendiente: commit durable/outbox y destinatarios actuales, wiring de principal y autorización
-MAP-238, gate backend en suscripción/entrega, HTTP real, pruebas de broker/PostgreSQL/RLS y E2E
-con dos usuarios del mismo tenant, otros tenants, token revocado, pérdida de permisos, reconexión
-y rollback. Las pruebas unitarias con dobles no demuestran esas garantías de infraestructura.
+QA local: PostgreSQL y STOMP reales con usuarios del mismo tenant y de otro tenant, token revocado,
+RLS y reintentos. Unitarios cubren suplantación/destinos físicos, permisos/contexto, proveedor
+fallido, callbacks tardíos y reconexión. Pendientes Unleash real, E2E/QA visual y CI antes de PR;
+flag `mapit.s6.notification-center` permanece OFF por defecto. Despliegue V40→V41→V42→V43:
+V40 no está en esta rama ni se copia desde MAP-285.
