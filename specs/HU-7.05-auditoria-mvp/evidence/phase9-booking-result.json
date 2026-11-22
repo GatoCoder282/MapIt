@@ -1,0 +1,7 @@
+{
+  "pageErrors": [],
+  "consoleErrors": [],
+  "routePattern": "/pago/{tenant}/{establishment}/{reservation}",
+  "reservationStatus": 201,
+  "checkoutVisible": true
+}
