@@ -23,18 +23,18 @@ Como representante de un negocio, quiero solicitar su incorporación a MapIt y c
 
 ## Criterios de aceptación
 
-- [ ] Dada la flag `OFF` o Unleash indisponible, cuando un visitante abre la entrada pública o envía una solicitud, entonces la UI no ofrece el formulario y la API rechaza nuevas solicitudes sin cambiar las existentes.
-- [ ] Dada la flag `ON`, cuando un visitante envía nombre comercial, vertical, ubicación y contacto válidos, entonces recibe una confirmación neutra y queda una solicitud `PENDING` sin tenant, establecimiento ni usuario nuevo.
-- [ ] Dados datos inválidos, un duplicado o exceso de solicitudes, cuando se intenta enviar, entonces la API valida y limita el abuso sin revelar si ya existe un correo o negocio.
-- [ ] Dado un usuario que no es `SUPER_ADMIN`, cuando intenta listar, consultar o decidir una solicitud, entonces recibe rechazo y no accede a datos de solicitantes.
-- [ ] Dado un `SUPER_ADMIN`, cuando filtra y revisa solicitudes pendientes, entonces ve sus datos necesarios y el estado actual; la lectura no depende de que la flag pública siga encendida.
-- [ ] Dada una solicitud `PENDING` verificada de forma segura, cuando el `SUPER_ADMIN` la aprueba, entonces se crea o vincula exactamente un tenant y se emite una única invitación al primer `ADMIN`; repetir la aprobación conserva el mismo resultado.
-- [ ] Dada una solicitud `PENDING`, cuando el `SUPER_ADMIN` la rechaza, entonces pasa a `REJECTED`, queda el motivo/actor/fecha auditables y no se crea tenant ni invitación.
-- [ ] Dadas dos decisiones concurrentes sobre la misma solicitud, cuando ambas llegan al servidor, entonces solo una transición gana y no se duplican tenants ni invitaciones.
-- [ ] Dada una solicitud de otra empresa, cuando un usuario de tenant intenta acceder a ella, entonces el backend y PostgreSQL impiden la lectura o modificación; las pruebas comprueban el aislamiento con el rol de runtime.
-- [ ] Dado un resultado de aprobación o rechazo, cuando se envía la notificación, entonces el correo no contiene contraseña, token de sesión ni datos de otras solicitudes.
-- [ ] Dada una solicitud previa, cuando la flag pasa de `ON` a `OFF`, entonces las decisiones administrativas y la trazabilidad continúan disponibles sin pérdida de datos.
-- [ ] Dados los flujos completos, cuando se ejecutan pruebas unitarias, integración y smoke E2E, entonces quedan registrados resultados y evidencia reproducible, incluidos los casos negativos de rol, tenant, duplicados y concurrencia.
+- [x] Dada la flag `OFF` o Unleash indisponible, cuando un visitante abre la entrada pública o envía una solicitud, entonces la UI no ofrece el formulario y la API rechaza nuevas solicitudes sin cambiar las existentes.
+- [x] Dada la flag `ON`, cuando un visitante envía nombre comercial, vertical, ubicación y contacto válidos, entonces recibe una confirmación neutra y queda una solicitud `PENDING` sin tenant, establecimiento ni usuario nuevo.
+- [x] Dados datos inválidos, un duplicado o exceso de solicitudes, cuando se intenta enviar, entonces la API valida y limita el abuso sin revelar si ya existe un correo o negocio.
+- [x] Dado un usuario que no es `SUPER_ADMIN`, cuando intenta listar, consultar o decidir una solicitud, entonces recibe rechazo y no accede a datos de solicitantes.
+- [x] Dado un `SUPER_ADMIN`, cuando filtra y revisa solicitudes pendientes, entonces ve sus datos necesarios y el estado actual; la lectura no depende de que la flag pública siga encendida.
+- [x] Dada una solicitud `PENDING` verificada de forma segura, cuando el `SUPER_ADMIN` la aprueba, entonces se crea o vincula exactamente un tenant y se emite una única invitación al primer `ADMIN`; repetir la aprobación conserva el mismo resultado.
+- [x] Dada una solicitud `PENDING`, cuando el `SUPER_ADMIN` la rechaza, entonces pasa a `REJECTED`, queda el motivo/actor/fecha auditables y no se crea tenant ni invitación.
+- [x] Dadas dos decisiones concurrentes sobre la misma solicitud, cuando ambas llegan al servidor, entonces solo una transición gana y no se duplican tenants ni invitaciones.
+- [x] Dada una solicitud de otra empresa, cuando un usuario de tenant intenta acceder a ella, entonces el backend y PostgreSQL impiden la lectura o modificación; las pruebas comprueban el aislamiento con el rol de runtime.
+- [x] Dado un resultado de aprobación o rechazo, cuando se envía la notificación, entonces el correo no contiene contraseña, token de sesión ni datos de otras solicitudes.
+- [x] Dada una solicitud previa, cuando la flag pasa de `ON` a `OFF`, entonces las decisiones administrativas y la trazabilidad continúan disponibles sin pérdida de datos.
+- [x] Dados los flujos completos, cuando se ejecutan pruebas unitarias, integración y smoke E2E, entonces quedan registrados resultados y evidencia reproducible, incluidos los casos negativos de rol, tenant, duplicados y concurrencia.
 
 ## Seguridad y datos
 
@@ -47,6 +47,6 @@ Como representante de un negocio, quiero solicitar su incorporación a MapIt y c
 
 Autorregistro que conceda acceso sin revisión, credenciales bancarias, contraseñas temporales por correo y nuevas formas de autenticación ajenas a HU-1.03/CU-25.
 
-## Punto a validar antes de implementar
+## Decisión sobre la verificación segura
 
-Jira exige aprobación «tras verificación segura» sin precisar si el correo del solicitante se verifica antes de la revisión o durante la activación del primer `ADMIN`. El plan de MAP-265 deberá fijar esa secuencia y probar que la aprobación no invita a un contacto no verificado.
+La solicitud exige verificar el correo de contacto antes de aprobarla. Después, CU-25 invita al primer `ADMIN` a establecer su contraseña con otro token de un solo uso. Las pruebas de integración comprueban que una solicitud sin contacto verificado no se puede aprobar.
