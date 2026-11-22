@@ -1,6 +1,14 @@
 /* Catálogo estático generado para ja; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_JA = {
   notifications: {
+    preferences: '通知設定',
+    preferencesHint: '今後の通知にのみ適用されます。重要な警告は無効になりません。',
+    preferencesReservations: '予約',
+    preferencesOperations: '運用',
+    preferencesLoading: '設定を読み込み中…',
+    preferencesError: '設定を読み込みまたは保存できませんでした。再試行してください。',
+    preferencesSaved: '設定を保存しました。',
+    savePreferences: '設定を保存',
     title: '通知',
     bellCount: '通知：未読{count}件',
     close: '閉じる',

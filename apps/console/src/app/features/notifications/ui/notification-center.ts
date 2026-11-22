@@ -11,11 +11,12 @@ import {
 import { LucideBell } from '@lucide/angular';
 import { I18nService, LocalizedDatePipe, LocalizedNumberPipe } from '@mapit/i18n';
 import { STRINGS } from '../../../core/strings';
+import { NotificationPreferencesComponent } from './notification-preferences';
 import { NotificationsStore } from '../model/notifications-store';
 
 @Component({
   selector: 'mapit-notification-center',
-  imports: [LucideBell, LocalizedDatePipe, LocalizedNumberPipe],
+  imports: [LucideBell, LocalizedDatePipe, LocalizedNumberPipe, NotificationPreferencesComponent],
   providers: [NotificationsStore],
   templateUrl: './notification-center.html',
   styleUrl: './notification-center.scss',

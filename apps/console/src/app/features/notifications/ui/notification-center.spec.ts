@@ -101,7 +101,7 @@ it('renders minimal details and waits for mutation confirmation', () => {
   list.next({ content: [row], hasMore: true, nextCursor: 'next' });
   fixture.detectChanges();
   expect(root.textContent).toContain('Nueva reserva');
-  expect(root.querySelector('details')?.textContent).toContain('reservation-a');
+  expect(root.querySelector('li details')?.textContent).toContain('reservation-a');
   expect(root.querySelector('time')?.getAttribute('datetime')).toBe(row.occurredAt);
   click('li button');
   expect(api.markRead).toHaveBeenCalledWith('one');

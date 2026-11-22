@@ -22,6 +22,15 @@ const VERTICAL_LABELS = {
 
 const STRINGS_ES = {
   notifications: {
+    preferences: 'Preferencias',
+    preferencesHint:
+      'Solo afecta a nuevos avisos. Estas preferencias no silencian alertas críticas.',
+    preferencesReservations: 'Reservas',
+    preferencesOperations: 'Operaciones',
+    preferencesLoading: 'Cargando preferencias…',
+    preferencesError: 'No se pudieron guardar o cargar las preferencias. Reintenta.',
+    preferencesSaved: 'Preferencias guardadas.',
+    savePreferences: 'Guardar preferencias',
     title: 'Notificaciones',
     bellCount: 'Notificaciones: {count} sin leer',
     close: 'Cerrar',

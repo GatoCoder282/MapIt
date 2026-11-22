@@ -60,6 +60,7 @@
         <p class="error" role="alert">{{ strings.actionError }}</p>
       }
       <div class="results" [attr.aria-busy]="vm.status() === 'loading' || vm.loadingMore()">
+        <mapit-notification-preferences />
         @if (vm.status() === 'loading') {
           <p class="state" role="status">{{ strings.loading }}</p>
         }

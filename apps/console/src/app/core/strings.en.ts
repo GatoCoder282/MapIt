@@ -1,6 +1,15 @@
 /* Catálogo estático generado para en; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_EN = {
   notifications: {
+    preferences: 'Preferences',
+    preferencesHint:
+      'Applies to new notifications only. These preferences do not silence critical alerts.',
+    preferencesReservations: 'Reservations',
+    preferencesOperations: 'Operations',
+    preferencesLoading: 'Loading preferences…',
+    preferencesError: 'Could not load or save preferences. Please retry.',
+    preferencesSaved: 'Preferences saved.',
+    savePreferences: 'Save preferences',
     title: 'Notifications',
     bellCount: 'Notifications: {count} unread',
     close: 'Close',

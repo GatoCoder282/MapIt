@@ -54,3 +54,16 @@ it('propagates missing HTTP implementation instead of returning fake production 
   expect(result).toBeUndefined();
   expect(failure).toBeDefined();
 });
+
+it('reads and updates preferences through the generated own-account API without scope selectors', () => {
+  api.preferences().subscribe();
+  const read = http.expectOne((request) => request.url.endsWith('/me/notifications/preferences'));
+  expect(read.request.params.keys()).toEqual([]);
+  read.flush({ reservations: true, operations: true });
+  api.updatePreferences({ reservations: false, operations: true }).subscribe();
+  const write = http.expectOne((request) => request.url.endsWith('/me/notifications/preferences'));
+  expect(write.request.method).toBe('PATCH');
+  expect(write.request.body).toEqual({ reservations: false, operations: true });
+  expect(write.request.transferCache).toBe(false);
+  write.flush({ reservations: false, operations: true });
+});

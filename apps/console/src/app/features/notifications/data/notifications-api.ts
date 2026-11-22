@@ -6,6 +6,19 @@ import { NotificationsService } from '@mapit/api-client';
 export class NotificationsApi {
   private readonly client = inject(NotificationsService);
 
+  preferences() {
+    return this.client.getMyNotificationPreferences({}, 'body', false, { transferCache: false });
+  }
+
+  updatePreferences(notificationPreferencesPatch: { reservations: boolean; operations: boolean }) {
+    return this.client.updateMyNotificationPreferences(
+      { notificationPreferencesPatch },
+      'body',
+      false,
+      { transferCache: false },
+    );
+  }
+
   list(cursor?: string) {
     return this.client.listMyNotifications(
       { limit: 20, ...(cursor ? { cursor } : {}) },
