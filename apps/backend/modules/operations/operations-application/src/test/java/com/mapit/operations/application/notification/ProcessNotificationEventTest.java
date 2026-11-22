@@ -20,6 +20,13 @@ import com.mapit.operations.domain.notification.NotificationEvent;
 import com.mapit.operations.domain.notification.NotificationType;
 
 class ProcessNotificationEventTest {
+    @Test void omite_preferencias_optativas_sin_cambiar_el_hecho_ni_persistir_avisos() {
+        var ports=new RecipientPorts(); var repository=new CreationRepository();
+        var processor=new ProcessNotificationEvent(ports.resolver(),repository,CLOCK,(recipient,category)->false);
+        assertThat(processor.execute(event(NotificationType.RESERVATION_CREATED))).isEmpty();
+        assertThat(repository.createCalls).isZero();
+    }
+
     private final RecipientPorts ports = new RecipientPorts();
     private final CreationRepository repository = new CreationRepository();
     private final ProcessNotificationEvent processor = new ProcessNotificationEvent(ports.resolver(), repository, CLOCK);

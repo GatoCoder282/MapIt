@@ -48,6 +48,7 @@ class NotificationPersistenceIntegrationTest {
         p.add("mapit.jwt.secret",()->"notification-integration-test-secret-0123456789");
         p.add("mapit.unleash.enabled",()->"false"); p.add("mapit.notifications.cleanup-enabled",()->"false");
         p.add("mapit.realtime.outbox.poll-interval-ms",()->"3600000");
+        p.add("mapit.notifications.delivery-interval-ms",()->"3600000");
     }
     @LocalServerPort int port;
     @Autowired JdbcTemplate jdbc;
@@ -55,7 +56,12 @@ class NotificationPersistenceIntegrationTest {
     @Autowired JdbcNotificationRepository repository;
     @Autowired NotificationAuthorizationPort authorization;
     @Autowired AccessTokenIssuer tokens;
+    @Autowired com.mapit.shared.notification.ReservationNotificationEvents events;
+    @Autowired com.mapit.operations.infrastructure.notification.NotificationDeliveryWorker worker;
+    @Autowired com.mapit.config.PaymentOutboxPublisher arrivals;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean NotificationInvalidationPublisher signals;
     @Autowired ObjectMapper json;
+    @Autowired org.springframework.messaging.simp.user.SimpUserRegistry registry;
     @MockitoBean FeatureFlagPort flags;
     private JdbcTemplate owner;
     private TransactionTemplate tx;
@@ -65,8 +71,12 @@ class NotificationPersistenceIntegrationTest {
         owner=new JdbcTemplate(new DriverManagerDataSource(DB.getJdbcUrl(),DB.getUsername(),DB.getPassword()));
         tx=new TransactionTemplate(transactions); now=Instant.now().minusSeconds(10).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         when(flags.isEnabledFor(eq(FeatureFlag.MAPIT_S6_NOTIFICATION_CENTER),any(FeatureFlagContext.class))).thenReturn(true);
+        when(flags.isEnabled(eq(FeatureFlag.REALTIME_WEBSOCKET),anyBoolean())).thenReturn(true);
+        owner.update("delete from notification_event_candidate"); owner.update("delete from notification_event_outbox"); owner.update("delete from notification_preference");
+        owner.update("delete from realtime_event_outbox where tenant_id in ('notify-it-a','notify-it-b')");
         owner.update("delete from notification"); owner.update("delete from notification_delivery_key");
         owner.update("insert into tenant(id,name,slug,vertical) values ('notify-it-a','A','notify-it-a','RESTAURANT'),('notify-it-b','B','notify-it-b','RESTAURANT') on conflict(id) do update set status='ACTIVE'");
+        owner.update("update app_user set active=false where email='late@notify.test'");
         for(UUID user:List.of(A,B,C,M,SUPER)) {
             String tenant=user.equals(C)?"notify-it-b":user.equals(SUPER)?"platform":"notify-it-a";
             String role=user.equals(B)?"STAFF":user.equals(M)?"MANAGER":user.equals(SUPER)?"SUPER_ADMIN":"ADMIN";
@@ -204,6 +214,120 @@ class NotificationPersistenceIntegrationTest {
         assertThat(owner.queryForObject("select count(*) from notification_delivery_key",Integer.class)).isZero();
         assertThat(owner.queryForObject("select count(*) from notification",Integer.class)).isZero();
     }
+
+    @Test void capturesOriginalCandidatesRevalidatesAndConsumesWithoutFlagOrBroker() {
+        var tenant=TenantId.of("notify-it-a"); UUID event=id(800);
+        when(flags.isEnabledFor(eq(FeatureFlag.MAPIT_S6_NOTIFICATION_CENTER),any(FeatureFlagContext.class))).thenReturn(false);
+        tx.executeWithoutResult(s->events.record(event,tenant,"RESERVATION_CREATED",now,E,R));
+        // Nuevo administrador NO es candidato histórico. STAFF que pierde concesión se excluye.
+        UUID late=id(901);
+        owner.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,'notify-it-a','late@notify.test','test','Late','ADMIN') on conflict(id) do update set active=true",late);
+        owner.update("delete from establishment_staff_access where user_id=?",B);
+        tx.executeWithoutResult(s->{ worker.fanout(tenant); events.record(event,tenant,"RESERVATION_CREATED",now,E,R); worker.fanout(tenant); });
+        assertThat(owner.queryForList("select recipient_user_id from notification where source_event_id=?",UUID.class,event)).containsExactlyInAnyOrder(A,M);
+        assertThat(owner.queryForObject("select count(*) from notification_event_outbox where processed_at is not null",Integer.class)).isEqualTo(1);
+        owner.update("update app_user set active=false where id=?",late);
+    }
+    @Test void arrivalReusesActualBusinessEventAndRollbackLeavesNoFactsOrCandidates() {
+        var tenant=TenantId.of("notify-it-a");
+        assertThatThrownBy(()->tx.executeWithoutResult(s->{events.record(id(801),tenant,"RESERVATION_CREATED",now,E,R);throw new IllegalStateException();})).isInstanceOf(IllegalStateException.class);
+        assertThat(owner.queryForObject("select count(*) from notification_event_outbox",Integer.class)).isZero();
+        assertThat(owner.queryForObject("select count(*) from notification_event_candidate",Integer.class)).isZero();
+        tx.executeWithoutResult(s->arrivals.publishArrival(tenant,E,R,id(999)));
+        UUID event=owner.queryForObject("select event_id from realtime_event_outbox where tenant_id='notify-it-a' and event_type='reservation.checked_in'",UUID.class);
+        assertThat(owner.queryForObject("select id from notification_event_outbox where event_type='RESERVATION_CHECKED_IN'",UUID.class)).isEqualTo(event);
+        tx.executeWithoutResult(s->worker.fanout(tenant));
+        assertThat(owner.queryForObject("select count(*) from notification where source_event_id=?",Integer.class,event)).isEqualTo(3);
+    }
+    @Test void preferencesAreAtomicPrivateAndCannotDisableSecurityOrAcceptUnknownData() {
+        api().get().uri("/me/notifications/preferences").header("Authorization",bearer(A)).exchange().expectStatus().isOk().expectBody().jsonPath("$.reservations").isEqualTo(true);
+        patchPreferences(A,"{\"reservations\":false}").expectStatus().isOk().expectHeader().valueEquals("Cache-Control","no-store").expectBody().jsonPath("$.operations").isEqualTo(true);
+        for(String invalid:List.of("{}"," ","false","null","[]","{\"reservations\":null}","{\"operations\":1}","{\"reservations\":true,\"security\":false}","{\"reservations\":true,\"userId\":\"other\"}","{\"operations\":true,\"operations\":false}","{\"operations\":true}{}")) patchPreferences(A,invalid).expectStatus().isBadRequest();
+        api().get().uri("/me/notifications/preferences").header("Authorization",bearer(A)).exchange().expectBody().jsonPath("$.reservations").isEqualTo(false);
+        api().get().uri("/me/notifications/preferences").header("Authorization",bearer(B)).exchange().expectBody().jsonPath("$.reservations").isEqualTo(true);
+        patchPreferences(C,"{\"operations\":false}").expectStatus().isOk();
+        tx.executeWithoutResult(s->{
+            jdbc.queryForObject(TenantScope.SET_LOCAL_SQL,String.class,"notify-it-a");
+            assertThat(jdbc.queryForObject("select count(*) from notification_preference",Integer.class)).isEqualTo(1);
+            jdbc.queryForObject(TenantScope.SET_LOCAL_SQL,String.class,"");
+            for(String table:List.of("notification_preference","notification_event_outbox","notification_event_candidate")) assertThat(jdbc.queryForObject("select count(*) from "+table,Integer.class)).isZero();
+        });
+    }
+    @Test void preferencesSuppressOnlyFutureOptionalNoticesWithoutChangingBusinessFacts() {
+        create(notice(40,A,E,R));
+        patchPreferences(A,"{\"reservations\":false}").expectStatus().isOk();
+        var tenant=TenantId.of("notify-it-a");
+        tx.executeWithoutResult(s->{ events.record(id(802),tenant,"RESERVATION_CREATED",now,E,R); worker.fanout(tenant); });
+        assertThat(owner.queryForObject("select count(*) from notification where recipient_user_id=?",Integer.class,A)).isEqualTo(1);
+        patchPreferences(A,"{\"reservations\":true}").expectStatus().isOk();
+        tx.executeWithoutResult(s->{ worker.fanout(tenant); events.record(id(803),tenant,"RESERVATION_CREATED",now,E,R); worker.fanout(tenant); });
+        assertThat(owner.queryForObject("select count(*) from notification where recipient_user_id=?",Integer.class,A)).isEqualTo(2);
+        assertThat(owner.queryForObject("select count(*) from notification_event_outbox where processed_at is not null",Integer.class)).isEqualTo(2);
+    }
+    @Test void durableSignalsRetryTheSameIdAndReadingCreatesANewVersion() {
+        create(notice(40,A,E,R)); var tenant=TenantId.of("notify-it-a");
+        doThrow(new IllegalStateException("broker down")).when(signals).publish(any());
+        assertThatThrownBy(()->tx.executeWithoutResult(s->worker.signal(tenant))).isInstanceOf(IllegalStateException.class);
+        assertThat(owner.queryForObject("select delivered_version from notification where id=?",Long.class,id(40))).isZero();
+        doCallRealMethod().when(signals).publish(any());
+        tx.executeWithoutResult(s->worker.signal(tenant));
+        var captured=org.mockito.ArgumentCaptor.forClass(NotificationInvalidation.class);
+        verify(signals,times(2)).publish(captured.capture());
+        assertThat(captured.getAllValues().get(0).eventId()).isEqualTo(captured.getAllValues().get(1).eventId());
+        tx.executeWithoutResult(s->{repository.markRead(scope(A),id(40),Instant.now());});
+        tx.executeWithoutResult(s->worker.signal(tenant));
+        assertThat(owner.queryForObject("select delivered_version from notification where id=?",Long.class,id(40))).isEqualTo(2);
+    }
+    @Test void actualPrivateStompDeliversOnlyToOwnTenantAndStopsAfterTokenRevocation() throws Exception {
+        var client=new org.springframework.web.socket.messaging.WebSocketStompClient(new org.springframework.web.socket.client.standard.StandardWebSocketClient());
+        client.setMessageConverter(new org.springframework.messaging.converter.SimpleMessageConverter());
+        client.setDefaultHeartbeat(new long[]{0,0});
+        var inboxA=new LinkedBlockingQueue<String>(); var inboxB=new LinkedBlockingQueue<String>(); var inboxC=new LinkedBlockingQueue<String>();
+        org.springframework.messaging.simp.stomp.StompSession one=null,two=null,other=null;
+        try {
+            one=connect(client,A,inboxA); two=connect(client,B,inboxB); other=connect(client,C,inboxC);
+            // El simple broker no soporta receipts de SUBSCRIBE; espera acotada solo en este test.
+            Thread.sleep(250);
+            assertThat(registry.getUser("staff:notify-it-a:"+A)).as("principal privado en registro STOMP: %s",registry.getUsers()).isNotNull();
+            create(notice(40,A,E,R)); tx.executeWithoutResult(s->worker.signal(TenantId.of("notify-it-a")));
+            String body=inboxA.poll(5,TimeUnit.SECONDS); assertThat(body).isNotNull();
+            assertThat(json.readTree(body).get("eventType").asString()).isEqualTo("notification.inbox.invalidated.v1");
+            assertThat(inboxB.poll(200,TimeUnit.MILLISECONDS)).isNull(); assertThat(inboxC.poll(200,TimeUnit.MILLISECONDS)).isNull();
+            owner.update("update app_user set staff_tokens_valid_after=now()+interval '1 second' where id=?",A);
+            signals.publish(new NotificationInvalidation(id(999),recipient(A),Instant.now()));
+            assertThat(inboxA.poll(300,TimeUnit.MILLISECONDS)).isNull();
+        } finally {
+            for(var session:Arrays.asList(one,two,other)) if(session!=null && session.isConnected()) session.disconnect();
+            client.stop();
+        }
+    }
+    private org.springframework.messaging.simp.stomp.StompSession connect(org.springframework.web.socket.messaging.WebSocketStompClient client,UUID user,BlockingQueue<String> inbox) throws Exception {
+        var headers=new org.springframework.messaging.simp.stomp.StompHeaders();headers.add("Authorization",bearer(user));
+        var session=client.connectAsync(java.net.URI.create("ws://localhost:"+port+"/ws"),new org.springframework.web.socket.WebSocketHttpHeaders(),headers,new org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter(){}).get(10,TimeUnit.SECONDS);
+        session.subscribe("/user/topic/notifications",new org.springframework.messaging.simp.stomp.StompFrameHandler(){
+            public java.lang.reflect.Type getPayloadType(org.springframework.messaging.simp.stomp.StompHeaders ignored){return byte[].class;}
+            public void handleFrame(org.springframework.messaging.simp.stomp.StompHeaders ignored,Object body){inbox.add(new String((byte[])body,java.nio.charset.StandardCharsets.UTF_8));}
+        });return session;
+    }
+    @Test void outboxCandidatesAndPreferencesUseRealRlsWithoutClientScope() {
+        var tenant=TenantId.of("notify-it-a");
+        tx.executeWithoutResult(s->{events.record(id(804),tenant,"RESERVATION_CREATED",now,E,R);events.record(id(805),TenantId.of("notify-it-b"),"RESERVATION_CREATED",now,F,RF);});
+        tx.executeWithoutResult(s->{
+            jdbc.queryForObject(TenantScope.SET_LOCAL_SQL,String.class,"notify-it-a");
+            assertThat(jdbc.queryForObject("select count(*) from notification_event_outbox",Integer.class)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("select count(*) from notification_event_candidate",Integer.class)).isEqualTo(3);
+            jdbc.queryForObject(TenantScope.SET_LOCAL_SQL,String.class,"notify-it-b");
+            assertThat(jdbc.queryForObject("select count(*) from notification_event_candidate",Integer.class)).isEqualTo(1);
+            jdbc.queryForObject(TenantScope.SET_LOCAL_SQL,String.class,"");
+            assertThat(jdbc.queryForObject("select count(*) from notification_event_outbox",Integer.class)).isZero();
+        });
+        assertThatThrownBy(()->tx.executeWithoutResult(s->{
+            jdbc.queryForObject(TenantScope.SET_LOCAL_SQL,String.class,"notify-it-a");
+            jdbc.update("insert into notification_event_candidate(tenant_id,event_id,user_id) values ('notify-it-b',?,?)",id(805),C);
+        })).isInstanceOf(org.springframework.dao.DataAccessException.class).satisfies(error->assertThat(((java.sql.SQLException)error.getCause()).getSQLState()).isEqualTo("42501"));
+    }
+    private RestTestClient.ResponseSpec patchPreferences(UUID user,String body) { return api().patch().uri("/me/notifications/preferences").header("Authorization",bearer(user)).contentType(MediaType.APPLICATION_JSON).body(body).exchange(); }
+
     private Notification create(Notification n) { return tx.execute(s->repository.createIfAbsent(n)); }
     private NotificationScope scope(UUID user) { return authorization.resolve(recipient(user)).orElseThrow(); }
     private NotificationRecipient recipient(UUID user) { return new NotificationRecipient(TenantId.of(user.equals(C)?"notify-it-b":user.equals(SUPER)?"platform":"notify-it-a"),user); }

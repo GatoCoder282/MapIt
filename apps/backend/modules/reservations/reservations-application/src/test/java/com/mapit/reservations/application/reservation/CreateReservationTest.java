@@ -37,6 +37,7 @@ import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 
 class CreateReservationTest {
+  private final java.util.List<UUID> notificationReservations = new java.util.ArrayList<>();
 
   private static final TenantId TENANT = TenantId.of("tenant-a");
   private static final UUID ACTOR = UUID.fromString("10000000-0000-0000-0000-000000000001");
@@ -88,13 +89,14 @@ class CreateReservationTest {
             auditEvents,
             tenantContext,
             actorContext,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC), (eventId, tenant, type, at, establishment, reservation) -> notificationReservations.add(reservation));
   }
 
   @Test
   void creaLaReservaCuandoTodasLasReferenciasSonValidasYDisponibles() {
     Reservation created = useCase.execute(validCommand());
 
+    assertThat(notificationReservations).containsExactly(created.id().value());
     assertThat(created.tenantId()).isEqualTo(TENANT);
     assertThat(created.personId()).isEqualTo(PersonId.of(PERSON));
     assertThat(created.establishmentId()).isEqualTo(ESTABLISHMENT);

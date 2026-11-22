@@ -47,7 +47,7 @@ tags:
   - name: feature-flags
     description: Feature toggles evaluados para el contexto actual
   - name: notifications
-    description: Contrato de bandeja propia (MAP-294); implementación HTTP pendiente de JDBC/RLS y autorización real.
+    description: Bandeja y preferencias propias con JDBC/RLS, identidad vigente y gate contextual.
   - name: demo-items
     description: CRUD de demostración para validar la integración Angular + Spring Boot
   - name: establishments
@@ -72,6 +72,68 @@ tags:
     description: Acceso temporal y consulta del historial propio en el portal público (HU-6.04)
 
 paths:
+  /me/notifications/preferences:
+    get:
+      tags: [notifications]
+      operationId: getMyNotificationPreferences
+      summary: Consultar preferencias optativas propias
+      x-implementation-status: implemented
+      description: |
+        Identidad/tenant del principal vigente. Sin selectores ni cuerpo. Default true para
+        RESERVATIONS y OPERATIONS; solo categorías optativas existentes. No habilita ni silencia
+        canales críticos de seguridad. Gate contextual OFF o fallo responde 404 tras autorización.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Preferencias propias efectivas.
+          headers:
+            X-Request-ID: { $ref: "#/components/headers/RequestId" }
+            Cache-Control: { $ref: "#/components/headers/NoStore" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        "400": { $ref: "#/components/responses/NotificationBadRequest" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+        "500": { $ref: "#/components/responses/NotificationServerError" }
+        "503": { $ref: "#/components/responses/NotificationServiceUnavailable" }
+    patch:
+      tags: [notifications]
+      operationId: updateMyNotificationPreferences
+      summary: Actualizar preferencias optativas propias
+      x-implementation-status: implemented
+      description: |
+        PATCH atómico; campo ausente conserva valor. Cuerpo vacío, null, tipos distintos
+        de boolean y campos/categorías desconocidos (incluida seguridad) se rechazan con 400.
+        Solo afecta avisos futuros; no borra históricos ni modifica hechos de negocio.
+        Identidad/tenant del principal vigente; sin query ni selectores. Gate OFF/fallo 404.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationPreferencesPatch" }
+      responses:
+        "200":
+          description: Preferencias propias persistidas.
+          headers:
+            X-Request-ID: { $ref: "#/components/headers/RequestId" }
+            Cache-Control: { $ref: "#/components/headers/NoStore" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        "400": { $ref: "#/components/responses/NotificationBadRequest" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+        "500": { $ref: "#/components/responses/NotificationServerError" }
+        "503": { $ref: "#/components/responses/NotificationServiceUnavailable" }
+
   /me/notifications:
     get:
       tags: [notifications]
@@ -4780,6 +4842,20 @@ components:
           format: date-time
           readOnly: true
 
+    NotificationPreferences:
+      type: object
+      additionalProperties: false
+      required: [reservations, operations]
+      properties:
+        reservations: { type: boolean, default: true }
+        operations: { type: boolean, default: true }
+    NotificationPreferencesPatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        reservations: { type: boolean }
+        operations: { type: boolean }
     NotificationPage:
       type: object
       additionalProperties: false

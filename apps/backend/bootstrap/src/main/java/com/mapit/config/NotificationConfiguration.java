@@ -11,9 +11,22 @@ import com.mapit.operations.domain.notification.NotificationRepository;
 import com.mapit.shared.security.ActorContext;
 import com.mapit.shared.tenant.TenantContext;
 
-/** Solo consultas/marcado. Productores y STOMP no se activan mediante este wiring. */
+/** Centro durable: consultas, preferencias, resolución y publicación privada posterior al commit. */
 @Configuration
 public class NotificationConfiguration {
+    @Bean MyNotificationPreferences myNotificationPreferences(CurrentNotificationScope scope, com.mapit.operations.domain.notification.NotificationPreferencesPort preferences) { return new MyNotificationPreferences(scope,preferences); }
+    @Bean ResolveNotificationRecipients notificationRecipients(com.mapit.operations.domain.notification.NotificationRecipientCandidatesPort candidates,
+            NotificationAuthorizationPort authorization, com.mapit.shared.security.EstablishmentAuthorizationPort establishments) {
+        return new ResolveNotificationRecipients(candidates,authorization,establishments);
+    }
+    @Bean ProcessNotificationEvent processNotificationEvent(ResolveNotificationRecipients recipients, NotificationRepository repository,Clock clock,
+            com.mapit.operations.domain.notification.NotificationPreferencesPort preferences) {
+        return new ProcessNotificationEvent(recipients,repository,clock,(recipient,category)->preferences.read(recipient).getOrDefault(category,true));
+    }
+    @Bean com.mapit.operations.domain.notification.NotificationInvalidationPublisher notificationSignals(org.springframework.messaging.simp.SimpMessagingTemplate broker) {
+        return new com.mapit.operations.infrastructure.realtime.StompNotificationInvalidationPublisher(broker);
+    }
+
     @Bean CurrentNotificationScope notificationScope(ActorContext actors, TenantContext tenants, NotificationAuthorizationPort authorization) {
         return new CurrentNotificationScope(actors,tenants,authorization);
     }

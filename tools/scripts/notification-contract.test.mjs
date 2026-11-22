@@ -40,10 +40,10 @@ const operations = [
   ['/me/notifications/read-all', 'patch', 'markAllMyNotificationsRead'],
 ];
 
-test('solo las cuatro operaciones MVP, autenticadas y conectadas a implementación', () => {
+test('las cuatro operaciones de bandeja, autenticadas y conectadas a implementación', () => {
   assert.deepEqual(
     Object.keys(contract.paths)
-      .filter((path) => path.startsWith('/me/notification'))
+      .filter((path) => path.startsWith('/me/notification') && !path.endsWith('/preferences'))
       .sort(),
     operations.map(([path]) => path).sort(),
   );
@@ -182,5 +182,19 @@ test('mutaciones sin cuerpo ni corte del cliente y resultados proyectables desde
     const [counter] = Object.values(schema.properties);
     assert.equal(counter.minimum, 0);
     assert.equal(counter.format, 'int64');
+  }
+});
+
+test('preferencias estrictas propias y solo categorías optativas conocidas', () => {
+  const patch = contract.components.schemas.NotificationPreferencesPatch;
+  assert.equal(patch.additionalProperties, false);
+  assert.equal(patch.minProperties, 1);
+  assert.deepEqual(Object.keys(patch.properties).sort(), ['operations', 'reservations']);
+  for (const value of Object.values(patch.properties)) assert.equal(value.type, 'boolean');
+  for (const method of ['get', 'patch']) {
+    const op = contract.paths['/me/notifications/preferences'][method];
+    assert.deepEqual(op.security, [{ bearerAuth: [] }]);
+    assert.equal(op['x-implementation-status'], 'implemented');
+    assert.equal(resolve(op.responses['200'].headers['Cache-Control']).schema.const, 'no-store');
   }
 });

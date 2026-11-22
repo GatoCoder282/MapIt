@@ -100,6 +100,7 @@ class ReservationCreationIntegrationTest {
     registry.add("spring.flyway.password", POSTGRES::getPassword);
     registry.add("spring.flyway.placeholders.mapitAppDbPassword", () -> "test_app_password");
     registry.add("mapit.unleash.enabled", () -> "false");
+    registry.add("mapit.notifications.delivery-interval-ms", () -> "3600000");
     registry.add("mapit.realtime.outbox.poll-interval-ms", () -> "3600000");
     registry.add("mapit.realtime.outbox.cleanup-interval-ms", () -> "3600000");
   }
@@ -110,6 +111,8 @@ class ReservationCreationIntegrationTest {
     jdbc.execute("truncate table audit_log");
     jdbc.update(
         "delete from reservation_space_element where tenant_id in (?, ?)", TENANT_A, TENANT_B);
+    jdbc.update("delete from notification_event_candidate where tenant_id in (?, ?)", TENANT_A, TENANT_B);
+    jdbc.update("delete from notification_event_outbox where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from reservation where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from person where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from space_element where tenant_id in (?, ?)", TENANT_A, TENANT_B);

@@ -15,15 +15,22 @@ import com.mapit.operations.domain.notification.NotificationRepository;
 
 /**
  * Procesa un hecho confirmado de origen interno, sin flags ni entrega de transporte.
- * Registro como bean y consumidor durable pendientes de adaptadores reales.
+ * Invocado por el consumidor durable; las señales se publican en una fase posterior al commit.
  */
 public class ProcessNotificationEvent {
     private final ResolveNotificationRecipients recipients;
     private final NotificationRepository repository;
     private final Clock clock;
+    private final java.util.function.BiPredicate<com.mapit.operations.domain.notification.NotificationRecipient, com.mapit.operations.domain.notification.NotificationCategory> preference;
 
     public ProcessNotificationEvent(
             ResolveNotificationRecipients recipients, NotificationRepository repository, Clock clock) {
+        this(recipients, repository, clock, (recipient, category) -> true);
+    }
+
+    public ProcessNotificationEvent(ResolveNotificationRecipients recipients, NotificationRepository repository, Clock clock,
+            java.util.function.BiPredicate<com.mapit.operations.domain.notification.NotificationRecipient, com.mapit.operations.domain.notification.NotificationCategory> preference) {
+        this.preference = Objects.requireNonNull(preference);
         this.recipients = Objects.requireNonNull(recipients);
         this.repository = Objects.requireNonNull(repository);
         this.clock = Objects.requireNonNull(clock);
@@ -38,10 +45,13 @@ public class ProcessNotificationEvent {
             throw new IllegalArgumentException("El evento no puede ser posterior al procesamiento");
         }
         List<Notification> pending = recipients.execute(event).stream()
+                .filter(recipient -> preference.test(recipient,event.type().category()))
                 .map(recipient -> Notification.unread(UUID.randomUUID(), recipient, event, createdAt)).toList();
         List<Notification> canonical = new ArrayList<>(pending.size());
         for (Notification candidate : pending) {
-            Notification stored = repository.createIfAbsent(candidate);
+            Notification stored;
+            try { stored = repository.createIfAbsent(candidate); }
+            catch (com.mapit.operations.domain.notification.NotificationExpiredException expired) { continue; }
             if (!candidate.key().equals(stored.key()) || !event.equals(stored.event())) {
                 throw new IllegalStateException("Respuesta inválida del repositorio de notificaciones");
             }

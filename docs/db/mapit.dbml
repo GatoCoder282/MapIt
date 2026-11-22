@@ -744,6 +744,8 @@ Table notification {
  updated_at timestamptz [not null, note: 'touch_updated_at']
  read_at timestamptz [note: 'NULL no leída; primer marcado inmutable']
  expires_at timestamptz [not null]
+ signal_version bigint [not null, default: 1]
+ delivered_version bigint [not null, default: 0]
  Indexes {
   (tenant_id,id) [unique]
   (tenant_id,delivery_key_id) [unique]
@@ -758,3 +760,50 @@ Ref: notification.(tenant_id,delivery_key_id) > notification_delivery_key.(tenan
 Ref: notification.(tenant_id,recipient_user_id) > app_user.(tenant_id,id)
 Ref: notification.(tenant_id,establishment_id) > establishment.(tenant_id,id)
 Ref: notification.(tenant_id,reservation_id,establishment_id) > reservation.(tenant_id,id,establishment_id)
+
+// V42: hechos durables, candidatos originales y señal por versión confirmada.
+Table notification_event_outbox {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ event_type text [not null]
+ establishment_id uuid [not null]
+ reservation_id uuid [not null]
+ occurred_at timestamptz [not null]
+ processed_at timestamptz
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null]
+ Indexes { (tenant_id,id) [unique] }
+ Note: 'RLS; índice parcial pendientes por tenant/fecha/id. Sin published_at compartido.'
+}
+Ref: notification_event_outbox.(tenant_id,reservation_id,establishment_id) > reservation.(tenant_id,id,establishment_id)
+Table notification_event_candidate {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ event_id uuid [not null]
+ user_id uuid [not null]
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null]
+ Indexes {
+  (tenant_id,id) [unique]
+  (tenant_id,event_id,user_id) [unique]
+ }
+ Note: 'RLS; snapshot de candidatos en transacción original. Revalidar permisos al consumir.'
+}
+Ref: notification_event_candidate.(tenant_id,event_id) > notification_event_outbox.(tenant_id,id)
+Ref: notification_event_candidate.(tenant_id,user_id) > app_user.(tenant_id,id)
+// V43: solo categorías optativas, sin preferencias de seguridad crítica.
+Table notification_preference {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ user_id uuid [not null]
+ category text [not null, note: 'RESERVATIONS/OPERATIONS exclusivamente']
+ enabled boolean [not null]
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null]
+ Indexes {
+  (tenant_id,id) [unique]
+  (tenant_id,user_id,category) [unique]
+ }
+ Note: 'RLS y filtro propio por usuario. Ausencia de fila equivale a ON.'
+}
+Ref: notification_preference.(tenant_id,user_id) > app_user.(tenant_id,id)

@@ -10,8 +10,8 @@ import com.mapit.operations.domain.notification.NotificationInvalidationPublishe
 import com.mapit.operations.domain.notification.NotificationRecipient;
 
 /**
- * Adaptador preparado, deliberadamente sin bean ni consumidor/scheduler.
- * No habilitar antes de persistencia y principal privado/autorización CONNECT/SUBSCRIBE/outbound.
+ * Adaptador del transporte existente, invocado por el worker sobre versiones ya confirmadas.
+ * La autorización vigente y el gate se revalidan por sesión en SUBSCRIBE/outbound.
  */
 public final class StompNotificationInvalidationPublisher implements NotificationInvalidationPublisher {
     public static final String USER_DESTINATION = "/user/topic/notifications";

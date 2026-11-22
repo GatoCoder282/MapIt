@@ -1,6 +1,6 @@
 package com.mapit.operations.domain.notification;
 
-/** Clasificación interna mínima; no es todavía el catálogo público de preferencias. */
+/** Catálogo mínimo de categorías optativas. Los canales críticos no tienen preferencia editable. */
 public enum NotificationCategory {
     RESERVATIONS,
     OPERATIONS
