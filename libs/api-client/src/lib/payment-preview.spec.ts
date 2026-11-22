@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   PREVIEW_RECEIPT_TOKEN,
+  mockPaymentsAllowed,
   paymentPreviewAllowed,
   parsePreviewReceiptToken,
   previewReceipt,
@@ -31,6 +32,24 @@ describe('Payment preview boundaries', () => {
     expect(paymentPreviewAllowed({ environment: 'test', paymentPreviewEnabled: true }, true)).toBe(
       true,
     );
+    expect(
+      paymentPreviewAllowed({ environment: 'staging', paymentPreviewEnabled: true }, true),
+    ).toBe(false);
+  });
+  it('allows the mock gateway in development, test and the staging QA deploy only', () => {
+    for (const environment of ['development', 'dev', 'test', 'staging', ' Staging ', 'TEST'])
+      expect(mockPaymentsAllowed(environment), environment).toBe(true);
+    for (const environment of [
+      'production',
+      'unknown',
+      'prod',
+      'stage',
+      '',
+      '   ',
+      null,
+      undefined,
+    ])
+      expect(mockPaymentsAllowed(environment), String(environment)).toBe(false);
   });
   it('only extracts exact receipt URLs from the configured origin or opaque codes', () => {
     const origin = 'https://reservas.mapit.test';

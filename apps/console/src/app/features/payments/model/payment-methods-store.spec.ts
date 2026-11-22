@@ -595,6 +595,13 @@ describe('PaymentMethodsStore', () => {
     expect(store.draft().bankName).toBe('');
   });
 
+  it('habilita el mock en staging (despliegue QA con backend dev)', async () => {
+    setup('staging');
+    expect(store.allowed).toBe(true);
+    await vi.waitFor(() => expect(store.configurations()).toEqual([CONFIGURATION]));
+    expect(listConfigurations).toHaveBeenCalled();
+  });
+
   it('traduce permisos y entornos no disponibles a mensajes de la pantalla', async () => {
     const api = apiStub();
     api.qr['listMockQrConfigurations'] = () => throwError(() => ({ status: 403 }));

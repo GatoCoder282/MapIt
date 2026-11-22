@@ -42,10 +42,12 @@ describe('PaymentCatalogStore', () => {
     createPaymentMethod: vi.fn(),
     updatePaymentMethod: vi.fn(),
   };
+  let environment = 'production';
   let store: PaymentCatalogStore;
 
   beforeEach(() => {
     vi.resetAllMocks();
+    environment = 'production';
     user.set({ role: 'ADMIN' });
     active.set({ id: 'venue-1', canManagePayments: true });
     api.listPaymentMethods.mockReturnValue(of([]));
@@ -57,7 +59,7 @@ describe('PaymentCatalogStore', () => {
         { provide: EstablishmentContext, useValue: { active, status: () => 'ready' } },
         {
           provide: RuntimeConfigStore,
-          useValue: { config: () => ({ environment: 'production' }) },
+          useValue: { config: () => ({ environment }) },
         },
       ],
     });
@@ -95,6 +97,23 @@ describe('PaymentCatalogStore', () => {
     oldRequest.next([BANK_QR]);
     await vi.waitFor(() => expect(store.methods()).toEqual([newMethod]));
     expect(store.loading()).toBe(false);
+  });
+
+  it('hides the mock gateway in production and lists it in the staging QA deploy', async () => {
+    const mock: MerchantPaymentMethod = {
+      ...BANK_QR,
+      id: 'method-mock',
+      provider: 'MOCK_GATEWAY',
+      verification: 'AUTOMATIC',
+      staticQrImage: null,
+    };
+    api.listPaymentMethods.mockReturnValue(of([BANK_QR, mock]));
+    TestBed.tick();
+    await vi.waitFor(() => expect(store.methods()).toEqual([BANK_QR]));
+
+    environment = 'staging';
+    await store.load();
+    expect(store.methods()).toEqual([BANK_QR, mock]);
   });
 
   it('rejects writes without context or permission', async () => {

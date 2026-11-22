@@ -134,7 +134,7 @@ describe('Métodos de pago', () => {
       expect(button(element, 'Agregar método').disabled).toBe(false);
       if (failLoad) {
         expect(element.querySelector('[role="alert"]')).not.toBeNull();
-      } else if (environment === 'development') {
+      } else if (environment === 'development' || environment === 'staging') {
         expect(element.textContent).toContain(CONFIGURATION.bankName);
         expect(encode).toHaveBeenCalled();
       }
@@ -287,6 +287,13 @@ describe('Métodos de pago', () => {
     click(element, 'Cancelar');
     expect(element.querySelector('form')).toBeNull();
     expect(element.textContent).toContain(STRINGS.paymentFlow.title);
+  });
+
+  it('ofrece Mock en staging, el despliegue de QA con backend dev', async () => {
+    const element = await setup('staging');
+    click(element, 'Agregar método');
+    expect(element.textContent).toContain('QR bancario propio');
+    expect(element.textContent).toContain('Mock (desarrollo)');
   });
 
   it('conserva el borrador al volver de revisión y exige datos válidos antes de avanzar', async () => {
