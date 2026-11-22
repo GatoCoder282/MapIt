@@ -12,9 +12,10 @@ interface RespuestaProxy {
 /**
  * Feature toggles en el frontend.
  *
- * Habla con el **unleash-proxy**, nunca con el servidor de Unleash directamente:
- * el proxy solo devuelve las flags ya evaluadas para este usuario, sin exponer
- * el catálogo completo ni el token de administración al navegador.
+ * En local habla con el **unleash-proxy**; desplegado, con la **Frontend API** de
+ * Unleash (`/api/frontend`, ADR-0013). Ambos tienen el mismo contrato: devuelven solo
+ * las flags ya evaluadas para este usuario y se autentican con una clave pública, sin
+ * exponer el catálogo completo ni el token de administración al navegador.
  *
  * Expone Signals, así que la vista reacciona sola cuando una flag cambia
  * —sin recargar la página, que es justo el punto de un feature toggle.
