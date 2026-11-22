@@ -34,13 +34,52 @@
             [value]="store.draft()"
             (input)="store.setName(name.value)"
             [readOnly]="store.saving()"
-            [attr.aria-invalid]="!store.valid()"
-            [attr.aria-describedby]="store.valid() ? 'name-hint' : 'name-hint name-error'"
+            [attr.aria-invalid]="!store.nameValid()"
+            [attr.aria-describedby]="store.nameValid() ? 'name-hint' : 'name-hint name-error'"
           />
           <p id="name-hint" class="hint">{{ strings.myAccount.nameHint }}</p>
-          @if (!store.valid()) {
+          @if (!store.nameValid()) {
             <p id="name-error" class="validation">{{ strings.myAccount.nameInvalid }}</p>
           }
+        </div>
+        <div class="field">
+          <label for="account-phone">{{ strings.myAccount.contactPhone }}</label>
+          <input
+            #phone
+            id="account-phone"
+            name="contactPhone"
+            type="tel"
+            autocomplete="tel"
+            maxlength="32"
+            [value]="store.phoneDraft()"
+            (input)="store.setPhone(phone.value)"
+            [readOnly]="store.saving()"
+            [attr.aria-invalid]="!store.phoneValid()"
+            [attr.aria-describedby]="store.phoneValid() ? 'phone-hint' : 'phone-hint phone-error'"
+          />
+          <p id="phone-hint" class="hint">{{ strings.myAccount.phoneHint }}</p>
+          @if (!store.phoneValid()) {
+            <p id="phone-error" class="validation">{{ strings.myAccount.phoneInvalid }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="account-language">{{ strings.myAccount.preferredLanguage }}</label>
+          <select
+            #language
+            id="account-language"
+            name="preferredLanguage"
+            [value]="store.languageDraft()"
+            (change)="store.setLanguage(language.value)"
+            [disabled]="store.saving()"
+            [attr.aria-invalid]="!store.languageValid()"
+            aria-describedby="language-hint"
+          >
+            <option value="">{{ strings.myAccount.localLanguage }}</option>
+            @for (option of languages; track option.code) {
+              <option [value]="option.code">{{ option.nativeName }}</option>
+            }
+          </select>
+          <p id="language-hint" class="hint">{{ strings.myAccount.languageHint }}</p>
         </div>
         <div class="field">
           <label for="account-email">{{ strings.myAccount.email }}</label>
@@ -65,7 +104,6 @@
         </div>
         <p class="save-status" role="status">{{ store.saved() ? strings.myAccount.saved : '' }}</p>
       </form>
-      <p class="language-note">{{ strings.myAccount.languageHint }}</p>
       @if (store.sessionWarning()) {
         <p role="status">{{ store.sessionWarning() }}</p>
       }

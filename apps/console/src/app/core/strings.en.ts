@@ -1,6 +1,12 @@
 /* Catálogo estático generado para en; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_EN = {
   myAccount: {
+    contactPhone: 'Contact phone',
+    phoneHint:
+      'Optional. 1–32 characters: digits and separators + ( ) space . / -. Clear to remove.',
+    phoneInvalid: 'Enter a phone number with at least one digit and up to 32 allowed characters.',
+    preferredLanguage: 'Account language',
+    localLanguage: 'Use the local language',
     password: {
       title: 'Change password',
       unavailable: 'Password changes are not available yet.',
@@ -15,7 +21,7 @@ export const STRINGS_EN = {
       submit: 'Change password',
     },
     title: 'My account',
-    intro: 'View your account details and update your display name.',
+    intro: 'View your account and update your name, contact details and language.',
     fullName: 'Display name',
     nameHint: 'Between 1 and 120 characters, on a single line.',
     nameInvalid: 'Enter a name between 1 and 120 characters on a single line.',
@@ -28,10 +34,11 @@ export const STRINGS_EN = {
     retry: 'Reload profile',
     saved: 'Your name has been updated.',
     unavailable: 'My account is currently unavailable.',
-    languageHint: 'The language selected in the top bar is saved in this browser.',
+    languageHint:
+      'Your account preference is applied after Save is confirmed. Without a preference, the local language stays unchanged.',
     errors: {
       load: 'Your profile could not be loaded. Please try again.',
-      save: 'Your name could not be saved. Your changes are still here; please try again.',
+      save: 'Your profile could not be saved. Your changes are still here; please try again.',
       unavailable: 'Your profile is unavailable. Check your session or reload.',
     },
   },

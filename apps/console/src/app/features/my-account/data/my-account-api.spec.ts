@@ -22,16 +22,46 @@ describe('MyAccountApi', () => {
     const request = TestBed.inject(HttpTestingController).expectOne('/api/v1/me');
     expect(request.request.method).toBe('GET');
     expect(request.request.transferCache).toBe(false);
-    request.flush({ fullName: 'Nombre real', email: 'real@example.com' });
-    expect(received).toHaveBeenCalledWith({ fullName: 'Nombre real', email: 'real@example.com' });
+    request.flush({
+      fullName: 'Nombre real',
+      email: 'real@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
+    expect(received).toHaveBeenCalledWith({
+      fullName: 'Nombre real',
+      email: 'real@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
   });
 
   it('envía únicamente fullName a PATCH /me', () => {
-    TestBed.inject(MyAccountApi).updateName('Nuevo nombre').subscribe();
+    TestBed.inject(MyAccountApi).update({ fullName: 'Nuevo nombre' }).subscribe();
     const request = TestBed.inject(HttpTestingController).expectOne('/api/v1/me');
     expect(request.request.method).toBe('PATCH');
     expect(request.request.body).toEqual({ fullName: 'Nuevo nombre' });
     expect(request.request.params.keys()).toEqual([]);
-    request.flush({ fullName: 'Nuevo nombre', email: 'real@example.com' });
+    request.flush({
+      fullName: 'Nuevo nombre',
+      email: 'real@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
+  });
+
+  it('preserva la presencia y null de opcionales sin enviar identidad ni valores ausentes', () => {
+    TestBed.inject(MyAccountApi)
+      .update({ contactPhone: null, preferredLanguage: 'en' })
+      .subscribe();
+    const request = TestBed.inject(HttpTestingController).expectOne('/api/v1/me');
+    expect(request.request.body).toEqual({ contactPhone: null, preferredLanguage: 'en' });
+    expect(request.request.params.keys()).toEqual([]);
+    request.flush({
+      fullName: 'Nombre',
+      email: 'real@example.com',
+      contactPhone: null,
+      preferredLanguage: 'en',
+    });
   });
 });

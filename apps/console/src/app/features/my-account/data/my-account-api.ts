@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { MyAccountService } from '@mapit/api-client';
+import { MyAccountService, type UpdateMyProfileRequest } from '@mapit/api-client';
 
 @Injectable({ providedIn: 'root' })
 export class MyAccountApi {
@@ -9,8 +9,8 @@ export class MyAccountApi {
     return this.client.getMyProfile(undefined, 'body', false, { transferCache: false });
   }
 
-  updateName(fullName: string) {
-    return this.client.updateMyProfile({ updateMyProfileRequest: { fullName } }, 'body', false, {
+  update(patch: UpdateMyProfileRequest) {
+    return this.client.updateMyProfile({ updateMyProfileRequest: patch }, 'body', false, {
       transferCache: false,
     });
   }

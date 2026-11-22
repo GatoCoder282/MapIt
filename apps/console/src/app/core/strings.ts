@@ -22,6 +22,13 @@ const VERTICAL_LABELS = {
 
 const STRINGS_ES = {
   myAccount: {
+    contactPhone: 'Teléfono de contacto',
+    phoneHint:
+      'Opcional. De 1 a 32 caracteres: dígitos y separadores + ( ) espacio . / -. Bórralo para eliminarlo.',
+    phoneInvalid:
+      'Introduce un teléfono con al menos un dígito y un máximo de 32 caracteres permitidos.',
+    preferredLanguage: 'Idioma de la cuenta',
+    localLanguage: 'Usar el idioma local',
     password: {
       title: 'Cambiar contraseña',
       unavailable: 'El cambio de contraseña todavía no está disponible.',
@@ -36,7 +43,7 @@ const STRINGS_ES = {
       submit: 'Cambiar contraseña',
     },
     title: 'Mi cuenta',
-    intro: 'Consulta los datos de tu cuenta y actualiza tu nombre visible.',
+    intro: 'Consulta tu cuenta y actualiza tu nombre, contacto e idioma.',
     fullName: 'Nombre visible',
     nameHint: 'Entre 1 y 120 caracteres, en una sola línea.',
     nameInvalid: 'Escribe un nombre de entre 1 y 120 caracteres en una sola línea.',
@@ -49,10 +56,11 @@ const STRINGS_ES = {
     retry: 'Volver a cargar',
     saved: 'Tu nombre se ha actualizado.',
     unavailable: 'Mi cuenta no está disponible en este momento.',
-    languageHint: 'El idioma elegido en la barra superior se guarda en este navegador.',
+    languageHint:
+      'La preferencia se guarda en tu cuenta y se aplica al confirmar Guardar. Sin preferencia se mantiene el idioma local.',
     errors: {
       load: 'No se pudo cargar tu perfil. Vuelve a intentarlo.',
-      save: 'No se pudo guardar el nombre. Tus cambios siguen aquí; vuelve a intentarlo.',
+      save: 'No se pudo guardar el perfil. Tus cambios siguen aquí; vuelve a intentarlo.',
       unavailable: 'Tu perfil no está disponible. Comprueba tu sesión o vuelve a cargar.',
     },
   },

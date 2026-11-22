@@ -53,7 +53,14 @@ describe('rutas reales de Mi cuenta', () => {
         ],
       },
     ];
-    const read = vi.fn(() => of({ fullName: 'Nombre real', email: 'self@example.com' }));
+    const read = vi.fn(() =>
+      of({
+        fullName: 'Nombre real',
+        email: 'self@example.com',
+        contactPhone: null,
+        preferredLanguage: null,
+      }),
+    );
     TestBed.configureTestingModule({
       providers: [
         provideRouter(testRoutes),
@@ -77,7 +84,7 @@ describe('rutas reales de Mi cuenta', () => {
             state: computed(() => ({ ready: ready(), enabled: enabled() })),
           },
         },
-        { provide: MyAccountApi, useValue: { read, updateName: vi.fn() } },
+        { provide: MyAccountApi, useValue: { read, update: vi.fn() } },
         {
           provide: EstablishmentContext,
           useValue: {

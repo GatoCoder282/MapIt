@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { I18nService } from '@mapit/i18n';
 import { STRINGS } from '../../../core/strings';
 import { MyAccountStore } from '../model/my-account-store';
 
@@ -12,6 +13,9 @@ import { MyAccountStore } from '../model/my-account-store';
 export class MyAccount {
   protected readonly strings = STRINGS;
   protected readonly store = inject(MyAccountStore);
+  protected readonly languages = inject(I18nService).languages.filter(({ code }) =>
+    ['es', 'en', 'ja-JP'].includes(code),
+  );
 
   protected submit(event: Event): void {
     event.preventDefault();

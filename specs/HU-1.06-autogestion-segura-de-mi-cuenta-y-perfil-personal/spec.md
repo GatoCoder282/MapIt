@@ -1,6 +1,6 @@
 # HU-1.06 — Autogestión segura de mi cuenta y perfil personal
 
-> **Estado:** Backend y UI de nombre/correo implementados; contacto, idioma remoto, contraseña y aceptación funcional pendientes · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
+> **Estado:** Nombre, teléfono e idioma conectados en backend/UI; correo de solo lectura. V40 preparada, flag OFF. QA PostgreSQL/RLS, E2E y contraseña pendientes · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
 
 ## Enunciado
 
@@ -17,6 +17,10 @@ El incremento backend posterior a `856e329`, autorizado por el solicitante, impl
 Fuentes iniciales consultadas el 2026-11-21: Jira, código de `main`, rama remota de MAP-238 y [PR #69](https://github.com/GatoCoder282/MapIt/pull/69). En aquella base `fd22d78903a5a2697c1fc20a4769a2f254d8e526`, #69 estaba abierto con head `20e25e5a5ce34ce1308db8c85c0af78d16a0d8a9`; sus mecanismos aún no estaban disponibles.
 
 Actualización de integración del 2026-11-22: GitHub confirma #69 fusionado, commit `c0de5d7b130b960107e9d909cb8c5a9ebcbd63b2`, incluido en `origin/main` actualizado. Se integra mediante merge normal en la rama publicada de MAP-285, conservando sus 18 commits y V34–V39 sin modificaciones. `CurrentStaffIdentity`, `issuedAt` y `staff_tokens_valid_after` pasan a estar disponibles; no se implementan campos persistidos ni cambio de contraseña en este incremento. Continúan el 503 temporal de contacto/idioma y la ausencia de endpoint operativo de contraseña. Las notas históricas siguientes describen el estado anterior, no bloqueos actuales de disponibilidad del PR.
+
+### Estado técnico actual
+
+Actualización de campos del 2026-11-22: V40 añade `contact_phone` y `preferred_language` opcionales en `app_user`. GET/PATCH devuelven los cuatro campos reales, con null en los opcionales sin valor; ausente conserva y null explícito limpia solo teléfono/idioma mediante una escritura atómica. Se retira el 503 temporal de campos pendientes, manteniendo errores reales de persistencia. La UI edita los tres campos permitidos y aplica un idioma guardado solo tras ACK válido de la misma sesión, sin sustituir la preferencia local al cargar ni al limpiar el idioma de cuenta. La columna persiste entre lecturas; la preferencia local de la barra sigue siendo independiente. Las descripciones de implementación parcial de etapas anteriores se conservan como historia. PostgreSQL no está disponible: la migración y los tests RLS están preparados/compilados, no ejecutados, y no se declara cerrado MAP-287/288 sin esa aceptación.
 
 ### 1.1 Requisitos confirmados en Jira
 

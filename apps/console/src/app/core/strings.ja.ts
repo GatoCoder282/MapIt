@@ -1,6 +1,11 @@
 /* Catálogo estático generado para ja; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_JA = {
   myAccount: {
+    contactPhone: '連絡先電話番号',
+    phoneHint: '任意。数字と区切り文字 + ( ) 空白 . / - を使用して1〜32文字。空欄で削除します。',
+    phoneInvalid: '数字を1文字以上含む、32文字以内の電話番号を入力してください。',
+    preferredLanguage: 'アカウントの言語',
+    localLanguage: '現在のローカル言語を使用',
     password: {
       title: 'パスワードの変更',
       unavailable: 'パスワードの変更はまだ利用できません。',
@@ -15,7 +20,7 @@ export const STRINGS_JA = {
       submit: 'パスワードを変更',
     },
     title: 'マイアカウント',
-    intro: 'アカウント情報の確認と表示名の変更ができます。',
+    intro: 'アカウント情報を確認し、表示名、連絡先、言語を変更できます。',
     fullName: '表示名',
     nameHint: '1〜120文字で、改行せずに入力してください。',
     nameInvalid: '表示名を1〜120文字で、改行せずに入力してください。',
@@ -28,10 +33,11 @@ export const STRINGS_JA = {
     retry: '再読み込み',
     saved: '表示名を更新しました。',
     unavailable: '現在マイアカウントは利用できません。',
-    languageHint: '上部のバーで選択した言語は、このブラウザーに保存されます。',
+    languageHint:
+      'アカウントの言語は保存の確認後に適用されます。設定しない場合、現在のローカル言語を維持します。',
     errors: {
       load: 'プロフィールを読み込めませんでした。もう一度お試しください。',
-      save: '表示名を保存できませんでした。入力内容は保持されています。もう一度お試しください。',
+      save: 'プロフィールを保存できませんでした。入力内容は保持されています。もう一度お試しください。',
       unavailable: 'プロフィールを利用できません。セッションを確認するか、再読み込みしてください。',
     },
   },

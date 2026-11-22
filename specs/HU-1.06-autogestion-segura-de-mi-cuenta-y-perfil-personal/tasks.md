@@ -1,6 +1,6 @@
 # Tareas — HU-1.06 Autogestión segura de mi cuenta y perfil personal
 
-> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** backend parcial de nombre/correo, flag OFF; contacto/idioma y aceptación funcional pendientes.
+> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** backend/UI de nombre/contacto/idioma conectados, correo de solo lectura y flag OFF; V40 preparada. QA PostgreSQL/RLS, E2E y cambio de contraseña pendientes.
 
 ## 1. Preparación documental de MAP-287 — etapa actual
 
@@ -30,13 +30,13 @@
 
 - [x] Editar primero OpenAPI para GET/PATCH `/me`; definir esquemas cerrados, campos de solo lectura y errores.
 - [x] Ejecutar `api:lint` y `api:gen`; verificar que se generó realmente el cliente TS sin versionar `generated/`.
-- [ ] Incorporar el registro OFF/gate de MAP-291 antes de exponer las operaciones.
-- [ ] Crear migración expansiva de `app_user` con número disponible y DBML en el mismo commit; no modificar migraciones existentes ni crear identidad paralela.
+- [x] Incorporar el registro OFF/gate de MAP-291 antes de exponer las operaciones.
+- [x] Crear V40 expansiva de `app_user` y DBML en el mismo commit; sin modificar migraciones existentes ni crear identidad paralela.
 - [x] Implementar puertos/proyección y casos de uso de nombre/correo existentes; actor y tenant del principal validado.
-- [x] Implementar controlador propio y JDBC de nombre/correo con SET LOCAL y filtros por tenant/usuario/rol/estado; escritura exclusiva de full_name.
+- [x] Implementar controlador propio y JDBC de los cuatro campos con SET LOCAL y filtros por tenant/usuario/rol/estado; solo nombre/teléfono/idioma editables.
 - [x] Cubrir campos prohibidos, validación, usuario A/B mismo tenant, otro tenant y `platform` en unitarios/REST en memoria; sin escrituras parciales.
-- [x] Preparar comando PATCH validado con presencia/valor/null y lector cerrado reutilizable; mantener 503 para teléfono/idioma hasta persistencia real.
-- [ ] Completar lectura/escritura de contacto e idioma reales después de la migración compatible; no cerrar MAP-287 con solo nombre/correo.
+- [x] Conectar comando PATCH validado con presencia/valor/null y lector cerrado; retirar 503 temporal al conectar JDBC con columnas de V40.
+- [x] Completar lectura/escritura de contacto e idioma; no cerrar MAP-287 hasta ejecutar QA de persistencia/RLS.
 - [ ] Probar con `mapit_app` real, contexto SQL ausente y reutilización del pool; excluir contexto especial de login en estas consultas.
 - [ ] Verificar migración con filas previas y persistencia tras nueva lectura; registrar comandos y resultados reales.
 
@@ -46,7 +46,7 @@
 - [x] Añadir navegación/ruta staff separada de usuarios, sin bloqueo por selección/alta de establecimiento.
 - [x] Implementar carga, errores, guardado, éxito, validación y borradores para nombre/correo disponibles; no mostrar éxito sin persistencia confirmada.
 - [x] Actualizar solo el nombre confirmado de la sesión, preservando identidad, token y preferencia de almacenamiento.
-- [ ] Integrar idioma de cuenta con `I18nService`; catálogos `es`, `en`, `ja-JP`, fallback español y storage bloqueado.
+- [x] Integrar teléfono e idioma de cuenta con `I18nService`; catálogos es/en/ja-JP, actualización tras ACK de la misma sesión y conservación del idioma local al leer/limpiar preferencia.
 - [x] Conservar selector de idioma local y añadir textos es/en/ja-JP sin exponer persistencia remota inexistente.
 - [x] Limpiar datos ante logout/cambio de identidad, descartar respuestas tardías y probar semántica accesible del DOM.
 - [ ] Comprobar presentación móvil real, teclado/lector de pantalla y E2E con stack autorizado.
@@ -103,6 +103,14 @@
 - [ ] Realizar Squash and Merge solo en la entrega posterior autorizada. No hay push, PR ni merge en la etapa documental.
 
 ## Notas de ejecución
+
+### 2026-11-22 — MAP-288: teléfono e idioma en Mi cuenta
+
+- Ampliado el mismo formulario responsive y accesible, sin feature paralela ni cambios de administración. Teléfono opcional validado con el patrón contratado/32 caracteres; idioma es/en/ja-JP o preferencia local (null). Correo de solo lectura; contraseña preparada sigue oculta/inactiva. Reutiliza estilos, I18nService, catálogos y cliente generado.
+- PATCH contiene solo campos cambiados y se bloquea por validación/carga/escritura. GET/PATCH requieren respuesta completa de los cuatro campos; no se inventan nulls para respuestas antiguas sin persistencia. Se restauran todos los borradores; errores conservan cambios y no anuncian éxito. Nombre de sesión actualizado solo tras ACK, sin tocar JWT, tenant o permisos.
+- Idioma de cuenta se muestra al cargar, sin reemplazar la elección local. Un cambio guardado se aplica solo tras ACK aceptado de la misma revisión/scope y si no hay elección local posterior; null conserva el idioma actual. Logout/cambio de identidad/tenant/OFF cancela respuestas y oculta borradores antes de los efectos; ninguna respuesta antigua aplica preferencias a otra sesión. El teléfono no se guarda en AuthSession/storage.
+- `ng test console` limitado a store/API/componente/routing de Mi cuenta: estado final **45 pruebas distintas correctas** (29 store, 3 transporte, 6 componente, 7 routing). Las tres primeras clases pasaron con 37 tests antes de añadir el caso de error de guardado; ese último archivo se repitió solo (**29 correctos**). Cubren carga/guardado reales a nivel del cliente con HttpTestingController, validaciones, null/ausencia, idioma antes/después de ACK, override local, cambio de sesión, errores, controles accesibles y rutas propias staff/SUPER_ADMIN. Los dobles no prueban PostgreSQL.
+- `pnpm fe:typecheck`: Console/Public Web correctos, sin relajar TypeScript. ESLint focalizado `--max-warnings=0`, Prettier y hooks normales. Las pruebas Angular compilaron plantilla/SCSS; no se hace build global ni se inicia app para capturas. Pendientes revisión visual móvil/teclado/lector real, E2E, Unleash real y aplicar/probar V40 con PostgreSQL/RLS. No se cierran MAP-287/288 por disponer solo de pruebas locales sin esa infraestructura.
 
 ### 2026-11-22 — MAP-287: conexión completa de los campos de perfil
 

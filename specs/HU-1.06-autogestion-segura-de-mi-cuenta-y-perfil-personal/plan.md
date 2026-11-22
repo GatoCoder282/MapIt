@@ -1,8 +1,14 @@
 # Plan — HU-1.06 Autogestión segura de mi cuenta y perfil personal
 
-> **Ticket:** MAP-285 · **Incremento actual:** integración de MAP-238 desde `origin/main` (`c0de5d7`) mediante merge normal · **Estado:** nombre/correo implementados en API y Console; persistencia de contacto/idioma, contraseña y QA con stack pendientes según [spec.md](spec.md).
+> **Ticket:** MAP-285 · **Incremento actual:** campos completos de MAP-287/MAP-288 sobre MAP-238 integrado · **Estado:** nombre/correo implementados en API y Console; persistencia de contacto/idioma, contraseña y QA con stack pendientes según [spec.md](spec.md).
 
 ## 1. Enfoque y límites de entrega
+
+Incremento vigente del 2026-11-22: V40 expansiva y DBML; `PersonalProfileChanges.Field` comparte la presencia entre aplicación y puerto de dominio. GET/PATCH usan JDBC transaccional/RLS y un único UPDATE con CASE por presencia; no se mezclan campos ausentes con una proyección obsoleta ni se trunca texto. Los tres campos editables están conectados y se elimina el rechazo temporal por migración pendiente. Las etapas históricas que describen solo nombre/correo quedan superadas por este incremento; no se implementa contraseña.
+
+Console envía solo los campos cambiados, transformando vacío de opcionales en null. Lee respuestas completas del cliente generado y rechaza respuestas antiguas/malformadas sin fabricar nulls. El idioma del perfil se muestra al cargar; se aplica con `I18nService` únicamente después de guardar un cambio de idioma confirmado en la misma revisión de sesión, si el idioma local coincide todavía con el capturado al enviar. Limpiar la preferencia no modifica el idioma local. No se cambia AuthSession/JWT ni el selector global, ni se guardan teléfonos en storage. Se preservan las rutas compartidas de staff/SUPER_ADMIN y los gates existentes OFF.
+
+Próxima aceptación: aplicar V40 y ejecutar PostgreSQL/RLS e integración/E2E con infraestructura autorizada antes de rollout. Rollback mediante OFF y código previo que ignora las columnas, sin borrarlas ni revertir V40. MAP-289 continúa pendiente de escritura segura/revocación efectiva probada; MAP-238 integrado no sustituye ese trabajo.
 
 Ampliar `identity` y `app_user` para ofrecer una API personal distinta de la gestión administrativa de usuarios. Console tendrá una única feature `my-account`, reutilizada por staff y SUPER_ADMIN. La autorización siempre procede del backend; los guards y la flag controlan navegación/disponibilidad.
 

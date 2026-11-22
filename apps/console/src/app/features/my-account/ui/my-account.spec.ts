@@ -12,7 +12,7 @@ describe('Mi cuenta UI', () => {
   const enabled = signal(true);
   let read: Subject<PersonalProfile>;
   let write: Subject<PersonalProfile>;
-  const updateName = vi.fn();
+  const update = vi.fn();
 
   async function mount() {
     await TestBed.configureTestingModule({
@@ -28,7 +28,7 @@ describe('Mi cuenta UI', () => {
           },
         },
         { provide: MyAccountAccess, useValue: { enabled, scope: signal('scope-a') } },
-        { provide: MyAccountApi, useValue: { read: () => read, updateName } },
+        { provide: MyAccountApi, useValue: { read: () => read, update } },
       ],
     }).compileComponents();
     TestBed.inject(I18nService).setLanguage('es');
@@ -40,13 +40,18 @@ describe('Mi cuenta UI', () => {
     enabled.set(true);
     read = new Subject();
     write = new Subject();
-    updateName.mockReset().mockReturnValue(write);
+    update.mockReset().mockReturnValue(write);
   });
 
   it('muestra carga, datos reales y correo accesible de solo lectura; guarda y anuncia éxito', async () => {
     const { fixture, host } = await mount();
     expect(host.querySelector('[role="status"]')?.textContent).toContain('Cargando');
-    read.next({ fullName: 'Ana Real', email: 'ana@example.com' });
+    read.next({
+      fullName: 'Ana Real',
+      email: 'ana@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
     fixture.detectChanges();
     const name = host.querySelector<HTMLInputElement>('#account-name')!;
     const email = host.querySelector<HTMLInputElement>('#account-email')!;
@@ -56,27 +61,37 @@ describe('Mi cuenta UI', () => {
     expect(email.disabled).toBe(false);
     expect(host.querySelector('label[for="account-email"]')?.textContent).toContain('Correo');
     expect(email.getAttribute('aria-describedby')).toBe('email-hint');
-    expect(host.querySelector('input[name="contactPhone"]')).toBeNull();
+    expect(host.querySelector('input[name="contactPhone"]')).not.toBeNull();
     expect(host.querySelector('mapit-password-change-form')).toBeNull();
     expect(host.querySelector('input[type="password"]')).toBeNull();
-    expect(host.querySelector('select')).toBeNull();
+    expect(host.querySelector('select')?.getAttribute('name')).toBe('preferredLanguage');
     expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
     name.value = 'Ana Nueva';
     name.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
     fixture.detectChanges();
-    expect(updateName).toHaveBeenCalledExactlyOnceWith('Ana Nueva');
+    expect(update).toHaveBeenCalledExactlyOnceWith({ fullName: 'Ana Nueva' });
     expect(name.readOnly).toBe(true);
     expect(host.querySelector('form')?.getAttribute('aria-busy')).toBe('true');
-    write.next({ fullName: 'Ana Nueva', email: 'ana@example.com' });
+    write.next({
+      fullName: 'Ana Nueva',
+      email: 'ana@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
     fixture.detectChanges();
     expect(host.querySelector('.save-status')?.textContent).toContain('actualizado');
   });
 
   it('asocia error de validación al nombre y bloquea guardado inválido', async () => {
     const { fixture, host } = await mount();
-    read.next({ fullName: 'Ana', email: 'ana@example.com' });
+    read.next({
+      fullName: 'Ana',
+      email: 'ana@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
     fixture.detectChanges();
     const name = host.querySelector<HTMLInputElement>('#account-name')!;
     name.value = ' ';
@@ -87,7 +102,71 @@ describe('Mi cuenta UI', () => {
     expect(host.querySelector('#name-error')).not.toBeNull();
     expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
-    expect(updateName).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('edita contacto e idioma accesibles y confirma persistencia antes de cambiar idioma', async () => {
+    const { fixture, host } = await mount();
+    read.next({
+      fullName: 'Ana',
+      email: 'ana@example.com',
+      contactPhone: '123',
+      preferredLanguage: null,
+    });
+    fixture.detectChanges();
+    const phone = host.querySelector<HTMLInputElement>('#account-phone')!;
+    const language = host.querySelector<HTMLSelectElement>('#account-language')!;
+    expect(phone.type).toBe('tel');
+    expect(phone.maxLength).toBe(32);
+    expect(phone.value).toBe('123');
+    expect([...language.options].map((option) => option.value)).toEqual(['', 'es', 'en', 'ja-JP']);
+    expect(host.querySelector('label[for="account-phone"]')).not.toBeNull();
+    expect(language.getAttribute('aria-describedby')).toBe('language-hint');
+    phone.value = '+591 456';
+    phone.dispatchEvent(new Event('input'));
+    language.value = 'ja-JP';
+    language.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    fixture.detectChanges();
+    expect(update).toHaveBeenCalledExactlyOnceWith({
+      contactPhone: '+591 456',
+      preferredLanguage: 'ja-JP',
+    });
+    expect(phone.readOnly).toBe(true);
+    expect(language.disabled).toBe(true);
+    expect(TestBed.inject(I18nService).language()).toBe('es');
+    write.next({
+      fullName: 'Ana',
+      email: 'ana@example.com',
+      contactPhone: '+591 456',
+      preferredLanguage: 'ja-JP',
+    });
+    fixture.detectChanges();
+    expect(TestBed.inject(I18nService).language()).toBe('ja-JP');
+    expect(language.disabled).toBe(false);
+    TestBed.inject(I18nService).setLanguage('es');
+  });
+
+  it('anuncia un teléfono inválido sin marcar el nombre válido como error', async () => {
+    const { fixture, host } = await mount();
+    read.next({
+      fullName: 'Ana',
+      email: 'ana@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
+    fixture.detectChanges();
+    const phone = host.querySelector<HTMLInputElement>('#account-phone')!;
+    phone.value = 'abc';
+    phone.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(phone.getAttribute('aria-invalid')).toBe('true');
+    expect(phone.getAttribute('aria-describedby')).toContain('phone-error');
+    expect(
+      host.querySelector<HTMLInputElement>('#account-name')!.getAttribute('aria-invalid'),
+    ).toBe('false');
+    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
   });
 
   it('muestra error anunciado, permite reintentar y traduce estados sin recargar', async () => {
@@ -110,7 +189,12 @@ describe('Mi cuenta UI', () => {
 
   it('retira formulario y datos inmediatamente al apagar la flag', async () => {
     const { fixture, host } = await mount();
-    read.next({ fullName: 'Ana', email: 'ana@example.com' });
+    read.next({
+      fullName: 'Ana',
+      email: 'ana@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
     fixture.detectChanges();
     enabled.set(false);
     fixture.detectChanges();
