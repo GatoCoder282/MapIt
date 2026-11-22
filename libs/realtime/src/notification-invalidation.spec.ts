@@ -226,3 +226,61 @@ it('rebinds the shared transport on identity change and discards late callbacks 
   expect(fresh).toHaveBeenCalledOnce();
   expect(client.connectionState()).toBe('connected');
 });
+
+it('an old pending disconnect cannot clear a newer socket started by another consumer', async () => {
+  const client = TestBed.inject(RealtimeClient);
+  TestBed.tick();
+  client.subscribeNotificationInvalidations(A).subscribe();
+  const previous = clients[0]!;
+  let finish!: () => void;
+  const stopped = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  previous.deactivate = () => {
+    previous.active = false;
+    return stopped;
+  };
+  const closing = client.disconnect();
+  const B = { ...A, sessionId: '00000000-0000-0000-0000-000000000050' };
+  current.set(B);
+  const received = vi.fn();
+  client.subscribeNotificationInvalidations(B).subscribe(received);
+  client.connect();
+  expect(clients).toHaveLength(2);
+  finish();
+  await closing;
+  await Promise.resolve();
+  await Promise.resolve();
+  clients[1]!.callbacks.get(DEST)!({ body: JSON.stringify(notice) } as IMessage);
+  expect(received).toHaveBeenCalledOnce();
+  expect(client.connectionState()).toBe('connected');
+});
+
+it('a delayed kill-switch shutdown cannot reset a newer connection after recovery', async () => {
+  const client = TestBed.inject(RealtimeClient);
+  TestBed.tick();
+  const received = vi.fn();
+  client.subscribeNotificationInvalidations(A).subscribe(received);
+  const previous = clients[0]!;
+  let finish!: () => void;
+  const stopped = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  previous.deactivate = () => {
+    previous.active = false;
+    return stopped;
+  };
+  enabled.set(false);
+  TestBed.tick();
+  enabled.set(true);
+  client.connect();
+  TestBed.tick();
+  expect(clients).toHaveLength(2);
+  finish();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  clients[1]!.callbacks.get(DEST)!({ body: JSON.stringify(notice) } as IMessage);
+  expect(received).toHaveBeenCalledOnce();
+  expect(client.connectionState()).toBe('connected');
+});

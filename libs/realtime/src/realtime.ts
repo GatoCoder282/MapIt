@@ -182,11 +182,14 @@ export class RealtimeClient {
 
   /** Cierra el socket y, por defecto, olvida las salas solicitadas. */
   async disconnect(clearSubscriptions = true): Promise<void> {
+    const closing = this.client;
+    const revision = ++this.identityRevision;
     this.requested = false;
     this.stopping = true;
     this.clearRetryTimer();
     if (clearSubscriptions) this.clearTopics();
     await this.deactivateClient();
+    if (this.client !== closing || revision !== this.identityRevision) return;
     this.client = null;
     this.stopping = false;
     this.estado.set('idle');
@@ -469,11 +472,14 @@ export class RealtimeClient {
   }
 
   private async stopForKillSwitch(): Promise<void> {
+    const closing = this.client;
+    const revision = ++this.identityRevision;
     if (!this.client && this.estado() === 'disabled') return;
     this.stopping = true;
     this.clearRetryTimer();
     this.disposeTopicSubscriptions();
     await this.deactivateClient();
+    if (this.client !== closing || revision !== this.identityRevision) return;
     this.client = null;
     this.stopping = false;
     this.estado.set('disabled');
