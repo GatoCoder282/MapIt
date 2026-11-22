@@ -15,6 +15,9 @@ import { AuthSession } from '@mapit/auth';
 import { LanguageSelector } from '@mapit/i18n';
 import { Sidebar, type SidebarNavItem } from './sidebar/sidebar';
 import { EstablishmentSelector } from './establishment-selector';
+// El shell compone features; esta dependencia no cruza de una feature a otra.
+// eslint-disable-next-line no-restricted-imports
+import { NotificationCenter } from '../features/notifications/ui/notification-center';
 
 import { STRINGS } from '../core/strings';
 import { EstablishmentContext } from '../core/establishment-context';
@@ -27,7 +30,7 @@ import { EstablishmentContext } from '../core/establishment-context';
  */
 @Component({
   selector: 'mapit-staff-shell',
-  imports: [RouterOutlet, Sidebar, EstablishmentSelector, LanguageSelector],
+  imports: [RouterOutlet, Sidebar, EstablishmentSelector, LanguageSelector, NotificationCenter],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

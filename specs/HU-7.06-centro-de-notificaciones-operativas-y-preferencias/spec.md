@@ -1,6 +1,6 @@
 # HU-7.06 — Centro de notificaciones operativas y preferencias
 
-> **Estado:** Contrato MVP de MAP-294 definido; HTTP, JDBC/RLS y autorización real pendientes. MAP-292/MAP-293/MAP-299 mantienen sus límites de integración.
+> **Estado:** Contrato MVP MAP-294 y UI MAP-296 preparada con cliente real y sesión aislada, oculta por flag OFF. HTTP, JDBC/RLS y autorización real pendientes; no disponible todavía para usuarios finales.
 > **Ticket:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) · **Fecha:** 2026-11-21 · **Responsable:** Rodrigo Villarroel Ayala.
 
 ## Enunciado
@@ -11,7 +11,7 @@ Como usuario autorizado de MapIt, quiero recibir, consultar y gestionar notifica
 
 Requisitos funcionales confirmados mediante consulta de MAP-286 y MAP-292–299 en Jira el 2026-11-21. El alcance general de roles y tenants se apoya en [use_cases.md](../../docs/roadmap/use_cases.md). Las decisiones identificadas como propuestas en esta carpeta no son criterios confirmados por Jira.
 
-La consola ya tiene una campana decorativa. El transporte STOMP y el outbox permiten avisos de cambios espaciales, pagos y llegada, pero no representan una bandeja durable por destinatario. La nueva bandeja debe recuperar avisos tras recarga y reconexión, sin sustituir eventos de negocio ni correos transaccionales existentes.
+La consola partía de una campana decorativa, sustituida en MAP-296 por el componente protegido y oculto con OFF. El transporte STOMP y el outbox permiten avisos de cambios espaciales, pagos y llegada, pero no representan una bandeja durable por destinatario. La nueva bandeja debe recuperar avisos tras recarga y reconexión, sin sustituir eventos de negocio ni correos transaccionales existentes.
 
 ## 2. Actores y precondiciones
 
@@ -120,12 +120,12 @@ Runtime con `mapit_app`, nunca owner para evitar RLS. `TenantScope.SET_LOCAL_SQL
 
 ## 10. Decisiones pendientes y límite de esta entrega
 
-| ID  | Propuesta técnica que debe validarse                                                                                                | Condición para avanzar                                                                                             |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| D-1 | Matriz por evento: permiso efectivo, ámbito, destinatario y categoría; solicitudes de plataforma separadas de operaciones de tenant | Acordar con MAP-238/MAP-257; no asumir que todos los roles reciben todo                                            |
-| D-2 | Inbox en `operations`, puente de identidad en `bootstrap`; canal personal del transporte STOMP existente                            | Confirmar límites sin imports entre módulos y política vigente de identidad                                        |
-| D-3 | MVP: cursor opaco, límite 1–100/default 20, contador separado y marcado idempotente con corte del servidor                          | Forma pública definida; codec seguro, controladores y concurrencia SQL pendientes                                  |
-| D-4 | Catálogo de categorías, defaults de preferencias, retención y canal de seguridad independiente                                      | Acordar reglas y productores; no prometer eventos inexistentes                                                     |
-| D-5 | Kill switch permanente OFF con evaluación por tenant/usuario/sesión y fallo cerrado local; no condiciona negocio                    | Registro/protección local implementados; quedan conexión de sesión, gates operativos y validación SDK/proxy reales |
+| ID  | Propuesta técnica que debe validarse                                                                                                | Condición para avanzar                                                                                           |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| D-1 | Matriz por evento: permiso efectivo, ámbito, destinatario y categoría; solicitudes de plataforma separadas de operaciones de tenant | Acordar con MAP-238/MAP-257; no asumir que todos los roles reciben todo                                          |
+| D-2 | Inbox en `operations`, puente de identidad en `bootstrap`; canal personal del transporte STOMP existente                            | Confirmar límites sin imports entre módulos y política vigente de identidad                                      |
+| D-3 | MVP: cursor opaco, límite 1–100/default 20, contador separado y marcado idempotente con corte del servidor                          | Forma pública definida; codec seguro, controladores y concurrencia SQL pendientes                                |
+| D-4 | Catálogo de categorías, defaults de preferencias, retención y canal de seguridad independiente                                      | Acordar reglas y productores; no prometer eventos inexistentes                                                   |
+| D-5 | Kill switch permanente OFF con evaluación por tenant/usuario/sesión y fallo cerrado local; no condiciona negocio                    | Registro/protección local y sesión frontend conectados; faltan gates backend/STOMP y validación SDK/proxy reales |
 
-MAP-292 aporta dominio y puertos; MAP-293/MAP-294, procesamiento y casos de uso internos. El contrato MVP de cuatro operaciones de bandeja está definido y el cliente TS se regenera localmente, sin versionar `generated/`. El alcance de MAP-257, cancelaciones sin productor y preferencias/categorías optativas sigue pendiente y no añade endpoints. MAP-299 conserva su kill switch OFF y protección local. No se añaden persistencia, controladores, migraciones, STOMP ni UI; ninguna subtarea se declara completa por este contrato.
+MAP-292 aporta dominio y puertos; MAP-293/MAP-294, procesamiento y casos de uso internos. El contrato MVP de cuatro operaciones de bandeja está definido y el cliente TS se regenera localmente, sin versionar `generated/`. MAP-296 incorpora campana/panel compartido en los shells de staff y administración, transporte generado real, contador, cursor, referencias mínimas y marcado confirmado por servidor. La entrada permanece oculta con `mapit.s6.notification-center` OFF. No activar en un entorno de usuarios hasta disponer de HTTP/persistencia/autorización: un ON prematuro muestra errores reales, sin datos ficticios ni éxito simulado. El alcance de MAP-257, cancelaciones sin productor y preferencias/categorías optativas sigue pendiente y no añade endpoints. No hay persistencia, controladores, migraciones ni STOMP; ninguna subtarea se declara completa por esta preparación de UI.

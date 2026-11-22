@@ -110,7 +110,20 @@ export class FeatureFlagService {
     return this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false;
   }
 
-  /** El shell futuro debe llamar al iniciar/cambiar sesión y con null al salir; no persiste datos. */
+  /** Lectura ligada a identidad: nunca muestra un ON de la sesión anterior mientras llega el efecto. */
+  isEnabledForContext(flag: FeatureFlagKey, context: FeatureFlagContext | null): boolean {
+    const enabled = this.notificationCenter();
+    return (
+      flag === NOTIFICATION_CENTER &&
+      enabled &&
+      context !== null &&
+      context.tenantId === this.context?.tenantId &&
+      context.userId === this.context?.userId &&
+      context.sessionId === this.context?.sessionId
+    );
+  }
+
+  /** La consola llama al iniciar/cambiar sesión y con null al salir; no persiste datos. */
   setContext(candidate: FeatureFlagContext | null): void {
     const context = candidate && validFeatureFlagContext(candidate) ? { ...candidate } : null;
     if (

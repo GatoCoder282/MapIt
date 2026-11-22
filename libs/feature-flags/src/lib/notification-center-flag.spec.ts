@@ -80,6 +80,16 @@ it('sin proveedor permanece OFF y no realiza peticiones', async () => {
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
+it('no reutiliza ON para una identidad nueva antes de actualizar el contexto del proveedor', async () => {
+  const flags = service();
+  flags.setContext(A);
+  await settle();
+  expect(flags.isEnabledForContext(FLAG, A)).toBe(true);
+  expect(flags.isEnabledForContext(FLAG, { ...A, sessionId: 'new-login' })).toBe(false);
+  expect(flags.isEnabledForContext(FLAG, B)).toBe(false);
+  expect(flags.isEnabledForContext(FLAG, null)).toBe(false);
+});
+
 it('campos ausentes en un contexto de runtime no se convierten en strings válidos', async () => {
   const flags = service();
   flags.setContext({ ...A, sessionId: undefined } as unknown as FeatureFlagContext);

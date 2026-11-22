@@ -11,7 +11,10 @@ import { RouterOutlet } from '@angular/router';
 import { AuthSession } from '@mapit/auth';
 import { LanguageSelector } from '@mapit/i18n';
 import { Sidebar } from './sidebar/sidebar';
-import { LucideBell, LucideLogOut } from '@lucide/angular';
+import { LucideLogOut } from '@lucide/angular';
+// El shell compone features; esta dependencia no cruza de una feature a otra.
+// eslint-disable-next-line no-restricted-imports
+import { NotificationCenter } from '../features/notifications/ui/notification-center';
 
 import { STRINGS } from '../core/strings';
 
@@ -32,7 +35,7 @@ const ENFOCABLES_DRAWER = 'a[href], button:not([disabled]), [tabindex]:not([tabi
  */
 @Component({
   selector: 'mapit-admin-shell',
-  imports: [RouterOutlet, LucideLogOut, LucideBell, Sidebar, LanguageSelector],
+  imports: [RouterOutlet, LucideLogOut, Sidebar, LanguageSelector, NotificationCenter],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

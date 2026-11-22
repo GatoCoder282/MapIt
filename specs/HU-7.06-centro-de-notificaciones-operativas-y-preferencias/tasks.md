@@ -1,7 +1,7 @@
 # Tareas — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Historia:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) — HU-7.06 — Centro de notificaciones operativas y preferencias.
-> **Estado:** Contrato MVP MAP-294 validado y cliente generado localmente; HTTP/persistencia/autorización real pendientes. MAP-299 mantiene protección local y validación de infraestructura pendiente.
+> **Estado:** Contrato MVP MAP-294 y UI MAP-296 con cliente real preparados. Flag OFF; HTTP/persistencia/autorización real y validación con infraestructura pendientes.
 
 ## Preparación de esta etapa
 
@@ -74,12 +74,12 @@
 
 ## MAP-296 — S6 — Centro de notificaciones UI y contador
 
-- [ ] Crear feature MVVM `notifications` con data sobre cliente generado y estado Signals reutilizable desde shells.
-- [ ] Sustituir campana/punto decorativos por estado real, panel/lista/detalle y acciones; estados carga/vacío/error/reintento.
-- [ ] Conservar acceso propio sin establecimiento activo; guard de sesión/gate y rutas internas autorizadas.
-- [ ] Vaciar estado y descartar solicitudes/eventos de sesiones anteriores; reconciliar el contador tras marcado y reconexión.
-- [ ] Usar catálogos español/inglés/japonés, componentes/tokens existentes, teclado, foco y contador accesible.
-- [ ] Probar flag OFF/ON y URL directa, datos reales, errores, dos sesiones, móvil y accesibilidad aplicable.
+- [x] Crear feature MVVM `notifications` con data sobre cliente generado y estado Signals reutilizable desde shells.
+- [x] Sustituir campana/punto decorativos por contador real, panel/lista/referencias y acciones; estados carga/vacío/error/reintento, sin fallback ficticio.
+- [x] Integrar el panel en cabecera autenticada, fuera del outlet condicionado al establecimiento, con gate contextual; sin ruta nueva ni enlaces no definidos.
+- [x] Vaciar datos y descartar respuestas al cambiar usuario/tenant/sesión/OFF; reconciliar contador tras marcado confirmado.
+- [x] Usar catálogos español/inglés/japonés, tokens existentes, teclado/cierre/foco y contador accesible; compilar plantilla y SCSS en pruebas focalizadas.
+- [ ] Conectar HTTP real con autorización y persistencia; verificar ambos shells, dos sesiones, móvil, foco y accesibilidad en navegador con stack autorizado. Reconciliación STOMP/reconexión corresponde a MAP-295.
 
 ## MAP-297 — S6 — Preferencias por categoría y notificaciones obligatorias
 
@@ -103,7 +103,8 @@
 - [x] Registrar `mapit.s6.notification-center` idéntico en Java/TS/bootstrap OFF; tipo kill switch permanente para rollback, responsable Rodrigo. Sin activación/seed en un servidor real.
 - [x] Preparar evaluación contextual y fallo cerrado después de ON, invalidación de caché/respuestas y frescura local, manteniendo comportamiento de otros flags.
 - [x] Probar localmente OFF/ON, flag ausente, proveedor con error, cambio de contexto y evaluación tardía en frontend/backend.
-- [ ] Conectar cambios reales de AuthSession al contexto frontend y construir contexto backend desde identidad validada; no usar JWT como nonce.
+- [x] Conectar cambios reales de AuthSession al contexto frontend, nonce nuevo por login y limpieza al salir; sin leer/enviar JWT al proxy.
+- [ ] Construir contexto backend desde identidad validada; no usar JWT como nonce.
 - [ ] Aplicar gate a acceso UI/URL/API/canal personal; mantener autorización y eventos de negocio independientes.
 - [ ] Ejecutar runbook de `plan.md` con Unleash real: propagación, rollback sin pérdida de datos y restauración segura.
 
@@ -114,6 +115,20 @@
 - [ ] Crear PR futuro con título exacto Jira, enlace a esta spec y checks requeridos; adjuntar captura de Checks del propio PR en verde conforme a `ticket-delivery`.
 
 ## Notas de ejecución
+
+### 2026-11-21 — MAP-296: UI preparada, HTTP pendiente y flag OFF
+
+- Jira consultado en modo lectura: **MAP-296 — S6 — Centro de notificaciones UI y contador**. Alcance aplicado: campana/contador, orden y referencias mínimas, carga/vacío/error/reintento y marcado. No se cambió el estado del ticket ni se publicó nada.
+- `fix(tooling): organizar imports durante generacion OpenAPI (MAP-296)` (`6ef8517`): paso semántico de TypeScript dentro de `api:gen`, probado con imports de tipos, valores/decoradores y efectos laterales. Elimina imports sobrantes y directivas generales del generador; no se editan/versionan outputs `generated/` ni se relajan opciones TS. `node --test tools/scripts/organize-generated-api.test.mjs`: **1 prueba correcta**. `pnpm api:gen`: generación real y organización de **163 archivos TS**; `pnpm api:check`: correcto. No cambió OpenAPI.
+- Feature `notifications/{data,model,ui}` y `core/notification-session-context`: cliente real, página de 20, cursor opaco del servidor, deduplicación por ID, contador desconocido distinto de cero y marcado solo tras ACK válido. PATCH individual y global sin cuerpo/identidad/corte del cliente. Tras marcado global se recargan lista y contador. Falla HTTP real → error/reintento; no datos ficticios ni confirmaciones anticipadas. Sin STOMP, almacenamiento de bandeja en el navegador ni cambios en reservas.
+- Un componente compartido por ambos shells sustituye las campanas decorativas. Panel no modal responsive, teclado/Escape, foco inicial/restaurado y referencias expandibles; catálogos es/en/ja-JP y pipes locales. La composición desde layout tiene dos excepciones locales documentadas al patrón de imports; no se modifica la regla global ni se crean imports entre features. No hay URL nueva ni enlaces a detalles externos sin contrato. La cabecera no requiere establecimiento; el selector modal existente no se altera.
+- Contexto desde `AuthSession` real con nonce en memoria renovado incluso en nuevo login del mismo usuario. Sin fuente segura de nonce → OFF. Se verifica coincidencia de contexto antes del efecto de actualización; owner/generación/versiones y cancelación impiden aplicar resultados tardíos. Logout/cambio de tenant/usuario/sesión/OFF ocultan y vacían estado. No se lee/envía JWT al proxy; autenticación HTTP sigue usando el interceptor existente. Esto no sustituye autorización backend.
+- Pruebas focalizadas de consola: `pnpm exec ng test console --no-watch --include '**/notifications/**/*.spec.ts' --include '**/notification-session-context.spec.ts' --include '**/staff-shell.spec.ts'`: **38 correctas** tras corregir fixtures del contrato y providers en los tests de shell. Después de ampliar casos y cerrar el guard sin identidad, se ejecutaron únicamente los archivos cambiados: `--include '**/notifications-store.spec.ts' --include '**/admin-shell.spec.ts'`: **15 correctas**; `--include '**/notification-session-context.spec.ts'`: **3 correctas**. Estado final de los seis archivos: **43 pruebas distintas correctas** (14 store, 6 componente, 2 transporte, 3 sesión, 17 staff, 1 admin). Los dobles HTTP/eventos viven solo en tests; no equivalen a integración real.
+- `pnpm exec ng test libs --no-watch --include '**/feature-flags/src/lib/notification-center-flag.spec.ts'`: **16 correctas**, incluyendo rechazo de ON para contexto nuevo antes de sincronizar el proveedor. Aviso existente de Angular sobre compilación parcial → completa, sin fallos.
+- `pnpm exec tsc -p libs/api-client/tsconfig.lib.json --noEmit` y `pnpm exec tsc -p apps/console/tsconfig.app.json --noEmit`: correctos. Verificación adicional con `ts.createProgram`, opciones reales y `noUnusedLocals/noUnusedParameters: true` sobre **12 raíces afectadas** (feature, contexto, shells, test admin y test flag): correcta. Plantillas/SCSS compilados por las pruebas Angular focalizadas.
+- La comprobación adicional de toda la consola con `--noUnusedLocals true` detectó **8 declaraciones privadas preexistentes**: `destroyRef` en floor-editor, `destroyRef` y cinco campos de efectos en map-editor, y `notifySelection` en reservation-customer-picker. Se conservan esos archivos y la configuración existente; no se desactivó ninguna comprobación para este incremento. La excepción previa de consola al chequeo de locales sin uso queda como deuda externa, ya sin errores de imports en el cliente regenerado.
+- ESLint sobre todos los TS/HTML afectados con `--max-warnings=0`: correcto. Prettier y `git diff --check` focalizados; hooks normales lint-staged/commitlint sin omitir. No se ejecutan suites completas, builds globales, Docker, servidores, SQL/RLS, E2E ni capturas de navegador. El motor opcional de `impeccable` no estaba disponible localmente: se usaron instrucciones, tokens y componentes del repositorio, sin instalarlo.
+- Bloqueos relevantes: JDBC/RLS y HTTP MAP-292/MAP-294 con identidad vigente y gate backend, integración de eventos MAP-293/MAP-257 y canal MAP-295. Mantener `mapit.s6.notification-center` **OFF** hasta que HTTP sea seguro; Unleash real, dos sesiones con backend y revisión visual móvil/escritorio/accesibilidad permanecen pendientes. MAP-296/MAP-286 no se declaran completas. `main` y MAP-285 se mantienen en sus SHA anteriores, sin push/PR.
 
 ### 2026-11-21 — Preparación independiente de MAP-285
 
