@@ -110,7 +110,7 @@ Se reutilizan `bearerAuth`, `Problem`, `RequestId` y `NoStore`. Respuestas propi
 
 ## 6. STOMP y reconciliación — MAP-295
 
-- Extender el transporte existente con destino personal. `/user/queue/notifications` es una opción a validar; hoy broker/parser solo soportan las salas `/topic` existentes. No se habilita un comodín ni una sala de tenant para datos personales.
+- Contrato preparado: `/user/topic/notifications`, compatible con el prefijo `/topic` del broker existente; ver [realtime.md](../../docs/api/realtime.md#map-295--invalidación-privada-de-la-bandeja-preparada-no-habilitada). Binding privado ausente en runtime y publicador sin bean, hasta persistencia/autorización MAP-238. No se habilita un comodín ni una sala de tenant.
 - La asociación sesión/tenant/usuario la crea el servidor desde identidad validada. `Principal.getName()` deberá ser estable y no ambiguo entre tenants; el cliente no decide el destinatario.
 - Revalidar CONNECT, SUBSCRIBE y entrega outbound con las garantías de MAP-238, expiración/corte de token, cuenta activa y permiso actual. Rechazar acceso anónimo de reserva, SEND del cliente y suscripciones a otros usuarios.
 - Emitir solo invalidación mínima o identificador de aviso/versionado; recuperar el contenido por API. La UI deduplica señales, no hace `contador++` como fuente de verdad.
@@ -118,6 +118,8 @@ Se reutilizan `bearerAuth`, `Problem`, `RequestId` y `NoStore`. Respuestas propi
 - Cambiar sesión/tenant cancela solicitudes, vacía bandeja/contador/cursor y desuscribe el canal anterior; una generación local de sesión invalida respuestas tardías incluso si el usuario vuelve a iniciar con el mismo ID. No se añade información sensible a storage.
 - OFF desuscribe solo el centro. No llamar `RealtimeClient.disconnect()` sobre un transporte compartido por operación y pagos. Con `realtime.websocket` OFF, mantener recuperación por API y fallback documentado del centro.
 - Actualizar `docs/api/realtime.md`, tipos y API pública de `libs/realtime/src/index.ts` junto al canal, no dentro de OpenAPI.
+
+Preparación implementada: puerto `NotificationInvalidationPublisher`, valor `NotificationInvalidation` y adaptador no registrado a `SimpMessagingTemplate`. `RealtimeClient` añade recepción validada/refcount sobre su mismo socket y binding de sesión opcional ausente en la app. La vinculación del CONNECT y el principal `staff:{tenant}:{uuid}` deben integrarse en bootstrap con MAP-238; el interceptor actual sigue rechazando el destino. No se modifica JWT, seguridad, outbox ni productores existentes. `NotificationsRealtime` conecta el store al estado real del cliente compartido y, cuando exista binding, a invalidaciones. La reconciliación HTTP agrupa 100 ms, deduplica hasta 256 IDs por sesión y conserva señales durante fetch/escritura; nunca hace del mensaje una fila ni un delta del contador. WebSocket OFF mantiene refresco manual HTTP, sin activar un sondeo nuevo.
 
 ## 7. UI y preferencias — MAP-296 / MAP-297
 

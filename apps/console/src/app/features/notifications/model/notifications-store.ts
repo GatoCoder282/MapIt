@@ -4,12 +4,17 @@ import type { FeatureFlagContext } from '@mapit/feature-flags';
 import { Subscription } from 'rxjs';
 import { NotificationSessionContext } from '../../../core/notification-session-context';
 import { NotificationsApi } from '../data/notifications-api';
+import { NotificationsRealtime } from '../data/notifications-realtime';
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
 
 @Injectable()
 export class NotificationsStore {
   private readonly api = inject(NotificationsApi);
+  private readonly realtime = inject(NotificationsRealtime);
+  private readonly seenInvalidations = new Set<string>();
+  private reconciliationRequested = false;
+  private reconciliationTimer: ReturnType<typeof setTimeout> | undefined;
   readonly access = inject(NotificationSessionContext);
   private pending = new Subscription();
   private readonly owner = signal<FeatureFlagContext | null>(null);
@@ -50,13 +55,45 @@ export class NotificationsStore {
         if (enabled && context) {
           this.owner.set(context);
           this.refreshCount();
+          if (this.realtime.available(context)) {
+            const generation = this.generation;
+            this.pending.add(
+              this.realtime.observe(context).subscribe({
+                next: (event) => {
+                  if (
+                    !this.current(context, generation) ||
+                    this.seenInvalidations.has(event.eventId)
+                  )
+                    return;
+                  this.seenInvalidations.add(event.eventId);
+                  if (this.seenInvalidations.size > 256)
+                    this.seenInvalidations.delete(this.seenInvalidations.values().next().value!);
+                  this.requestReconciliation();
+                },
+                error: () => {
+                  if (this.current(context, generation)) this.requestReconciliation();
+                },
+              }),
+            );
+          }
         }
       });
+    });
+    effect(() => {
+      const state = this.realtime.connectionState();
+      const context = this.access.context();
+      const enabled = this.access.enabled();
+      if ((state === 'connected' || state === 'error') && enabled && context)
+        untracked(() => this.requestReconciliation());
     });
     inject(DestroyRef).onDestroy(() => this.reset());
   }
 
   private reset(): void {
+    clearTimeout(this.reconciliationTimer);
+    this.reconciliationTimer = undefined;
+    this.reconciliationRequested = false;
+    this.seenInvalidations.clear();
     this.generation++;
     this.pending.unsubscribe();
     this.pending = new Subscription();
@@ -70,6 +107,41 @@ export class NotificationsStore {
     this.nextCursor.set(null);
     this.writeError.set(false);
     this.feedbackValue.set(null);
+  }
+
+  private requestReconciliation(): void {
+    if (!this.visible()) return;
+    this.reconciliationRequested = true;
+    this.scheduleReconciliation();
+  }
+
+  /** Coalesce bursts; remember changes during reads/writes so the initial HTTP fetch has no gap. */
+  private scheduleReconciliation(): void {
+    if (
+      !this.reconciliationRequested ||
+      this.reconciliationTimer ||
+      !this.visible() ||
+      this.busy() ||
+      this.pageStatus() === 'loading' ||
+      this.moreLoading() ||
+      this.badgeStatus() === 'loading'
+    )
+      return;
+    const context = this.owner();
+    const generation = this.generation;
+    this.reconciliationTimer = setTimeout(() => {
+      this.reconciliationTimer = undefined;
+      if (!this.current(context, generation)) return;
+      if (
+        this.busy() ||
+        this.pageStatus() === 'loading' ||
+        this.moreLoading() ||
+        this.badgeStatus() === 'loading'
+      )
+        return;
+      this.reconciliationRequested = false;
+      this.refresh();
+    }, 100);
   }
 
   private current(context: FeatureFlagContext | null, generation: number): boolean {
@@ -116,6 +188,7 @@ export class NotificationsStore {
       if (!this.current(context, generation) || version !== this.listVersion) return;
       this.moreLoading.set(false);
       this.pageStatus.set('error');
+      this.scheduleReconciliation();
     };
     this.listSubscription = this.api.list(cursor).subscribe({
       next: (page) => {
@@ -137,6 +210,7 @@ export class NotificationsStore {
         this.nextCursor.set(page.hasMore ? (page.nextCursor ?? null) : null);
         this.moreLoading.set(false);
         this.pageStatus.set('ready');
+        this.scheduleReconciliation();
       },
       error: fail,
     });
@@ -155,6 +229,7 @@ export class NotificationsStore {
       if (!this.current(context, generation) || version !== this.countVersion) return;
       this.countValue.set(null);
       this.badgeStatus.set('error');
+      this.scheduleReconciliation();
     };
     this.countSubscription = this.api.count().subscribe({
       next: (result) => {
@@ -165,6 +240,7 @@ export class NotificationsStore {
         }
         this.countValue.set(result.unreadCount);
         this.badgeStatus.set('ready');
+        this.scheduleReconciliation();
       },
       error: fail,
     });
@@ -192,6 +268,7 @@ export class NotificationsStore {
             Date.parse(result.readAt) < Date.parse(row.createdAt)
           ) {
             this.writeError.set(true);
+            this.scheduleReconciliation();
             return;
           }
           this.rows.update((rows) =>
@@ -204,6 +281,7 @@ export class NotificationsStore {
           if (this.current(context, generation)) {
             this.writing.set(false);
             this.writeError.set(true);
+            this.scheduleReconciliation();
           }
         },
       }),
@@ -232,6 +310,7 @@ export class NotificationsStore {
           this.writing.set(false);
           if (!result || !Number.isSafeInteger(result.updatedCount) || result.updatedCount < 0) {
             this.writeError.set(true);
+            this.scheduleReconciliation();
             return;
           }
           this.feedbackValue.set('all');
@@ -241,6 +320,7 @@ export class NotificationsStore {
           if (this.current(context, generation)) {
             this.writing.set(false);
             this.writeError.set(true);
+            this.scheduleReconciliation();
           }
         },
       }),

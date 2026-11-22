@@ -8,9 +8,11 @@ import type {
   NotificationUnreadCount,
 } from '@mapit/api-client';
 import { Subject } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { NotificationInvalidation, RealtimeConnectionState } from '@mapit/realtime';
 import { NotificationSessionContext } from '../../../core/notification-session-context';
 import { NotificationsApi } from '../data/notifications-api';
+import { NotificationsRealtime } from '../data/notifications-realtime';
 import { NotificationsStore } from './notifications-store';
 
 const A = { tenantId: 'tenant-a', userId: 'user-a', sessionId: 'session-a' };
@@ -36,6 +38,12 @@ describe('NotificationsStore', () => {
   let counts: Subject<NotificationUnreadCount>[];
   let read: Subject<NotificationReadResult>;
   let all: Subject<NotificationMarkAllReadResult>;
+  let hints: Subject<NotificationInvalidation>;
+  const realtime = {
+    available: vi.fn(() => true),
+    observe: vi.fn(),
+    connectionState: signal<RealtimeConnectionState>('idle'),
+  };
   const api = { list: vi.fn(), count: vi.fn(), markRead: vi.fn(), markAllRead: vi.fn() };
   let store: NotificationsStore;
 
@@ -47,6 +55,10 @@ describe('NotificationsStore', () => {
     counts = [];
     read = new Subject();
     all = new Subject();
+    hints = new Subject();
+    realtime.available.mockReturnValue(true);
+    realtime.observe.mockReturnValue(hints);
+    realtime.connectionState.set('idle');
     api.list.mockImplementation(() => {
       const subject = new Subject<NotificationPage>();
       lists.push(subject);
@@ -63,11 +75,140 @@ describe('NotificationsStore', () => {
       providers: [
         NotificationsStore,
         { provide: NotificationsApi, useValue: api },
+        { provide: NotificationsRealtime, useValue: realtime },
         { provide: NotificationSessionContext, useValue: access },
       ],
     });
     store = TestBed.inject(NotificationsStore);
     TestBed.tick();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const hint = (id = '00000000-0000-0000-0000-000000000001'): NotificationInvalidation => ({
+    eventId: id,
+    eventType: 'notification.inbox.invalidated.v1',
+    schemaVersion: 1,
+    occurredAt: '2026-11-22T12:00:00Z',
+  });
+
+  it('reconciles HTTP after connect/reconnect, never treating websocket state as inbox data', () => {
+    vi.useFakeTimers();
+    counts[0]!.next({ unreadCount: 1 });
+    realtime.connectionState.set('connected');
+    TestBed.tick();
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledOnce();
+    expect(store.entries()).toEqual([]);
+    expect(store.unreadCount()).toBeNull();
+    lists[0]!.next(page());
+    counts[1]!.next({ unreadCount: 1 });
+    realtime.connectionState.set('disconnected');
+    TestBed.tick();
+    realtime.connectionState.set('connected');
+    TestBed.tick();
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledTimes(2);
+    expect(api.count).toHaveBeenCalledTimes(3);
+    lists[1]!.next(page());
+    counts[2]!.next({ unreadCount: 1 });
+    expect(store.entries()).toHaveLength(1);
+    expect(store.unreadCount()).toBe(1);
+  });
+
+  it('deduplicates signals and coalesces bursts without incrementing the counter', () => {
+    vi.useFakeTimers();
+    counts[0]!.next({ unreadCount: 4 });
+    hints.next(hint());
+    hints.next(hint());
+    hints.next(hint('00000000-0000-0000-0000-000000000002'));
+    expect(store.unreadCount()).toBe(4);
+    expect(api.list).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledOnce();
+    lists[0]!.next(page());
+    counts[1]!.next({ unreadCount: 1 });
+    hints.next(hint());
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledOnce();
+    expect(store.entries()).toHaveLength(1);
+    expect(store.unreadCount()).toBe(1);
+  });
+
+  it('remembers invalidations during the initial HTTP read and during a write', () => {
+    vi.useFakeTimers();
+    store.loadFirst();
+    hints.next(hint());
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledOnce();
+    lists[0]!.next(page());
+    counts[0]!.next({ unreadCount: 1 });
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledTimes(2);
+    lists[1]!.next(page());
+    counts[1]!.next({ unreadCount: 1 });
+    store.markRead(item().id);
+    hints.next(hint('00000000-0000-0000-0000-000000000002'));
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledTimes(2);
+    read.next({ id: item().id, readAt: '2026-11-22T12:00:00Z' });
+    counts[2]!.next({ unreadCount: 0 });
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledTimes(3);
+  });
+
+  it('cancels queued work and subscriptions on logout/OFF; old hints cannot enter a new scope', () => {
+    vi.useFakeTimers();
+    counts[0]!.next({ unreadCount: 1 });
+    hints.next(hint());
+    access.context.set(null);
+    TestBed.tick();
+    const previous = hints;
+    vi.advanceTimersByTime(100);
+    expect(previous.observed).toBe(false);
+    expect(api.list).not.toHaveBeenCalled();
+    hints = new Subject();
+    realtime.observe.mockReturnValue(hints);
+    access.context.set({ ...A, tenantId: 'tenant-b', sessionId: 'new' });
+    TestBed.tick();
+    previous.next(hint());
+    counts[1]!.next({ unreadCount: 0 });
+    vi.advanceTimersByTime(100);
+    expect(api.list).not.toHaveBeenCalled();
+    hints.next(hint());
+    access.enabled.set(false);
+    TestBed.tick();
+    vi.advanceTimersByTime(100);
+    expect(hints.observed).toBe(false);
+    expect(api.list).not.toHaveBeenCalled();
+    expect(store.entries()).toEqual([]);
+  });
+
+  it('uses HTTP to recover a channel error and keeps a failed recovery as error, without retry loops', () => {
+    vi.useFakeTimers();
+    counts[0]!.next({ unreadCount: 1 });
+    hints.error(new Error('channel failed'));
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledOnce();
+    lists[0]!.error(new Error('503'));
+    counts[1]!.error(new Error('503'));
+    vi.advanceTimersByTime(1000);
+    expect(store.status()).toBe('error');
+    expect(store.unreadCount()).toBeNull();
+    expect(api.list).toHaveBeenCalledOnce();
+  });
+
+  it('recovers through HTTP on the real shared transport error state without claiming live delivery', () => {
+    vi.useFakeTimers();
+    counts[0]!.next({ unreadCount: 3 });
+    realtime.connectionState.set('error');
+    TestBed.tick();
+    vi.advanceTimersByTime(100);
+    expect(api.list).toHaveBeenCalledOnce();
+    expect(store.unreadCount()).toBeNull();
+    lists[0]!.next(page([]));
+    counts[1]!.next({ unreadCount: 0 });
+    expect(store.status()).toBe('ready');
+    expect(store.unreadCount()).toBe(0);
   });
 
   it('loads the real transport only on demand, pages by opaque cursor and deduplicates IDs', () => {
