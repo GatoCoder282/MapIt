@@ -1,7 +1,7 @@
 # Tareas — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Historia:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) — HU-7.06 — Centro de notificaciones operativas y preferencias.
-> **Estado:** Contrato MVP MAP-294 y UI MAP-296 con cliente real preparados. Flag OFF; HTTP/persistencia/autorización real y validación con infraestructura pendientes.
+> **Estado:** MAP-292/MAP-294: V41, JDBC/RLS y API conectadas, probadas con PostgreSQL real. Flag OFF; integración de productores/canal privado y QA UI/Unleash real pendientes.
 
 ## Preparación de esta etapa
 
@@ -22,7 +22,7 @@
 - [ ] Cerrar matriz tipo → productor → categoría → recurso/establecimiento → destinatarios/permisos vigentes.
 - [ ] Confirmar alcance de solicitudes de MAP-257, actor del solicitante y tratamiento separado del tenant `platform`.
 - [ ] Cerrar categorías optativas/obligatorias, defaults, retención, paginación/contador y respuestas del gate.
-- [ ] Revalidar la integración de MAP-238 antes de usar identidad vigente/corte de tokens; no copiarla.
+- [x] Integrar/revalidar MAP-238 mediante merge normal `671ba5e`; reutilizar su identidad/corte de tokens sin copiarlos.
 - [ ] Coordinar generador multisegmento y garantías de flags con MAP-285/MAP-291, sin trasladar sus commits.
 
 ## MAP-292 — S6 — Modelo persistente de notificaciones y migración
@@ -30,10 +30,10 @@
 - [x] Modelar notificación, hechos mínimos, categorías derivadas y ámbito propio en `operations-domain`, con paquete `@NullMarked`. Preferencias siguen en MAP-297.
 - [x] Diseñar puerto de creación idempotente, listado por cursor, contador y marcado propio; ningún método de lectura/marcado admite solo tenant o ID global.
 - [x] Probar invariantes, aislamiento de ámbito y clave estable por tenant/destinatario/evento/tipo sin PostgreSQL; ejercitar contrato de repositorio con doble solo de test.
-- [ ] Cerrar esquema e índices, FK compuestas, RLS y política de retención; no reservar números Flyway.
-- [ ] Tras integrar la base requerida, generar migración con numeración libre y actualizar DBML en el mismo commit.
-- [ ] Implementar JDBC con tenant transaccional y filtro explícito de usuario en lecturas, contador y escrituras.
-- [ ] Probar PostgreSQL con `mapit_app`: dos tenants, dos usuarios del mismo tenant, sin contexto, FK inválidas y reentrega concurrente.
+- [x] Implementar esquema, índices, FK compuestas y RLS; retención técnica configurable, purga opt-in y acuerdo final de duración pendiente.
+- [x] Generar V41 tras verificar V39 y reserva V40 de MAP-285; actualizar DBML en el mismo commit.
+- [x] Implementar JDBC con tenant transaccional y filtro explícito de usuario en lecturas, contador y escrituras.
+- [x] Probar PostgreSQL con `mapit_app`: dos tenants, dos usuarios del mismo tenant, sin contexto, FK inválidas y reentrega concurrente.
 
 ## MAP-293 — S6 — Generar eventos de negocio y destinatarios autorizados
 
@@ -57,11 +57,11 @@
 - [x] Definir contrato OpenAPI MVP de cuatro operaciones, con bearer, Problem/no-store, cursor opaco y estado de implementación pendiente; sin API de preferencias/categorías.
 - [x] Ejecutar `pnpm api:lint`, `pnpm api:gen` y `pnpm api:check`, comprobar los cuatro métodos TS y no versionar `generated/`.
 - [x] Validar el contrato con seis pruebas focalizadas de alcance, identidad, cursor/límites, privacidad, respuestas/headers y proyecciones existentes.
-- [ ] Implementar codec HTTP seguro de cursor y validar ámbito/manipulación/caducidad sin exponer NotificationScope ni valores del token.
-- [ ] Implementar casos de uso y API de bandeja propia paginada/contador y marcado una/todas con persistencia real.
-- [ ] Rechazar campos desconocidos/privilegiados; principal como única identidad y autorización vigente independiente del flag.
-- [ ] Probar `400/401/403/404`, flags, orden/límites/cursor, no leídas, lectura idempotente, snapshot y carreras con nuevas notificaciones.
-- [ ] Probar que listado, detalle, contador y marcado no revelan avisos ajenos dentro del mismo tenant ni entre tenants.
+- [x] Implementar codec HTTP seguro de cursor y validar ámbito/manipulación/caducidad sin exponer NotificationScope ni valores del token.
+- [x] Conectar casos de uso y API de bandeja propia paginada/contador y marcado una/todas con persistencia real.
+- [x] Rechazar campos desconocidos/privilegiados; principal como única identidad y autorización vigente independiente del flag.
+- [x] Probar HTTP `400/401/404`, flags, orden/límites/cursor, no leídas, lectura idempotente, snapshot y carreras con nuevas notificaciones; denegación de ámbito cubierta en unitarios (no se afirma escenario HTTP 403 de carrera).
+- [x] Probar listado, contador y marcado sin revelar avisos ajenos del mismo tenant ni cross-tenant; detalle es la proyección del listado, sin endpoint adicional.
 
 ## MAP-295 — S6 — Canal de notificación STOMP y reconexión
 
@@ -233,3 +233,22 @@
 - La regeneración limpia eliminó los residuos locales de Mi cuenta; `api:check` volvió a pasar. `pnpm exec tsc -p libs/api-client/tsconfig.lib.json --noEmit --noUnusedLocals false`: correcto. **El chequeo TS estricto sigue pendiente por imports sin uso de la plantilla generada** (TS6133/TS6192); no se declara verde ni se cambia configuración/generador para silenciarlo. Sin suites/builds globales.
 - Pendientes para cerrar MAP-294: JDBC/Flyway/RLS, autorización vigente/MAP-238 y gate contextual real, codec y validaciones de entrada, controladores/mapper de errores/no-store, transacciones y pruebas HTTP/SQL/cross-tenant/concurrencia. Preferencias, MAP-257 y tipos aún no definidos quedan fuera del contrato MVP. No hay endpoints operativos ni se marca completa la subtarea.
 - Se actualizan solo openapi.yaml, el test relacionado y estas tres specs. Prettier focalizado, diff y hooks normales al commit. Main y MAP-285 conservadas; sin push/PR/merge/squash, Docker ni aplicación.
+
+### 2026-11-22 — MAP-292/MAP-294: persistencia PostgreSQL y API real
+
+- Estado inicial limpio en MAP-285; se conservó su ref `348fd1f403bbc578eabec9b68f38c4856be3cbf0` y se cambió a la rama MAP-286 existente (tip publicado `25837e0`). Fetch de origin y merge normal de `c0de5d7b130b960107e9d909cb8c5a9ebcbd63b2` (MAP-238 PR #69 integrado): commit `671ba5e`. Únicos conflictos: los tres catálogos es/en/ja-JP; se conservaron las claves de notificaciones y las de operaciones/usuarios de MAP-238. Main local permanece en `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. Sin rebase/push/PR ni traslado de código de MAP-285.
+- Se aplicaron instrucciones backend/specs/docs/contrato y skills locales ticket-delivery/new-migration. V39 era la última migración integrada; V40 está reservada a MAP-285. `pnpm db:new "crear bandeja de notificaciones operativas"` generó la plantilla; se ajustó el archivo nuevo, aún no aplicado, a V41. SQL y DBML se versionan juntos. **Coordinar despliegue persistente V40 antes de V41**; no se cambia outOfOrder ni migraciones anteriores.
+- V41 añade notification + notification_delivery_key: RLS forzada, tenant no nulo, índices compuestos/por bandeja/no leídas/expiración, triggers updated_at y FK compuestas a usuario, establecimiento y reserva del mismo ámbito. Deduplicación por tenant/destinatario/evento/tipo, huella canónica y bloqueo transaccional; duplicado conserva ID/primera lectura, incompatibilidad falla y rollback no deja clave huérfana.
+- JDBC y casos de uso registrados con puente de autorización en bootstrap, sin imports entre contextos. Cuenta/tenant activos, permisos reales de establecimiento y filtros SQL de elegibilidad en cada consulta/escritura. Se corrige la matriz antigua: MAP-238 permite check-in a ADMIN/MANAGER y STAFF con can_check_in. SUPER_ADMIN no obtiene bandejas operativas ajenas ni eventos de plataforma inventados. No se modifica autenticación/revocación.
+- Cuatro endpoints reales del contrato, cursor HMAC de 15 min ligado al ámbito, orden estable y fechas de microsegundos; límite 1–100/default20. Rechaza selectores/cuerpos/parámetros repetidos/desconocidos; mantiene Problem/no-store, readAt null y nextCursor omitido según contrato. Mark-all usa una sola escritura con corte temporal del servidor y snapshot SQL. OpenAPI pasa de pending a implemented sin cambiar formas públicas.
+- Gate HTTP OFF/fallo → 404 después de identidad/autorización; FeatureFlagContext usa tenant/usuario del servidor y hash con propósito del bearer como nonce, nunca el JWT. Crear/purgar no consulta el flag; productores/reservas/STOMP permanecen sin cambios. OFF→fallo→ON recupera datos y lectura retenidos, probado con doble de proveedor, no con Unleash real.
+- Retención **propuesta técnica, no literal Jira**: 30 días configurables 1–3650, filtrado SQL de expiradas y purga física opt-in OFF. Job horario/lote máximo1000 por tenant; conserva claves mínimas sin payload para impedir reaparición por reintentos. Variables en .env.example, sin modificar .env ni almacenamiento Docker. Validar duración con producto antes de activar.
+- QA real: Docker Desktop iniciado con configuración existente en C:, imágenes PostgreSQL17/ryuk ya disponibles, solo base efímera Testcontainers; sin borrar datos/volúmenes/imágenes existentes ni iniciar Compose. El test usa mapit_app sin bypass y Flyway owner. V40 exacta se obtuvo en modo lectura de la ref MAP-285 como **fixture temporal ignorado en R:**; `MAPIT_TEST_COMPAT_MIGRATIONS=.tmp/map286-qa/compat-v40` añade esa ubicación a Flyway solo en tests. Se verificó migración V39→V40→V41, sin copiar V40 a producción ni modificar su rama.
+- Pruebas unitarias focalizadas: `:modules:operations:operations-domain:test --tests '*notification.*'` **60/60**, aplicación equivalente **71/71** y `operations-infrastructure:test --tests '*NotificationCursorCodecTest'` **2/2**. Tras añadir el caso específico de precisión, se ejecutó solo `*NotificationTest.normaliza_precision*`: **1/1**. Codec cubre ámbito/tenant/usuario/concesiones, manipulación, formato, expiración y clave diferente. Los dobles son solo de test.
+- Integración `:bootstrap:integrationTest --tests '*NotificationPersistenceIntegrationTest'`: primera ejecución **9/10 aprobadas**; el caso de conflicto falló porque Spring traducía IllegalStateException. Se introdujo NotificationDeliveryConflictException segura y se repitió **solo ese caso: 1/1 aprobado**. Luego se ampliaron/revalidaron únicamente RLS con filas reales de ambos tenants/SQL sin filtros y rollback del gate/contexto: **2/2 aprobadas**. Las **10 pruebas distintas están aprobadas**; no se repitió la clase completa después de esa corrección. Evidencia local ignorada: .tmp/map286-qa/tests-fixed.log, dedup-fixed.log, rls-rollback.log.
+- Cobertura PostgreSQL/HTTP: RLS sin tenant y lectura/escritura aislada con filas reales; usuarios del mismo tenant; referencias cross-tenant y rollback; deduplicación concurrente; persistencia/idempotencia; contador/páginas/cursor ajeno/revocado; cuerpos privilegiados y 400/401/404; JWT realmente revocado por MAP-238; tenant suspendido; pérdida de concesión y scope obsoleto; MANAGER vigente y SUPER_ADMIN vacío; expiración/purga sin recreación; marcado masivo con llegada posterior al corte. Denegación del ámbito está probada en unitarios; no se afirma carrera HTTP 403 ni pruebas de carga.
+- Regresión acotada tras merge: `:bootstrap:test --tests 'com.mapit.architecture.ArchitectureTest' --tests 'com.mapit.realtime.RealtimeStompInterceptorTest'`: **17/17**. Sin activar el destino privado STOMP ni ampliar su autorización.
+- Contrato: `pnpm api:lint` correcto con dos advertencias preexistentes health/demo-items; `pnpm api:gen` generó realmente el cliente y organizó imports, `pnpm api:check` sincronizado. `node --test tools/scripts/notification-contract.test.mjs`: **6/6** con estado implementado. No se versiona generated/. `pnpm fe:typecheck` tras el merge: correcto; ESLint 0 warnings/Prettier en los tres catálogos resueltos. Spotless focalizado de dominio/infra/bootstrap y diff sin errores. Logs locales adicionales: final-java.log.
+- Pendientes: acuerdo final de retención y coordinación de despliegue V40→V41; conectar productores/consumo durable y candidatos MAP-293; MAP-257; habilitar canal privado MAP-295 con identidad vigente; preferencias y QA frontend/E2E/Unleash real. Se mantiene flag OFF por defecto. No se ejecuta pnpm check completo, suites/builds globales ni se declara MAP-286 lista para PR; CI remoto/captura de Checks queda pendiente conforme a ticket-delivery. Hooks normales lint-staged/commitlint al crear commits, sin omitirlos.
+
+- Commits de implementación validados: `45cf97f` — esquema V41/DBML (MAP-292); `c22c28d` — JDBC/HTTP, autorización, retención y pruebas (MAP-294). Los hooks lint-staged/commitlint terminaron correctamente en ambos. La evidencia documental de este incremento se versiona aparte; no se publica nada.
