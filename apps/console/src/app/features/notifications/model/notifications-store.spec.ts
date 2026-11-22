@@ -84,6 +84,25 @@ describe('NotificationsStore', () => {
   });
   afterEach(() => vi.useRealTimers());
 
+  it('switching websocket availability keeps the open inbox functional through HTTP', () => {
+    const websocket = signal(true);
+    realtime.available.mockImplementation(() => websocket());
+    access.context.set({ ...A });
+    TestBed.tick();
+    store.loadFirst();
+    lists.at(-1)!.next(page());
+    counts.at(-1)!.next({ unreadCount: 1 });
+    TestBed.tick();
+    const previousReads = api.list.mock.calls.length;
+    websocket.set(false);
+    TestBed.tick();
+    expect(api.list.mock.calls.length).toBe(previousReads + 1);
+    lists.at(-1)!.next(page());
+    counts.at(-1)!.next({ unreadCount: 1 });
+    expect(store.entries()).toHaveLength(1);
+    expect(store.status()).toBe('ready');
+  });
+
   const hint = (id = '00000000-0000-0000-0000-000000000001'): NotificationInvalidation => ({
     eventId: id,
     eventType: 'notification.inbox.invalidated.v1',

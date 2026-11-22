@@ -163,7 +163,7 @@ it('shares the existing socket, resubscribes after reconnect, and unsubscribes o
   room.unsubscribe();
 });
 
-it('discards old-session callbacks immediately and never subscribes a new identity on the old socket', () => {
+it('discards old-session callbacks immediately and never subscribes a new identity on the old socket', async () => {
   const client = TestBed.inject(RealtimeClient);
   const received = vi.fn();
   const sub = client.subscribeNotificationInvalidations(A).subscribe(received);
@@ -177,7 +177,8 @@ it('discards old-session callbacks immediately and never subscribes a new identi
   expect(clients[0]!.callbacks.has(DEST)).toBe(false);
   clients[0]!.active = false;
   clients[0]!.onWebSocketClose({});
-  vi.advanceTimersByTime(10);
+  await Promise.resolve();
+  await Promise.resolve();
   clients[1]!.callbacks.get(DEST)!({ body: JSON.stringify(notice) } as IMessage);
   expect(received).toHaveBeenCalledOnce();
   current.set(null);
@@ -196,4 +197,32 @@ it('does not expose invalid message content or route operational data through th
   expect(received).not.toHaveBeenCalled();
   expect(errors).toHaveLength(1);
   expect(String(errors[0])).not.toContain('secret-canary');
+});
+
+it('rebinds the shared transport on identity change and discards late callbacks from the old socket', async () => {
+  const client = TestBed.inject(RealtimeClient);
+  TestBed.tick();
+  const oldEvents = vi.fn();
+  client.subscribeNotificationInvalidations(A).subscribe(oldEvents);
+  const old = clients[0]!;
+  const late = old.callbacks.get(DEST)!;
+  const B = {
+    ...A,
+    userId: '00000000-0000-0000-0000-000000000010',
+    sessionId: '00000000-0000-0000-0000-000000000011',
+  };
+  current.set(B);
+  const fresh = vi.fn();
+  client.subscribeNotificationInvalidations(B).subscribe(fresh);
+  TestBed.tick();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(old.active).toBe(false);
+  expect(clients).toHaveLength(2);
+  old.onWebSocketClose({});
+  late({ body: JSON.stringify(notice) } as IMessage);
+  clients[1]!.callbacks.get(DEST)!({ body: JSON.stringify(notice) } as IMessage);
+  expect(oldEvents).not.toHaveBeenCalled();
+  expect(fresh).toHaveBeenCalledOnce();
+  expect(client.connectionState()).toBe('connected');
 });

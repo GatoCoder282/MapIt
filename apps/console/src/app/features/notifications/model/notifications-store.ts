@@ -50,12 +50,15 @@ export class NotificationsStore {
     effect(() => {
       const context = this.access.context();
       const enabled = this.access.enabled();
+      const realtimeAvailable = !!context && this.realtime.available(context);
       untracked(() => {
+        const reloadPage = this.owner() === context && this.pageStatus() !== 'idle';
         this.reset();
         if (enabled && context) {
           this.owner.set(context);
           this.refreshCount();
-          if (this.realtime.available(context)) {
+          if (reloadPage) this.loadFirst();
+          if (realtimeAvailable) {
             const generation = this.generation;
             this.pending.add(
               this.realtime.observe(context).subscribe({

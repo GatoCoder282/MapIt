@@ -1,5 +1,13 @@
 import { Logger } from '@mapit/logging';
-import { effect, inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
+import {
+  effect,
+  inject,
+  Injectable,
+  InjectionToken,
+  signal,
+  untracked,
+  type Signal,
+} from '@angular/core';
 import { Client, type IMessage, type StompConfig, type StompSubscription } from '@stomp/stompjs';
 import { Observable, Subject, filter } from 'rxjs';
 import {
@@ -53,8 +61,8 @@ export interface ReservationPaymentEvent {
 }
 
 export interface RealtimeConfig {
-  /** Dejar ausente hasta integrar autorización privada CONNECT/SUBSCRIBE/outbound y persistencia.
-   * Solo entonces la app devolverá la sesión vigente, con nonce nuevo por login. */
+  /** Binding opcional para superficies staff; la consola aporta sesión vigente y nonce por login.
+   * No autoriza solicitudes ni se envía como identidad al servidor. */
   readonly notificationSession?: () => NotificationRealtimeSession | null;
   /** Lee el valor runtime en cada intento de conexión. */
   readonly brokerUrl: () => string;
@@ -138,6 +146,7 @@ export class RealtimeClient {
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private retryAttempt = 0;
   private requested = false;
+  private identityRevision = 0;
   private stopping = false;
 
   readonly connectionState: Signal<RealtimeConnectionState> = this.estado.asReadonly();
@@ -146,6 +155,11 @@ export class RealtimeClient {
   readonly paymentEvents = this.paymentEventos.asObservable();
 
   constructor() {
+    effect(() => {
+      if (!this.config.notificationSession) return;
+      this.config.notificationSession();
+      untracked(() => this.syncIdentity());
+    });
     effect(() => {
       if (!this.config.enabled()) {
         void this.stopForKillSwitch();
@@ -158,6 +172,7 @@ export class RealtimeClient {
   /** Solicita una conexión. Sin flag o JWT no abre el socket. */
   connect(): void {
     this.requested = true;
+    if (this.syncIdentity()) return;
     if (!this.config.enabled()) {
       this.estado.set('disabled');
       return;
@@ -226,6 +241,7 @@ export class RealtimeClient {
         subscriber.error(new Error('Canal privado de notificaciones no disponible'));
         return;
       }
+      this.connect();
       const release = this.retainTopic(NOTIFICATION_USER_DESTINATION);
       const events = this.notificationEvents
         .pipe(
@@ -235,12 +251,36 @@ export class RealtimeClient {
           ),
         )
         .subscribe({ next: ({ event }) => subscriber.next(event) });
-      this.connect();
       return () => {
         events.unsubscribe();
         release();
       };
     });
+  }
+
+  /** Cierra primero la identidad anterior y nunca recicla sus salas ni callbacks. */
+  private syncIdentity(): boolean {
+    if (!this.config.notificationSession) return false;
+    const next = this.config.notificationSession() ?? null;
+    if (
+      (!next && !this.boundNotificationSession) ||
+      sameNotificationSession(next, this.boundNotificationSession)
+    )
+      return false;
+    this.boundNotificationSession = next ? { ...next } : null;
+    const previous = this.client;
+    if (!previous) return false;
+    const revision = ++this.identityRevision;
+    this.client = null;
+    this.clearRetryTimer();
+    this.clearTopics();
+    this.estado.set('idle');
+    if (!next) this.requested = false;
+    void previous.deactivate().finally(() => {
+      if (revision === this.identityRevision && this.requested && this.config.enabled())
+        this.startTransport();
+    });
+    return true;
   }
 
   private startTransport(): void {
@@ -268,12 +308,14 @@ export class RealtimeClient {
     this.client = client;
     client.reconnectDelay = 0;
     client.beforeConnect = () => {
+      if (client !== this.client) throw new Error('Sesión de tiempo real anterior');
       if (!this.config.enabled()) throw new Error('realtime.websocket está desactivado');
       const currentToken = this.config.accessToken();
       if (!currentToken) throw new Error('No hay JWT para abrir WebSocket');
       client.connectHeaders = { Authorization: `Bearer ${currentToken}` };
     };
     client.onConnect = () => {
+      if (client !== this.client) return;
       this.logger.log('INFO', 'realtime.connected');
       this.lastFailureLog = -Infinity;
       this.retryAttempt = 0;
@@ -281,16 +323,19 @@ export class RealtimeClient {
       for (const topic of this.topics.keys()) this.ensureTopicSubscription(topic);
     };
     client.onStompError = (frame) => {
+      if (client !== this.client) return;
       this.logTransportFailure();
       this.errores.next(frame);
       this.estado.set('error');
     };
     client.onWebSocketError = (error) => {
+      if (client !== this.client) return;
       this.logTransportFailure();
       this.errores.next(error);
       this.estado.set('error');
     };
     client.onWebSocketClose = () => {
+      if (client !== this.client) return;
       this.disposeTopicSubscriptions();
       if (this.stopping) return;
       if (!this.config.enabled()) {
