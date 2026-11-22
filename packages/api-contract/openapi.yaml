@@ -2603,14 +2603,14 @@ paths:
       tags: [my-account]
       summary: Cambiar mi contraseña verificando la contraseña actual
       operationId: changeMyPassword
-      x-implementation-status: planned
+      x-implementation-status: implemented
       x-feature-flag: mapit.s6.my-account
       security: [{ bearerAuth: [] }]
       description: |
-        Contrato futuro de MAP-289 dentro de MAP-285. Aún no existe este
-        controlador ni revocación por cuenta en la base actual. No habilitarlo
-        antes de integrar y validar la identidad vigente y revocación de MAP-238
-        (PR #69), incluyendo HTTP, STOMP y las carreras de emisión de JWT.
+        Cambio con bloqueo de app_user, verificación actual y escritura atómica de
+        hash/corte de tokens bajo RLS, reutilizando la revalidación de MAP-238.
+        Login y cambio bloquean la misma fila. La emisión usa hora de PostgreSQL,
+        con iat en segundos y sin adelantarlo ni relajar la comparación de corte.
 
         Mismos roles y resolución exclusiva del principal que GET /me, sin
         identidad objetivo ni cambios de correo, tenant, roles, membresías,
@@ -2622,8 +2622,8 @@ paths:
         en backend: maxLength por sí solo no expresa esas reglas.
 
         Reutilizar el limitador existente con presupuestos propios por cuenta
-        autenticada y origen. Los límites concretos se fijarán y probarán en
-        MAP-289 antes de habilitar el endpoint; no se prometen cuotas existentes.
+        autenticada y origen: 5 intentos por cuenta y 20 por dirección real en
+        900 segundos, también en fallos; no consume contadores de login.
         Contraseña actual incorrecta, nueva débil/igual, confirmación distinta o
         propiedades desconocidas producen 400 Problem sin modificar credenciales
         ni invalidar tokens. 401 se reserva a una sesión no válida.
@@ -2664,6 +2664,16 @@ paths:
         "429":
           $ref: "#/components/responses/AuthRateLimited"
 
+        "503":
+          description: Persistencia o dependencia no disponible; no se confirma cambio
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
   /auth/global-login:
     post:
       tags: [auth]
@@ -2690,6 +2700,17 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/AuthRateLimited"
+        "503":
+          description: Emisión temporalmente no segura (mismo segundo que el corte o reloj no alineado); repetir después de Retry-After, sin JWT nuevo
+          headers:
+            Retry-After:
+              schema: { type: integer, minimum: 1 }
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 
   /health:
     get:

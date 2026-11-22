@@ -9,7 +9,7 @@ import com.mapit.identity.application.OwnPasswordChange;
 import com.mapit.identity.application.OwnPasswordChangeFailure;
 import com.mapit.identity.application.OwnPasswordChangeFailure.Reason;
 
-/** Lector cerrado preparado para el contrato existente; no registra rutas/controladores. */
+/** Lector cerrado del comando propio; nunca admite identidad ni campos de autoridad. */
 public final class OwnPasswordChangePayload {
   private static final Set<String> FIELDS = Set.of("currentPassword", "newPassword", "newPasswordConfirm");
 

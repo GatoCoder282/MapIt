@@ -24,9 +24,13 @@ public class AuthenticateUser {
     }
 
     public AuthenticatedUser execute(AuthenticateUserCommand command) {
+        return authenticate(command).identity();
+    }
+
+    public UserCredentials authenticate(AuthenticateUserCommand command) {
         String password = command.password();
         var credentials = users.findByEmail(validateCredentials(command.email(), password));
-        return verify(password, credentials).identity();
+        return verify(password, credentials);
     }
 
     private static String validateCredentials(String email, String password) {

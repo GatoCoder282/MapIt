@@ -1,5 +1,7 @@
 package com.mapit.identity.infrastructure;
 
+import java.sql.Timestamp;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,18 +21,21 @@ import com.mapit.shared.tenant.TenantScope;
 /** Consulta de credenciales anterior al JWT, aislada del contexto de cualquier petición. */
 @Repository
 public class JdbcUserCredentialsRepository implements UserCredentialsRepository {
-    private static final String SELECT_ACCOUNT = """
+    static final String SELECT_ACCOUNT = """
             select u.id, u.tenant_id, u.email, u.full_name, u.role, u.password_hash,
-                   u.active, t.status = 'ACTIVE' as tenant_active
+                   u.active, t.status = 'ACTIVE' as tenant_active, u.staff_tokens_valid_after
             from app_user u join tenant t on t.id = u.tenant_id
             """;
 
-    private static final RowMapper<UserCredentials> ACCOUNT = (rs, rowNum) -> new UserCredentials(
+    static final RowMapper<UserCredentials> ACCOUNT = (rs, rowNum) -> {
+        var cutoff = rs.getTimestamp("staff_tokens_valid_after");
+        return new UserCredentials(
                     new AuthenticatedUser(rs.getObject("id", UUID.class),
                             TenantId.of(rs.getString("tenant_id")), rs.getString("email"),
                             rs.getString("full_name"), UserRole.valueOf(rs.getString("role"))),
                     rs.getString("password_hash"), rs.getBoolean("active"),
-                    rs.getBoolean("tenant_active"));
+                    rs.getBoolean("tenant_active"), cutoff == null ? null : cutoff.toInstant(), null);
+    };
 
     private final JdbcTemplate jdbc;
 
@@ -39,11 +44,23 @@ public class JdbcUserCredentialsRepository implements UserCredentialsRepository 
     }
 
     @Override
-    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public Optional<UserCredentials> findByEmail(String email) {
         // La política RLS permite leer exclusivamente el correo de esta transacción.
         jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, "");
         jdbc.queryForObject("select set_config('app.login_email', ?, true)", String.class, email);
-        return jdbc.query(SELECT_ACCOUNT + "where u.email = ?", ACCOUNT, email).stream().findFirst();
+        var found = jdbc.query(SELECT_ACCOUNT + "where u.email = ?", ACCOUNT, email).stream().findFirst();
+        if (found.isEmpty()) return Optional.empty();
+        var identity = found.orElseThrow().identity();
+        jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, identity.tenantId().value());
+        jdbc.queryForObject("select set_config('app.login_email', '', true)", String.class);
+        // El login_email solo permite descubrimiento. El bloqueo usa el tenant real bajo RLS.
+        var locked = jdbc.query(SELECT_ACCOUNT + "where u.tenant_id = ? and u.id = ? and u.email = ? for update of u", ACCOUNT,
+                identity.tenantId().value(), identity.id(), email).stream().findFirst();
+        if (locked.isEmpty()) return Optional.empty();
+        var credential = locked.orElseThrow();
+        var now = Objects.requireNonNull(jdbc.queryForObject("select clock_timestamp()", Timestamp.class)).toInstant();
+        return Optional.of(new UserCredentials(credential.identity(), credential.passwordHash(),
+                credential.active(), credential.tenantActive(), credential.tokensValidAfter(), now));
     }
 }

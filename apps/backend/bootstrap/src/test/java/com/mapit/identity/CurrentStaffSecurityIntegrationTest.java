@@ -102,6 +102,7 @@ class CurrentStaffSecurityIntegrationTest {
   @Autowired private RecoverInactiveAdmin recovery;
   @MockitoBean private AdminRecoveryMail recoveryMail;
   @MockitoSpyBean private AuditEventRecorder recoveryAudit;
+  @MockitoSpyBean private com.mapit.shared.flags.FeatureFlagPort featureFlags;
   @Autowired private RealtimeEventPublisher realtime;
   @Autowired private com.mapit.operations.infrastructure.realtime.RealtimeOutboxDispatcher dispatcher;
   private WebSocketStompClient stomp;
@@ -109,6 +110,45 @@ class CurrentStaffSecurityIntegrationTest {
   @AfterEach
   void stopStomp() {
     if (stomp != null) stomp.stop();
+  }
+
+  @Test
+  void cambio_de_password_revoca_http_y_socket_suscrito_y_exige_login_nuevo() throws Exception {
+    String tenant = tenant();
+    UUID admin = user(tenant, "admin@own-password.test", UserRole.ADMIN);
+    UUID establishment = UUID.randomUUID();
+    inTenant(tenant, () -> jdbc.update("insert into establishment(id,tenant_id,name,type,slug) values (?,?,'Password','RESTAURANT',?)",
+        establishment, tenant, "pwd-" + establishment));
+    org.mockito.Mockito.doReturn(true).when(featureFlags).isEnabledFor(
+        com.mapit.shared.flags.FeatureFlag.MAPIT_S6_MY_ACCOUNT, TenantId.of(tenant));
+    String oldToken = login(tenant, "admin@own-password.test");
+    stomp = new WebSocketStompClient(new StandardWebSocketClient());
+    stomp.setMessageConverter(new StringMessageConverter()); stomp.start();
+    StompHeaders connect = new StompHeaders(); connect.add("Authorization", oldToken);
+    var session = stomp.connectAsync(URI.create("ws://localhost:" + port + "/ws"),
+        new org.springframework.web.socket.WebSocketHttpHeaders(), connect, new StompSessionHandlerAdapter() {})
+        .get(10, TimeUnit.SECONDS);
+    CountDownLatch before = new CountDownLatch(1); CountDownLatch after = new CountDownLatch(1);
+    var frames = new java.util.concurrent.atomic.AtomicInteger();
+    session.subscribe("/topic/establishments/" + establishment, new StompFrameHandler() {
+      @Override public java.lang.reflect.Type getPayloadType(StompHeaders headers) { return String.class; }
+      @Override public void handleFrame(StompHeaders headers, Object payload) {
+        if (frames.incrementAndGet() == 1) before.countDown(); else after.countDown();
+      }
+    });
+    TimeUnit.MILLISECONDS.sleep(300);
+    publish(tenant, establishment, 1); assertThat(before.await(4, TimeUnit.SECONDS)).isTrue();
+    http().post().uri("/api/v1/me/password").header("Authorization", oldToken).contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("currentPassword", PASSWORD, "newPassword", "ReplacementSecret2!", "newPasswordConfirm", "ReplacementSecret2!"))
+        .exchange().expectStatus().isNoContent().expectHeader().valueEquals("Cache-Control", "no-store");
+    http().get().uri("/api/v1/me").header("Authorization", oldToken).exchange().expectStatus().isUnauthorized();
+    http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("email", "admin@own-password.test", "password", PASSWORD)).exchange().expectStatus().isUnauthorized();
+    publish(tenant, establishment, 2); assertThat(after.await(2, TimeUnit.SECONDS)).isFalse();
+    String refreshed = loginWithPassword("admin@own-password.test", "ReplacementSecret2!");
+    http().get().uri("/api/v1/me").header("Authorization", refreshed).exchange().expectStatus().isOk();
+    inTenant(tenant, () -> assertThat(jdbc.queryForObject("select role from app_user where id=?", String.class, admin)).isEqualTo("ADMIN"));
+    session.disconnect();
   }
 
   @Test
@@ -1045,10 +1085,22 @@ class CurrentStaffSecurityIntegrationTest {
   }
 
   private String login(String tenant, String email) {
-    String body = http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
-        .body(Map.of("email", email, "password", PASSWORD))
-        .exchange().expectStatus().isOk().expectBody(String.class).returnResult().getResponseBody();
-    return "Bearer " + body.split("\\\"accessToken\\\":\\\"")[1].split("\\\"")[0];
+    return loginWithPassword(email, PASSWORD);
+  }
+
+  private String loginWithPassword(String email, String password) {
+    for (int attempt = 0; attempt < 3; attempt++) {
+      var response = http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+          .body(Map.of("email", email, "password", password)).exchange().expectBody(String.class).returnResult();
+      if (response.getStatus().value() == 503) {
+        assertThat(response.getResponseHeaders().getFirst("Retry-After")).isEqualTo("1");
+        try { Thread.sleep(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new AssertionError(e); }
+        continue;
+      }
+      assertThat(response.getStatus().value()).isEqualTo(200);
+      return "Bearer " + response.getResponseBody().split("\\\"accessToken\\\":\\\"")[1].split("\\\"")[0];
+    }
+    throw new AssertionError("No se superó la barrera temporal de emisión");
   }
 
   private String signed(UUID id, String tenant, UserRole role) {

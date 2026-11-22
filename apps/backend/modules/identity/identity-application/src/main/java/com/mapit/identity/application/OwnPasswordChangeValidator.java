@@ -11,8 +11,8 @@ import com.mapit.identity.domain.PasswordVerifier;
 
 /**
  * Valida sin escribir ni emitir credenciales. No es un caso de uso autorizado:
- * el futuro llamador debe autenticar, limitar intentos y cargar el hash propio
- * bajo RLS. No conectarlo a HTTP antes de disponer de cambio/revocación atómicos.
+ * el llamador debe autenticar, limitar intentos y cargar el hash propio bloqueado
+ * bajo RLS. CommitOwnPasswordChange coordina la escritura y revocación atómicas.
  */
 @Component
 public final class OwnPasswordChangeValidator {

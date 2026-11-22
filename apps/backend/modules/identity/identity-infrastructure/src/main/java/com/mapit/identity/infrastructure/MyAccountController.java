@@ -53,7 +53,7 @@ public class MyAccountController {
         return ok(profiles.update(actor, patch));
     }
 
-    private static AuthenticatedPrincipal actor(HttpServletRequest request) {
+    static AuthenticatedPrincipal actor(HttpServletRequest request) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()
                 || !(authentication.getPrincipal() instanceof AuthenticatedPrincipal)) {
@@ -72,6 +72,10 @@ public class MyAccountController {
 
     @ExceptionHandler(OwnProfileFailure.class)
     ResponseEntity<ProblemDetail> failure(OwnProfileFailure failure) {
+        return profileFailure(failure);
+    }
+
+    static ResponseEntity<ProblemDetail> profileFailure(OwnProfileFailure failure) {
         HttpStatus status = switch (failure.reason()) {
             case UNAUTHENTICATED -> HttpStatus.UNAUTHORIZED;
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
@@ -99,7 +103,7 @@ public class MyAccountController {
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "profile-unavailable", "No se pudo acceder al perfil; no se confirmó ningún cambio.");
     }
 
-    private static ResponseEntity<ProblemDetail> problem(HttpStatus status, String code, String detail) {
+    static ResponseEntity<ProblemDetail> problem(HttpStatus status, String code, String detail) {
         var problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setTitle(status.getReasonPhrase());
         problem.setType(URI.create(LoginProblemTypes.BASE + code));

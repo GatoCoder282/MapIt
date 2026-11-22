@@ -28,10 +28,14 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
 import com.mapit.config.SecurityConfig;
+import com.mapit.identity.application.ChangeOwnPassword;
+import com.mapit.identity.application.CommitOwnPasswordChange;
 import com.mapit.identity.application.OwnProfileService;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.AuthenticatedUser;
 import com.mapit.identity.domain.CurrentStaffIdentity;
+import com.mapit.identity.domain.OwnPasswordAttemptLimiter;
+import com.mapit.identity.domain.OwnPasswordRateLimited;
 import com.mapit.identity.domain.PersonalProfile;
 import com.mapit.identity.domain.PersonalProfileChanges;
 import com.mapit.identity.domain.PersonalProfileRepository;
@@ -39,6 +43,7 @@ import com.mapit.identity.domain.UserRole;
 import com.mapit.identity.infrastructure.JjwtTokenService;
 import com.mapit.identity.infrastructure.JwtAuthenticationFilter;
 import com.mapit.identity.infrastructure.MyAccountController;
+import com.mapit.identity.infrastructure.MyPasswordController;
 import com.mapit.shared.flags.FeatureFlag;
 import com.mapit.shared.flags.FeatureFlagPort;
 import com.mapit.shared.tenant.TenantId;
@@ -66,7 +71,8 @@ class MyAccountSecurityTest {
         context.register(SecurityConfig.class, Fixture.class);
         context.refresh();
         repository = context.getBean(PersonalProfileRepository.class);
-        client = RestTestClient.bindToController(new MyAccountController(context.getBean(OwnProfileService.class)))
+        client = RestTestClient.bindToController(new MyAccountController(context.getBean(OwnProfileService.class)),
+                new MyPasswordController(context.getBean(ChangeOwnPassword.class)))
                 .configureServer(builder -> builder.addFilters(context.getBean(FilterChainProxy.class))).build();
     }
 
@@ -82,6 +88,8 @@ class MyAccountSecurityTest {
             context.getBean(AtomicBoolean.class).set(enabled);
         client.get().uri("/api/v1/me").exchange().expectStatus().isUnauthorized();
         client.patch().uri("/api/v1/me").contentType(MediaType.APPLICATION_JSON).body("{\"fullName\":\"Nombre\"}")
+                .exchange().expectStatus().isUnauthorized();
+        client.post().uri("/api/v1/me/password").contentType(MediaType.APPLICATION_JSON).body(Map.of())
                 .exchange().expectStatus().isUnauthorized();
         read("altered.jwt.value").expectStatus().isUnauthorized();
         var expired = new JjwtTokenService(SECRET, "mapit-profile-test", 15, Clock.fixed(NOW.minusSeconds(3600), ZoneOffset.UTC));
@@ -105,13 +113,13 @@ class MyAccountSecurityTest {
     }
 
     @Test
-    void passwordEndpointStaysAbsentEvenWithValidJwtAndFeatureOn() {
+    void passwordEndpointRejectsUnknownIdentityAndDoesNotEchoSecrets() {
         for (boolean enabled : new boolean[] {false, true}) {
             context.getBean(AtomicBoolean.class).set(enabled);
             client.post().uri("/api/v1/me/password").header("Authorization", "Bearer " + token(A))
                     .contentType(MediaType.APPLICATION_JSON).body(Map.of("currentPassword", "private-current-canary",
                             "newPassword", "private-next-canary", "newPasswordConfirm", "private-confirm-canary", "userId", B.id().toString()))
-                    .exchange().expectStatus().isNotFound().expectBody().consumeWith(response -> {
+                    .exchange().expectStatus().isBadRequest().expectBody().consumeWith(response -> {
                         var body = response.getResponseBody();
                         if (body != null) org.assertj.core.api.Assertions.assertThat(new String(body, java.nio.charset.StandardCharsets.UTF_8))
                                 .doesNotContain("private-current-canary", "private-next-canary", "private-confirm-canary");
@@ -119,6 +127,42 @@ class MyAccountSecurityTest {
         }
         verify(repository, never()).findOwn(any());
         verify(repository, never()).updateOwn(any(), any());
+    }
+
+    @Test
+    void passwordRequiresOwnEligibleIdentityAndFlagAndNeverReturnsAToken() {
+        password(A).expectStatus().isNotFound();
+        verify(context.getBean(CommitOwnPasswordChange.class), never()).execute(any(), any());
+        context.getBean(AtomicBoolean.class).set(true);
+        for (var principal : PROFILES.keySet()) {
+            password(principal).expectStatus().isNoContent().expectHeader().valueEquals("Cache-Control", "no-store")
+                    .expectBody().isEmpty();
+            verify(context.getBean(CommitOwnPasswordChange.class)).execute(org.mockito.ArgumentMatchers.eq(principal), any());
+        }
+        password(new AuthenticatedPrincipal(A.id(), C.tenantId(), A.email(), A.role(), NOW))
+                .expectStatus().isUnauthorized();
+        when(repository.findOwn(A)).thenReturn(Optional.empty());
+        password(A).expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void passwordRateLimitAndDatabaseFailuresAreSafeAndDoNotReturnFalseSuccess() {
+        context.getBean(AtomicBoolean.class).set(true);
+        var limiter = context.getBean(OwnPasswordAttemptLimiter.class);
+        org.mockito.Mockito.doThrow(new OwnPasswordRateLimited(900)).when(limiter).checkPasswordChange(any(), any());
+        password(A).expectStatus().isEqualTo(429).expectHeader().valueEquals("Retry-After", "900");
+        verify(context.getBean(CommitOwnPasswordChange.class), never()).execute(any(), any());
+        org.mockito.Mockito.reset(limiter);
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("private-canary"))
+                .when(context.getBean(CommitOwnPasswordChange.class)).execute(any(), any());
+        password(A).expectStatus().isEqualTo(503).expectHeader().valueEquals("Cache-Control", "no-store")
+                .expectBody().consumeWith(response -> org.assertj.core.api.Assertions.assertThat(
+                        new String(response.getResponseBody(), java.nio.charset.StandardCharsets.UTF_8)).doesNotContain("private-canary", "CurrentSecret1!", "NewSecret2!"));
+    }
+
+    private RestTestClient.ResponseSpec password(AuthenticatedPrincipal actor) {
+        return client.post().uri("/api/v1/me/password").header("Authorization", "Bearer " + token(actor))
+                .contentType(MediaType.APPLICATION_JSON).body(Map.of("currentPassword", "CurrentSecret1!", "newPassword", "NewSecret2!", "newPasswordConfirm", "NewSecret2!")).exchange();
     }
 
     @Test
@@ -251,5 +295,8 @@ class MyAccountSecurityTest {
             return repository;
         }
         @Bean OwnProfileService service(PersonalProfileRepository repository, FeatureFlagPort flags) { return new OwnProfileService(repository, flags); }
+        @Bean OwnPasswordAttemptLimiter passwordLimiter() { return mock(OwnPasswordAttemptLimiter.class); }
+        @Bean CommitOwnPasswordChange passwordWriter() { return mock(CommitOwnPasswordChange.class); }
+        @Bean ChangeOwnPassword passwords(OwnProfileService profiles, OwnPasswordAttemptLimiter limiter, CommitOwnPasswordChange writer) { return new ChangeOwnPassword(profiles, limiter, writer); }
     }
 }

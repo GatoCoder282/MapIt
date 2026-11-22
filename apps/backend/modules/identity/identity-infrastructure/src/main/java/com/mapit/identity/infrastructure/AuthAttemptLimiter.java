@@ -59,7 +59,7 @@ public class AuthAttemptLimiter implements OwnPasswordAttemptLimiter {
         WINDOW_SECONDS, ATTEMPTS_PER_ACCOUNT_AND_ADDRESS);
   }
 
-  /** Preparado pero no conectado a endpoint; todos los intentos consumen presupuesto. */
+  /** Presupuesto propio del cambio de contraseña; se confirma incluso si falla su validación. */
   @Override
   @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = OwnPasswordRateLimited.class)
   public void checkPasswordChange(AuthenticatedPrincipal actor, String remoteAddress) {

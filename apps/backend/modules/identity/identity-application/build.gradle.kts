@@ -7,4 +7,5 @@ plugins {
 dependencies {
     implementation(project(":modules:identity:identity-domain"))
     implementation(project(":shared-kernel"))
+    testImplementation("org.mockito:mockito-core")
 }
