@@ -104,6 +104,13 @@
 
 ## Notas de ejecución
 
+### 2026-11-22 — MAP-287: migración expansiva de teléfono e idioma
+
+- Inicio limpio en MAP-285, HEAD `982fe01`, sin otra integración. Última Flyway disponible V39; generado con `pnpm db:new "agregar contacto e idioma al perfil personal"` el archivo V40, siguiendo la skill `new-migration` localizada en `.claude/skills/new-migration/SKILL.md` y `ticket-delivery`.
+- `app_user.contact_phone VARCHAR(32)` y `preferred_language VARCHAR(5)` opcionales, sin backfill ni cambio de identidad/roles/tenant/RLS. CHECK de teléfono 1–32, patrón ASCII contratado y al menos un dígito; idioma solo es/en/ja-JP. DBML en el mismo incremento. Rollback mediante flag OFF/código previo conservando columnas y datos, sin migración destructiva.
+- Preparada ampliación de `PersonalProfilePersistenceIntegrationTest`: migra primero a V39, inserta cuentas antiguas y migra después a V40 para comprobar compatibilidad; prueba restricciones/null y conserva la prueba existente con rol runtime sin bypass y limpieza de tenant del pool.
+- Compilación del fixture mediante `:bootstrap:compileTestJava` y formato Java correctos. PostgreSQL no escucha en el puerto local 5433; no se ejecuta integración/Testcontainers, migración real ni RLS. No Docker/aplicación. La migración por sí sola no retira 503 ni activa campos en frontend; se conectarán en los incrementos siguientes.
+
 ### 2026-11-22 — Integración autorizada de MAP-238 mediante merge normal
 
 - Inicio limpio en MAP-286, conservada en `25837e0d00baa4eefe961304229a368931ca077d`; `main` local permanece en `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. Cambio a la rama publicada MAP-285, HEAD inicial `29442a21fee67d869dad89d85f87f4d4ae13c1ce`, conservando sus 18 commits. Sin copiar commits ni código de MAP-286.

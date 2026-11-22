@@ -61,13 +61,17 @@ class PersonalProfilePersistenceIntegrationTest {
     @BeforeAll
     static void prepareDatabaseAndTransactionalAdapters() {
         Flyway.configure().dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
-                .locations("classpath:db/migration").placeholders(Map.of("mapitAppDbPassword", APP_PASSWORD)).load().migrate();
+                .locations("classpath:db/migration").placeholders(Map.of("mapitAppDbPassword", APP_PASSWORD)).target("39").load().migrate();
         owner = new JdbcTemplate(new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
         owner.update("insert into tenant(id,name,slug,status,vertical) values ('profile-a','A','profile-a','ACTIVE','RESTAURANT'),('profile-b','B','profile-b','ACTIVE','RESTAURANT')");
         for (var actor : new AuthenticatedPrincipal[] {A, B, C, SUPER}) {
             owner.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,?,?,'not-a-login-hash','Original',?)",
                     actor.id(), actor.tenantId().value(), storedEmail(actor), actor.role().name());
         }
+        Flyway.configure().dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .locations("classpath:db/migration").placeholders(Map.of("mapitAppDbPassword", APP_PASSWORD)).load().migrate();
+        assertThat(owner.queryForMap("select contact_phone,preferred_language from app_user where id=?", A.id()))
+                .containsEntry("contact_phone", null).containsEntry("preferred_language", null);
         pool = new HikariDataSource();
         pool.setJdbcUrl(POSTGRES.getJdbcUrl()); pool.setUsername("mapit_app"); pool.setPassword(APP_PASSWORD);
         pool.setMaximumPoolSize(1); pool.setMinimumIdle(1);
@@ -106,6 +110,23 @@ class PersonalProfilePersistenceIntegrationTest {
         var row = owner.queryForMap("select tenant_id,email,role,active,password_hash from app_user where id=?", A.id());
         assertThat(row).containsEntry("tenant_id", "profile-a").containsEntry("email", storedEmail(A))
                 .containsEntry("role", "ADMIN").containsEntry("active", true).containsEntry("password_hash", "not-a-login-hash");
+    }
+
+    @Test
+    void optionalColumnsAcceptSupportedValuesAndRejectInvalidData() {
+        owner.update("update app_user set contact_phone=null,preferred_language=null where id=?", A.id());
+        var existing = owner.queryForMap("select contact_phone,preferred_language from app_user where id=?", A.id());
+        assertThat(existing).containsEntry("contact_phone", null).containsEntry("preferred_language", null);
+        owner.update("update app_user set contact_phone=?,preferred_language='ja-JP' where id=?", "1".repeat(32), A.id());
+        for (String phone : new String[] {"", "abc", "+()-./", "1".repeat(33), "123\n"}) {
+            assertThatThrownBy(() -> owner.update("update app_user set contact_phone=? where id=?", phone, A.id()))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        }
+        for (String language : new String[] {"", "fr", "ES", "ja", "en-US"}) {
+            assertThatThrownBy(() -> owner.update("update app_user set preferred_language=? where id=?", language, A.id()))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        }
+        assertThat(owner.queryForObject("select relrowsecurity from pg_class where oid='app_user'::regclass", Boolean.class)).isTrue();
     }
 
     @Test
