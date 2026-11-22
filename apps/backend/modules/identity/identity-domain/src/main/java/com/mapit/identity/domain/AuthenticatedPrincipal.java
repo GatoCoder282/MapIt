@@ -1,12 +1,17 @@
 package com.mapit.identity.domain;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
 import com.mapit.shared.tenant.TenantId;
 
 /** Identidad reconstruida exclusivamente desde un token de acceso validado. */
-public record AuthenticatedPrincipal(UUID id, TenantId tenantId, String email, UserRole role) {
+public record AuthenticatedPrincipal(UUID id, TenantId tenantId, String email, UserRole role,
+    Instant issuedAt) {
+    public AuthenticatedPrincipal(UUID id, TenantId tenantId, String email, UserRole role) {
+        this(id, tenantId, email, role, null);
+    }
     public AuthenticatedPrincipal {
         Objects.requireNonNull(id);
         Objects.requireNonNull(tenantId);

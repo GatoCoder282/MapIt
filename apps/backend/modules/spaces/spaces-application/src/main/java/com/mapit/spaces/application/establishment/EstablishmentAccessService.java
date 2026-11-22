@@ -42,7 +42,7 @@ public class EstablishmentAccessService {
     return new StaffAccess(user.userId(),user.fullName(),user.email(),canCheckIn);
   }
   private void requireAdministrator(TenantId tenant,UUID establishmentId) {
-    if(!authorization.canManagePayments(tenant,actors.requireUserId(),establishmentId)) throw new NotFound();
+    if(!authorization.canManageStaff(tenant,actors.requireUserId(),establishmentId)) throw new NotFound();
   }
   public static class NotFound extends RuntimeException { public NotFound(){super("Establecimiento o personal no disponible");} }
 }

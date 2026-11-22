@@ -30,6 +30,7 @@ class EstablishmentAccessServiceTest {
     public void save(TenantId t,UUID v,UUID u,boolean permission,UUID a,Instant time){saves++;savedPermission=permission;assertThat(t).isEqualTo(tenant);assertThat(v).isEqualTo(venue);assertThat(u).isEqualTo(staff);assertThat(a).isEqualTo(actor);assertThat(time).isEqualTo(now);}
   };
   private final EstablishmentAuthorizationPort access=new EstablishmentAuthorizationPort(){
+    public boolean canManageStaff(TenantId t,UUID a,UUID v){return allowed&&t.equals(tenant)&&a.equals(actor)&&v.equals(venue);}
     public boolean canManagePayments(TenantId t,UUID a,UUID v){return allowed&&t.equals(tenant)&&a.equals(actor)&&v.equals(venue);}
     public boolean canCheckIn(TenantId t,UUID a,UUID v){return false;}
     public boolean canReadOperations(TenantId t,UUID a,UUID v){return false;}
@@ -49,5 +50,17 @@ class EstablishmentAccessServiceTest {
   }
   @Test void accessibleListIsScopedToCurrentActorNotBrowserTenant(){
     assertThat(service.accessible()).isEmpty();assertThat(reads).isEqualTo(1);
+  }
+  @Test void paymentOperationsDoNotGrantStaffAdministration(){
+    EstablishmentAuthorizationPort paymentManager = new EstablishmentAuthorizationPort(){
+      public boolean canManagePayments(TenantId t,UUID a,UUID v){return true;}
+      public boolean canCheckIn(TenantId t,UUID a,UUID v){return true;}
+      public boolean canReadOperations(TenantId t,UUID a,UUID v){return true;}
+    };
+    EstablishmentAccessService managerService = new EstablishmentAccessService(repository,paymentManager,
+        ()->Optional.of(tenant),()->Optional.of(actor),Clock.fixed(now,ZoneOffset.UTC));
+    assertThatThrownBy(()->managerService.grant(venue,staff,true))
+        .isInstanceOf(EstablishmentAccessService.NotFound.class);
+    assertThat(saves).isZero();
   }
 }

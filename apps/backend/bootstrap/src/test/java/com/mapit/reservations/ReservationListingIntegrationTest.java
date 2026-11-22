@@ -205,6 +205,18 @@ class ReservationListingIntegrationTest {
     http().get().uri("/api/v1/reservations").exchange().expectStatus().isUnauthorized();
   }
 
+  @Test
+  void staff_no_enumera_reservas_aunque_pertenezca_al_tenant() {
+    UUID staff = UUID.randomUUID();
+    enTenant(TENANT_A, () -> jdbc.update(
+        "insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,'reservation-list-a',?,'x','Staff','STAFF')",
+        staff, "staff-" + staff + "@reservation-list.test"));
+    String signed = tokens.issue(new AuthenticatedUser(staff, TenantId.of(TENANT_A),
+        "staff-" + staff + "@reservation-list.test", "Staff", UserRole.STAFF)).value();
+    http().get().uri("/api/v1/reservations").header("Authorization", bearer(signed))
+        .exchange().expectStatus().isForbidden();
+  }
+
   /**
    * La RLS está viva en esta suite: sin tenant en la sesión la tabla no devuelve nada.
    *
@@ -231,7 +243,7 @@ class ReservationListingIntegrationTest {
                 TenantId.of(tenantId),
                 "staff@reservation-list.test",
                 "Reservation Listing Tester",
-                UserRole.STAFF))
+                TENANT_A.equals(tenantId) ? UserRole.ADMIN : UserRole.MANAGER))
         .value();
   }
 
@@ -269,10 +281,11 @@ class ReservationListingIntegrationTest {
 
   private void user(UUID id, String tenantId, String email) {
     jdbc.update(
-        "insert into app_user (id, tenant_id, email, password_hash, full_name, role) values (?, ?, ?, 'unused', 'Reservation Tester', 'STAFF')",
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role) values (?, ?, ?, 'unused', 'Reservation Tester', ?)",
         id,
         tenantId,
-        email);
+        email,
+        TENANT_A.equals(tenantId) ? "ADMIN" : "MANAGER");
   }
 
   private void establishment(UUID id, String tenantId, String name, String slug) {

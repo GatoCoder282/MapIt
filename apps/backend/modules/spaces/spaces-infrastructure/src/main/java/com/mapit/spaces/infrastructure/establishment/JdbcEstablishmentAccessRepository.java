@@ -21,9 +21,11 @@ public class JdbcEstablishmentAccessRepository implements EstablishmentAccessRep
   private final JdbcTemplate jdbc;
   public JdbcEstablishmentAccessRepository(JdbcTemplate jdbc){this.jdbc=jdbc;}
   @Override @Transactional(readOnly=true)
-  public boolean canManagePayments(TenantId tenant,UUID actor,UUID establishment){return permitted(tenant,actor,establishment,"u.role='ADMIN'");}
+  public boolean canManageStaff(TenantId tenant,UUID actor,UUID establishment){return permitted(tenant,actor,establishment,"u.role='ADMIN'");}
   @Override @Transactional(readOnly=true)
-  public boolean canCheckIn(TenantId tenant,UUID actor,UUID establishment){return permitted(tenant,actor,establishment,"(u.role='ADMIN' or (u.role='STAFF' and a.can_check_in))");}
+  public boolean canManagePayments(TenantId tenant,UUID actor,UUID establishment){return permitted(tenant,actor,establishment,"u.role in ('ADMIN','MANAGER')");}
+  @Override @Transactional(readOnly=true)
+  public boolean canCheckIn(TenantId tenant,UUID actor,UUID establishment){return permitted(tenant,actor,establishment,"(u.role in ('ADMIN','MANAGER') or (u.role='STAFF' and a.can_check_in))");}
   @Override @Transactional(readOnly=true)
   public boolean canReadOperations(TenantId tenant,UUID actor,UUID establishment){return permitted(tenant,actor,establishment,"(u.role in ('ADMIN','MANAGER') or (u.role='STAFF' and a.can_check_in))");}
   private boolean permitted(TenantId tenant,UUID actor,UUID establishment,String predicate){
@@ -47,7 +49,7 @@ public class JdbcEstablishmentAccessRepository implements EstablishmentAccessRep
           and (u.role in ('ADMIN','MANAGER') or (u.role='STAFF' and a.can_check_in))
         order by e.name,e.id
         """,(r,i)->new AccessibleEstablishment(r.getObject("id",UUID.class),r.getString("name"),r.getString("slug"),r.getString("address"),r.getString("timezone"),
-          r.getString("role").equals("ADMIN"),!r.getString("role").equals("MANAGER")),actor,tenant.value());
+          !r.getString("role").equals("STAFF"),true),actor,tenant.value());
   }
   @Override public List<StaffAccess> staff(TenantId tenant,UUID establishment){
     scope(tenant);
