@@ -2,6 +2,14 @@ import { Logger } from '@mapit/logging';
 import { effect, inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
 import { Client, type IMessage, type StompConfig, type StompSubscription } from '@stomp/stompjs';
 import { Observable, Subject, filter } from 'rxjs';
+import {
+  NOTIFICATION_USER_DESTINATION,
+  parseNotificationInvalidation,
+  sameNotificationSession,
+  validNotificationSession,
+  type NotificationInvalidation,
+  type NotificationRealtimeSession,
+} from './notification-invalidation';
 
 export type RealtimeConnectionState =
   'idle' | 'connecting' | 'connected' | 'disconnected' | 'disabled' | 'error';
@@ -45,6 +53,9 @@ export interface ReservationPaymentEvent {
 }
 
 export interface RealtimeConfig {
+  /** Dejar ausente hasta integrar autorización privada CONNECT/SUBSCRIBE/outbound y persistencia.
+   * Solo entonces la app devolverá la sesión vigente, con nonce nuevo por login. */
+  readonly notificationSession?: () => NotificationRealtimeSession | null;
   /** Lee el valor runtime en cada intento de conexión. */
   readonly brokerUrl: () => string;
   /** Lee el JWT actual; solo se envía en STOMP CONNECT. */
@@ -117,6 +128,11 @@ export class RealtimeClient {
   private readonly errores = new Subject<unknown>();
   private readonly eventos = new Subject<RealtimeEventEnvelope>();
   private readonly paymentEventos = new Subject<ReservationPaymentEvent>();
+  private readonly notificationEvents = new Subject<{
+    session: NotificationRealtimeSession;
+    event: NotificationInvalidation;
+  }>();
+  private boundNotificationSession: NotificationRealtimeSession | null = null;
   private readonly topics = new Map<string, TopicState>();
   private client: StompClientLike | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -191,6 +207,42 @@ export class RealtimeClient {
     );
   }
 
+  /** Disponibilidad local del conector preparado; jamás sustituye autorización backend. */
+  canSubscribeNotifications(session: NotificationRealtimeSession): boolean {
+    return (
+      this.config.enabled() &&
+      validNotificationSession(session) &&
+      sameNotificationSession(session, this.config.notificationSession?.())
+    );
+  }
+
+  /** Reutiliza el socket y destino fijo. Ausente por defecto en la configuración de producción. */
+  subscribeNotificationInvalidations(
+    session: NotificationRealtimeSession,
+  ): Observable<NotificationInvalidation> {
+    const expected = { ...session };
+    return new Observable((subscriber) => {
+      if (!this.canSubscribeNotifications(expected)) {
+        subscriber.error(new Error('Canal privado de notificaciones no disponible'));
+        return;
+      }
+      const release = this.retainTopic(NOTIFICATION_USER_DESTINATION);
+      const events = this.notificationEvents
+        .pipe(
+          filter(
+            ({ session: bound }) =>
+              sameNotificationSession(bound, expected) && this.canSubscribeNotifications(expected),
+          ),
+        )
+        .subscribe({ next: ({ event }) => subscriber.next(event) });
+      this.connect();
+      return () => {
+        events.unsubscribe();
+        release();
+      };
+    });
+  }
+
   private startTransport(): void {
     if (this.client?.active || this.estado() === 'connecting') return;
     const brokerUrl = this.config.brokerUrl();
@@ -203,6 +255,11 @@ export class RealtimeClient {
     this.stopping = false;
     this.clearRetryTimer();
     this.estado.set('connecting');
+    const notificationSession = this.config.notificationSession?.();
+    this.boundNotificationSession =
+      notificationSession && validNotificationSession(notificationSession)
+        ? { ...notificationSession }
+        : null;
     const client = this.factory({
       brokerURL: brokerUrl,
       connectHeaders: { Authorization: `Bearer ${token}` },
@@ -271,33 +328,57 @@ export class RealtimeClient {
     matches: (event: RealtimeEventEnvelope) => boolean,
   ): Observable<RealtimeEventEnvelope> {
     return new Observable<RealtimeEventEnvelope>((subscriber) => {
-      const reference = Symbol(topic);
-      const state: TopicState = this.topics.get(topic) ?? {
-        references: new Set<symbol>(),
-        subscription: undefined,
-      };
-      state.references.add(reference);
-      this.topics.set(topic, state);
-      this.ensureTopicSubscription(topic);
+      const release = this.retainTopic(topic);
       const events = this.eventos.pipe(filter(matches)).subscribe(subscriber);
       return () => {
         events.unsubscribe();
-        const current = this.topics.get(topic);
-        if (!current) return;
-        current.references.delete(reference);
-        if (current.references.size === 0) {
-          current.subscription?.unsubscribe();
-          this.topics.delete(topic);
-        }
+        release();
       };
     });
+  }
+
+  private retainTopic(topic: string): () => void {
+    const reference = Symbol(topic);
+    const state = this.topics.get(topic) ?? {
+      references: new Set<symbol>(),
+      subscription: undefined,
+    };
+    state.references.add(reference);
+    this.topics.set(topic, state);
+    this.ensureTopicSubscription(topic);
+    return () => {
+      if (this.topics.get(topic) !== state) return;
+      state.references.delete(reference);
+      if (!state.references.size) {
+        state.subscription?.unsubscribe();
+        this.topics.delete(topic);
+      }
+    };
   }
 
   private ensureTopicSubscription(topic: string): void {
     const client = this.client;
     const state = this.topics.get(topic);
     if (!client || !state || state.subscription || this.estado() !== 'connected') return;
-    state.subscription = client.subscribe(topic, (message) => this.acceptMessage(message));
+    if (topic === NOTIFICATION_USER_DESTINATION) {
+      const bound = this.boundNotificationSession;
+      if (!bound || !this.canSubscribeNotifications(bound)) return;
+      state.subscription = client.subscribe(topic, (message) => {
+        if (
+          client !== this.client ||
+          this.topics.get(topic) !== state ||
+          this.estado() !== 'connected' ||
+          !this.canSubscribeNotifications(bound)
+        )
+          return;
+        const event = parseNotificationInvalidation(message.body);
+        if (event) this.notificationEvents.next({ session: bound, event });
+        else {
+          this.logInvalidMessage();
+          this.errores.next(new Error('Aviso de notificación inválido'));
+        }
+      });
+    } else state.subscription = client.subscribe(topic, (message) => this.acceptMessage(message));
   }
 
   private acceptMessage(message: IMessage): void {
