@@ -1,6 +1,6 @@
 # Tareas — HU-1.06 Autogestión segura de mi cuenta y perfil personal
 
-> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** backend/UI de nombre/contacto/idioma conectados, correo de solo lectura y flag OFF; V40 preparada. Cambio de contraseña conectado; QA PostgreSQL/RLS, HTTP/STOMP y E2E pendientes.
+> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** QA automática local aprobada; flag OFF. Evidencia en [qa-2026-11-22.md](qa-2026-11-22.md). Pendientes revisión humana/rollout y CI/PR.
 
 ## 1. Preparación documental de MAP-287 — etapa actual
 
@@ -18,13 +18,14 @@
 ## 2. Decisiones antes del código
 
 - [ ] Revisar `spec.md` con los responsables y registrar la aceptación funcional de los criterios; no marcar criterios implementados durante la documentación.
-- [x] D01, contrato: concretar contacto permitido, nombres de campos, límites, formato de teléfono, PATCH/null y precedencia de idioma; persistencia/UI pendientes.
-- [x] D02, contrato: definir DTOs, operationId, códigos HTTP/Problem, no-store y rechazo de identidad objetivo/propiedades desconocidas; validación efectiva backend pendiente.
+- [x] D01, contrato: concretar contacto permitido, nombres de campos, límites, formato de teléfono, PATCH/null y precedencia de idioma; persistencia/UI verificadas en QA local.
+- [x] D02, contrato: definir DTOs, operationId, códigos HTTP/Problem, no-store y rechazo de identidad objetivo/propiedades desconocidas; validación efectiva backend verificada en QA local.
 - [x] Verificar #69 fusionado e integrar `origin/main` (`c0de5d7`) en MAP-285 por merge normal, con autorización expresa del 2026-11-22; conservar funcionalidades y migraciones de ambas historias.
-- [ ] D03/D04: acordar contraseña actual, confirmación, invalidación de JWT y nuevo login; revisar mecanismo común, STOMP y carreras de emisión.
-- [ ] D05: validar rutas staff/plataforma y acceso sin establecimiento seleccionado.
-- [ ] D06: acordar tipo del toggle, retiro/issue si es release, caché, fallo después de ON y propagación/rollback.
-- [ ] D07: fijar presupuestos propios para cambio de contraseña y reutilización segura del limitador actual.
+- [x] D03/D04: acordar contraseña actual, confirmación, invalidación de JWT y nuevo login; revisar mecanismo común, STOMP y carreras de emisión.
+- [x] D05: validar rutas staff/plataforma y acceso sin establecimiento seleccionado.
+- [x] D06 técnico: flag release OFF, caché, caída upstream/proxy, propagación y rollback comprobados localmente.
+- [ ] D06 operativo: seguimiento de retiro y validación de otro entorno con sus responsables.
+- [x] D07: fijar presupuestos propios para cambio de contraseña y reutilización segura del limitador actual.
 
 ## 3. MAP-287 — S6 — Perfil personal y API de lectura/edición
 
@@ -37,8 +38,8 @@
 - [x] Cubrir campos prohibidos, validación, usuario A/B mismo tenant, otro tenant y `platform` en unitarios/REST en memoria; sin escrituras parciales.
 - [x] Conectar comando PATCH validado con presencia/valor/null y lector cerrado; retirar 503 temporal al conectar JDBC con columnas de V40.
 - [x] Completar lectura/escritura de contacto e idioma; no cerrar MAP-287 hasta ejecutar QA de persistencia/RLS.
-- [ ] Probar con `mapit_app` real, contexto SQL ausente y reutilización del pool; excluir contexto especial de login en estas consultas.
-- [ ] Verificar migración con filas previas y persistencia tras nueva lectura; registrar comandos y resultados reales.
+- [x] Probar con `mapit_app` real, contexto SQL ausente y reutilización del pool; excluir contexto especial de login en estas consultas.
+- [x] Verificar migración con filas previas y persistencia tras nueva lectura; registrar comandos y resultados reales.
 
 ## 4. MAP-288 — S6 — UI Mi cuenta y preferencias básicas
 
@@ -49,7 +50,8 @@
 - [x] Integrar teléfono e idioma de cuenta con `I18nService`; catálogos es/en/ja-JP, actualización tras ACK de la misma sesión y conservación del idioma local al leer/limpiar preferencia.
 - [x] Conservar selector de idioma local y añadir textos es/en/ja-JP sin exponer persistencia remota inexistente.
 - [x] Limpiar datos ante logout/cambio de identidad, descartar respuestas tardías y probar semántica accesible del DOM.
-- [ ] Comprobar presentación móvil real, teclado/lector de pantalla y E2E con stack autorizado.
+- [x] Comprobar viewport móvil emulado, etiquetas/foco de teclado y E2E reales con stack autorizado.
+- [ ] Revisar con lector de pantalla humano y dispositivo físico; no confundirlo con automatización.
 
 ## 5. MAP-289 — S6 — Cambio seguro de contraseña
 
@@ -59,23 +61,23 @@
 - [x] Reutilizar PasswordVerifier para actual/reutilización y validar confirmación; probar con PasswordHasher/BCrypt reales, sin generar hash nuevo en producción.
 - [x] Preparar puerto/método de limitación con almacenamiento existente y buckets propios de cuenta/tenant y dirección; unitarios de cuotas/separación/transacción declarada.
 - [x] Conectar presupuesto independiente antes de BCrypt/bloqueo escritor, conservando el contador ante fallos.
-- [ ] Validar cuotas operativas, persistencia/concurrencia/RLS de los buckets con PostgreSQL.
+- [x] Validar cuotas operativas, persistencia/concurrencia/RLS de los buckets con PostgreSQL.
 - [x] Implementar escritura atómica hash/corte y bloqueo compartido con login, revalidación después de esperar y tests locales de límites de iat.
-- [ ] Ejecutar tests preparados de PostgreSQL para atomicidad/rollback y carreras de login/cambio.
-- [ ] Verificar JWT previos denegados por HTTP/STOMP y login nuevo operativo, conforme al contrato final.
+- [x] Ejecutar tests preparados de PostgreSQL para atomicidad/rollback y carreras de login/cambio.
+- [x] Verificar JWT previos denegados por HTTP/STOMP y login nuevo operativo, conforme al contrato final.
 - [x] Reutilizar formulario/estado/reglas dentro de my-account, ahora montado y conectado, tres idiomas, sin persistencia de secretos.
 - [x] Conectar formulario/cliente generado y handlers seguros; comprobar cierre local tras 204, duplicados y respuestas de otra revisión en pruebas locales.
-- [ ] Verificar nuevo login y revocación HTTP/STOMP con PostgreSQL/stack real.
+- [x] Verificar nuevo login y revocación HTTP/STOMP con PostgreSQL/stack real.
 - [x] Documentar cierre local tras éxito y exclusión de listado/«cerrar otras sesiones»; no simular revocación ni recuperación general.
 
 ## 6. MAP-290 — S6 — QA de identidad y regresión multi-tenant
 
-- [ ] Consolidar unitarios y ArchUnit, tests REST, integración PostgreSQL/RLS y negativos por rol/tenant/usuario.
-- [ ] Probar token ausente/manipulado/expirado/revocado, cuenta inactiva, tenant suspendido y rol obsoleto con la identidad vigente.
-- [ ] Verificar no exposición de secretos en DTOs, errores, logs, storage y representación de comandos.
-- [ ] Ejecutar regresión de login, activación, usuarios/invitaciones y sesiones; conservar la autorización de MAP-238.
-- [ ] Añadir E2E del flujo personal con recarga y cambio de contraseña/nuevo login, y cobertura responsive/móvil aplicable.
-- [ ] Ejecutar las suites backend/frontend/build, integración y E2E aplicables con infraestructura autorizada; registrar resultados sin marcar lo no ejecutado.
+- [x] Consolidar unitarios y ArchUnit, tests REST, integración PostgreSQL/RLS y negativos por rol/tenant/usuario.
+- [x] Probar token ausente/manipulado/expirado/revocado, cuenta inactiva, tenant suspendido y rol obsoleto con la identidad vigente.
+- [x] Verificar no exposición de secretos en DTOs, errores, logs, storage y representación de comandos.
+- [x] Ejecutar regresión de login, activación, usuarios/invitaciones y sesiones; conservar la autorización de MAP-238.
+- [x] Añadir E2E del flujo personal con recarga y cambio de contraseña/nuevo login, y cobertura responsive/móvil aplicable.
+- [x] Ejecutar las suites backend/frontend/build, integración y E2E aplicables con infraestructura autorizada; registrar resultados sin marcar lo no ejecutado.
 
 ## 7. MAP-291 — S6 — Feature toggle Mi cuenta Unleash y rollback
 
@@ -86,26 +88,34 @@
 - [x] Cubrir localmente valor inicial pendiente, flag ausente, proveedor sin configurar, OFF/ON, tenant/sesión y fallo después de ON.
 - [x] Definir y probar caducidad local del backend (30 s), callbacks seguros de snapshot y timeout/rollback frontend, sin alterar otras flags.
 - [x] Documentar procedimiento selectivo OFF/ON, recuperación y límites de propagación, sin pérdida de datos.
-- [ ] Validar entorno/credenciales reales y medir propagación SDK/proxy/navegador, incluida caché ON del proxy al fallar upstream.
-- [ ] Registrar la flag real en Unleash y probar rollout cuando se autorice infraestructura; retiro/issue si se acuerda tipo release.
-- [ ] Ensayar rollback conservando perfiles, hash actual, login/usuarios y revocaciones previas; sin migración destructiva ni downgrade inseguro.
+- [x] Validar entorno/credenciales reales y medir propagación SDK/proxy/navegador, incluida caché ON del proxy al fallar upstream.
+- [x] Registrar/probar OFF/ON real en development y restaurar OFF/estrategias tras QA.
+- [ ] Aceptar rollout de otro entorno y registrar seguimiento del retiro de la flag release.
+- [x] Ensayar rollback conservando perfiles, hash actual, login/usuarios y revocaciones previas; sin migración destructiva ni downgrade inseguro.
 
 ## 8. MAP-314 — S6 — Integrar perfil Super Admin en Mi cuenta sin duplicación
 
-- [ ] Reemplazar placeholder `/admin/profile` con la misma feature, API y ViewModel, sin duplicar componentes o casos de uso.
-- [ ] Ajustar navegación/gate de AdminShell y probar las rutas diferenciadas.
-- [ ] Probar que SUPER_ADMIN solo modifica su fila en `platform`, sin tenant destino, roles editables ni datos de otros usuarios.
-- [ ] Verificar contraseña/tokens, flag OFF/ON y regresión de administración de tenants.
+- [x] Reemplazar placeholder `/admin/profile` con la misma feature, API y ViewModel, sin duplicar componentes o casos de uso.
+- [x] Ajustar navegación/gate de AdminShell y probar las rutas diferenciadas.
+- [x] Probar que SUPER_ADMIN solo modifica su fila en `platform`, sin tenant destino, roles editables ni datos de otros usuarios.
+- [x] Verificar contraseña/tokens, flag OFF/ON y regresión de administración de tenants.
 
 ## 9. Entrega final de MAP-285 — fuera de esta etapa
 
-- [ ] Actualizar criterios y notas con evidencia de implementación de las seis subtareas.
+- [x] Actualizar criterios y notas con evidencia de implementación de las seis subtareas.
 - [ ] Ejecutar `pnpm check` antes de cada push futuro, además de `api:lint`, integración y E2E aplicables.
 - [ ] Cuando se autorice, publicar una única rama/PR hacia `main`, título exacto Jira y plantilla con spec, base y siguiente PR `N/A`.
 - [ ] Verificar workflows requeridos del propio PR y adjuntar captura de Checks en verde según `ticket-delivery`; pendiente porque no se crea PR ahora.
 - [ ] Realizar Squash and Merge solo en la entrega posterior autorizada. No hay push, PR ni merge en la etapa documental.
 
 ## Notas de ejecución
+
+### 2026-11-22 — Cierre de QA automática local
+
+- Evidencia reproducible y resultados detallados en [qa-2026-11-22.md](qa-2026-11-22.md): 16 escenarios distintos PostgreSQL/HTTP/STOMP, 8 E2E escritorio/móvil (6 afectados repetidos tras corregir), Unleash real y 7/7 etapas de pnpm check, con 596 tests backend aprobados, 1 omitido y 735 frontend.
+- Hallazgo real y corrección 04a894c: UI visible tras caída upstream con proxy ON cacheado; confirmación periódica backend scoped solo a Mi cuenta, sin cambiar autorización ni otras flags. Ensayo repetido con los cuatro resultados correctos; 54 pruebas focalizadas y seis E2E afectados correctos.
+- Clientes generados residuales de otra rama apartados localmente y regenerados desde este contrato; sin modificar MAP-286. Nuevos casos SQL de SUPER_ADMIN/dos cambios y dos JWT previos comprobados. Sin cambios productivos de autenticación/migraciones.
+- Revisiones humanas, rollout de otro entorno, captura CI del futuro PR y aprobación siguen abiertos. Las notas anteriores son evidencia histórica; sus NO EJECUTADAS ya no describen el estado actual.
 
 ### 2026-11-22 — Conexión de MAP-289 sobre MAP-238/V40
 

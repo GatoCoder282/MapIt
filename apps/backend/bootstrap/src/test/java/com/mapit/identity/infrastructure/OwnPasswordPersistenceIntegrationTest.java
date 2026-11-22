@@ -41,6 +41,7 @@ class OwnPasswordPersistenceIntegrationTest {
     private static final UUID A = UUID.fromString("00000000-0000-0000-0000-000000000289");
     private static final UUID B = UUID.fromString("00000000-0000-0000-0000-000000000290");
     private static final UUID C = UUID.fromString("00000000-0000-0000-0000-000000000291");
+    private static final UUID SUPER = UUID.fromString("00000000-0000-0000-0000-000000000314");
     private static final BCryptPasswordEncoder ENCODER = new BCryptPasswordEncoder(4);
     private static final AtomicReference<Gate> SIGNING = new AtomicReference<>();
     private static final AtomicReference<Gate> HASHING = new AtomicReference<>();
@@ -60,6 +61,8 @@ class OwnPasswordPersistenceIntegrationTest {
             owner.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,?,?,?,'Staff','ADMIN')",
                     id, id.equals(C) ? "password-b" : "password-a", email(id), ENCODER.encode(ORIGINAL));
         }
+        owner.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,'platform',?,?,'Own Super','SUPER_ADMIN')",
+                SUPER, email(SUPER), ENCODER.encode(ORIGINAL));
         pool = new HikariDataSource(); pool.setJdbcUrl(POSTGRES.getJdbcUrl()); pool.setUsername("mapit_app");
         pool.setPassword(APP_PASSWORD); pool.setMaximumPoolSize(5);
         context = new AnnotationConfigApplicationContext(); context.register(Transactions.class);
@@ -88,7 +91,7 @@ class OwnPasswordPersistenceIntegrationTest {
     @BeforeEach void reset() {
         SIGNING.set(null); HASHING.set(null);
         owner.update("delete from auth_attempt_limit");
-        owner.update("update app_user set password_hash=?,staff_tokens_valid_after=null where id in (?,?,?)", ENCODER.encode(ORIGINAL), A,B,C);
+        owner.update("update app_user set password_hash=?,staff_tokens_valid_after=null where id in (?,?,?,?)", ENCODER.encode(ORIGINAL), A,B,C,SUPER);
         var now = owner.queryForObject("select clock_timestamp()", java.sql.Timestamp.class).toInstant();
         actor = new AuthenticatedPrincipal(A, TenantId.of("password-a"), email(A), UserRole.ADMIN, now.minusSeconds(60));
     }
@@ -161,6 +164,29 @@ class OwnPasswordPersistenceIntegrationTest {
             try { assertDatabaseLockWait(login); } finally { gate.release.countDown(); }
             changing.get(5, TimeUnit.SECONDS);
             assertThatThrownBy(() -> login.get(5, TimeUnit.SECONDS)).hasCauseInstanceOf(InvalidCredentialsException.class);
+        } finally { gate.release.countDown(); HASHING.set(null); }
+    }
+
+    @Test void superAdminUsesTheSameAtomicChangeAndRevocationUnderPlatformRls() {
+        var principal = new AuthenticatedPrincipal(SUPER, TenantId.of("platform"), email(SUPER), UserRole.SUPER_ADMIN, actor.issuedAt());
+        change(principal, ORIGINAL);
+        assertThat(ENCODER.matches(NEXT, hash(SUPER))).isTrue();
+        assertThat(context.getBean(JdbcCurrentStaffIdentity.class).resolve(principal)).isEmpty();
+        assertThat(ENCODER.matches(ORIGINAL, hash(A))).isTrue();
+        assertThat(owner.queryForMap("select tenant_id,role,active from app_user where id=?", SUPER))
+                .containsEntry("tenant_id", "platform").containsEntry("role", "SUPER_ADMIN").containsEntry("active", true);
+    }
+
+    @Test void secondConcurrentChangeCannotReusePrincipalRevokedByFirstCommit() throws Exception {
+        var gate = new Gate(); HASHING.set(gate);
+        try (var threads = Executors.newVirtualThreadPerTaskExecutor()) {
+            var first = threads.submit(() -> change(actor, ORIGINAL));
+            assertThat(gate.entered.await(3, TimeUnit.SECONDS)).isTrue();
+            var second = threads.submit(() -> change(actor, ORIGINAL));
+            try { assertDatabaseLockWait(second); } finally { gate.release.countDown(); }
+            first.get(5, TimeUnit.SECONDS);
+            assertThatThrownBy(() -> second.get(5, TimeUnit.SECONDS)).hasCauseInstanceOf(OwnProfileFailure.class);
+            assertThat(ENCODER.matches(NEXT, hash(A))).isTrue();
         } finally { gate.release.countDown(); HASHING.set(null); }
     }
 

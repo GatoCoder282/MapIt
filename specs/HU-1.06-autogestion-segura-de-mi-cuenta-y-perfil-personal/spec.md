@@ -1,6 +1,6 @@
 # HU-1.06 — Autogestión segura de mi cuenta y perfil personal
 
-> **Estado:** Nombre, teléfono e idioma conectados en backend/UI; correo de solo lectura. V40 preparada, flag OFF. Contraseña conectada; QA PostgreSQL/RLS, HTTP/STOMP y E2E pendientes · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
+> **Estado:** QA automática local aprobada; flag OFF. Pendientes revisión humana/rollout y CI/PR. Ver [evidencia](qa-2026-11-22.md) · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
 
 ## Enunciado
 
@@ -19,6 +19,8 @@ Fuentes iniciales consultadas el 2026-11-21: Jira, código de `main`, rama remot
 Actualización de integración del 2026-11-22: GitHub confirma #69 fusionado, commit `c0de5d7b130b960107e9d909cb8c5a9ebcbd63b2`, incluido en `origin/main` actualizado. Se integra mediante merge normal en la rama publicada de MAP-285, conservando sus 18 commits y V34–V39 sin modificaciones. `CurrentStaffIdentity`, `issuedAt` y `staff_tokens_valid_after` pasan a estar disponibles; no se implementan campos persistidos ni cambio de contraseña en este incremento. Continúan el 503 temporal de contacto/idioma y la ausencia de endpoint operativo de contraseña. Las notas históricas siguientes describen el estado anterior, no bloqueos actuales de disponibilidad del PR.
 
 ### Estado técnico actual
+
+Cierre técnico local del 2026-11-22: PostgreSQL/RLS, concurrencia, HTTP/STOMP, Unleash real, E2E y checks completos aprobados; evidencia en qa-2026-11-22.md. Las notas de etapas anteriores conservan sus resultados históricos. La UI requiere además ACK periódico del backend para cerrar cuando el proxy conserva ON obsoleto. Ninguna aceptación de producción o revisión humana se presupone.
 
 Actualización de campos del 2026-11-22: V40 añade `contact_phone` y `preferred_language` opcionales en `app_user`. GET/PATCH devuelven los cuatro campos reales, con null en los opcionales sin valor; ausente conserva y null explícito limpia solo teléfono/idioma mediante una escritura atómica. Se retira el 503 temporal de campos pendientes, manteniendo errores reales de persistencia. La UI edita los tres campos permitidos y aplica un idioma guardado solo tras ACK válido de la misma sesión, sin sustituir la preferencia local al cargar ni al limpiar el idioma de cuenta. La columna persiste entre lecturas; la preferencia local de la barra sigue siendo independiente. Las descripciones de implementación parcial de etapas anteriores se conservan como historia. PostgreSQL no está disponible: la migración y los tests RLS están preparados/compilados, no ejecutados, y no se declara cerrado MAP-287/288 sin esa aceptación.
 
@@ -50,6 +52,8 @@ Actualización MAP-289 del 2026-11-22: POST /api/v1/me/password y formulario con
 - U08: incremento MAP-289 autorizado sobre catorce commits: componentes independientes de validación y presupuesto, contratos/errores seguros y formulario preparado sin disponibilidad. No conectar HTTP ni escribir hash hasta integrar/revisar revocación efectiva de MAP-238; no declarar MAP-289 completa. Cuotas concretas y detalles de validación son decisiones técnicas documentadas, no requisitos literales de Jira.
 
 - U09: completar MAP-289 tras MAP-238/V40 por autorización del solicitante: endpoint transaccional, coordinación de login, formulario conectado y pruebas focalizadas, sin iniciar infraestructura ni modificar main/MAP-286.
+
+- U10: QA local con Docker/aplicación autorizado expresamente; uso temporal del almacenamiento Docker existente en C:, sin mover/eliminar/recrear discos ni datos previos. Artefactos y workspace en R:. Sin push/PR/merge.
 
 ### 1.3 Propuestas técnicas pendientes de validación
 
@@ -154,20 +158,20 @@ Con D03/D04, no emitir un JWT nuevo desde Mi cuenta ni simular revocación borra
 
 ## 7. Criterios de aceptación
 
-Los criterios permanecen abiertos hasta implementación y evidencia. CA-01…CA-09 concretan Jira y el alcance del solicitante; CA-10…CA-12 dependen además de las propuestas identificadas.
+Los criterios automáticos siguientes tienen evidencia local en qa-2026-11-22.md. La aceptación humana, rollout de otro entorno y CI no se consideran ejecutados. CA-01…CA-09 concretan Jira y el alcance del solicitante; CA-10…CA-12 dependen además de las propuestas identificadas.
 
-- [ ] **CA-01 (R01/U02):** Dado un usuario autenticado, cuando consulta `GET /api/v1/me`, entonces recibe solo su perfil y el servidor obtiene el usuario objetivo del principal validado.
-- [ ] **CA-02 (R01/R05):** Dados A y B del mismo tenant y C de otro tenant, cuando A manipula IDs, queries, headers o payloads, entonces no puede leer/modificar B ni C; ninguna solicitud cambia el objetivo autenticado.
-- [ ] **CA-03 (R02/U03):** Dados cambios permitidos válidos, cuando se guarda y vuelve a consultar, entonces persisten en `app_user` y se reflejan en Console con estados de carga/error/éxito.
-- [ ] **CA-04 (R04):** Dado un payload con correo, rol, tenant, membresía, estado o permisos, cuando se envía a la API personal, entonces se rechaza sin modificar esas propiedades ni ningún otro campo del payload.
-- [ ] **CA-05 (R03):** Dada prueba de control inválida, contraseña débil o intentos excesivos, cuando se solicita un cambio, entonces se rechaza sin cambiar credenciales y sin divulgar secretos.
-- [ ] **CA-06 (R03):** Dado un cambio de contraseña válido, cuando termina la transacción, entonces la nueva contraseña permite autenticarse, la anterior no, y los JWT previos cumplen la política real de caducidad/revocación documentada y probada.
-- [ ] **CA-07 (R06):** Dada la flag OFF, cuando se usa navegación o URL directa/API, entonces no aparece la entrada nueva ni se habilita la función; con ON siguen siendo obligatorios autenticación, autorización y aislamiento.
-- [ ] **CA-08 (R07):** Dado SUPER_ADMIN de `platform`, cuando usa su ruta personal, entonces emplea la misma funcionalidad y solo modifica su cuenta, sin selección de tenant ni privilegios editables.
-- [ ] **CA-09 (R05/R09):** Dadas las nuevas operaciones, cuando se ejecutan pruebas backend, frontend, integración/RLS y E2E aplicables, entonces pasan también las regresiones de login, activación y gestión de usuarios, con evidencia móvil y sin exponer datos sensibles.
-- [ ] **CA-10 (D01):** Dados idioma soportado, nulo y no soportado, cuando se edita el perfil, entonces se aplica la validación y precedencia acordadas sin cambiar reglas de negocio; las cadenas usan los catálogos existentes.
-- [ ] **CA-11 (D03/D04):** Dados dos JWT previos, conexión STOMP y login concurrente con el cambio, cuando se cambia la contraseña, entonces ninguna credencial antigua conserva autoridad por una carrera de emisión o por precisión de `iat`; el nuevo login válido funciona.
-- [ ] **CA-12 (R06/D06):** Dada la función previamente ON, cuando se apaga o falla su proveedor, entonces el fallback y la propagación cumplen el contrato de rollout acordado sin borrar perfiles, restaurar hashes previos ni revalidar JWT revocados.
+- [x] **CA-01 (R01/U02):** Dado un usuario autenticado, cuando consulta `GET /api/v1/me`, entonces recibe solo su perfil y el servidor obtiene el usuario objetivo del principal validado.
+- [x] **CA-02 (R01/R05):** Dados A y B del mismo tenant y C de otro tenant, cuando A manipula IDs, queries, headers o payloads, entonces no puede leer/modificar B ni C; ninguna solicitud cambia el objetivo autenticado.
+- [x] **CA-03 (R02/U03):** Dados cambios permitidos válidos, cuando se guarda y vuelve a consultar, entonces persisten en `app_user` y se reflejan en Console con estados de carga/error/éxito.
+- [x] **CA-04 (R04):** Dado un payload con correo, rol, tenant, membresía, estado o permisos, cuando se envía a la API personal, entonces se rechaza sin modificar esas propiedades ni ningún otro campo del payload.
+- [x] **CA-05 (R03):** Dada prueba de control inválida, contraseña débil o intentos excesivos, cuando se solicita un cambio, entonces se rechaza sin cambiar credenciales y sin divulgar secretos.
+- [x] **CA-06 (R03):** Dado un cambio de contraseña válido, cuando termina la transacción, entonces la nueva contraseña permite autenticarse, la anterior no, y los JWT previos cumplen la política real de caducidad/revocación documentada y probada.
+- [x] **CA-07 (R06):** Dada la flag OFF, cuando se usa navegación o URL directa/API, entonces no aparece la entrada nueva ni se habilita la función; con ON siguen siendo obligatorios autenticación, autorización y aislamiento.
+- [x] **CA-08 (R07):** Dado SUPER_ADMIN de `platform`, cuando usa su ruta personal, entonces emplea la misma funcionalidad y solo modifica su cuenta, sin selección de tenant ni privilegios editables.
+- [x] **CA-09 (R05/R09):** Dadas las nuevas operaciones, cuando se ejecutan pruebas backend, frontend, integración/RLS y E2E aplicables, entonces pasan también las regresiones de login, activación y gestión de usuarios, con evidencia móvil y sin exponer datos sensibles.
+- [x] **CA-10 (D01):** Dados idioma soportado, nulo y no soportado, cuando se edita el perfil, entonces se aplica la validación y precedencia acordadas sin cambiar reglas de negocio; las cadenas usan los catálogos existentes.
+- [x] **CA-11 (D03/D04):** Dados dos JWT previos, conexión STOMP y login concurrente con el cambio, cuando se cambia la contraseña, entonces ninguna credencial antigua conserva autoridad por una carrera de emisión o por precisión de `iat`; el nuevo login válido funciona.
+- [x] **CA-12 (R06/D06):** Dada la función previamente ON, cuando se apaga o falla su proveedor, entonces el fallback y la propagación cumplen el contrato de rollout acordado sin borrar perfiles, restaurar hashes previos ni revalidar JWT revocados.
 
 ## 8. Fuera de alcance
 
@@ -176,7 +180,7 @@ Los criterios permanecen abiertos hasta implementación y evidencia. CA-01…CA-
 - Recuperación pública general de contraseña; la recuperación excepcional de ADMIN de MAP-238 no se redefine como flujo ordinario.
 - Inventario de sesiones, refresh tokens y botón independiente «cerrar otras sesiones» sin infraestructura.
 - Nuevo usuario/perfil paralelo, otra tabla de identidad, otro SUPER_ADMIN o una API personal con tenant destino.
-- Activar Unleash, ejecutar migraciones o pruebas con stack durante esta etapa.
+- Publicación/merge y cambios de infraestructura ajenos al QA. La autorización de cierre permite iniciar el stack local y aplicar V40 conservando datos.
 
 ## 9. Impacto multi-tenant y persistencia
 

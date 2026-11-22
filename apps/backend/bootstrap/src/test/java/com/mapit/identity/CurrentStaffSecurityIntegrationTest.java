@@ -122,6 +122,8 @@ class CurrentStaffSecurityIntegrationTest {
     org.mockito.Mockito.doReturn(true).when(featureFlags).isEnabledFor(
         com.mapit.shared.flags.FeatureFlag.MAPIT_S6_MY_ACCOUNT, TenantId.of(tenant));
     String oldToken = login(tenant, "admin@own-password.test");
+    String secondSessionToken = login(tenant, "admin@own-password.test");
+    assertThat(!oldToken.equals(secondSessionToken)).isTrue();
     stomp = new WebSocketStompClient(new StandardWebSocketClient());
     stomp.setMessageConverter(new StringMessageConverter()); stomp.start();
     StompHeaders connect = new StompHeaders(); connect.add("Authorization", oldToken);
@@ -142,6 +144,7 @@ class CurrentStaffSecurityIntegrationTest {
         .body(Map.of("currentPassword", PASSWORD, "newPassword", "ReplacementSecret2!", "newPasswordConfirm", "ReplacementSecret2!"))
         .exchange().expectStatus().isNoContent().expectHeader().valueEquals("Cache-Control", "no-store");
     http().get().uri("/api/v1/me").header("Authorization", oldToken).exchange().expectStatus().isUnauthorized();
+    http().get().uri("/api/v1/me").header("Authorization", secondSessionToken).exchange().expectStatus().isUnauthorized();
     http().post().uri("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
         .body(Map.of("email", "admin@own-password.test", "password", PASSWORD)).exchange().expectStatus().isUnauthorized();
     publish(tenant, establishment, 2); assertThat(after.await(2, TimeUnit.SECONDS)).isFalse();
