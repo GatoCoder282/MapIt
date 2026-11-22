@@ -52,6 +52,10 @@ class CustomerReservationHistoryIntegrationTest {
   private static final UUID PERSON_A = UUID.fromString("93000000-0000-0000-0000-000000000001");
   private static final UUID PERSON_B = UUID.fromString("93000000-0000-0000-0000-000000000002");
   private static final Instant NOW = Instant.parse("2026-10-25T12:00:00Z");
+  private static final String PREVIEW_ORIGIN_PATTERN =
+      "https://map-it-wuy2-*-diegos-projects-03cdb86b.vercel.app";
+  private static final String PREVIEW_ORIGIN =
+      "https://map-it-wuy2-git-feat-x-diegos-projects-03cdb86b.vercel.app";
 
   @Container
   static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
@@ -73,6 +77,10 @@ class CustomerReservationHistoryIntegrationTest {
     // Los escenarios HTTP comparten el mismo origen loopback; el umbral 10/15 se comprueba
     // aisladamente en HistoryIpLimiterTest para no acoplar los tests entre sí.
     registry.add("mapit.customer-history.ip-limit", () -> "1000");
+    // Origen exacto + patrón de previews de Vercel: el preflight HTTP se comprueba con la
+    // cadena de filtros real, no solo con CorsConfiguration aislada.
+    registry.add("mapit.cors.allowed-origins",
+        () -> "http://localhost:4300," + PREVIEW_ORIGIN_PATTERN);
   }
 
   @Autowired JdbcTemplate jdbc;
@@ -400,6 +408,19 @@ class CustomerReservationHistoryIntegrationTest {
         .header("Access-Control-Request-Headers", "X-Customer-History-Session")
         .exchange().expectStatus().isOk()
         .expectHeader().valueEquals("Access-Control-Allow-Origin", "http://localhost:4300");
+    http.options().uri(base + "/my-reservations")
+        .header("Origin", PREVIEW_ORIGIN)
+        .header("Access-Control-Request-Method", "GET")
+        .header("Access-Control-Request-Headers", "X-Customer-History-Session")
+        .exchange().expectStatus().isOk()
+        .expectHeader().valueEquals("Access-Control-Allow-Origin", PREVIEW_ORIGIN)
+        .expectHeader().valueEquals("Access-Control-Allow-Credentials", "true");
+    http.options().uri(base + "/my-reservations")
+        .header("Origin", "https://map-it-wuy2-abc-otro-equipo.vercel.app")
+        .header("Access-Control-Request-Method", "GET")
+        .header("Access-Control-Request-Headers", "X-Customer-History-Session")
+        .exchange().expectStatus().isForbidden()
+        .expectHeader().doesNotExist("Access-Control-Allow-Origin");
   }
 
   private void scoped(TenantId tenant, Runnable action) {
