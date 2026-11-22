@@ -1,7 +1,6 @@
 package com.mapit.identity;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -34,6 +33,7 @@ import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.AuthenticatedUser;
 import com.mapit.identity.domain.CurrentStaffIdentity;
 import com.mapit.identity.domain.PersonalProfile;
+import com.mapit.identity.domain.PersonalProfileChanges;
 import com.mapit.identity.domain.PersonalProfileRepository;
 import com.mapit.identity.domain.UserRole;
 import com.mapit.identity.infrastructure.JjwtTokenService;
@@ -101,7 +101,7 @@ class MyAccountSecurityTest {
                     .exchange().expectStatus().isUnauthorized();
         }
         verify(repository, never()).findOwn(any());
-        verify(repository, never()).updateOwnFullName(any(), anyString());
+        verify(repository, never()).updateOwn(any(), any());
     }
 
     @Test
@@ -118,7 +118,7 @@ class MyAccountSecurityTest {
                     });
         }
         verify(repository, never()).findOwn(any());
-        verify(repository, never()).updateOwnFullName(any(), anyString());
+        verify(repository, never()).updateOwn(any(), any());
     }
 
     @Test
@@ -161,19 +161,19 @@ class MyAccountSecurityTest {
             client.get().uri("/api/v1/me").header("Authorization", "Bearer " + token(A))
                     .header("X-Tenant-Id", target.tenantId().value()).exchange().expectStatus().isBadRequest();
         }
-        verify(repository, never()).updateOwnFullName(any(), anyString());
+        verify(repository, never()).updateOwn(any(), any());
     }
 
     @Test
     void flagOffPreventsPatchAndFlagOnAllowsOnlyOwnName() {
         client.patch().uri("/api/v1/me").header("Authorization", "Bearer " + token(A)).contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("fullName", "Nuevo")).exchange().expectStatus().isNotFound();
-        verify(repository, never()).updateOwnFullName(any(), anyString());
+        verify(repository, never()).updateOwn(any(), any());
         context.getBean(AtomicBoolean.class).set(true);
-        when(repository.updateOwnFullName(A, "Nuevo")).thenReturn(Optional.of(new PersonalProfile("Nuevo", A.email())));
+        when(repository.updateOwn(A, PersonalProfileChanges.name("Nuevo"))).thenReturn(Optional.of(new PersonalProfile("Nuevo", A.email())));
         client.patch().uri("/api/v1/me").header("Authorization", "Bearer " + token(A)).contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("fullName", "Nuevo")).exchange().expectStatus().isOk();
-        verify(repository).updateOwnFullName(A, "Nuevo");
+        verify(repository).updateOwn(A, PersonalProfileChanges.name("Nuevo"));
     }
 
     @Test
@@ -190,7 +190,22 @@ class MyAccountSecurityTest {
             org.mockito.Mockito.reset(identities);
         }
         verify(repository, never()).findOwn(any());
-        verify(repository, never()).updateOwnFullName(any(), anyString());
+        verify(repository, never()).updateOwn(any(), any());
+    }
+
+    @Test
+    void optionalFieldsUseTheSameValidatedIdentityForEverySupportedRole() {
+        context.getBean(AtomicBoolean.class).set(true);
+        for (var actor : PROFILES.keySet()) {
+            var profile = PROFILES.get(actor);
+            when(repository.updateOwn(org.mockito.ArgumentMatchers.eq(actor), any()))
+                    .thenReturn(Optional.of(new PersonalProfile(profile.fullName(), profile.email(), "123", "ja-JP")));
+            client.patch().uri("/api/v1/me").header("Authorization", "Bearer " + token(actor)).contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("contactPhone", "123", "preferredLanguage", "ja-JP")).exchange().expectStatus().isOk()
+                    .expectBody().jsonPath("$.contactPhone").isEqualTo("123").jsonPath("$.preferredLanguage").isEqualTo("ja-JP")
+                    .jsonPath("$.email").isEqualTo(actor.email()).jsonPath("$.role").doesNotExist();
+            verify(repository).updateOwn(org.mockito.ArgumentMatchers.eq(actor), any());
+        }
     }
 
     private RestTestClient.ResponseSpec read(String jwt) {

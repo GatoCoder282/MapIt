@@ -29,7 +29,7 @@ import com.mapit.identity.application.OwnProfileService;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.PersonalProfile;
 
-/** API personal parcial: nombre/correo reales; contacto e idioma esperan migración. */
+/** API propia: campos personales persistidos y correo de identidad de solo lectura. */
 @RestController
 public class MyAccountController {
     private static final Set<String> IDENTITY_HEADERS = Set.of(
@@ -50,11 +50,7 @@ public class MyAccountController {
             @RequestBody Map<String, @Nullable Object> body) {
         var actor = actor(request);
         var patch = OwnProfilePatchPayload.read(body);
-        if (patch.requiresPendingPersistence()) {
-            profiles.read(actor); // Identidad/permiso y flag antes del error de disponibilidad.
-            throw new OwnProfileFailure(Reason.FIELDS_UNAVAILABLE);
-        }
-        return ok(profiles.updateFullName(actor, patch.fullName().value()));
+        return ok(profiles.update(actor, patch));
     }
 
     private static AuthenticatedPrincipal actor(HttpServletRequest request) {
@@ -81,7 +77,6 @@ public class MyAccountController {
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
             case DISABLED -> HttpStatus.NOT_FOUND;
             case INVALID_REQUEST -> HttpStatus.BAD_REQUEST;
-            case FIELDS_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
             case CONFLICT -> HttpStatus.CONFLICT;
         };
         String code = switch (failure.reason()) {
@@ -89,7 +84,6 @@ public class MyAccountController {
             case FORBIDDEN -> "profile-forbidden";
             case DISABLED -> "my-account-disabled";
             case INVALID_REQUEST -> "invalid-request";
-            case FIELDS_UNAVAILABLE -> "profile-fields-unavailable";
             case CONFLICT -> "profile-conflict";
         };
         return problem(status, code, failure.getMessage());

@@ -2500,14 +2500,13 @@ paths:
       tags: [my-account]
       summary: Consultar mi perfil personal
       operationId: getMyProfile
-      x-implementation-status: partial
+      x-implementation-status: implemented
       x-feature-flag: mapit.s6.my-account
       security: [{ bearerAuth: [] }]
       description: |
-        Incremento parcial de MAP-287 compatible con la base sin MAP-238.
-        Lee fullName y email reales de app_user. Mientras no exista la migración
-        de contacto/idioma, esas propiedades se omiten: no son valores simulados
-        ni se promete persistencia. MAP-287 sigue incompleto y la flag nace OFF.
+        Lee nombre, correo, teléfono e idioma persistidos en app_user.
+        contactPhone y preferredLanguage son null cuando no hay valor almacenado.
+        La flag nace OFF y la aceptación con PostgreSQL/RLS queda sujeta a QA real.
         ADMIN, MANAGER y STAFF acceden solo a su cuenta; SUPER_ADMIN utiliza la
         misma operación sobre su cuenta del tenant técnico platform.
 
@@ -2548,15 +2547,13 @@ paths:
       tags: [my-account]
       summary: Actualizar los campos permitidos de mi perfil
       operationId: updateMyProfile
-      x-implementation-status: partial
+      x-implementation-status: implemented
       x-feature-flag: mapit.s6.my-account
       security: [{ bearerAuth: [] }]
       description: |
-        Incremento parcial de MAP-287: fullName se persiste en la columna existente.
+        Persiste fullName, contactPhone y preferredLanguage en app_user.
         Aplican la identidad propia, roles, RLS y disponibilidad de GET /me.
-        Mientras no exista la migración de contacto/idioma, cualquier intento de
-        escribir contactPhone o preferredLanguage, incluido null, responde 503
-        profile-fields-unavailable sin guardar ningún otro campo del cuerpo.
+        Validar todo el cuerpo antes de una única escritura de los campos presentes.
         Actualización atómica: una propiedad omitida conserva su valor; null solo
         limpia contacto o idioma; el cuerpo vacío es inválido.
 
@@ -5727,7 +5724,7 @@ components:
       type: object
       additionalProperties: false
       description: Proyección del perfil propio de app_user, sin credenciales ni campos administrativos.
-      required: [fullName, email]
+      required: [fullName, email, contactPhone, preferredLanguage]
       properties:
         fullName:
           type: string
@@ -5744,12 +5741,14 @@ components:
           type: [string, "null"]
           maxLength: 32
           readOnly: true
-          description: Contacto informativo; omitido hasta disponer de persistencia, null si no hay valor almacenado. Nunca acredita identidad ni habilita recuperación.
+          minLength: 1
+          pattern: "^[+0-9() ./-]*[0-9][+0-9() ./-]*$"
+          description: Contacto informativo persistido; null si no hay valor almacenado. Nunca acredita identidad ni habilita recuperación.
         preferredLanguage:
           type: [string, "null"]
           enum: [es, en, ja-JP, null]
           readOnly: true
-          description: Omitido hasta disponer de persistencia; null utiliza la preferencia local existente y después español.
+          description: Preferencia persistida de la cuenta; null conserva el idioma local actual (fallback español). Solo se aplica a la interfaz tras confirmación de guardado en la misma sesión.
 
     UpdateMyProfileRequest:
       type: object
@@ -7039,9 +7038,7 @@ components:
   responses:
     ProfileFieldsUnavailable:
       description: |
-        No se puede persistir contacto/idioma hasta incorporar la migración
-        compatible con MAP-238 (type https://mapit.local/problems/profile-fields-unavailable),
-        o hay una dependencia de persistencia no disponible. Ningún campo se
+        Dependencia de persistencia no disponible (type https://mapit.local/problems/profile-unavailable). Ningún campo se
         guarda parcialmente; no sustituir almacenamiento por memoria o valores simulados.
       headers:
         X-Request-ID:

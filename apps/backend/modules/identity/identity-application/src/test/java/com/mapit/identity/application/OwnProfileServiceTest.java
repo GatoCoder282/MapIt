@@ -16,6 +16,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import com.mapit.identity.application.OwnProfileFailure.Reason;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.PersonalProfile;
+import com.mapit.identity.domain.PersonalProfileChanges;
+import com.mapit.identity.domain.PersonalProfileChanges.Field;
 import com.mapit.identity.domain.PersonalProfileRepository;
 import com.mapit.identity.domain.UserRole;
 import com.mapit.shared.flags.FeatureFlag;
@@ -23,6 +25,22 @@ import com.mapit.shared.flags.FeatureFlagPort;
 import com.mapit.shared.tenant.TenantId;
 
 class OwnProfileServiceTest {
+    @Test
+    void persistsPresentFieldsTogetherPreservesAbsentAndClearsOnlyOptionalFields() {
+        var profiles = new Profiles(); var flags = new Flags(); var actor = account("tenant-a", UserRole.ADMIN);
+        var other = account("tenant-a", UserRole.STAFF); var cross = account("tenant-b", UserRole.ADMIN);
+        profiles.add(actor, "Original"); profiles.add(other, "Other"); profiles.add(cross, "Cross");
+        var service = new OwnProfileService(profiles, flags);
+        var first = service.update(actor, new OwnProfilePatch(Field.absent(),
+                Field.provided("+591 123"), Field.provided("ja-JP")));
+        assertThat(first).isEqualTo(new PersonalProfile("Original", actor.email(), "+591 123", "ja-JP"));
+        assertThat(service.updateFullName(actor, "Nuevo")).isEqualTo(new PersonalProfile("Nuevo", actor.email(), "+591 123", "ja-JP"));
+        var cleared = service.update(actor, new OwnProfilePatch(Field.absent(),
+                Field.provided(null), Field.provided(null)));
+        assertThat(cleared).isEqualTo(new PersonalProfile("Nuevo", actor.email()));
+        assertThat(service.read(other).contactPhone()).isNull(); assertThat(service.read(cross).preferredLanguage()).isNull();
+        assertThat(profiles.writes).isEqualTo(3);
+    }
     private final Profiles profiles = new Profiles();
     private final Flags flags = new Flags();
     private final OwnProfileService service = new OwnProfileService(profiles, flags);
@@ -143,10 +161,10 @@ class OwnProfileServiceTest {
         boolean conflict;
         void add(AuthenticatedPrincipal actor, String name) { values.put(key(actor), new PersonalProfile(name, actor.email())); }
         @Override public Optional<PersonalProfile> findOwn(AuthenticatedPrincipal actor) { return Optional.ofNullable(values.get(key(actor))); }
-        @Override public Optional<PersonalProfile> updateOwnFullName(AuthenticatedPrincipal actor, String name) {
+        @Override public Optional<PersonalProfile> updateOwn(AuthenticatedPrincipal actor, PersonalProfileChanges changes) {
             if (conflict) return Optional.empty();
             writes++;
-            return Optional.of(values.computeIfPresent(key(actor), (id, old) -> new PersonalProfile(name, old.email())));
+            return Optional.of(values.computeIfPresent(key(actor), (id, old) -> new PersonalProfile(java.util.Objects.requireNonNull(changes.fullName().applyTo(old.fullName())), old.email(), changes.contactPhone().applyTo(old.contactPhone()), changes.preferredLanguage().applyTo(old.preferredLanguage()))));
         }
     }
 

@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
 
 import com.mapit.identity.application.OwnProfileFailure;
 import com.mapit.identity.application.OwnProfilePatch;
-import com.mapit.identity.application.OwnProfilePatch.Field;
+import com.mapit.identity.domain.PersonalProfileChanges.Field;
 
 /** Frontera del JSON: claves cerradas y presencia explícita, sin convertir tipos del cliente. */
 public final class OwnProfilePatchPayload {

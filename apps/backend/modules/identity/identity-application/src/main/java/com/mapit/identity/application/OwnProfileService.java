@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.mapit.identity.application.OwnProfileFailure.Reason;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.PersonalProfile;
+import com.mapit.identity.domain.PersonalProfileChanges.Field;
 import com.mapit.identity.domain.PersonalProfileRepository;
 import com.mapit.identity.domain.UserRole;
 import com.mapit.shared.flags.FeatureFlag;
@@ -33,9 +34,14 @@ public class OwnProfileService {
 
     @Transactional
     public PersonalProfile updateFullName(AuthenticatedPrincipal actor, @Nullable String fullName) {
+        return update(actor, new OwnProfilePatch(Field.provided(fullName),
+                Field.absent(), Field.absent()));
+    }
+
+    @Transactional
+    public PersonalProfile update(AuthenticatedPrincipal actor, OwnProfilePatch patch) {
         authorize(actor);
-        validateFullName(fullName);
-        return profiles.updateOwnFullName(actor, java.util.Objects.requireNonNull(fullName))
+        return profiles.updateOwn(actor, java.util.Objects.requireNonNull(patch).changes())
                 .orElseThrow(() -> new OwnProfileFailure(Reason.CONFLICT));
     }
 

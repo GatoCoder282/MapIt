@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.PersonalProfile;
+import com.mapit.identity.domain.PersonalProfileChanges;
 import com.mapit.identity.domain.PersonalProfileRepository;
 import com.mapit.shared.tenant.TenantScope;
 
@@ -26,25 +27,28 @@ public class JdbcPersonalProfileRepository implements PersonalProfileRepository 
     public Optional<PersonalProfile> findOwn(AuthenticatedPrincipal actor) {
         scope(actor);
         return jdbc.query("""
-                select u.full_name, u.email
+                select u.full_name, u.email, u.contact_phone, u.preferred_language
                 from app_user u join tenant t on t.id = u.tenant_id
                 where u.tenant_id = ? and u.id = ? and u.role = ?
                   and u.active = true and t.status = 'ACTIVE'
-                """, (rs, row) -> new PersonalProfile(rs.getString("full_name"), rs.getString("email")),
+                """, (rs, row) -> new PersonalProfile(rs.getString("full_name"), rs.getString("email"), rs.getString("contact_phone"), rs.getString("preferred_language")),
                 actor.tenantId().value(), actor.id(), actor.role().name()).stream().findFirst();
     }
 
     @Override
-    public Optional<PersonalProfile> updateOwnFullName(AuthenticatedPrincipal actor, String fullName) {
+    public Optional<PersonalProfile> updateOwn(AuthenticatedPrincipal actor, PersonalProfileChanges changes) {
         scope(actor);
         return jdbc.query("""
-                update app_user set full_name = ?
+                update app_user set full_name = case when ? then cast(? as text) else full_name end,
+                    contact_phone = case when ? then cast(? as text) else contact_phone end,
+                    preferred_language = case when ? then cast(? as text) else preferred_language end
                 where tenant_id = ? and id = ? and role = ? and active = true
                   and exists (select 1 from tenant t
                               where t.id = app_user.tenant_id and t.status = 'ACTIVE')
-                returning full_name, email
-                """, (rs, row) -> new PersonalProfile(rs.getString("full_name"), rs.getString("email")),
-                fullName, actor.tenantId().value(), actor.id(), actor.role().name()).stream().findFirst();
+                returning full_name, email, contact_phone, preferred_language
+                """, (rs, row) -> new PersonalProfile(rs.getString("full_name"), rs.getString("email"), rs.getString("contact_phone"), rs.getString("preferred_language")),
+                changes.fullName().present(), changes.fullName().value(), changes.contactPhone().present(), changes.contactPhone().value(),
+                changes.preferredLanguage().present(), changes.preferredLanguage().value(), actor.tenantId().value(), actor.id(), actor.role().name()).stream().findFirst();
     }
 
     private void scope(AuthenticatedPrincipal actor) {

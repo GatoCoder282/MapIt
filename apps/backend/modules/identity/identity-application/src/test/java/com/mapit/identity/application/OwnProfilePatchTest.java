@@ -7,7 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import com.mapit.identity.application.OwnProfilePatch.Field;
+import com.mapit.identity.domain.PersonalProfileChanges.Field;
+
 
 class OwnProfilePatchTest {
     @Test
@@ -18,7 +19,7 @@ class OwnProfilePatchTest {
         assertThat(patch.contactPhone().applyTo("+591 123")).isEqualTo("+591 123");
         assertThat(patch.preferredLanguage().applyTo("en")).isEqualTo("en");
         assertThat(patch.contactPhone().applyTo(null)).isNull();
-        assertThat(patch.requiresPendingPersistence()).isFalse();
+
     }
 
     @Test
@@ -29,7 +30,7 @@ class OwnProfilePatchTest {
         assertThat(patch.preferredLanguage().present()).isTrue();
         assertThat(patch.contactPhone().applyTo("123")).isNull();
         assertThat(patch.preferredLanguage().applyTo("en")).isNull();
-        assertThat(patch.requiresPendingPersistence()).isTrue();
+
         invalid(() -> new OwnProfilePatch(Field.provided(null), Field.absent(), Field.absent()));
     }
 
@@ -38,7 +39,7 @@ class OwnProfilePatchTest {
     void acceptsContractedPhoneWithoutNormalization(String phone) {
         var patch = new OwnProfilePatch(Field.absent(), Field.provided(phone), Field.absent());
         assertThat(patch.contactPhone().applyTo("Anterior")).isEqualTo(phone);
-        assertThat(patch.requiresPendingPersistence()).isTrue();
+
     }
 
     @ParameterizedTest

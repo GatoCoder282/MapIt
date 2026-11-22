@@ -2,7 +2,6 @@ package com.mapit.identity.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -29,6 +28,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 import com.mapit.identity.application.OwnProfileService;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.PersonalProfile;
+import com.mapit.identity.domain.PersonalProfileChanges;
 import com.mapit.identity.domain.PersonalProfileRepository;
 import com.mapit.identity.domain.UserRole;
 import com.mapit.shared.flags.FeatureFlag;
@@ -45,6 +45,10 @@ class MyAccountControllerTest {
     @BeforeEach
     void setUp() {
         when(repository.findOwn(A)).thenReturn(Optional.of(PROFILE));
+        when(repository.updateOwn(eq(A), any())).thenAnswer(call -> {
+            PersonalProfileChanges change = call.getArgument(1);
+            return Optional.of(new PersonalProfile(java.util.Objects.requireNonNull(change.fullName().applyTo(PROFILE.fullName())), PROFILE.email(), change.contactPhone().applyTo(PROFILE.contactPhone()), change.preferredLanguage().applyTo(PROFILE.preferredLanguage())));
+        });
         when(flags.isEnabledFor(FeatureFlag.MAPIT_S6_MY_ACCOUNT, A.tenantId())).thenReturn(true);
         client = RestTestClient.bindToController(new MyAccountController(new OwnProfileService(repository, flags))).build();
         authenticate(A);
@@ -58,7 +62,7 @@ class MyAccountControllerTest {
                 .expectHeader().valueEquals("Cache-Control", "no-store")
                 .expectBody().jsonPath("$.fullName").isEqualTo(PROFILE.fullName())
                 .jsonPath("$.email").isEqualTo(A.email())
-                .jsonPath("$.contactPhone").doesNotExist().jsonPath("$.preferredLanguage").doesNotExist()
+                .jsonPath("$.contactPhone").hasJsonPath().jsonPath("$.preferredLanguage").hasJsonPath()
                 .jsonPath("$.role").doesNotExist().jsonPath("$.tenantId").doesNotExist()
                 .jsonPath("$.passwordHash").doesNotExist();
         verify(repository).findOwn(A);
@@ -66,11 +70,11 @@ class MyAccountControllerTest {
 
     @Test
     void persistsOnlyTheOwnNameAndReturnsThePersistedProjection() {
-        when(repository.updateOwnFullName(A, "Nombre nuevo")).thenReturn(Optional.of(new PersonalProfile("Nombre nuevo", A.email())));
+        when(repository.updateOwn(A, PersonalProfileChanges.name("Nombre nuevo"))).thenReturn(Optional.of(new PersonalProfile("Nombre nuevo", A.email())));
         patch("{\"fullName\":\"Nombre nuevo\"}").expectStatus().isOk()
                 .expectHeader().valueEquals("Cache-Control", "no-store")
                 .expectBody().jsonPath("$.fullName").isEqualTo("Nombre nuevo").jsonPath("$.email").isEqualTo(A.email());
-        verify(repository).updateOwnFullName(A, "Nombre nuevo");
+        verify(repository).updateOwn(A, PersonalProfileChanges.name("Nombre nuevo"));
     }
 
     @Test
@@ -96,15 +100,14 @@ class MyAccountControllerTest {
     @ValueSource(strings = {"", "null", "[]", "{}", "{", "{\"fullName\":null}", "{\"fullName\":9}", "{\"fullName\":\" \"}", "{\"preferredLanguage\":\"fr\"}", "{\"contactPhone\":true}", "{\"contactPhone\":\"\"}", "{\"contactPhone\":\"abc\"}"})
     void malformedBodiesAndInvalidValuesDoNotWrite(String body) {
         patch(body).expectStatus().isBadRequest().expectHeader().valueEquals("Cache-Control", "no-store");
-        verify(repository, never()).updateOwnFullName(any(), anyString());
+        verify(repository, never()).updateOwn(any(), any());
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"{\"contactPhone\":null}", "{\"preferredLanguage\":null}", "{\"contactPhone\":\"+591 70000000\"}", "{\"preferredLanguage\":\"ja-JP\"}", "{\"fullName\":\"No guardar\",\"preferredLanguage\":\"en\"}"})
-    void deferredFieldsFailExplicitlyWithoutPartialSuccess(String body) {
-        patch(body).expectStatus().isEqualTo(503).expectBody().jsonPath("$.type")
-                .isEqualTo("https://mapit.local/problems/profile-fields-unavailable");
-        verify(repository, never()).updateOwnFullName(any(), anyString());
+    void optionalFieldsPersistWithoutPartialSuccess(String body) {
+        patch(body).expectStatus().isOk().expectHeader().valueEquals("Cache-Control", "no-store");
+        verify(repository).updateOwn(eq(A), any());
     }
 
     @Test
@@ -132,12 +135,12 @@ class MyAccountControllerTest {
         patch("{\"preferredLanguage\":null}").expectStatus().isNotFound();
         when(repository.findOwn(A)).thenReturn(Optional.empty());
         client.get().uri("/api/v1/me").exchange().expectStatus().isUnauthorized();
-        verify(repository, never()).updateOwnFullName(any(), anyString());
+        verify(repository, never()).updateOwn(any(), any());
     }
 
     @Test
     void conflictAndPersistenceFailureReturnSafeProblems() {
-        when(repository.updateOwnFullName(eq(A), anyString())).thenReturn(Optional.empty());
+        when(repository.updateOwn(eq(A), any())).thenReturn(Optional.empty());
         patch("{\"fullName\":\"Nombre\"}").expectStatus().isEqualTo(409);
         when(repository.findOwn(A)).thenThrow(new DataAccessResourceFailureException("private-sql-and-credentials"));
         var result = client.get().uri("/api/v1/me").exchange().expectStatus().isEqualTo(503)
@@ -151,12 +154,9 @@ class MyAccountControllerTest {
             "{\"fullName\":\"Nombre\",\"preferredLanguage\":null}",
             "{\"fullName\":\"Nombre\",\"contactPhone\":\"+591 123\",\"preferredLanguage\":\"ja-JP\"}"
     })
-    void validPendingFieldsKeepTemporary503AndNeverPartiallyWriteName(String body) {
-        patch(body).expectStatus().isEqualTo(503)
-                .expectHeader().valueEquals("Cache-Control", "no-store")
-                .expectBody().jsonPath("$.type").isEqualTo(LoginProblemTypes.BASE + "profile-fields-unavailable");
-        verify(repository).findOwn(A);
-        verify(repository, never()).updateOwnFullName(any(), anyString());
+    void validOptionalFieldsAreWrittenTogether(String body) {
+        patch(body).expectStatus().isOk().expectBody().jsonPath("$.fullName").isEqualTo("Nombre");
+        verify(repository).updateOwn(eq(A), any());
     }
 
     @ParameterizedTest

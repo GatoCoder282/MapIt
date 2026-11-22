@@ -7,6 +7,6 @@ public interface PersonalProfileRepository {
     /** Solo cuenta activa, tenant activo y rol persistido coincidente. */
     Optional<PersonalProfile> findOwn(AuthenticatedPrincipal actor);
 
-    /** Solo modifica full_name de la misma cuenta elegible; devuelve el valor persistido. */
-    Optional<PersonalProfile> updateOwnFullName(AuthenticatedPrincipal actor, String fullName);
+    /** Un UPDATE de los campos presentes; ausentes conservados por SQL, null explícito limpia. */
+    Optional<PersonalProfile> updateOwn(AuthenticatedPrincipal actor, PersonalProfileChanges changes);
 }

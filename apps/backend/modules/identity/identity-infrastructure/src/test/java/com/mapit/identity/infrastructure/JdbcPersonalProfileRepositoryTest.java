@@ -55,13 +55,15 @@ class JdbcPersonalProfileRepositoryTest {
     @Test
     void updateOnlyWritesNameWithTheSameEligibilityAndBoundValues() {
         String name = "Nombre ' seguro";
-        when(jdbc.query(anyString(), ArgumentMatchers.<RowMapper<PersonalProfile>>any(), eq(name), eq("tenant-a"), eq(A.id()), eq("STAFF")))
+        when(jdbc.query(anyString(), ArgumentMatchers.<RowMapper<PersonalProfile>>any(), eq(true), eq(name), eq(false), ArgumentMatchers.isNull(), eq(false), ArgumentMatchers.isNull(), eq("tenant-a"), eq(A.id()), eq("STAFF")))
                 .thenReturn(List.of(new PersonalProfile(name, A.email())));
-        assertThat(repository.updateOwnFullName(A, name)).contains(new PersonalProfile(name, A.email()));
+        assertThat(repository.updateOwn(A, com.mapit.identity.domain.PersonalProfileChanges.name(name))).contains(new PersonalProfile(name, A.email()));
         verify(jdbc).queryForObject(TenantScope.SET_LOCAL_SQL, String.class, "tenant-a");
         var sql = ArgumentCaptor.forClass(String.class);
-        verify(jdbc).query(sql.capture(), ArgumentMatchers.<RowMapper<PersonalProfile>>any(), eq(name), eq("tenant-a"), eq(A.id()), eq("STAFF"));
-        assertThat(sql.getValue().substring(0, sql.getValue().indexOf("where")).strip()).isEqualTo("update app_user set full_name = ?");
+        verify(jdbc).query(sql.capture(), ArgumentMatchers.<RowMapper<PersonalProfile>>any(), eq(true), eq(name), eq(false), ArgumentMatchers.isNull(), eq(false), ArgumentMatchers.isNull(), eq("tenant-a"), eq(A.id()), eq("STAFF"));
+        String assignments = sql.getValue().substring(0, sql.getValue().indexOf("where")).strip();
+        assertThat(assignments).startsWith("update app_user set full_name = case").contains("contact_phone = case", "preferred_language = case")
+                .doesNotContain("email =", "role =", "tenant_id =", "active =", "password_hash", "staff_tokens_valid_after");
         assertThat(sql.getValue()).contains("tenant_id = ? and id = ? and role = ?", "active = true", "t.status = 'ACTIVE'", "returning full_name, email")
                 .doesNotContain(name, "password_hash", "login_email");
     }
@@ -72,9 +74,32 @@ class JdbcPersonalProfileRepositoryTest {
             var proxied = context.getBean(PersonalProfileRepository.class);
             clearInvocations(context.getBean(JdbcTemplate.class)); // Excluir inicialización del bean.
             assertThatThrownBy(() -> proxied.findOwn(A)).isInstanceOf(IllegalTransactionStateException.class);
-            assertThatThrownBy(() -> proxied.updateOwnFullName(A, "Nombre")).isInstanceOf(IllegalTransactionStateException.class);
+            assertThatThrownBy(() -> proxied.updateOwn(A, com.mapit.identity.domain.PersonalProfileChanges.name("Nombre"))).isInstanceOf(IllegalTransactionStateException.class);
             verifyNoInteractions(context.getBean(JdbcTemplate.class));
         }
+    }
+
+    @Test
+    void optionalFieldsUsePresenceAndTypedNullInsteadOfOverwritingFromAnOldRead() {
+        var changes = new com.mapit.identity.domain.PersonalProfileChanges(
+                com.mapit.identity.domain.PersonalProfileChanges.Field.absent(),
+                com.mapit.identity.domain.PersonalProfileChanges.Field.provided(null),
+                com.mapit.identity.domain.PersonalProfileChanges.Field.provided("ja-JP"));
+        repository.updateOwn(A, changes);
+        var sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbc).query(sql.capture(), ArgumentMatchers.<RowMapper<PersonalProfile>>any(), eq(false), ArgumentMatchers.isNull(), eq(true), ArgumentMatchers.isNull(), eq(true), eq("ja-JP"), eq("tenant-a"), eq(A.id()), eq("STAFF"));
+        assertThat(sql.getValue()).contains("else full_name end", "else contact_phone end", "else preferred_language end");
+        assertThat(sql.getValue()).doesNotContain("coalesce", "varchar(32)", "varchar(5)");
+    }
+
+    @Test
+    void readMapsPersistedContactAndLanguageIncludingNull() throws java.sql.SQLException {
+        var resultSet = mock(java.sql.ResultSet.class);
+        when(resultSet.getString("full_name")).thenReturn("Cuenta"); when(resultSet.getString("email")).thenReturn(A.email());
+        when(resultSet.getString("contact_phone")).thenReturn("+591 123"); when(resultSet.getString("preferred_language")).thenReturn("en");
+        when(jdbc.query(anyString(), ArgumentMatchers.<RowMapper<PersonalProfile>>any(), eq("tenant-a"), eq(A.id()), eq("STAFF")))
+                .thenAnswer(call -> List.of(call.<RowMapper<PersonalProfile>>getArgument(1).mapRow(resultSet, 0)));
+        assertThat(repository.findOwn(A)).contains(new PersonalProfile("Cuenta", A.email(), "+591 123", "en"));
     }
 
     @Configuration

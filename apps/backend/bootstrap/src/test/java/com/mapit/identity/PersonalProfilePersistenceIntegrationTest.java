@@ -30,8 +30,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.mapit.identity.application.OwnProfileFailure;
 import com.mapit.identity.application.OwnProfileFailure.Reason;
+import com.mapit.identity.application.OwnProfilePatch;
 import com.mapit.identity.application.OwnProfileService;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
+import com.mapit.identity.domain.PersonalProfileChanges.Field;
 import com.mapit.identity.domain.PersonalProfileRepository;
 import com.mapit.identity.domain.UserRole;
 import com.mapit.identity.infrastructure.JdbcPersonalProfileRepository;
@@ -93,7 +95,7 @@ class PersonalProfilePersistenceIntegrationTest {
         service = context.getBean(OwnProfileService.class); ENABLED.set(true);
         owner.update("update tenant set status='ACTIVE' where id in ('profile-a','profile-b','platform')");
         for (var actor : new AuthenticatedPrincipal[] {A, B, C, SUPER}) {
-            owner.update("update app_user set active=true,role=?,full_name='Original' where id=?", actor.role().name(), actor.id());
+            owner.update("update app_user set active=true,role=?,full_name='Original',contact_phone=null,preferred_language=null where id=?", actor.role().name(), actor.id());
         }
     }
 
@@ -138,6 +140,32 @@ class PersonalProfilePersistenceIntegrationTest {
         rejected(() -> service.read(A), Reason.UNAUTHENTICATED);
         owner.update("update tenant set status='SUSPENDED' where id='profile-b'");
         rejected(() -> service.read(C), Reason.UNAUTHENTICATED);
+    }
+
+    @Test
+    void personalFieldsPersistAtomicallyWithNullAndAbsenceAndDoNotReachOtherAccounts() {
+        var authority = owner.queryForMap("select tenant_id,email,role,active,password_hash,staff_tokens_valid_after from app_user where id=?", A.id());
+        var updated = service.update(A, new OwnProfilePatch(
+                Field.provided("Cuenta actualizada"),
+                Field.provided("+591 (2) 123-456"),
+                Field.provided("ja-JP")));
+        assertThat(service.read(A)).isEqualTo(updated);
+        service.updateFullName(A, "Solo nombre");
+        assertThat(service.read(A).contactPhone()).isEqualTo("+591 (2) 123-456");
+        assertThat(service.read(A).preferredLanguage()).isEqualTo("ja-JP");
+        for (var actor : new AuthenticatedPrincipal[] {B, C, SUPER}) {
+            assertThat(service.read(actor).contactPhone()).isNull(); assertThat(service.read(actor).preferredLanguage()).isNull();
+        }
+        rejected(() -> service.update(A, new OwnProfilePatch(
+                Field.provided("No guardar"),
+                Field.provided("123"),
+                Field.provided("fr"))), Reason.INVALID_REQUEST);
+        assertThat(service.read(A).fullName()).isEqualTo("Solo nombre");
+        service.update(A, new OwnProfilePatch(Field.absent(),
+                Field.provided(null), Field.provided(null)));
+        assertThat(service.read(A).contactPhone()).isNull(); assertThat(service.read(A).preferredLanguage()).isNull();
+        assertThat(owner.queryForMap("select tenant_id,email,role,active,password_hash,staff_tokens_valid_after from app_user where id=?", A.id()))
+                .isEqualTo(authority);
     }
 
     @Test
