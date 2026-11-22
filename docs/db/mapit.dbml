@@ -710,3 +710,51 @@ Table customer_history_access {
   }
   Note: 'HU-6.04. FK compuesta a person, RLS forzada; canje único y revocación invalidan los secretos.'
 }
+
+// MAP-292: V41. V40 permanece reservada a MAP-285.
+Table notification_delivery_key {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ recipient_user_id uuid [not null]
+ source_event_id uuid [not null]
+ event_type text [not null]
+ event_fingerprint varchar(64) [not null, note: 'SHA-256 canónico; sin payload']
+ notification_id uuid [not null, unique]
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null, note: 'touch_updated_at']
+ Indexes {
+  (tenant_id,id) [unique]
+  (tenant_id,recipient_user_id,source_event_id,event_type) [unique]
+ }
+ Note: 'RLS forzada. Clave mínima durable tras purga para no recrear avisos.'
+}
+Ref: notification_delivery_key.(tenant_id,recipient_user_id) > app_user.(tenant_id,id)
+Table notification {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ delivery_key_id uuid [not null]
+ recipient_user_id uuid [not null]
+ source_event_id uuid [not null]
+ event_type text [not null]
+ category text [not null, note: 'RESERVATION_CREATED -> RESERVATIONS; RESERVATION_CHECKED_IN -> OPERATIONS']
+ establishment_id uuid [not null]
+ reservation_id uuid [not null]
+ occurred_at timestamptz [not null]
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null, note: 'touch_updated_at']
+ read_at timestamptz [note: 'NULL no leída; primer marcado inmutable']
+ expires_at timestamptz [not null]
+ Indexes {
+  (tenant_id,id) [unique]
+  (tenant_id,delivery_key_id) [unique]
+  (tenant_id,recipient_user_id,source_event_id,event_type) [unique]
+  (tenant_id,recipient_user_id,created_at,id) [name: 'notification_inbox_idx', note: 'created_at DESC,id DESC']
+  (tenant_id,recipient_user_id,created_at,id) [name: 'notification_unread_idx', note: 'Parcial read_at IS NULL; fecha/ID DESC']
+  (tenant_id,expires_at,id) [name: 'notification_expiry_idx']
+ }
+ Note: 'RLS más destinatario y permisos SQL. Caducidad configurable; purga física opt-in, independiente del flag.'
+}
+Ref: notification.(tenant_id,delivery_key_id) > notification_delivery_key.(tenant_id,id)
+Ref: notification.(tenant_id,recipient_user_id) > app_user.(tenant_id,id)
+Ref: notification.(tenant_id,establishment_id) > establishment.(tenant_id,id)
+Ref: notification.(tenant_id,reservation_id,establishment_id) > reservation.(tenant_id,id,establishment_id)
