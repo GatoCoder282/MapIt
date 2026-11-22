@@ -51,6 +51,7 @@ class MockQrConfigurationIntegrationTest {
   String tenantA;
   String tenantB;
   UUID adminA;
+  UUID staffA;
   UUID adminB;
   UUID establishmentA;
   UUID establishmentB;
@@ -80,6 +81,9 @@ class MockQrConfigurationIntegrationTest {
     establishmentB = UUID.randomUUID();
     seedTenant(tenantA, adminA, establishmentA);
     seedTenant(tenantB, adminB, establishmentB);
+    staffA = UUID.randomUUID();
+    jdbc.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,?,?,'unused','Staff','STAFF')",
+        staffA, tenantA, staffA + "@mock-qr.test");
   }
 
   @Test
@@ -128,7 +132,7 @@ class MockQrConfigurationIntegrationTest {
     create(adminA,tenantA,establishmentA);
     String path="/api/v1/establishments/"+establishmentA+"/payment-readiness";
     client().get().uri(path).exchange().expectStatus().isUnauthorized();
-    client().get().uri(path).headers(h -> h.setBearerAuth(token(adminA,tenantA,UserRole.STAFF))).exchange().expectStatus().isForbidden();
+    client().get().uri(path).headers(h -> h.setBearerAuth(token(staffA,tenantA,UserRole.STAFF))).exchange().expectStatus().isForbidden();
     client().get().uri(path).headers(h -> h.setBearerAuth(token(adminB,tenantB,UserRole.ADMIN))).exchange().expectStatus().isNotFound();
     for(int i=0;i<2;i++) {
       client().get().uri(path).headers(h -> h.setBearerAuth(token(adminA,tenantA,UserRole.ADMIN)))
@@ -253,7 +257,7 @@ class MockQrConfigurationIntegrationTest {
 
     client().get().uri("/api/v1/payment-methods/mock-qr").exchange().expectStatus().isUnauthorized();
     client().get().uri("/api/v1/payment-methods/mock-qr")
-        .headers(h -> h.setBearerAuth(token(adminA, tenantA, UserRole.STAFF)))
+        .headers(h -> h.setBearerAuth(token(staffA, tenantA, UserRole.STAFF)))
         .exchange().expectStatus().isForbidden();
   }
 

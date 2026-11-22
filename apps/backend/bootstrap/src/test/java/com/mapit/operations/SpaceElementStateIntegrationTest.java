@@ -197,10 +197,16 @@ class SpaceElementStateIntegrationTest {
   @Test
   void endpoint_exige_jwt_y_rechaza_roles_no_autorizados() {
     patch(SECTOR_A, ELEMENT_A, "RESERVED", null).expectStatus().isUnauthorized();
-    patch(SECTOR_A, ELEMENT_A, "RESERVED", token(UUID.randomUUID(), UserRole.MANAGER))
+    UUID manager = UUID.randomUUID();
+    user(manager, TENANT_A, "manager-" + manager + "@state-it.test", UserRole.MANAGER);
+    patch(SECTOR_A, ELEMENT_A, "RESERVED", token(manager, UserRole.MANAGER))
         .expectStatus()
         .isForbidden();
-    patch(SECTOR_A, ELEMENT_A, "RESERVED", token(UUID.randomUUID(), UserRole.SUPER_ADMIN))
+    UUID superAdmin = UUID.randomUUID();
+    user(superAdmin, "platform", "super-" + superAdmin + "@state-it.test", UserRole.SUPER_ADMIN);
+    String platformToken = tokens.issue(new AuthenticatedUser(superAdmin, TenantId.of("platform"),
+        "super@example.test", "Platform", UserRole.SUPER_ADMIN)).value();
+    patch(SECTOR_A, ELEMENT_A, "RESERVED", platformToken)
         .expectStatus()
         .isForbidden();
 

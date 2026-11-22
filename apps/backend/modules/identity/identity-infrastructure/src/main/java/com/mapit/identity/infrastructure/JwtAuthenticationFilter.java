@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.mapit.identity.domain.AccessTokenVerifier;
+import com.mapit.identity.domain.CurrentStaffIdentity;
 
 /** Valida el Bearer token una vez por petición y crea la identidad de Spring Security. */
 @Component
@@ -25,9 +26,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER = "Bearer ";
 
     private final AccessTokenVerifier tokens;
+    private final CurrentStaffIdentity identities;
 
-    public JwtAuthenticationFilter(AccessTokenVerifier tokens) {
+    public JwtAuthenticationFilter(AccessTokenVerifier tokens, CurrentStaffIdentity identities) {
         this.tokens = tokens;
+        this.identities = identities;
     }
 
     @Override
@@ -49,7 +52,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        var identity = principal.orElseThrow();
+        com.mapit.identity.domain.AuthenticatedPrincipal identity;
+        try {
+            var current = identities.resolve(principal.orElseThrow());
+            if (current.isEmpty()) {
+                response.sendError(HttpStatus.UNAUTHORIZED.value());
+                return;
+            }
+            identity = current.orElseThrow();
+        } catch (RuntimeException failure) {
+            // Error de BD o identidad corrupta: nunca autorizar solo con claims.
+            response.sendError(HttpStatus.UNAUTHORIZED.value());
+            return;
+        }
         var authentication = new UsernamePasswordAuthenticationToken(identity, null,
                 List.of(new SimpleGrantedAuthority("ROLE_" + identity.role().name())));
         var context = SecurityContextHolder.createEmptyContext();

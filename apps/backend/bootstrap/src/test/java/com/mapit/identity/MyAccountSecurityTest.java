@@ -32,6 +32,7 @@ import com.mapit.config.SecurityConfig;
 import com.mapit.identity.application.OwnProfileService;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.AuthenticatedUser;
+import com.mapit.identity.domain.CurrentStaffIdentity;
 import com.mapit.identity.domain.PersonalProfile;
 import com.mapit.identity.domain.PersonalProfileRepository;
 import com.mapit.identity.domain.UserRole;
@@ -94,10 +95,10 @@ class MyAccountSecurityTest {
         var invalidRole = new AuthenticatedPrincipal(A.id(), TenantId.of("platform"), A.email(), UserRole.ADMIN);
         for (boolean enabled : new boolean[] {false, true}) {
             context.getBean(AtomicBoolean.class).set(enabled);
-            read(token(invalidRole)).expectStatus().isForbidden();
+            read(token(invalidRole)).expectStatus().isUnauthorized();
             client.patch().uri("/api/v1/me").header("Authorization", "Bearer " + token(invalidRole))
                     .contentType(MediaType.APPLICATION_JSON).body(Map.of("fullName", "Intruso"))
-                    .exchange().expectStatus().isForbidden();
+                    .exchange().expectStatus().isUnauthorized();
         }
         verify(repository, never()).findOwn(any());
         verify(repository, never()).updateOwnFullName(any(), anyString());
@@ -145,7 +146,7 @@ class MyAccountSecurityTest {
         context.getBean(AtomicBoolean.class).set(true);
         read(token(new AuthenticatedPrincipal(A.id(), A.tenantId(), A.email(), UserRole.STAFF))).expectStatus().isUnauthorized();
         read(token(new AuthenticatedPrincipal(A.id(), C.tenantId(), A.email(), A.role()))).expectStatus().isUnauthorized();
-        read(token(new AuthenticatedPrincipal(SUPER.id(), A.tenantId(), SUPER.email(), UserRole.SUPER_ADMIN))).expectStatus().isForbidden();
+        read(token(new AuthenticatedPrincipal(SUPER.id(), A.tenantId(), SUPER.email(), UserRole.SUPER_ADMIN))).expectStatus().isUnauthorized();
     }
 
     @Test
@@ -175,6 +176,23 @@ class MyAccountSecurityTest {
         verify(repository).updateOwnFullName(A, "Nuevo");
     }
 
+    @Test
+    void currentIdentityRejectionOrFailurePrecedesProfileAccessEvenWithAValidJwt() {
+        var identities = context.getBean(CurrentStaffIdentity.class);
+        for (boolean enabled : new boolean[] {false, true}) {
+            context.getBean(AtomicBoolean.class).set(enabled);
+            org.mockito.Mockito.doReturn(Optional.empty()).when(identities).resolve(any());
+            read(token(A)).expectStatus().isUnauthorized();
+            org.mockito.Mockito.doThrow(new IllegalStateException("identity-provider-test")).when(identities).resolve(any());
+            client.patch().uri("/api/v1/me").header("Authorization", "Bearer " + token(A))
+                    .contentType(MediaType.APPLICATION_JSON).body(Map.of("fullName", "Nuevo"))
+                    .exchange().expectStatus().isUnauthorized();
+            org.mockito.Mockito.reset(identities);
+        }
+        verify(repository, never()).findOwn(any());
+        verify(repository, never()).updateOwnFullName(any(), anyString());
+    }
+
     private RestTestClient.ResponseSpec read(String jwt) {
         return client.get().uri("/api/v1/me").header("Authorization", "Bearer " + jwt).exchange();
     }
@@ -185,13 +203,26 @@ class MyAccountSecurityTest {
     }
     private static AuthenticatedPrincipal actor(String tenant, UserRole role) {
         UUID id = UUID.randomUUID();
-        return new AuthenticatedPrincipal(id, TenantId.of(tenant), id + "@example.test", role);
+        return new AuthenticatedPrincipal(id, TenantId.of(tenant), id + "@example.test", role, NOW);
     }
 
     @Configuration
     static class Fixture {
         @Bean JjwtTokenService tokens() { return new JjwtTokenService(SECRET, "mapit-profile-test", 15, Clock.fixed(NOW, ZoneOffset.UTC)); }
-        @Bean JwtAuthenticationFilter jwtFilter(JjwtTokenService tokens) { return new JwtAuthenticationFilter(tokens); }
+        @Bean JwtAuthenticationFilter jwtFilter(JjwtTokenService tokens, CurrentStaffIdentity identities) { return new JwtAuthenticationFilter(tokens, identities); }
+        /** Doble solo de test: modela identidad vigente sin saltar la nueva etapa del filtro real. */
+        @Bean CurrentStaffIdentity identities() {
+            var identities = mock(CurrentStaffIdentity.class);
+            when(identities.resolve(any())).thenAnswer(call -> {
+                AuthenticatedPrincipal signed = call.getArgument(0);
+                return PROFILES.keySet().stream()
+                        .filter(current -> current.id().equals(signed.id()) && current.tenantId().equals(signed.tenantId()) && current.role() == signed.role())
+                        .filter(current -> (current.role() == UserRole.SUPER_ADMIN) == "platform".equals(current.tenantId().value()))
+                        .map(current -> new AuthenticatedPrincipal(current.id(), current.tenantId(), current.email(), current.role(), signed.issuedAt()))
+                        .findFirst();
+            });
+            return identities;
+        }
         @Bean AtomicBoolean enabled() { return new AtomicBoolean(false); }
         @Bean FeatureFlagPort flags(AtomicBoolean enabled) {
             return new FeatureFlagPort() {

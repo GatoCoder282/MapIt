@@ -27,7 +27,7 @@ import com.mapit.shared.tenant.TenantScope;
 public final class JdbcRealtimeRoomAccessAdapter implements RealtimeRoomAccessPort {
 
   private static final Set<String> ROLES_CON_ACCESO_A_SALAS =
-      Set.of("ADMIN", "MANAGER", "STAFF", "SUPER_ADMIN");
+      Set.of("ADMIN", "MANAGER", "STAFF");
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate transactions;
@@ -47,17 +47,22 @@ public final class JdbcRealtimeRoomAccessAdapter implements RealtimeRoomAccessPo
       UUID establishmentId,
       Optional<UUID> sectorId) {
     if (!ROLES_CON_ACCESO_A_SALAS.contains(role)) return false;
-    if (!role.equals("SUPER_ADMIN") && !authorization.canReadOperations(tenantId,userId,establishmentId)) return false;
+    if (!authorization.canReadOperations(tenantId,userId,establishmentId)) return false;
     Boolean allowed =
         transactions.execute(
             status -> {
               jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, tenantId.value());
               Boolean activeUser =
                   jdbc.queryForObject(
-                      "select exists (select 1 from app_user where id = ? and tenant_id = ? and active)",
+                       """
+                       select exists (select 1 from app_user u
+                         join tenant t on t.id=u.tenant_id and t.status='ACTIVE'
+                         where u.id=? and u.tenant_id=? and u.active and u.role=?)
+                       """,
                       Boolean.class,
                       userId,
-                      tenantId.value());
+                       tenantId.value(),
+                       role);
               if (!Boolean.TRUE.equals(activeUser)) return false;
               if (sectorId.isEmpty()) {
                 return jdbc.queryForObject(

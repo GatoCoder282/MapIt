@@ -14,7 +14,9 @@ La entrega inicial `0d11dfa` creó únicamente `spec.md`, `plan.md` y `tasks.md`
 
 El incremento backend posterior a `856e329`, autorizado por el solicitante, implementa únicamente los campos existentes mientras #69 sigue abierto: GET devuelve nombre/correo reales; PATCH persiste solo el nombre. Contacto e idioma se omiten de la respuesta mientras no exista almacenamiento (no se sustituyen por null simulado) y sus escrituras, incluso null, fallan con 503 sin cambios parciales. Se conserva el diseño de sus futuras columnas sin crear migración ni reservar número. Esta entrega no completa MAP-287 ni implementa contraseña.
 
-Fuentes consultadas el 2026-11-21: Jira, código de `main`, rama remota de MAP-238 y [PR #69](https://github.com/GatoCoder282/MapIt/pull/69). Después de `git fetch --no-tags origin`, `main` y `origin/main` apuntan a `fd22d78903a5a2697c1fc20a4769a2f254d8e526`. El PR #69 está **abierto y no integrado**, con head `20e25e5a5ce34ce1308db8c85c0af78d16a0d8a9`. Sus mecanismos no se consideran disponibles en esta base.
+Fuentes iniciales consultadas el 2026-11-21: Jira, código de `main`, rama remota de MAP-238 y [PR #69](https://github.com/GatoCoder282/MapIt/pull/69). En aquella base `fd22d78903a5a2697c1fc20a4769a2f254d8e526`, #69 estaba abierto con head `20e25e5a5ce34ce1308db8c85c0af78d16a0d8a9`; sus mecanismos aún no estaban disponibles.
+
+Actualización de integración del 2026-11-22: GitHub confirma #69 fusionado, commit `c0de5d7b130b960107e9d909cb8c5a9ebcbd63b2`, incluido en `origin/main` actualizado. Se integra mediante merge normal en la rama publicada de MAP-285, conservando sus 18 commits y V34–V39 sin modificaciones. `CurrentStaffIdentity`, `issuedAt` y `staff_tokens_valid_after` pasan a estar disponibles; no se implementan campos persistidos ni cambio de contraseña en este incremento. Continúan el 503 temporal de contacto/idioma y la ausencia de endpoint operativo de contraseña. Las notas históricas siguientes describen el estado anterior, no bloqueos actuales de disponibilidad del PR.
 
 ### 1.1 Requisitos confirmados en Jira
 

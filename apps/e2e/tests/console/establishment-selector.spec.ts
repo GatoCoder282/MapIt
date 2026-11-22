@@ -206,20 +206,25 @@ test.describe('Consola — selección obligatoria de establecimiento', () => {
     await expect(dialog(page).getByRole('button', { name: 'Continuar' })).toBeDisabled();
   });
 
-  test('un operador sin acceso puede reintentar y cerrar sesión', async ({ page }, testInfo) => {
-    let calls = 0;
+  test('un operador sin asignaciones recibe aviso y puede cerrar sesión', async ({
+    page,
+  }, testInfo) => {
     await prepare(page, testInfo.project.use.baseURL, {
       role: 'STAFF',
-      establishments: () => (calls++ === 0 ? [] : ESTABLISHMENTS),
+      establishments: [],
     });
     await goToConsole(page, '/home');
 
     const modal = dialog(page);
     await expect(modal).toBeVisible();
+    await expect(modal.getByRole('status')).toContainText(
+      'Todavía no tienes establecimientos asignados.',
+    );
     await expect(modal.getByRole('button', { name: 'Continuar' })).toBeDisabled();
-    await modal.getByRole('button', { name: /reintentar/i }).click();
-    await expect(modal.getByRole('radio', { name: 'Sede Centro E2E' })).toBeVisible();
-    await expect(modal.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /reintentar/i })).toHaveCount(0);
+    await expect(modal.getByRole('radio')).toHaveCount(0);
+    await modal.getByRole('button', { name: 'Cerrar sesión' }).click();
+    await expect(page).toHaveURL(/\/login$/);
   });
 
   test('la preferencia no se comparte entre usuario ni tenant', async ({ page }, testInfo) => {
@@ -340,6 +345,7 @@ test.describe('Consola — selección obligatoria de establecimiento', () => {
     await modal.getByRole('button', { name: /reintentar/i }).click();
     await retryResponse;
     await expect(modal.getByRole('radio', { name: 'Sede Centro E2E' })).toBeVisible();
+    await expect(modal.getByRole('button', { name: /reintentar/i })).toHaveCount(0);
     await expect(modal.getByRole('button', { name: 'Continuar' })).toBeDisabled();
   });
 

@@ -2,6 +2,7 @@ package com.mapit.identity.application;
 
 import java.security.MessageDigest;
 import java.time.Clock;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -18,6 +19,10 @@ import com.mapit.identity.domain.InvitationTokenStore;
 import com.mapit.identity.domain.PasswordHasher;
 import com.mapit.identity.domain.StoredInvitation;
 import com.mapit.identity.domain.UserRole;
+import com.mapit.shared.audit.AuditEvent;
+import com.mapit.shared.audit.AuditEventRecorder;
+import com.mapit.shared.audit.AuditEventType;
+import com.mapit.shared.audit.AuditResourceType;
 import com.mapit.shared.tenant.TenantId;
 
 /**
@@ -33,16 +38,19 @@ public class ActivateAdmin {
   private final AppUserCreator users;
   private final PasswordHasher passwordHasher;
   private final Clock clock;
+  private final AuditEventRecorder audit;
 
   public ActivateAdmin(
       InvitationTokenStore invitations,
       AppUserCreator users,
       PasswordHasher passwordHasher,
-      Clock clock) {
+      Clock clock,
+      AuditEventRecorder audit) {
     this.invitations = invitations;
     this.users = users;
     this.passwordHasher = passwordHasher;
     this.clock = clock;
+    this.audit = audit;
   }
 
   /** Devuelve el email activado; el dominio de errores son las excepciones de CU-25. */
@@ -59,6 +67,7 @@ public class ActivateAdmin {
     // El enlace lleva el SLUG; el tenant real lo resuelve el servidor.
     // Un slug manipulado no ofrece nada: no hay invitación bajo ese tenant.
     TenantId tenant = invitations.findTenantBySlug(tenantId).orElseThrow(Invalid::new);
+    if (!invitations.lockActiveTenant(tenant)) throw new Invalid();
     StoredInvitation invitation =
         invitations
             .findByTokenHash(tenant, sha256(token))
@@ -66,9 +75,22 @@ public class ActivateAdmin {
     if (invitation.isUsed()) {
       throw new Used();
     }
-    if (clock.instant().isAfter(invitation.expiresAt())) {
+    if (!clock.instant().isBefore(invitation.expiresAt())) {
       throw new Expired();
     }
+
+    UserRole role = switch (invitation.purpose()) {
+      case ADMIN_ONBOARDING -> {
+        if (invitation.targetRole() != null) throw new Invalid();
+        yield UserRole.ADMIN;
+      }
+      case MEMBER -> {
+        if (invitation.targetRole() != UserRole.MANAGER && invitation.targetRole() != UserRole.STAFF) {
+          throw new Invalid();
+        }
+        yield invitation.targetRole();
+      }
+    };
 
     // Primero el usuario (la invitación referencia su id); si la creación
     // rebota (email duplicado en el tenant), toda la transacción rueda atrás.
@@ -80,16 +102,19 @@ public class ActivateAdmin {
               invitation.email(),
               PasswordPolicy.defaultFullName(invitation.email()),
               passwordHasher.hash(password),
-              UserRole.ADMIN);
+               role);
     } catch (org.springframework.dao.DuplicateKeyException duplicate) {
       throw new EmailAlreadyRegistered();
     }
 
     // Consumo atómico al final: si otro proceso se adelantó, esa utilización
     // gana y esta transacción rueda atrás entera (usuario incluido).
-    if (!invitations.markConsumed(invitation.id(), userId)) {
+    if (!invitations.markConsumed(tenant, invitation.id(), userId)) {
       throw new Used();
     }
+    audit.record(new AuditEvent(UUID.randomUUID(), tenant, userId, clock.instant(),
+        AuditResourceType.USER, userId, AuditEventType.USER_INVITATION_ACCEPTED,
+        Map.of("invitationId", invitation.id().toString(), "role", role.name())));
     return invitation.email();
   }
 

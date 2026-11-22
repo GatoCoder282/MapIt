@@ -1,6 +1,6 @@
 # Plan — HU-1.06 Autogestión segura de mi cuenta y perfil personal
 
-> **Ticket:** MAP-285 · **Incremento actual:** UI MAP-288 sobre backend parcial MAP-287 · **Estado:** nombre/correo implementados en API y Console; persistencia de contacto/idioma, contraseña y QA con stack pendientes según [spec.md](spec.md).
+> **Ticket:** MAP-285 · **Incremento actual:** integración de MAP-238 desde `origin/main` (`c0de5d7`) mediante merge normal · **Estado:** nombre/correo implementados en API y Console; persistencia de contacto/idioma, contraseña y QA con stack pendientes según [spec.md](spec.md).
 
 ## 1. Enfoque y límites de entrega
 
@@ -9,6 +9,10 @@ Ampliar `identity` y `app_user` para ofrecer una API personal distinta de la ges
 La etapa inicial `0d11dfa` creó solo los tres documentos. La siguiente etapa autorizada añade OpenAPI y registro OFF de la flag con pruebas; no modifica esquema, autenticación ni controladores. Toda implementación de MAP-287/288/289/290/291/314 se hará en la misma rama de MAP-285, con commits pequeños; no se abrirán ramas hijas. La instrucción expresa del solicitante prevalece sobre los ejemplos de ramas apiladas de `CONTRIBUTING.md`.
 
 ## 2. Base observada y dependencias
+
+Base actualizada el 2026-11-22: #69 fusionado y disponible en `origin/main` (`c0de5d7`). Se conserva autenticación/revalidación HTTP/STOMP de MAP-238 sin cambios, incluyendo `issuedAt` y V34–V39. El fixture de seguridad de Mi cuenta usa el filtro nuevo con `CurrentStaffIdentity` de test y fechas de emisión explícitas; identidades rechazadas responden 401 antes del controlador, independientemente del flag. Se conservan las rutas/permisos administrativos y el acceso personal sin establecimiento. La tabla y comprobaciones fechadas abajo registran la base histórica.
+
+Siguiente MAP-287: elegir entonces una migración libre posterior a las integradas, añadir columnas opcionales/constraints y DBML, conectar JDBC/aplicación/contrato/UI y ejecutar PostgreSQL/RLS antes de retirar 503. Siguiente MAP-289: reutilizar corte de tokens en una escritura atómica con hash, resolver precisión `iat` en segundos frente al corte TIMESTAMPTZ, carreras con login, limitación de intentos y reautenticación con verificación HTTP/STOMP. No se declara que integrar MAP-238 resuelva esas decisiones o cierre las subtareas.
 
 | Área      | Disponible en la base `fd22d78`                                                                                      | Pendiente o conflicto                                                                                                               |
 | --------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |

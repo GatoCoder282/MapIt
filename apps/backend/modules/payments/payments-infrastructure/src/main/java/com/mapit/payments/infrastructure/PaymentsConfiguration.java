@@ -21,6 +21,7 @@ import com.mapit.payments.domain.PaymentRepository;
 import com.mapit.payments.domain.PaymentReservationAccessPort;
 import com.mapit.payments.domain.ReservationPaymentPort;
 import com.mapit.shared.security.ActorContext;
+import com.mapit.shared.security.EstablishmentAuthorizationPort;
 import com.mapit.shared.tenant.TenantContext;
 
 @Configuration
@@ -49,8 +50,10 @@ public class PaymentsConfiguration {
   @Bean
   PaymentService paymentService(PaymentRepository repository, PaymentMethodRepository methods,
       ReservationPaymentPort reservations, PaymentGatewayPort gateway, TenantContext tenants, ActorContext actors,
-      Clock clock, PaymentReservationAccessPort access, PaymentEventPublisherPort publisher) {
-    return new PaymentService(repository, methods, reservations, gateway, tenants, actors, clock, access, publisher);
+      Clock clock, PaymentReservationAccessPort access, PaymentEventPublisherPort publisher,
+      EstablishmentAuthorizationPort establishmentAuthorization) {
+    return new PaymentService(repository, methods, reservations, gateway, tenants, actors, clock, access, publisher,
+        establishmentAuthorization);
   }
   @Bean
   PaymentMethodService paymentMethodService(PaymentMethodRepository methods, TenantContext tenants,
