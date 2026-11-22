@@ -1,17 +1,28 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { AuthSession } from '@mapit/auth';
+import { Subject } from 'rxjs';
+import { MyAccountApi } from '../data/my-account-api';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { I18nService, provideI18n } from '@mapit/i18n';
 import { MyAccountAccess } from '../../../core/my-account-access';
 import { PasswordChangeForm } from './password-change-form';
 
-describe('PasswordChangeForm no operativo', () => {
+describe('PasswordChangeForm', () => {
+  const response = new Subject<void>();
+  const changePassword = vi.fn(() => response);
+  const clearIfCurrent = vi.fn();
   async function mount() {
     await TestBed.configureTestingModule({
       imports: [PasswordChangeForm],
       providers: [
         provideI18n(),
+        {
+          provide: AuthSession,
+          useValue: { revision: signal(1), token: () => 'test-token', clearIfCurrent },
+        },
+        { provide: MyAccountApi, useValue: { changePassword } },
         provideHttpClient(),
         provideHttpClientTesting(),
         {
@@ -26,7 +37,7 @@ describe('PasswordChangeForm no operativo', () => {
     return { fixture, host: fixture.nativeElement as HTMLElement };
   }
 
-  it('prepara controles accesibles y confirmación, sin HTTP ni persistencia incluso en submit forzado', async () => {
+  it('prepara controles accesibles y confirmación, sin almacenamiento de secretos', async () => {
     const { fixture, host } = await mount();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const inputs = host.querySelectorAll<HTMLInputElement>('input');
@@ -40,10 +51,7 @@ describe('PasswordChangeForm no operativo', () => {
     expect(inputs[0]?.autocomplete).toBe('current-password');
     expect(inputs[1]?.autocomplete).toBe('new-password');
     fixture.detectChanges();
-    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
-    const submit = new Event('submit', { bubbles: true, cancelable: true });
-    host.querySelector('form')!.dispatchEvent(submit);
-    expect(submit.defaultPrevented).toBe(true);
+    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
     TestBed.inject(HttpTestingController).expectNone(() => true);
     expect(setItem).not.toHaveBeenCalled();
     setItem.mockRestore();
@@ -56,16 +64,31 @@ describe('PasswordChangeForm no operativo', () => {
     host.querySelector<HTMLButtonElement>('button[type="button"]')!.click();
     fixture.detectChanges();
     expect([...inputs].every((input) => input.value === '')).toBe(true);
+    for (const input of inputs) {
+      input.value = input.name === 'currentPassword' ? 'Anterior1!' : 'NuevaValida2!';
+      input.dispatchEvent(new Event('input'));
+    }
+    fixture.detectChanges();
+    const submit = new Event('submit', { bubbles: true, cancelable: true });
+    host.querySelector('form')!.dispatchEvent(submit);
+    fixture.detectChanges();
+    expect(submit.defaultPrevented).toBe(true);
+    expect(changePassword).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('form')!.getAttribute('aria-busy')).toBe('true');
+    expect([...inputs].every((input) => input.readOnly && input.value === '')).toBe(true);
+    response.next();
+    fixture.detectChanges();
+    expect(clearIfCurrent).toHaveBeenCalledWith('test-token');
   });
 
-  it('traduce etiquetas y disponibilidad a los tres idiomas', async () => {
+  it('traduce etiquetas y reautenticación a los tres idiomas', async () => {
     const { fixture, host } = await mount();
     expect(host.querySelector('h2')?.textContent).toBe('Cambiar contraseña');
     const i18n = TestBed.inject(I18nService);
     i18n.setLanguage('en');
     fixture.detectChanges();
     expect(host.querySelector('h2')?.textContent).toBe('Change password');
-    expect(host.querySelector('[role="status"]')?.textContent).toContain('not available');
+    expect(host.querySelector('#password-change-notice')?.textContent).toContain('sign in again');
     i18n.setLanguage('ja-JP');
     fixture.detectChanges();
     expect(host.querySelector('h2')?.textContent).toBe('パスワードの変更');

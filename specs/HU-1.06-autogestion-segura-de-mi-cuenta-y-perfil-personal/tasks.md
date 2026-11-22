@@ -1,6 +1,6 @@
 # Tareas — HU-1.06 Autogestión segura de mi cuenta y perfil personal
 
-> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** backend/UI de nombre/contacto/idioma conectados, correo de solo lectura y flag OFF; V40 preparada. QA PostgreSQL/RLS, E2E y cambio de contraseña pendientes.
+> **Historia:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285) · **Estado:** backend/UI de nombre/contacto/idioma conectados, correo de solo lectura y flag OFF; V40 preparada. Cambio de contraseña conectado; QA PostgreSQL/RLS, HTTP/STOMP y E2E pendientes.
 
 ## 1. Preparación documental de MAP-287 — etapa actual
 
@@ -53,17 +53,20 @@
 
 ## 5. MAP-289 — S6 — Cambio seguro de contraseña
 
-- [ ] Resolver D03/D04/D07 y verificar MAP-238 integrado antes de cambiar credenciales/tokens; no crear mecanismo paralelo.
+- [x] Concretar D03/D04/D07 por autorización del solicitante: MAP-238 integrado, reutilización del corte existente, cuota independiente y barrera de iat documentadas; aceptación operativa/QA pendiente.
 - [x] Definir primero OpenAPI de POST `/me/password`, prueba de control, errores y obligación futura sobre JWT; presupuestos concretos y ejecución del cambio pendientes de MAP-289/MAP-238.
 - [x] Preparar validador independiente conforme a composición existente, contrato y máximo BCrypt de 72 bytes UTF-8; probar multibyte/Unicode inválido sin cambiar login global.
 - [x] Reutilizar PasswordVerifier para actual/reutilización y validar confirmación; probar con PasswordHasher/BCrypt reales, sin generar hash nuevo en producción.
 - [x] Preparar puerto/método de limitación con almacenamiento existente y buckets propios de cuenta/tenant y dirección; unitarios de cuotas/separación/transacción declarada.
-- [ ] Validar cuotas operativas, persistencia/concurrencia/RLS de los buckets y conectar el presupuesto antes de BCrypt en el futuro caso de uso.
-- [ ] Actualizar hash y corte de tokens atómicamente; probar rollback, concurrencia, emisión de JWT e instante límite de `iat`.
+- [x] Conectar presupuesto independiente antes de BCrypt/bloqueo escritor, conservando el contador ante fallos.
+- [ ] Validar cuotas operativas, persistencia/concurrencia/RLS de los buckets con PostgreSQL.
+- [x] Implementar escritura atómica hash/corte y bloqueo compartido con login, revalidación después de esperar y tests locales de límites de iat.
+- [ ] Ejecutar tests preparados de PostgreSQL para atomicidad/rollback y carreras de login/cambio.
 - [ ] Verificar JWT previos denegados por HTTP/STOMP y login nuevo operativo, conforme al contrato final.
-- [x] Preparar formulario/estado/reglas dentro de my-account, no montado, sin transporte y con envío bloqueado; etiquetas/tokens existentes reutilizados, tres idiomas y pruebas.
-- [ ] Conectar formulario/cliente generado y handlers seguros solo después de endpoint con revocación real; verificar cierre local tras 204/nuevo login.
-- [ ] Documentar cierre local tras éxito y exclusión de listado/«cerrar otras sesiones»; no simular revocación ni recuperación general.
+- [x] Reutilizar formulario/estado/reglas dentro de my-account, ahora montado y conectado, tres idiomas, sin persistencia de secretos.
+- [x] Conectar formulario/cliente generado y handlers seguros; comprobar cierre local tras 204, duplicados y respuestas de otra revisión en pruebas locales.
+- [ ] Verificar nuevo login y revocación HTTP/STOMP con PostgreSQL/stack real.
+- [x] Documentar cierre local tras éxito y exclusión de listado/«cerrar otras sesiones»; no simular revocación ni recuperación general.
 
 ## 6. MAP-290 — S6 — QA de identidad y regresión multi-tenant
 
@@ -78,7 +81,7 @@
 
 - [x] Adaptar y probar el generador para claves de varios segmentos, preservando dos segmentos, flags existentes, idempotencia y LF/CRLF.
 - [x] Registrar `mapit.s6.my-account` OFF en Java, TS y bootstrap, sin duplicar la clave.
-- [x] Usar `FeatureFlagPort.isEnabledFor` en GET/PATCH con tenant autenticado; elegibilidad/autorización independiente tanto OFF como ON. Password pendiente de MAP-289.
+- [x] Usar `FeatureFlagPort.isEnabledFor` en GET/PATCH con tenant autenticado; elegibilidad/autorización independiente tanto OFF como ON; POST password reutiliza el mismo gate.
 - [x] Implementar contexto del proxy desde Console sin enviar JWT staff, limpiar al cambiar sesión y descartar respuestas antiguas.
 - [x] Cubrir localmente valor inicial pendiente, flag ausente, proveedor sin configurar, OFF/ON, tenant/sesión y fallo después de ON.
 - [x] Definir y probar caducidad local del backend (30 s), callbacks seguros de snapshot y timeout/rollback frontend, sin alterar otras flags.
@@ -103,6 +106,18 @@
 - [ ] Realizar Squash and Merge solo en la entrega posterior autorizada. No hay push, PR ni merge en la etapa documental.
 
 ## Notas de ejecución
+
+### 2026-11-22 — Conexión de MAP-289 sobre MAP-238/V40
+
+- Backend: ChangeOwnPassword → presupuesto propio REQUIRES_NEW → CommitOwnPasswordChange con RLS/bloqueo de fila, validador y PasswordHasher existentes, hash/corte no decreciente en un solo UPDATE/CAS. El controlador deriva identidad del principal, rechaza payloads abiertos y no devuelve secretos/JWT.
+- Login: OpenStaffSession mantiene el bloqueo hasta firmar; tenant derivado de la cuenta descubierta, RLS durante el bloqueo y clock_timestamp posterior a la espera. iat entero, comparación estricta sin tolerancia y 503/Retry-After:1 para el siguiente segundo seguro; filtros HTTP/STOMP de MAP-238 intactos.
+- Pruebas PostgreSQL/RLS/concurrencia y cambio HTTP/STOMP real preparadas/compiladas, **NO EJECUTADAS**. Requieren infraestructura; no se inició Docker ni aplicación. No se marca MAP-289 completa por esos resultados pendientes. Feature flag OFF sin activación remota.
+- Primera compilación de tests detectó ausencia de Mockito en identity-application: se añadió dependencia solo de test con versión del BOM existente. El fixture STOMP preparado tenía una sobrecarga incorrecta del flag, corregida antes de compilar. Las ejecuciones focalizadas posteriores pasan; resultados finales abajo.
+- Backend focalizado (Gradle wrapper, sin Boot/servidor): identity-application:test filtrado a AuthenticateUserTest (14), OwnPasswordChangeValidatorTest (10), ChangeOwnPasswordTest (5) y OpenStaffSessionTest (2): **31 correctas**. identity-infrastructure:test filtrado a BCryptPasswordVerifierTest, OwnPasswordChangePreparationTest, OwnPasswordAttemptLimiterTest, JdbcOwnPasswordRepositoryTest, PasswordSessionBoundaryTest, JjwtTokenServiceTest y LoginControllerTest: **24 casos distintos**. La primera corrida de este último incremento detectó re-stubbing de un mock que ya lanzaba excepción; se corrigió con doThrow y se repitió solo LoginControllerTest, **6/6 correctas**. Los otros 18 casos de infraestructura habían pasado; no se repitieron suites completas.
+- Bootstrap focalizado: MyAccountSecurityTest **12/12**, RealtimeStompInterceptorTest **5/5** y ArchitectureTest **12/12**. Son pruebas en memoria/estáticas; no prueban PostgreSQL ni sockets reales. Total backend: **84 casos distintos correctos** entre las ejecuciones indicadas.
+- Contrato: pnpm.cmd api:lint correcto con dos warnings preexistentes en health/demo; api:gen completó generación real tras cambiar OpenAPI y api:check confirma hash sincronizado. No se versiona generated ni se repite codegen sin cambios. Spotless Java Check de domain/application/infrastructure y bootstrap correcto; bootstrap:compileTestJava incluye los nuevos fixtures PostgreSQL/HTTP/STOMP, sin ejecutarlos.
+- Console: pnpm.cmd exec ng test console --no-watch con include de password-change-store.spec.ts (14), password-change-form.spec.ts (2), my-account-api.spec.ts (4), my-account.spec.ts (7) y my-account-routing.spec.ts (7): **34/34 correctas**, plantillas compiladas por el runner. Cubren envío real del cliente, 204/reautenticación, errores sin eco, bloqueo de navegación/duplicados, limpieza y respuestas de otra revisión/tenant/flag. No se realiza build global.
+- pnpm.cmd fe:typecheck correcto (tsc de Console/Public Web). ESLint focalizado sobre los TypeScript modificados correcto, **0 warnings**, después de corregir Subscription a import type. Prettier focalizado y git diff --check correctos. Hooks de lint-staged/commitlint se ejecutan en cada commit. No se inicia infraestructura, no se ejecutan integración/E2E, pnpm check ni suites globales.
 
 ### 2026-11-22 — Regresión de null explícito con la configuración real de Jackson
 

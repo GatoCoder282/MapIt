@@ -16,6 +16,23 @@ describe('MyAccountApi', () => {
   );
   afterEach(() => TestBed.inject(HttpTestingController).verify());
 
+  it('envía la contraseña solo en el body de POST /me/password y no usa transfer cache', () => {
+    const command = {
+      currentPassword: 'OldSecret1!',
+      newPassword: 'NewSecret2!',
+      newPasswordConfirm: 'NewSecret2!',
+    };
+    const received = vi.fn();
+    TestBed.inject(MyAccountApi).changePassword(command).subscribe(received);
+    const request = TestBed.inject(HttpTestingController).expectOne('/api/v1/me/password');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(command);
+    expect(request.request.params.keys()).toEqual([]);
+    expect(request.request.transferCache).toBe(false);
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    expect(received).toHaveBeenCalledWith(null);
+  });
+
   it('consulta el perfil propio con el cliente generado, sin selector de identidad', () => {
     const received = vi.fn();
     TestBed.inject(MyAccountApi).read().subscribe(received);

@@ -1,6 +1,6 @@
 # HU-1.06 — Autogestión segura de mi cuenta y perfil personal
 
-> **Estado:** Nombre, teléfono e idioma conectados en backend/UI; correo de solo lectura. V40 preparada, flag OFF. QA PostgreSQL/RLS, E2E y contraseña pendientes · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
+> **Estado:** Nombre, teléfono e idioma conectados en backend/UI; correo de solo lectura. V40 preparada, flag OFF. Contraseña conectada; QA PostgreSQL/RLS, HTTP/STOMP y E2E pendientes · **Creada:** 2026-11-21 · **Responsable:** rodrigo40r · **Ticket:** [MAP-285](https://matiasmv2005.atlassian.net/browse/MAP-285)
 
 ## Enunciado
 
@@ -21,6 +21,8 @@ Actualización de integración del 2026-11-22: GitHub confirma #69 fusionado, co
 ### Estado técnico actual
 
 Actualización de campos del 2026-11-22: V40 añade `contact_phone` y `preferred_language` opcionales en `app_user`. GET/PATCH devuelven los cuatro campos reales, con null en los opcionales sin valor; ausente conserva y null explícito limpia solo teléfono/idioma mediante una escritura atómica. Se retira el 503 temporal de campos pendientes, manteniendo errores reales de persistencia. La UI edita los tres campos permitidos y aplica un idioma guardado solo tras ACK válido de la misma sesión, sin sustituir la preferencia local al cargar ni al limpiar el idioma de cuenta. La columna persiste entre lecturas; la preferencia local de la barra sigue siendo independiente. Las descripciones de implementación parcial de etapas anteriores se conservan como historia. PostgreSQL no está disponible: la migración y los tests RLS están preparados/compilados, no ejecutados, y no se declara cerrado MAP-287/288 sin esa aceptación.
+
+Actualización MAP-289 del 2026-11-22: POST /api/v1/me/password y formulario conectados, con presupuesto propio, bloqueo compartido con login, escritura atómica hash/corte y reautenticación tras 204. iat permanece en segundos y mantiene comparación estricta; el login devuelve 503/Retry-After:1 durante el mismo segundo del corte o si la hora segura no está disponible. Son decisiones técnicas de implementación autorizadas por el solicitante, no nuevos requisitos literales de Jira. Detalles y límites operativos en plan.md §7. La revocación SQL/HTTP/STOMP real y E2E tienen tests preparados pero siguen sin ejecución; no se declara MAP-289 aceptada ni se activa el flag.
 
 ### 1.1 Requisitos confirmados en Jira
 
@@ -46,6 +48,8 @@ Actualización de campos del 2026-11-22: V40 añade `contact_phone` y `preferred
 - U06: incremento MAP-288 autorizado sobre los siete commits existentes: pantalla de nombre/correo reales y PATCH de nombre, misma rama, sin contraseña ni campos no persistibles. Conservar el idioma local de navegador y comprobar UI/guard/navegación sin iniciar aplicación o Docker. D05 se concreta mediante una sola feature en ambos shells; la aceptación visual/E2E queda pendiente.
 - U07: incremento MAP-291 autorizado sobre los once commits existentes: auditar y completar registro/fallo cerrado, aislamiento de evaluaciones y rollback, con pruebas y runbook. Sin activar servicios/flags remotas, cambiar JWT/autenticación ni implementar otras historias. Los límites locales de caché y callbacks descritos abajo son decisiones técnicas del incremento, no valores literales de Jira.
 - U08: incremento MAP-289 autorizado sobre catorce commits: componentes independientes de validación y presupuesto, contratos/errores seguros y formulario preparado sin disponibilidad. No conectar HTTP ni escribir hash hasta integrar/revisar revocación efectiva de MAP-238; no declarar MAP-289 completa. Cuotas concretas y detalles de validación son decisiones técnicas documentadas, no requisitos literales de Jira.
+
+- U09: completar MAP-289 tras MAP-238/V40 por autorización del solicitante: endpoint transaccional, coordinación de login, formulario conectado y pruebas focalizadas, sin iniciar infraestructura ni modificar main/MAP-286.
 
 ### 1.3 Propuestas técnicas pendientes de validación
 
@@ -77,7 +81,7 @@ Para la etapa de contrato se concretan D01/D02 en `openapi.yaml`: `fullName`, `c
 - `app_user` existente y acceso mediante `mapit_app` sujeto a RLS. El owner se reserva a Flyway.
 - MAP-180 aporta cuentas/onboarding. No crear otra identidad ni otro bootstrap de SUPER_ADMIN.
 - MAP-256 integrado usa correo normalizado globalmente único (V32), una cuenta por tenant y login `/auth/global-login`. No hay membresías múltiples ni registro autónomo disponibles en la spec implementada.
-- MAP-238 sigue en PR #69: aporta identidad vigente, validación de cuenta/tenant/rol, corte temporal de JWT y controles STOMP. No copiar ni sustituir esos mecanismos en esta etapa.
+- MAP-238 está integrado mediante 982fe01: se reutilizan identidad vigente, corte temporal de JWT y controles HTTP/STOMP. No hay una revocación alternativa.
 - MAP-240 aporta `@mapit/i18n`: `es`, `en`, `ja-JP`, fallback español y preferencia local por origen.
 - Antes de implementar código, revisar esta especificación y resolver las propuestas que afecten al incremento. La autorización para crear documentación no significa que MAP-287 o MAP-285 estén terminadas.
 
@@ -115,7 +119,7 @@ Para la etapa de contrato se concretan D01/D02 en `openapi.yaml`: `fullName`, `c
 
 ## 6. Reglas de negocio y datos
 
-Preparación MAP-289: comando redactado sin identidad objetivo, validador contra hash confiable suministrado por el futuro caso de uso, payload cerrado y limitador con buckets propios. No existe caso de uso escritor ni controlador de contraseña. POST `/api/v1/me/password` permanece ausente aun con sesión válida/flag ON; el contrato OpenAPI sigue planned. El formulario no está montado ni puede enviar HTTP. Esto no acredita revocación ni cambio efectivo de contraseña.
+MAP-289 conectado: comando redactado sin identidad objetivo, lector cerrado, presupuesto independiente y escritor transaccional. POST /api/v1/me/password y el formulario usan las garantías integradas de MAP-238. OpenAPI describe el endpoint y los errores reales; la evidencia automática local no sustituye las pruebas pendientes de PostgreSQL/RLS y revocación HTTP/STOMP.
 
 ### 6.1 Identidad y propiedades protegidas
 
@@ -140,11 +144,11 @@ Propuesta de precedencia de idioma: preferencia válida de cuenta, después pref
 
 ### 6.3 Contraseña y sesiones
 
-La política backend existente exige longitud y composición; hay una diferencia entre el máximo de 128 caracteres de `PasswordPolicy` y el máximo de 72 bytes UTF-8 admitido por el verificador BCrypt. MAP-289 debe conciliar contrato, backend y mensajes antes de aceptar nuevas credenciales; no cambiarla en esta etapa documental.
+La política backend existente exige longitud y composición; hay una diferencia entre el máximo de 128 caracteres de `PasswordPolicy` y el máximo de 72 bytes UTF-8 admitido por el verificador BCrypt. El cambio aplica el máximo efectivo de 72 bytes UTF-8 válidos, al menos 8 puntos de código, composición existente, confirmación exacta y no reutilización; no normaliza ni trunca contraseñas.
 
 No almacenar ni devolver contraseñas en claro, hashes o secretos de tokens. No incluirlos en logs, errores, representaciones de comandos ni almacenamiento de formularios. Verificar contraseña actual usando los puertos existentes y persistir solo el nuevo hash.
 
-En `main` hay JWT de acceso con TTL predeterminado de 15 minutos y logout local; no hay inventario persistido de sesiones ni refresh tokens. Listado de sesiones y acción independiente «cerrar otras sesiones» quedan fuera del MVP por falta de infraestructura. La invalidación asociada al cambio de contraseña es una operación distinta y debe probarse realmente antes de ofrecerla.
+La base integrada utiliza JWT de acceso con TTL predeterminado de 15 minutos y corte por cuenta de MAP-238, sin inventario persistido de sesiones ni refresh tokens. Listado de sesiones y acción independiente «cerrar otras sesiones» quedan fuera del MVP por falta de infraestructura. La invalidación asociada al cambio de contraseña es una operación distinta y debe probarse realmente antes de ofrecerla.
 
 Con D03/D04, no emitir un JWT nuevo desde Mi cuenta ni simular revocación borrando únicamente el navegador. El rollback de la flag no puede desactivar la validación global de tokens ya invalidados.
 

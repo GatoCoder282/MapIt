@@ -30,8 +30,14 @@ const STRINGS_ES = {
     preferredLanguage: 'Idioma de la cuenta',
     localLanguage: 'Usar el idioma local',
     password: {
+      reauthenticate:
+        'Al cambiar la contraseña se cerrarán todas tus sesiones. Deberás iniciar sesión otra vez.',
+      saving: 'Cambiando contraseña…',
+      invalid:
+        'No se pudo validar el cambio. Revisa la contraseña actual y las reglas de la nueva.',
+      limited: 'Demasiados intentos. Espera antes de volver a intentarlo.',
+      uncertain: 'No se pudo confirmar el cambio. Inicia sesión de nuevo antes de reintentar.',
       title: 'Cambiar contraseña',
-      unavailable: 'El cambio de contraseña todavía no está disponible.',
       current: 'Contraseña actual',
       next: 'Nueva contraseña',
       confirm: 'Confirmar nueva contraseña',

@@ -8,8 +8,14 @@ export const STRINGS_EN = {
     preferredLanguage: 'Account language',
     localLanguage: 'Use the local language',
     password: {
+      reauthenticate:
+        'Changing your password ends all your sessions. You will need to sign in again.',
+      saving: 'Changing password…',
+      invalid:
+        'The change could not be validated. Check your current password and the new password rules.',
+      limited: 'Too many attempts. Wait before trying again.',
+      uncertain: 'The change could not be confirmed. Sign in again before retrying.',
       title: 'Change password',
-      unavailable: 'Password changes are not available yet.',
       current: 'Current password',
       next: 'New password',
       confirm: 'Confirm new password',

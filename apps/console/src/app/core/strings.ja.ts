@@ -7,8 +7,14 @@ export const STRINGS_JA = {
     preferredLanguage: 'アカウントの言語',
     localLanguage: '現在のローカル言語を使用',
     password: {
+      reauthenticate:
+        'パスワードを変更すると、すべてのセッションが終了します。再度サインインしてください。',
+      saving: 'パスワードを変更中…',
+      invalid:
+        '変更を確認できませんでした。現在のパスワードと新しいパスワードのルールを確認してください。',
+      limited: '試行回数が多すぎます。しばらくしてから再度お試しください。',
+      uncertain: '変更を確認できませんでした。再試行する前にサインインしてください。',
       title: 'パスワードの変更',
-      unavailable: 'パスワードの変更はまだ利用できません。',
       current: '現在のパスワード',
       next: '新しいパスワード',
       confirm: '新しいパスワードの確認',

@@ -62,8 +62,8 @@ describe('Mi cuenta UI', () => {
     expect(host.querySelector('label[for="account-email"]')?.textContent).toContain('Correo');
     expect(email.getAttribute('aria-describedby')).toBe('email-hint');
     expect(host.querySelector('input[name="contactPhone"]')).not.toBeNull();
-    expect(host.querySelector('mapit-password-change-form')).toBeNull();
-    expect(host.querySelector('input[type="password"]')).toBeNull();
+    expect(host.querySelector('mapit-password-change-form')).not.toBeNull();
+    expect(host.querySelectorAll('input[type="password"]')).toHaveLength(3);
     expect(host.querySelector('select')?.getAttribute('name')).toBe('preferredLanguage');
     expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
     name.value = 'Ana Nueva';
@@ -201,5 +201,37 @@ describe('Mi cuenta UI', () => {
     expect(host.querySelector('form')).toBeNull();
     expect(host.textContent).not.toContain('ana@example.com');
     expect(host.querySelector('[role="status"]')?.textContent).toContain('no está disponible');
+  });
+
+  it('protege la salida con borradores y mientras se confirma el cambio de contraseña', async () => {
+    const response = new Subject<void>();
+    const changePassword = vi.fn(() => response);
+    const clearIfCurrent = vi.fn();
+    const { fixture, host } = await mount();
+    Object.assign(TestBed.inject(MyAccountApi), { changePassword });
+    Object.assign(TestBed.inject(AuthSession), { token: () => 'current-token', clearIfCurrent });
+    read.next({
+      fullName: 'Ana',
+      email: 'ana@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
+    fixture.detectChanges();
+    for (const input of host.querySelectorAll<HTMLInputElement>('input[type="password"]')) {
+      input.value = input.name === 'currentPassword' ? 'Anterior1!' : 'NuevaValida2!';
+      input.dispatchEvent(new Event('input'));
+    }
+    const confirm = vi.spyOn(globalThis, 'confirm').mockReturnValue(false);
+    expect(fixture.componentInstance.canDeactivate()).toBe(false);
+    confirm.mockRestore();
+    host
+      .querySelector('mapit-password-change-form form')!
+      .dispatchEvent(new Event('submit', { cancelable: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canDeactivate()).toBe(false);
+    response.next();
+    fixture.detectChanges();
+    expect(clearIfCurrent).toHaveBeenCalledExactlyOnceWith('current-token');
+    expect(fixture.componentInstance.canDeactivate()).toBe(true);
   });
 });
