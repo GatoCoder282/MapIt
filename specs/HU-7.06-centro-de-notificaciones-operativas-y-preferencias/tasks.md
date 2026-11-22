@@ -1,7 +1,7 @@
 # Tareas — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Historia:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) — HU-7.06 — Centro de notificaciones operativas y preferencias.
-> **Estado:** MAP-292/MAP-293/MAP-294 parciales; MAP-299 con registro/protección local verificados. Persistencia, integración de sesión/superficies y Unleash real pendientes.
+> **Estado:** Contrato MVP MAP-294 validado y cliente generado localmente; HTTP/persistencia/autorización real pendientes. MAP-299 mantiene protección local y validación de infraestructura pendiente.
 
 ## Preparación de esta etapa
 
@@ -54,8 +54,10 @@
 - [x] Resolver identidad desde `ActorContext`/`TenantContext` y ámbito desde un puerto de autorización, en cada llamada y sin argumentos de usuario/tenant/establecimiento desde cliente.
 - [x] Ampliar `NotificationRepository` con marcado masivo único, acotado por ámbito/snapshot/corte del servidor, sin duplicar interfaz ni recorrer páginas.
 - [x] Probar unitariamente aislamiento, contexto ausente/denegado, cursor/límites, orden, contador y marcado idempotente sin modificaciones ajenas; sin acreditar todavía SQL/RLS.
-- [ ] Tras cerrar D-1/D-3/D-4, publicar contrato OpenAPI, reutilizando seguridad y Problem Details.
-- [ ] Ejecutar `pnpm api:lint`, `pnpm api:gen`, comprobar generación TS y no versionar `generated/`.
+- [x] Definir contrato OpenAPI MVP de cuatro operaciones, con bearer, Problem/no-store, cursor opaco y estado de implementación pendiente; sin API de preferencias/categorías.
+- [x] Ejecutar `pnpm api:lint`, `pnpm api:gen` y `pnpm api:check`, comprobar los cuatro métodos TS y no versionar `generated/`.
+- [x] Validar el contrato con seis pruebas focalizadas de alcance, identidad, cursor/límites, privacidad, respuestas/headers y proyecciones existentes.
+- [ ] Implementar codec HTTP seguro de cursor y validar ámbito/manipulación/caducidad sin exponer NotificationScope ni valores del token.
 - [ ] Implementar casos de uso y API de bandeja propia paginada/contador y marcado una/todas con persistencia real.
 - [ ] Rechazar campos desconocidos/privilegiados; principal como única identidad y autorización vigente independiente del flag.
 - [ ] Probar `400/401/403/404`, flags, orden/límites/cursor, no leídas, lectura idempotente, snapshot y carreras con nuevas notificaciones.
@@ -185,3 +187,18 @@
 - `node --test tools/scripts/new-flag.test.mjs`: **6/6**, incluidas comprobaciones cruzadas del registro real Java/TS/bootstrap. Prettier solo en archivos afectados, `git diff --check` y hooks de commit normales; sin codegen ni builds globales.
 - Runbook actualizado en `plan.md` §8: desactivar solo esta clave, verificar contexto/propagación y negocio, no borrar datos ni revertir migraciones, restaurar por segmento y reconciliar al disponer de API. Pendientes Unleash real: registro/estrategias y OFF efectivo, frescura SDK/proxy, upstream caído con proxy 200 cacheado, segmentación, OFF/ON, dos sesiones/tenants y rollback de superficies todavía inexistentes. No se afirma fallo cerrado end-to-end por estos mocks.
 - Sin cambios a main, MAP-285, autenticación/JWT, API generada, OpenAPI o eventos de negocio. Sin push, PR, merge, squash, Docker ni arranque de aplicación; MAP-299 permanece parcial por integración real.
+
+### 2026-11-21 — MAP-294: contrato OpenAPI MVP, sin HTTP operativo
+
+- Inicio limpio, rama existente, HEAD `529af57`. Jira MAP-294 reconsultado: **S6 — Endpoints de listado y marcado como leído**; alcance del incremento autorizado: definir/validar contrato que reutiliza los cuatro casos de uso, manteniendo endpoints sin implementar hasta JDBC/RLS y autorización reales.
+- Nuevas operaciones bajo servidor `/api/v1`: `GET /me/notifications`, `GET /me/notifications/unread-count`, `PATCH /me/notifications/{notificationId}/read`, `PATCH /me/notifications/read-all`. Las cuatro declaran `x-implementation-status: pending` y descripción explícita. Sin cambios a controladores, casos de uso, datos, STOMP ni frontend.
+- Ocho esquemas mínimos de cursor/tipos/categoría derivada/aviso/página/contador/resultados. Solo tipos de dominio existentes. El aviso omite identidad/tenant, PII y event-id interno; el listado acepta limit 1–100/default 20 y cursor opaco 1–2048 caracteres, con orden por creación/UUID descendente y continuación estricta. `hasMore: false` omite nextCursor. Contador separado: cada petición tiene su propia lectura, sin prometer snapshot compartido entre ambas.
+- Sin cuerpos de marcado ni usuario/tenant/establecimiento/fecha/corte del cliente. La aplicación futura derivará identidad desde principal y revalidará permisos; el codec deberá autenticar el cursor y su ámbito. OpenAPI describe rechazo de parámetros desconocidos, pero no lo implementa ni prueba HTTP.
+- Idempotencia individual conserva primera lectura. Marcado total usa corte único del reloj del servidor y UPDATE por ámbito/snapshot/createdAt; devuelve únicamente updatedCount, conforme al long del caso de uso. Repetir sin nuevas elegibles produce cero; cada ejecución posterior obtiene un corte nuevo.
+- Respuestas propias 200/400/401/403/404/500/503 reutilizan Problem y headers RequestId/NoStore, con `Cache-Control: no-store` en todas; errores globales existentes intactos. Mismo 404 para aviso ajeno/inexistente/no visible y gate OFF/no confiable tras autenticación/autorización. No hay stub que responda 503 o éxito ficticio.
+- `pnpm api:lint`: correcto; dos advertencias de 4xx en rutas existentes `/health` y `/demo-items`. No se modifica ese alcance. `node --test tools/scripts/notification-contract.test.mjs`: **6/6**, sin fallos/omitidas; el script usa el CLI Redocly instalado para bundlear YAML en un temporal y comprueba solo notificaciones. No añade herramientas ni dependencias globales.
+- `pnpm api:gen` y `pnpm api:check`: correctos. Se comprobó físicamente `generated/api/notifications.service.ts`, sus cuatro métodos y `NotificationItem.readAt: string | null`. El cliente es TypeScript; no se generan interfaces Java y no se versionan salidas ignoradas.
+- Un chequeo adicional detectó imports no usados de la plantilla del generador y archivos residuales de Mi cuenta provenientes de generaciones de otra rama. El generador no limpia archivos obsoletos. Se preservó el directorio derivado en `dist/map294-generated-backup-c89e806412084000a26395616de3aa31` (ignorado), verificando rutas dentro del workspace, y se regeneró limpio con los comandos existentes. No se editaron generados a mano ni se modificó MAP-285.
+- La regeneración limpia eliminó los residuos locales de Mi cuenta; `api:check` volvió a pasar. `pnpm exec tsc -p libs/api-client/tsconfig.lib.json --noEmit --noUnusedLocals false`: correcto. **El chequeo TS estricto sigue pendiente por imports sin uso de la plantilla generada** (TS6133/TS6192); no se declara verde ni se cambia configuración/generador para silenciarlo. Sin suites/builds globales.
+- Pendientes para cerrar MAP-294: JDBC/Flyway/RLS, autorización vigente/MAP-238 y gate contextual real, codec y validaciones de entrada, controladores/mapper de errores/no-store, transacciones y pruebas HTTP/SQL/cross-tenant/concurrencia. Preferencias, MAP-257 y tipos aún no definidos quedan fuera del contrato MVP. No hay endpoints operativos ni se marca completa la subtarea.
+- Se actualizan solo openapi.yaml, el test relacionado y estas tres specs. Prettier focalizado, diff y hooks normales al commit. Main y MAP-285 conservadas; sin push/PR/merge/squash, Docker ni aplicación.

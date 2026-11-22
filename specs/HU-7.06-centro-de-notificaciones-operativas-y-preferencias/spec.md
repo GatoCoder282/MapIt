@@ -1,6 +1,6 @@
 # HU-7.06 — Centro de notificaciones operativas y preferencias
 
-> **Estado:** MAP-292/MAP-293/MAP-294 parciales; MAP-299 con registro y protección local, sin validación con Unleash real ni integración UI/HTTP.
+> **Estado:** Contrato MVP de MAP-294 definido; HTTP, JDBC/RLS y autorización real pendientes. MAP-292/MAP-293/MAP-299 mantienen sus límites de integración.
 > **Ticket:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) · **Fecha:** 2026-11-21 · **Responsable:** Rodrigo Villarroel Ayala.
 
 ## Enunciado
@@ -89,7 +89,9 @@ La instrucción actual autoriza en MAP-293 la resolución y creación internas, 
 
 ## 7. Errores y recuperación esperados
 
-El contrato definitivo reutilizará `Problem` RFC 9457 y respuestas compartidas del OpenAPI. Se requieren `401` sin autenticación, `403` por permisos insuficientes, `404` indistinguible para identificadores no visibles y `400` por entradas inválidas. El código de respuesta del gate OFF y de dependencia no disponible se cerrará antes de publicar el contrato; no se anuncian endpoints operativos en esta etapa.
+El contrato MVP en `packages/api-contract/openapi.yaml` reutiliza `Problem` RFC 9457 y headers `RequestId`/`NoStore`. Las respuestas específicas de notificaciones añaden `Cache-Control: no-store` a éxitos y errores sin modificar respuestas globales de otros módulos. Define `401` sin identidad válida, `403` por falta de autorización de la funcionalidad, `404` indistinguible para aviso inexistente/ajeno/no visible y para gate OFF/no confiable después de autenticar/autorizar, `400` por entradas inválidas, `503` por dependencia necesaria no disponible y `500` seguro. Las cuatro operaciones tienen `x-implementation-status: pending`; no describen comportamiento HTTP ya operativo.
+
+El MVP incluye solo `GET /me/notifications`, `GET /me/notifications/unread-count`, `PATCH /me/notifications/{notificationId}/read` y `PATCH /me/notifications/read-all`, bajo `/api/v1`. El listado acepta `limit` (1–100, default técnico 20) y cursor opaco URL-safe de 1–2048 caracteres, vinculado a tenant/usuario/concesiones y autenticado por el servidor futuro. Orden estable `createdAt DESC, id DESC`; `nextCursor` se omite al terminar. Listado y contador separados reflejan lecturas independientes. Los marcados no admiten cuerpo, filtros ni corte temporal del cliente; el masivo devuelve solo `updatedCount`, que es lo que permite el caso de uso existente.
 
 Ante pérdida de STOMP, recuperar por API paginada. Ante error de API, mostrar error/reintento sin mezclar datos de sesiones anteriores. No marcar avisos leídos de manera optimista sin confirmación o reconciliación. Reintentos no duplican filas ni suman dos veces al contador.
 
@@ -122,8 +124,8 @@ Runtime con `mapit_app`, nunca owner para evitar RLS. `TenantScope.SET_LOCAL_SQL
 | --- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | D-1 | Matriz por evento: permiso efectivo, ámbito, destinatario y categoría; solicitudes de plataforma separadas de operaciones de tenant | Acordar con MAP-238/MAP-257; no asumir que todos los roles reciben todo                                            |
 | D-2 | Inbox en `operations`, puente de identidad en `bootstrap`; canal personal del transporte STOMP existente                            | Confirmar límites sin imports entre módulos y política vigente de identidad                                        |
-| D-3 | Paginación por cursor, contador autorizado, lectura idempotente y snapshot para marcar todas                                        | Cerrar forma pública, límites, errores y pruebas de concurrencia antes de OpenAPI                                  |
+| D-3 | MVP: cursor opaco, límite 1–100/default 20, contador separado y marcado idempotente con corte del servidor                          | Forma pública definida; codec seguro, controladores y concurrencia SQL pendientes                                  |
 | D-4 | Catálogo de categorías, defaults de preferencias, retención y canal de seguridad independiente                                      | Acordar reglas y productores; no prometer eventos inexistentes                                                     |
 | D-5 | Kill switch permanente OFF con evaluación por tenant/usuario/sesión y fallo cerrado local; no condiciona negocio                    | Registro/protección local implementados; quedan conexión de sesión, gates operativos y validación SDK/proxy reales |
 
-MAP-292 aporta dominio y contratos de persistencia; MAP-294, casos de uso de bandeja; y MAP-293, resolución/creación internas desde referencias a hechos confirmados. MAP-299 registra `mapit.s6.notification-center` como `kill-switch` permanente OFF en Java/TS/bootstrap y prepara evaluación contextual y limpieza local. Esta decisión técnica de tipo permite conservar el mecanismo de rollback sin un ciclo de retiro de release toggle; no sustituye autorización. La conexión real con sesión, gates y Unleash sigue pendiente. El contrato OpenAPI del MVP permanece aplazado; [plan.md](plan.md) contiene propuestas de operaciones, no endpoints. No se añaden persistencia, migraciones ni cliente generado, ni se declara completa la historia.
+MAP-292 aporta dominio y puertos; MAP-293/MAP-294, procesamiento y casos de uso internos. El contrato MVP de cuatro operaciones de bandeja está definido y el cliente TS se regenera localmente, sin versionar `generated/`. El alcance de MAP-257, cancelaciones sin productor y preferencias/categorías optativas sigue pendiente y no añade endpoints. MAP-299 conserva su kill switch OFF y protección local. No se añaden persistencia, controladores, migraciones, STOMP ni UI; ninguna subtarea se declara completa por este contrato.
