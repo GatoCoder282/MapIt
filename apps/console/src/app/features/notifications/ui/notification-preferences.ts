@@ -6,7 +6,7 @@ import { NotificationPreferencesStore } from '../model/notification-preferences-
   selector: 'mapit-notification-preferences',
   providers: [NotificationPreferencesStore],
   template: `<details (toggle)="opened($event)">
-    <summary>{{ strings.preferences }}</summary>
+    <summary data-testid="notification-preferences-toggle">{{ strings.preferences }}</summary>
     <p>{{ strings.preferencesHint }}</p>
     @if (vm.busy()) {
       <p role="status">{{ strings.preferencesLoading }}</p>
