@@ -1,0 +1,324 @@
+name: QA deploy
+
+# Slot de QA compartido: Render MapIt-QA (BD Neon `preview`) y dos alias estables de Vercel
+# sirven UNA rama feat/** a la vez. Runbook: docs/deployment/README.md · ADR-0012.
+#
+# Seguridad: ambos disparadores ejecutan la versión de este archivo que está en main
+# (workflow_dispatch desde main y pull_request_target). No se hace checkout ni se ejecuta código
+# del PR: la rama es solo un dato validado. Los secretos viven en el entorno `qa`, restringido a
+# main, así que un PR no puede leerlos editando este archivo.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Rama feat/** a desplegar en QA (o main para devolver el backend a main)
+        required: true
+        type: string
+      reset_db:
+        description: Restaurar la BD de QA (Neon preview) desde production
+        type: boolean
+        default: true
+  pull_request_target:
+    types: [labeled, synchronize, reopened]
+
+permissions:
+  contents: read
+
+env:
+  CONSOLE_PROJECT: map-it-n7y1
+  WEB_PROJECT: map-it-wuy2
+  QA_BACKEND_URL: https://mapit-qa.onrender.com
+  VERCEL_CLI_VERSION: "65.12.1"
+  NEONCTL_VERSION: "9.2.0"
+
+jobs:
+  resolve:
+    name: Validar rama
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(github.event.pull_request.labels.*.name, 'qa') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'qa'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      branch: ${{ steps.v.outputs.branch }}
+      sha: ${{ steps.v.outputs.sha }}
+      reset_db: ${{ steps.v.outputs.reset_db }}
+      pr: ${{ steps.v.outputs.pr }}
+    steps:
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+          INPUT_RESET: ${{ inputs.reset_db }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = workflow_dispatch ]; then
+            branch="$INPUT_BRANCH"; reset="$INPUT_RESET"; pr=""
+          else
+            branch="$PR_BRANCH"; pr="$PR_NUMBER"
+            # La BD solo se restaura al TOMAR el slot; un push nuevo conserva los datos de prueba.
+            if [ "$ACTION" = synchronize ]; then reset=false; else reset=true; fi
+          fi
+          if [ "$branch" != main ] && { [[ ! "$branch" =~ ^feat/[A-Za-z0-9._/-]+$ ]] || [[ "$branch" == *..* ]]; }; then
+            echo "::error title=Rama no permitida::'$branch' no es feat/** en ASCII. Vercel solo construye previews de feat/** (vercel.json); el slot QA acepta esas ramas o main."
+            exit 1
+          fi
+          if [ -n "$pr" ]; then
+            sha="$PR_SHA"
+          elif ! sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" --jq .object.sha 2>/dev/null); then
+            echo "::error title=Rama inexistente::'$branch' no existe en $GITHUB_REPOSITORY."
+            exit 1
+          fi
+          behind=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$sha" --jq .behind_by)
+          if [ "$behind" -gt 0 ]; then
+            echo "::warning title=Rama desactualizada::$branch va $behind commit(s) detrás de main. Rebasea: Flyway puede rechazar migraciones que choquen con las ya aplicadas en producción."
+          fi
+          { echo "branch=$branch"; echo "sha=$sha"; echo "reset_db=$reset"; echo "pr=$pr"; } >> "$GITHUB_OUTPUT"
+
+  frontends:
+    name: Esperar previews de Vercel
+    needs: resolve
+    if: needs.resolve.outputs.branch != 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      deployments: read
+    outputs:
+      console_url: ${{ steps.wait.outputs.console_url }}
+      web_url: ${{ steps.wait.outputs.web_url }}
+    steps:
+      - id: wait
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          SHA: ${{ needs.resolve.outputs.sha }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = process.env.SHA;
+            // Entornos que crea la integración de Vercel; el guion es "–" (U+2013).
+            const targets = {
+              console: `Preview – ${process.env.CONSOLE_PROJECT}`,
+              web: `Preview – ${process.env.WEB_PROJECT}`,
+            };
+            const found = {};
+            const deadline = Date.now() + 25 * 60 * 1000;
+            for (;;) {
+              for (const [key, environment] of Object.entries(targets)) {
+                if (found[key]) continue;
+                const { data: deployments } = await github.rest.repos.listDeployments({ owner, repo, sha, environment, per_page: 10 });
+                for (const deployment of deployments) {
+                  const { data: statuses } = await github.rest.repos.listDeploymentStatuses({ owner, repo, deployment_id: deployment.id, per_page: 30 });
+                  // Un push posterior marca el anterior como `inactive`: basta con un `success` previo.
+                  const ok = statuses.find((s) => s.state === 'success');
+                  if (ok) { found[key] = ok.environment_url || ok.target_url; break; }
+                  if (['failure', 'error'].includes(statuses[0]?.state)) {
+                    core.setFailed(`${environment}: el build de Vercel falló para ${sha}. ${statuses[0].log_url || statuses[0].target_url || ''}`);
+                    return;
+                  }
+                }
+              }
+              if (found.console && found.web) break;
+              if (Date.now() > deadline) {
+                const missing = Object.keys(targets).filter((k) => !found[k]).map((k) => targets[k]);
+                core.setFailed(`Sin preview 'success' tras 25 min para ${sha}: ${missing.join(', ')}. ¿El commit generó build en Vercel?`);
+                return;
+              }
+              await new Promise((r) => setTimeout(r, 20000));
+            }
+            for (const [key, url] of Object.entries(found)) {
+              if (!/^https:\/\/[a-z0-9-]+\.vercel\.app\/?$/.test(url)) { core.setFailed(`URL inesperada (${key}): ${url}`); return; }
+              core.setOutput(`${key}_url`, url.replace(/\/$/, ''));
+            }
+
+  deploy:
+    name: Desplegar slot QA
+    needs: [resolve, frontends]
+    if: >-
+      always() && needs.resolve.result == 'success' &&
+      (needs.frontends.result == 'success' || needs.frontends.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    # Concurrencia a nivel de job: un evento ignorado (otra etiqueta) no cancela un deploy pendiente.
+    concurrency:
+      group: qa-slot
+      cancel-in-progress: false
+    environment:
+      name: qa
+      url: https://${{ vars.QA_CONSOLE_ALIAS }}
+    env:
+      BRANCH: ${{ needs.resolve.outputs.branch }}
+      SHA: ${{ needs.resolve.outputs.sha }}
+      SERVICE_ID: ${{ vars.RENDER_QA_SERVICE_ID }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      QA_CONSOLE_ALIAS: ${{ vars.QA_CONSOLE_ALIAS }}
+      QA_WEB_ALIAS: ${{ vars.QA_WEB_ALIAS }}
+      CONSOLE_URL: ${{ needs.frontends.outputs.console_url }}
+      WEB_URL: ${{ needs.frontends.outputs.web_url }}
+    steps:
+      - name: Comprobar configuración
+        run: |
+          missing=()
+          for v in SERVICE_ID RENDER_API_KEY QA_CONSOLE_ALIAS QA_WEB_ALIAS; do [ -n "${!v}" ] || missing+=("$v"); done
+          [ ${#missing[@]} -eq 0 ] || { echo "::error::Faltan variables/secretos del entorno qa: ${missing[*]} (docs/deployment/README.md)"; exit 1; }
+
+      - name: Congelar auto-deploy de MapIt-QA
+        # Así el cambio de rama no dispara un deploy antes del reset de Neon.
+        run: |
+          curl -fsS -X PATCH "https://api.render.com/v1/services/$SERVICE_ID" \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" \
+            --data '{"autoDeployTrigger":"off"}' > /dev/null
+
+      - name: Restaurar Neon preview desde production
+        if: needs.resolve.outputs.reset_db == 'true'
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          NEON_BRANCH: ${{ vars.NEON_PREVIEW_BRANCH_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ] || [ -z "$NEON_BRANCH" ]; then
+            echo "::error::Faltan NEON_API_KEY / NEON_PROJECT_ID / NEON_PREVIEW_BRANCH_ID"
+            exit 1
+          fi
+          # Nunca resetear la rama por defecto (production) por un error de configuración.
+          default=$(npx --yes "neonctl@$NEONCTL_VERSION" branches list --project-id "$NEON_PROJECT_ID" --output json \
+            | jq -r '[.[] | select(.default == true)][0].id')
+          [ "$default" != "$NEON_BRANCH" ] || { echo "::error::NEON_PREVIEW_BRANCH_ID apunta a la rama por defecto"; exit 1; }
+          npx --yes "neonctl@$NEONCTL_VERSION" branches reset "$NEON_BRANCH" --parent \
+            --project-id "$NEON_PROJECT_ID" --output json | jq '{id, name, parent_id, updated_at}'
+
+      - name: Apuntar MapIt-QA a la rama y desplegar el commit exacto
+        id: render
+        run: |
+          set -euo pipefail
+          api="https://api.render.com/v1/services/$SERVICE_ID"
+          hdr=(-H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" -H "Content-Type: application/json")
+          get() { curl -fsS --retry 3 --retry-all-errors "${hdr[@]}" "$api$1"; }
+          pending() {
+            get "/deploys?limit=20" | jq -r --arg c "$SHA" \
+              '[.[].deploy | select(.commit.id == $c and (.status | IN("canceled","deactivated","build_failed","update_failed","pre_deploy_failed") | not))][0].id // empty'
+          }
+          jq -n --arg b "$BRANCH" '{branch: $b}' | curl -fsS -X PATCH "${hdr[@]}" --data @- "$api" > /dev/null
+          body=$(jq -n --arg c "$SHA" '{clearCache: "do_not_clear", commitId: $c}' \
+            | curl -fsS -X POST "${hdr[@]}" --data @- "$api/deploys") || body=""
+          deploy=$(jq -r '.id // empty' <<< "${body:-null}")
+          [ -n "$deploy" ] || deploy=$(pending)
+          [ -n "$deploy" ] || { echo "::error::Render no creó un deploy para $SHA"; exit 1; }
+          status=unknown
+          for _ in $(seq 1 120); do
+            status=$(get "/deploys/$deploy" | jq -r .status)
+            case "$status" in
+              live) break ;;
+              build_failed | update_failed | pre_deploy_failed)
+                echo "::error title=Render $status::https://dashboard.render.com/web/$SERVICE_ID/deploys/$deploy"
+                exit 1 ;;
+              canceled | deactivated)
+                # Otro deploy del MISMO commit (p. ej. disparado por el PATCH) lo reemplazó.
+                next=$(pending)
+                if [ -n "$next" ] && [ "$next" != "$deploy" ]; then deploy=$next; continue; fi
+                echo "::error::El deploy $deploy terminó como $status"
+                exit 1 ;;
+            esac
+            sleep 20
+          done
+          [ "$status" = live ] || { echo "::error::Render no llegó a live ($deploy: $status)"; exit 1; }
+          live=$(get "/deploys?limit=10" | jq -r '[.[].deploy | select(.status == "live")][0].commit.id // empty')
+          [ "$live" = "$SHA" ] || { echo "::error::MapIt-QA sirve $live, no $SHA (¿deploy concurrente?)"; exit 1; }
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+
+      - name: Esperar readiness (cold start de Render free)
+        run: |
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 60 "$QA_BACKEND_URL/actuator/health/readiness" | grep -q '"status":"UP"'; then exit 0; fi
+            sleep 10
+          done
+          echo "::error::$QA_BACKEND_URL/actuator/health/readiness no respondió UP"
+          exit 1
+
+      - name: Asignar alias estables de Vercel
+        if: env.BRANCH != 'main'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_SCOPE" ]; then
+            echo "::error::Faltan VERCEL_TOKEN / VERCEL_SCOPE"
+            exit 1
+          fi
+          vercel() { npx --yes "vercel@$VERCEL_CLI_VERSION" "$@" --token "$VERCEL_TOKEN" --scope "$VERCEL_SCOPE"; }
+          vercel alias set "$CONSOLE_URL" "$QA_CONSOLE_ALIAS"
+          vercel alias set "$WEB_URL" "$QA_WEB_ALIAS"
+          for alias in "$QA_CONSOLE_ALIAS" "$QA_WEB_ALIAS"; do
+            api=$(curl -fsS "https://$alias/assets/config.json" | jq -r .apiBaseUrl) \
+              || { echo "::error::https://$alias no es público: desactiva Vercel Authentication"; exit 1; }
+            [ "$api" = "$QA_BACKEND_URL/api/v1" ] \
+              || { echo "::error::$alias apunta a $api; revisa API_BASE_URL del entorno Preview en Vercel"; exit 1; }
+          done
+
+      - name: Resumen
+        if: always()
+        env:
+          RESET: ${{ needs.resolve.outputs.reset_db }}
+          DEPLOY: ${{ steps.render.outputs.deploy }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          {
+            echo "## Slot QA → \`$BRANCH\` @ \`${SHA:0:7}\` ($OUTCOME)"
+            echo
+            echo "| Pieza | URL |"
+            echo "| --- | --- |"
+            if [ "$BRANCH" != main ]; then
+              echo "| Console | https://$QA_CONSOLE_ALIAS ← $CONSOLE_URL |"
+              echo "| Public web | https://$QA_WEB_ALIAS ← $WEB_URL |"
+            else
+              echo "| Frontends | alias sin cambios (main no se publica en el slot) |"
+            fi
+            echo "| API | $QA_BACKEND_URL (deploy \`${DEPLOY:-n/a}\`) |"
+            echo "| BD | Neon \`preview\` $([ "$RESET" = true ] && echo 'restaurada desde production' || echo 'conservada') |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  handoff:
+    name: Ceder la etiqueta qa
+    needs: [resolve, deploy]
+    if: always() && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          PR: ${{ needs.resolve.outputs.pr }}
+          BRANCH: ${{ needs.resolve.outputs.branch }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+          ACTION: ${{ github.event.action }}
+          QA_CONSOLE_ALIAS: ${{ vars.QA_CONSOLE_ALIAS }}
+          QA_WEB_ALIAS: ${{ vars.QA_WEB_ALIAS }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const current = Number(process.env.PR || 0);
+            const open = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', per_page: 100 });
+            for (const pr of open) {
+              if (pr.number === current || !pr.labels.some((l) => l.name === 'qa')) continue;
+              await github.rest.issues.removeLabel({ owner, repo, issue_number: pr.number, name: 'qa' });
+              await github.rest.issues.createComment({ owner, repo, issue_number: pr.number,
+                body: `El slot QA pasó a \`${process.env.BRANCH}\`. Vuelve a poner la etiqueta \`qa\` para recuperarlo.` });
+            }
+            if (current && process.env.ACTION !== 'synchronize') {
+              await github.rest.issues.createComment({ owner, repo, issue_number: current, body: [
+                `QA listo en \`${process.env.SHA.slice(0, 7)}\`:`,
+                `- Console: https://${process.env.QA_CONSOLE_ALIAS}`,
+                `- Public web: https://${process.env.QA_WEB_ALIAS}`,
+                `- API: ${process.env.QA_BACKEND_URL}`,
+              ].join('\n') });
+            }

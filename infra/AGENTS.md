@@ -2,8 +2,9 @@
 
 ## Dónde estás
 
-Docker Compose para desarrollo local y ensayo de despliegue. El despliegue real no está
-previsto todavía, pero validamos desde ahora que todo corre en contenedores.
+Docker Compose para desarrollo local y ensayo de despliegue. Los entornos desplegados
+(Vercel + Render + Neon + Unleash en Render) no usan estos compose: su configuración, variables
+y el slot de QA están en [`docs/deployment/README.md`](../docs/deployment/README.md).
 
 ## Los tres compose
 
@@ -20,8 +21,9 @@ previsto todavía, pero validamos desde ahora que todo corre en contenedores.
 2. **SonarQube solo en la máquina de calidad**, y con cadencia baja. Cinco instancias
    producen cinco historiales y ninguna métrica confiable: Sonar mide _tendencia sobre
    código nuevo_. El resto del equipo usa SonarLint conectado a esa instancia.
-3. **El frontend NUNCA habla directo con Unleash**: pasa por `unleash-proxy` (:3063).
-   Exponer el servidor al navegador filtraría todo el catálogo de flags y el token admin.
+3. **El frontend NUNCA usa la API admin ni la de cliente de Unleash**: en local pasa por
+   `unleash-proxy` (:3063); desplegado usa la Frontend API (`/api/frontend`) con un token de
+   tipo _frontend_ (ADR-0013). Un token admin o de cliente en el navegador filtraría el catálogo.
 4. **No definas `PROXY_BASE_PATH`** en unleash-proxy: ya sirve en `/proxy` por sí solo,
    y la variable se antepone, dando `/proxy/proxy`.
 5. Los tokens de Unleash tienen formato `<proyecto>:<entorno>.<secreto>`, y el de **admin

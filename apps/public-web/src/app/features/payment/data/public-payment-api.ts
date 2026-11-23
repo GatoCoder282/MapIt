@@ -4,6 +4,7 @@ import {
   PublicPaymentsService,
   PublicAvailabilityService,
   ReceiptsService,
+  mockPaymentsAllowed,
   type SimulatePaymentRequest,
   type PaymentAttempt,
   type PaymentReceipt,
@@ -24,8 +25,17 @@ export class PublicPaymentApi {
   private readonly access = inject(ReservationAccess);
   private readonly runtime = inject(PublicRuntimeConfig);
   private readonly injector = inject(Injector);
-  readonly simulationAllowed = (): boolean =>
-    isDevMode() && ['development', 'test'].includes(this.runtime.config().environment);
+  /**
+   * Simulación MOCK contra el backend real. En local exige build de desarrollo; el despliegue
+   * de QA (`staging`) es build de producción y la habilita. El backend decide (HU-6.03, CN-11).
+   */
+  readonly simulationAllowed = (): boolean => {
+    const environment = this.runtime.config().environment;
+    return (
+      mockPaymentsAllowed(environment) &&
+      (environment.trim().toLowerCase() === 'staging' || isDevMode())
+    );
+  };
 
   checkout(scope: CheckoutScope): Observable<PublicCheckout> {
     return this.client.getPublicCheckout(this.params(scope));

@@ -72,6 +72,19 @@ export function paymentPreviewAllowed(
     ['development', 'test'].includes(config.environment)
   );
 }
+
+const MOCK_PAYMENT_ENVIRONMENTS: readonly string[] = ['development', 'dev', 'test', 'staging'];
+
+/**
+ * Indica si la interfaz puede ofrecer el proveedor MOCK_GATEWAY contra el backend real.
+ * `staging` es el despliegue de QA (previews de Vercel), cuyo backend corre con el perfil
+ * `dev` y por tanto el simulador mock. No habilita fixtures (ver `paymentPreviewAllowed`)
+ * y el backend sigue siendo quien rechaza el mock fuera de dev/test (HU-6.03, CN-11).
+ */
+export function mockPaymentsAllowed(environment: string | null | undefined): boolean {
+  return MOCK_PAYMENT_ENVIRONMENTS.includes((environment ?? '').trim().toLowerCase());
+}
+
 /** Token fijo de fixture pública; deliberadamente sin validez ni secreto en backend. */
 export const PREVIEW_RECEIPT_TOKEN = 'rH4L8sQk2Vd9ZxA7pW5nF3cB6jM0uYtE1gKoRiSvN_c';
 export const PREVIEW_RESERVATION_ID = '69000000-0000-0000-0000-000000000001';

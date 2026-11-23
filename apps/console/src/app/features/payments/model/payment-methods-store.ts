@@ -2,6 +2,7 @@ import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } f
 import {
   MockQrService,
   PaymentPoliciesService,
+  mockPaymentsAllowed,
   type AccessibleEstablishment,
   type MockQrConfiguration,
   type MockQrConfigurationWrite,
@@ -106,7 +107,7 @@ export class PaymentMethodsStore {
   private qrBaseline: QrDraft = { ...EMPTY };
   private policyBaseline: PolicyDraft = { ...EMPTY_POLICY };
 
-  readonly allowed = ['development', 'dev', 'test'].includes(this.runtime.config().environment);
+  readonly allowed = mockPaymentsAllowed(this.runtime.config().environment);
   readonly countries = this.countriesState.asReadonly();
   readonly configurations = this.configurationsState.asReadonly();
   readonly draft = this.draftState.asReadonly();

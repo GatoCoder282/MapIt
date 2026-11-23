@@ -2,9 +2,9 @@
 #  Sistema COMPLETO contenerizado — ensayo de despliegue.
 #  Levantar con:  pnpm infra:full
 #
-#  El despliegue aún no está previsto (todo en localhost), pero
-#  validamos desde ahora que todo corre en contenedores. Así no
-#  hay sorpresas al final del semestre.
+#  Valida en local que todo corre en contenedores. Los entornos
+#  desplegados (Vercel + Render + Neon) se describen en
+#  docs/deployment/README.md y no usan este archivo.
 # =============================================================
 
 name: ${COMPOSE_PROJECT_NAME:-mapit}
