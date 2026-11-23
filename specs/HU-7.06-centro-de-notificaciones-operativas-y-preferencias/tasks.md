@@ -1,7 +1,7 @@
 # Tareas — HU-7.06 Centro de notificaciones operativas y preferencias
 
 > **Historia:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) — HU-7.06 — Centro de notificaciones operativas y preferencias.
-> **Estado:** MVP conectado: eventos durables, HTTP/STOMP y preferencias propias, con QA focalizado aprobado. Flag OFF; despliegue V40, Unleash real, E2E y checks previos a PR pendientes.
+> **Estado:** MVP conectado: eventos durables, HTTP/STOMP y preferencias propias, con QA focalizado aprobado. Flag OFF; Unleash real y E2E validados. Pendientes: integración V40, catálogo fuera del MVP y gates de entrega/CI.
 
 ## Preparación de esta etapa
 
@@ -40,13 +40,13 @@
 - [x] Implementar resolución interna con candidatos del evento, exclusión cross-tenant, ámbito vigente y predicado de establecimiento según tipo; sin destinatarios ni roles desde payloads externos.
 - [x] Implementar creación mediante clave estable y `createIfAbsent`, conservando avisos canónicos/lecturas, sin depender del feature toggle ni conectar productores.
 - [x] Probar selección y reentrega con dobles de puertos: matriz mínima, usuarios/tenants ajenos, establecimiento/tipo, repetidos, ausencia de destinatarios y fallo de autorización antes de escribir.
-- [ ] Publicar hechos estables en la transacción real; cubrir reserva staff y reserva pública sin depender de auditoría de actor no nulo.
-- [ ] Conectar llegada al productor existente y añadir cancelación solo donde exista transición real de reserva.
+- [x] Publicar hechos estables en la transacción real; cubrir reserva staff y reserva pública sin depender de auditoría de actor no nulo.
+- [x] Conectar llegada al productor existente; cancelación queda pendiente por ausencia de productor real.
 - [ ] Integrar solicitud/aprobación/rechazo con MAP-257 cuando sus contratos y destinatarios estén disponibles.
-- [ ] Resolver destinatarios mediante puertos, usuarios activos y permisos efectivos por recurso/establecimiento.
-- [ ] Implementar consumo durable, reintentos y deduplicación independiente de `published_at` del broker actual.
-- [ ] Probar rollback de hecho, evento repetido, usuario desactivado/sin permiso y ausencia de PII innecesaria.
-- [ ] Probar negocio y publicación de hechos con flag del centro OFF y fallo de broker/proveedor; sin cambios globales.
+- [x] Resolver destinatarios mediante puertos, usuarios activos y permisos efectivos por recurso/establecimiento.
+- [x] Implementar consumo durable, reintentos y deduplicación independiente de `published_at` del broker actual.
+- [x] Probar rollback de hecho, evento repetido, usuario desactivado/sin permiso y ausencia de PII innecesaria.
+- [x] Probar negocio y publicación de hechos con flag del centro OFF y fallo de broker/proveedor; sin cambios globales.
 
 ## MAP-294 — S6 — Endpoints de listado y marcado como leído
 
@@ -67,12 +67,12 @@
 
 - [x] Definir contrato preparado `/user/topic/notifications`, principal compuesto y envelope mínimo en `docs/api/realtime.md`; canal aún no habilitado.
 - [x] Preparar puerto/adaptador no registrado de publicación y recepción/refcount/parser en el mismo `@mapit/realtime`, con binding de sesión explícito ausente por defecto.
-- [ ] Integrar broker/interceptor con identidad vigente y destino lógico/físico autorizado, sin romper salas operativas ni acceso público de pagos.
-- [ ] Revalidar CONNECT/SUBSCRIBE/outbound con MAP-238 y permisos actuales; rechazar SEND, suplantación y sesión anónima.
+- [x] Integrar broker/interceptor con identidad vigente y destino lógico/físico autorizado, sin romper salas operativas ni acceso público de pagos.
+- [x] Revalidar CONNECT/SUBSCRIBE/outbound con MAP-238 y permisos actuales; rechazar SEND, suplantación y sesión anónima.
 - [x] Preparar reconciliación HTTP desde el store al conectar/reconectar, coalescencia/deduplicación de señales y descarte de callbacks/respuestas antiguos, incluyendo invalidaciones durante fetch/escritura.
-- [ ] Conectar publicación solo después de commit durable y destinatarios autorizados; no registrar todavía el publicador ni callback runtime.
-- [ ] Probar dos sesiones, token revocado, cambio de rol/tenant/usuario, expiración y respuestas tardías.
-- [ ] Verificar que OFF del centro solo cancela su suscripción y no desconecta operaciones/pagos.
+- [x] Conectar publicación runtime después de commit durable y destinatarios autorizados.
+- [x] Probar dos sesiones, token revocado, cambio de rol/tenant/usuario, expiración y respuestas tardías.
+- [x] Verificar que OFF del centro solo cancela su suscripción y no desconecta operaciones/pagos.
 
 ## MAP-296 — S6 — Centro de notificaciones UI y contador
 
@@ -81,34 +81,36 @@
 - [x] Integrar el panel en cabecera autenticada, fuera del outlet condicionado al establecimiento, con gate contextual; sin ruta nueva ni enlaces no definidos.
 - [x] Vaciar datos y descartar respuestas al cambiar usuario/tenant/sesión/OFF; reconciliar contador tras marcado confirmado.
 - [x] Usar catálogos español/inglés/japonés, tokens existentes, teclado/cierre/foco y contador accesible; compilar plantilla y SCSS en pruebas focalizadas.
-- [ ] Conectar HTTP real con autorización y persistencia; verificar ambos shells, dos sesiones, móvil, foco y accesibilidad en navegador con stack autorizado. Reconciliación STOMP/reconexión corresponde a MAP-295.
+- [x] Conectar HTTP real con autorización y persistencia; verificar ambos shells, dos sesiones, móvil, foco y accesibilidad en navegador con stack autorizado. Reconciliación STOMP/reconexión corresponde a MAP-295.
 
 ## MAP-297 — S6 — Preferencias por categoría y notificaciones obligatorias
 
-- [ ] Acordar catálogo/defaults y persistencia; aplicar preferencias solo a categorías optativas en backend.
-- [ ] Rechazar silenciar seguridad y payloads desconocidos de forma atómica; documentar canal obligatorio independiente del centro.
-- [ ] Publicar/validar contrato de preferencias antes de implementar su API, sin simular éxito o persistencia.
+- [x] Persistir preferencias de RESERVATIONS/OPERATIONS, default ON, y aplicarlas en backend.
+- [ ] Acordar catálogo externo restante/defaults con producto.
+- [x] Rechazar silenciar seguridad y payloads desconocidos de forma atómica; no alterar emails transaccionales previos.
+- [ ] Acordar productores/canal de futuras categorías obligatorias, sin inventar eventos.
+- [x] Publicar/validar contrato de preferencias antes de implementar su API, sin simular éxito o persistencia.
 - [ ] Integrar UI en Mi cuenta cuando MAP-285 esté disponible, mediante APIs compartidas permitidas y sin copiar su feature.
-- [ ] Probar enforcement, cambios de sesión y aislamiento; no convertir una preferencia local de idioma en persistencia ficticia.
+- [x] Probar enforcement, cambios de sesión y aislamiento; no convertir una preferencia local de idioma en persistencia ficticia.
 
 ## MAP-298 — S6 — QA E2E de notificaciones, roles y deduplicación
 
-- [ ] Cubrir evento real → persistencia → recepción → lectura, recarga y reconexión sin duplicación.
-- [ ] Cubrir matriz de roles, pérdida de permisos, dos sesiones y tenants con contador/detalle/lectura seguros.
-- [ ] Probar retención, concurrencia, errores, carga acotada y regresión de reserva/check-in con flag OFF/ON.
-- [ ] Probar escritorio/móvil, foco/teclado e idiomas con el stack real cuando se autorice iniciarlo.
-- [ ] Registrar comandos, resultados y limitaciones; no sustituir integración/E2E por mocks o inspección estática.
+- [x] Cubrir evento real → persistencia → recepción → lectura, recarga y reconexión sin duplicación.
+- [x] Cubrir matriz de roles, pérdida de permisos, dos sesiones y tenants con contador/detalle/lectura seguros.
+- [x] Probar retención, concurrencia, errores, carga acotada y regresión de reserva/check-in con flag OFF/ON.
+- [x] Probar escritorio/móvil y foco/teclado con stack real; localización en inglés/japonés verificada en unitarios de UI.
+- [x] Registrar comandos, resultados y limitaciones; no sustituir integración/E2E por mocks o inspección estática.
 
 ## MAP-299 — S6 — Feature toggle Centro de notificaciones Unleash
 
 - [x] Resolver tooling multisegmento y cierre del enum sin copiar MAP-285 ni cambiar flags ajenos.
-- [x] Registrar `mapit.s6.notification-center` idéntico en Java/TS/bootstrap OFF; tipo kill switch permanente para rollback, responsable Rodrigo. Sin activación/seed en un servidor real.
+- [x] Registrar `mapit.s6.notification-center` idéntico en Java/TS/bootstrap OFF; tipo kill switch permanente para rollback, responsable Rodrigo. Registro verificado en Unleash real; QA temporal restaurado a OFF.
 - [x] Preparar evaluación contextual y fallo cerrado después de ON, invalidación de caché/respuestas y frescura local, manteniendo comportamiento de otros flags.
 - [x] Probar localmente OFF/ON, flag ausente, proveedor con error, cambio de contexto y evaluación tardía en frontend/backend.
 - [x] Conectar cambios reales de AuthSession al contexto frontend, nonce nuevo por login y limpieza al salir; sin leer/enviar JWT al proxy.
-- [ ] Construir contexto backend desde identidad validada; no usar JWT como nonce.
-- [ ] Aplicar gate a acceso UI/URL/API/canal personal; mantener autorización y eventos de negocio independientes.
-- [ ] Ejecutar runbook de `plan.md` con Unleash real: propagación, rollback sin pérdida de datos y restauración segura.
+- [x] Construir contexto backend desde identidad validada; nonce opaco con separación de propósito, sin enviar JWT al proveedor.
+- [x] Aplicar gate a acceso UI/URL/API/canal personal; mantener autorización y eventos de negocio independientes.
+- [x] Ejecutar runbook de `plan.md` con Unleash real: propagación, rollback sin pérdida de datos y restauración segura.
 
 ## Cierre y entrega futura
 
@@ -296,3 +298,12 @@
 - Antes de cerrar: integrar V40 por su historia, resolver/verificar frescura visual del proxy, error E2E ajeno, logging con stack completo, duración de retención con producto y CI remoto/captura de Checks verdes exigida por ticket-delivery. Sin push/PR: esa evidencia remota sigue abierta. MAP-257 continúa fuera del MVP.
 
 - Cierre local: backend y Angular QA detenidos; los cinco contenedores iniciados para QA volvieron a stopped, sin rm/prune ni borrado de volúmenes/imágenes existentes. Flag del centro OFF y cero estrategias temporales (flags-restored.json/cleanup.json). V40 ausente de recursos generados y código fuente; fixture conservado únicamente en .tmp ignorado. main sigue en fd22d78903a5a2697c1fc20a4769a2f254d8e526 y MAP-285 en 348fd1f403bbc578eabec9b68f38c4856be3cbf0. Sin push, PR, merge, rebase ni squash.
+
+### 2026-11-22 — Revisión pre-PR sin ampliar funcionalidades
+
+- Jira MAP-286 reconsultado; clasificación por criterio/alcance en spec.md §11. Checklist actualizado a evidencia real; permanecen abiertos catálogo/producto, integración de Mi cuenta y entrega final. No se encontraron stubs, datos simulados, rutas pendientes ni omisiones de autorización en las seis operaciones del centro; pagos MOCK pertenecen al proveedor de desarrollo anterior y no son notificaciones ficticias. Productores y persistencia no consultan el flag.
+- El 6/7 histórico se debió a tipado de notification-preferences.spec.ts y a dos fixtures del shell, corregidos en d6252e7. Etapas restantes y 696 pruebas frontend ya se validaron en QA; no se repitió check completo ni suites aprobadas. Las nuevas correcciones solo ejecutaron pruebas afectadas.
+- Fallback corregido sin cambios globales de Unleash: confirmación autenticada del gate backend existente, OFF inicial, sondeo 10 s/timeout 5 s y descarte por sesión. ng test console filtrado por notification-session-context.spec.ts y staff-shell.spec.ts: **27/27** (8 de contexto, 19 del shell). ESLint afectado max-warnings=0 y tsc estricto de consola correctos; Angular QA compiló plantillas. Evidencia .tmp/map286-final-qa/pre-pr-context.log.
+- Unleash/proxy/backend/Chrome reales: **6 comprobaciones aprobadas** (caída proxy, backend cerrado, UI cerrada con upstream caído y proxy ON cacheado, login independiente, recuperación sin recarga y rollback posterior). pre-pr-provider-result.json/pre-pr-provider.log. Solo base QA tmpfs en 15433; V40 en classpath temporal independiente, sin copiarla al repositorio ni alterar almacenamiento Docker.
+- Guard de migraciones: 11 unitarias correctas (dependencia exacta, estados, orden y configuración); ArchUnit correcto; Spotless Java/KotlinGradle correcto. PostgreSQL negativo prueba que el artefacto sin V40 no crea app_user/notification; el positivo existente prueba arranque/RLS con V40 real. pre-pr-backend.log, pre-pr-migration-it.log y pre-pr-dependency-final.log. CLI con URL inerte :1 falló por el preflight esperado antes de conectar: pre-pr-cli-guard.log. No se alteran checksums de migraciones publicadas ni DBML porque no cambia el esquema.
+- Pendientes externos: integrar V40/base final por la historia correspondiente, CI/captura antes de merge, logging con stack completo y decisión sobre catálogo Jira excluido del MVP. El tipado E2E ajeno se comunica, no se oculta. No se declara la HU completa ni lista para merge. Sin push/PR/merge/rebase/squash ni cambios a main/MAP-285.

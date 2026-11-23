@@ -1,6 +1,6 @@
 # HU-7.06 — Centro de notificaciones operativas y preferencias
 
-> **Estado:** MVP conectado: hechos existentes, JDBC/RLS, HTTP, STOMP privado, UI y preferencias optativas. Flag OFF; QA local focalizado, despliegue V40 y verificaciones previas a PR pendientes. MAP-257 queda fuera del MVP.
+> **Estado:** MVP conectado: hechos existentes, JDBC/RLS, HTTP, STOMP privado, UI y preferencias optativas. Flag OFF; QA real realizado y fallback cacheado corregido; dependencia V40 y gates de entrega pendientes. MAP-257 queda fuera del MVP.
 > **Ticket:** [MAP-286](https://matiasmv2005.atlassian.net/browse/MAP-286) · **Fecha:** 2026-11-21 · **Responsable:** Rodrigo Villarroel Ayala.
 
 ## Enunciado
@@ -98,14 +98,14 @@ Ante pérdida de STOMP, recuperar por API paginada. Ante error de API, mostrar e
 ## 8. Criterios de aceptación
 
 - [x] **CA-1:** Dadas dos personas del mismo tenant y otra de un tenant diferente, cuando listan, cuentan, consultan detalle o marcan avisos, entonces cada una solo opera sobre sus avisos autorizados.
-- [ ] **CA-2:** Dado un evento de negocio confirmado de un tipo habilitado, cuando se procesa y reentrega, entonces se persiste una sola notificación por destinatario autorizado y se ofrece entrega in-app sin recarga.
+- [x] **CA-2:** Dado un evento de negocio confirmado de un tipo habilitado, cuando se procesa y reentrega, entonces se persiste una sola notificación por destinatario autorizado y se ofrece entrega in-app sin recarga.
 - [x] **CA-3:** Dada una bandeja con varias páginas, cuando se consulta y marca una/todas leídas, entonces el orden, contador y `readAt` persisten sin duplicados ni pérdida de avisos concurrentes.
-- [ ] **CA-4:** Dadas dos sesiones o una reconexión, cuando se recupera el estado por API, entonces ambas convergen al estado persistido sin duplicación.
-- [ ] **CA-5:** Dado un cambio de sesión, tenant, rol, estado o acceso al establecimiento, cuando llega una respuesta o entrega anterior, entonces no expone información fuera del ámbito vigente.
-- [ ] **CA-6:** Dadas preferencias optativas deshabilitadas, cuando se procesa una categoría afectada, entonces se aplica la preferencia en backend y ningún mensaje de seguridad obligatorio puede silenciarse.
-- [ ] **CA-7:** Dado OFF o fallo del proveedor después de un ON, cuando se intenta acceso por UI, URL, HTTP o STOMP, entonces el centro falla cerrado y el negocio y sus eventos siguen funcionando.
-- [ ] **CA-8:** Dado un rollback OFF seguido de ON, cuando se vuelve a consultar la bandeja, entonces se recuperan los datos retenidos y estados de lectura sin revertir migraciones ni reiniciar procesos de negocio.
-- [ ] **CA-9:** Dado escritorio/móvil y español/inglés/japonés, cuando se usa la campana y el centro con teclado, entonces contador, foco, estados y detalle son comprensibles y accesibles, sin desbordamiento horizontal.
+- [x] **CA-4:** Dadas dos sesiones o una reconexión, cuando se recupera el estado por API, entonces ambas convergen al estado persistido sin duplicación.
+- [x] **CA-5:** Dado un cambio de sesión, tenant, rol, estado o acceso al establecimiento, cuando llega una respuesta o entrega anterior, entonces no expone información fuera del ámbito vigente.
+- [x] **CA-6:** Dadas preferencias optativas deshabilitadas, cuando se procesa una categoría afectada, entonces se aplica la preferencia en backend y ningún mensaje de seguridad obligatorio puede silenciarse.
+- [x] **CA-7:** Dado OFF o fallo del proveedor después de un ON, cuando se intenta acceso por UI, URL, HTTP o STOMP, entonces el centro falla cerrado y el negocio y sus eventos siguen funcionando.
+- [x] **CA-8:** Dado un rollback OFF seguido de ON, cuando se vuelve a consultar la bandeja, entonces se recuperan los datos retenidos y estados de lectura sin revertir migraciones ni reiniciar procesos de negocio.
+- [x] **CA-9:** Dado escritorio/móvil y español/inglés/japonés, cuando se usa la campana y el centro con teclado, entonces contador, foco, estados y detalle son comprensibles y accesibles, sin desbordamiento horizontal.
 - [ ] **CA-10:** Dadas las verificaciones unitarias, PostgreSQL/RLS, integración y E2E aplicables, cuando se ejecutan, entonces se registran resultados reales, incluida regresión de reservas con flag OFF/ON.
 
 ## 9. Datos, tenant y privacidad
@@ -122,16 +122,30 @@ Runtime con `mapit_app`, nunca owner para evitar RLS. `TenantScope.SET_LOCAL_SQL
 
 ## 10. Decisiones pendientes y límite de esta entrega
 
-| ID  | Propuesta técnica que debe validarse                                                                                                | Condición para avanzar                                                                                                               |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| D-1 | Matriz por evento: permiso efectivo, ámbito, destinatario y categoría; solicitudes de plataforma separadas de operaciones de tenant | Acordar con MAP-238/MAP-257; no asumir que todos los roles reciben todo                                                              |
-| D-2 | Inbox en `operations`, puente de identidad en `bootstrap`; canal personal del transporte STOMP existente                            | Confirmar límites sin imports entre módulos y política vigente de identidad                                                          |
-| D-3 | MVP: cursor opaco, límite 1–100/default 20, contador separado y marcado idempotente con corte del servidor                          | Codec, controladores y concurrencia SQL implementados; integración UI con backend/QA de infraestructura pendiente                    |
-| D-4 | Catálogo de categorías, defaults de preferencias, retención y canal de seguridad independiente                                      | Acordar reglas y productores; no prometer eventos inexistentes                                                                       |
-| D-5 | Kill switch permanente OFF con evaluación por tenant/usuario/sesión y fallo cerrado local; no condiciona negocio                    | Registro/protección local y sesión frontend conectados; gate HTTP conectado; faltan gate STOMP privado y validación SDK/proxy reales |
+| ID  | Propuesta técnica que debe validarse                                                                                                | Condición para avanzar                                                                          |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D-1 | Matriz por evento: permiso efectivo, ámbito, destinatario y categoría; solicitudes de plataforma separadas de operaciones de tenant | Acordar con MAP-238/MAP-257; no asumir que todos los roles reciben todo                         |
+| D-2 | Inbox en `operations`, puente de identidad en `bootstrap`; canal personal del transporte STOMP existente                            | Confirmar límites sin imports entre módulos y política vigente de identidad                     |
+| D-3 | MVP: cursor opaco, límite 1–100/default 20, contador separado y marcado idempotente con corte del servidor                          | Codec, controladores, SQL, UI y QA real implementados; entrega sobre base final pendiente       |
+| D-4 | Catálogo de categorías, defaults de preferencias, retención y canal de seguridad independiente                                      | Acordar reglas y productores; no prometer eventos inexistentes                                  |
+| D-5 | Kill switch permanente OFF con evaluación por tenant/usuario/sesión y fallo cerrado local; no condiciona negocio                    | Registro, sesión y gates HTTP/STOMP validados; fallback cacheado corregido; V40 y CI pendientes |
 
-MAP-292 aporta dominio y puertos; MAP-293/MAP-294, procesamiento y casos de uso internos. El contrato MVP de cuatro operaciones de bandeja está definido y el cliente TS se regenera localmente, sin versionar `generated/`. MAP-296 incorpora campana/panel compartido en los shells de staff y administración, transporte generado real, contador, cursor, referencias mínimas y marcado confirmado por servidor. La entrada permanece oculta con `mapit.s6.notification-center` OFF. HTTP/persistencia/autorización ya están conectados. Los dos productores existentes y su consumidor durable están conectados. Antes de activar para usuarios, validar Unleash real y E2E; no hay avisos ficticios. MAP-257, cancelaciones sin productor y ampliaciones del catálogo quedan pendientes; no se inventan esos eventos. MAP-295 conecta entrega privada autorizada y reconciliación HTTP en el transporte compartido. V41–V43/JDBC, las seis operaciones HTTP y el canal STOMP privado están conectados bajo gate; las preferencias optativas propias se ofrecen en el panel. No se declara completa MAP-286 ni se acredita QA E2E/Unleash real por pruebas backend.
+MVP conectado: dos productores existentes, consumidor durable, JDBC/RLS, seis operaciones HTTP, entrega STOMP privada autorizada y UI de campana/preferencias. La QA real y la revisión de fallo cerrado están documentadas en §11 y tasks.md. El catálogo externo y la dependencia V40 impiden declarar completa la HU o autorizar merge/despliegue; no hay endpoints ni avisos ficticios.
 
 ### Incremento MVP autorizado — 2026-11-22
 
 Conectar únicamente reserva creada (staff/pública) y check-in existentes. Capturar hecho y candidatos activos en la transacción original; consumidor durable separado de flags/broker, revalidando destinatarios. Señales privadas posteriores al commit con autorización vigente de MAP-238 y aislamiento por sesión/tenant. Preferencias optativas RESERVATIONS/OPERATIONS propias, default ON, persistidas; rechazar cualquier intento de modificar categorías críticas/desconocidas. UI de preferencias dentro del panel, sin copiar Mi cuenta. V40 no existe en esta rama: conservar despliegue V40→V41→V42→V43 y no copiar MAP-285.
+
+## 11. Revisión pre-PR — 2026-11-22
+
+Jira MAP-286 reconsultado (criterios 1–7 y DoD); no se amplió el catálogo autorizado por el usuario. CA-1–CA-9 están implementados y probados para RESERVATION_CREATED/RESERVATION_CHECKED_IN: dominio/JDBC/RLS/HTTP, destinatarios vigentes, STOMP privado, preferencias optativas, recuperación, i18n y accesibilidad básica. CA-10 permanece abierto por la entrega sobre base final y evidencia de CI/stack completo; el 6/7 histórico no se presenta como un pnpm check verde.
+
+| Pendiente                                                                                                           | Clasificación                               | Motivo / condición de cierre                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Integrar MAP-285/V40 en la base de MAP-286 antes de migrar                                                          | **BLOQUEANTE para merge/despliegue**        | V40 no se distribuye en esta rama. El arranque Spring y el CLI fallan antes de migrar si falta la dependencia; no copiar, renumerar ni usar outOfOrder.                  |
+| Catálogo Jira completo: solicitudes/decisiones MAP-257, cancelación sin productor y selección de cambios operativos | **BLOQUEANTE para declarar la HU completa** | Fuera del MVP acotado autorizado. Requiere productores/política reales o aceptación explícita del alcance parcial por producto; no inventar eventos. No bloquea negocio. |
+| CI sobre base final y captura de Checks; logging con stack completo                                                 | **BLOQUEANTE para merge/DoD**               | Evidencia local no sustituye CI. Logging smoke anterior falló por infraestructura incompleta; no consta aprobado.                                                        |
+| Preferencias en panel mientras Mi cuenta no esté integrada; retención propuesta 30 días, purga OFF                  | **NO BLOQUEANTE para revisar el MVP**       | Alternativa autorizada sin duplicar MAP-285; confirmar parámetros/UX antes del rollout. Seguridad no tiene preferencia editable.                                         |
+| Typecheck E2E global: unified-login.spec.ts:7 (reducedMotion), preexistente                                         | **NO BLOQUEANTE atribuible a MAP-286**      | Informar al responsable; no desactivar chequeos ni alterar otra historia. El E2E focalizado del centro está tipado y pasó.                                               |
+
+El fallo cacheado de CA-7 quedó corregido: un ON del proxy es solo candidato. La consola exige además count autenticado del backend, sin transfer cache, al habilitar y cada 10 s con timeout de 5 s. 404/403/401/503, error, timeout o cuerpo inválido cierran el centro y limpian sus datos por el mecanismo existente; la revisión/identidad descarta respuestas anteriores. El gate backend conserva su frescura de hasta 30 s; no se promete propagación instantánea. Recupera sin recargar al volver backend ON. No se modifican otros flags, autenticación, productores ni operaciones de negocio.
