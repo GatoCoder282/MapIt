@@ -1,0 +1,64 @@
+{
+  "initialPaint": [
+    {
+      "index": 0,
+      "width": 935,
+      "height": 935,
+      "sector": 0,
+      "child": 3603
+    },
+    {
+      "index": 1,
+      "width": 935,
+      "height": 935,
+      "sector": 0,
+      "child": 0
+    },
+    {
+      "index": 2,
+      "width": 935,
+      "height": 935,
+      "sector": 2112,
+      "child": 372
+    }
+  ],
+  "finalPaint": [
+    {
+      "index": 0,
+      "width": 935,
+      "height": 935,
+      "sector": 0,
+      "child": 3603
+    },
+    {
+      "index": 1,
+      "width": 935,
+      "height": 935,
+      "sector": 0,
+      "child": 0
+    },
+    {
+      "index": 2,
+      "width": 935,
+      "height": 935,
+      "sector": 2112,
+      "child": 372
+    }
+  ],
+  "initial": {
+    "x": 40,
+    "y": 40,
+    "elements": 3
+  },
+  "saved": {
+    "x": 95,
+    "y": 75
+  },
+  "reloaded": {
+    "x": 95,
+    "y": 75,
+    "elements": 3
+  },
+  "sectorPainted": true,
+  "childPainted": true
+}
