@@ -1,8 +1,8 @@
 package com.mapit.spaces.infrastructure.sector;
 
 import java.time.Instant;
-import java.util.UUID;
 import java.util.Map;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import org.hibernate.annotations.ColumnTransformer;
+
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.spaces.domain.AuditTrail;
 import com.mapit.spaces.domain.Slug;

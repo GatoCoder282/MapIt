@@ -78,7 +78,7 @@ type MonitorPanel = (typeof PANELS)[number];
   providers: [SpaceMonitorStore, QuickReservationStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './space-monitor.html',
-  styleUrl: './space-monitor.scss',
+  styleUrls: ['./space-monitor.scss', './space-monitor-panel.scss'],
   host: { '(document:keydown.escape)': 'handleEscape($event)' },
 })
 export class SpaceMonitor implements OnDestroy {

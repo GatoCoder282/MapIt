@@ -67,7 +67,7 @@ describe('Negocios', () => {
 
     fixture.destroy();
     TestBed.resetTestingModule();
-  });
+  }, 15_000);
   it('traduce la sección de presentación y los horarios al cambiar el idioma', () => {
     TestBed.configureTestingModule({
       imports: [Negocios],

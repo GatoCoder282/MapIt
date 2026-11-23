@@ -1,8 +1,8 @@
 package com.mapit.spaces.domain.sector;
 
 import java.time.Instant;
-import java.util.Objects;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import com.mapit.shared.tenant.TenantId;

@@ -1,8 +1,8 @@
 package com.mapit.spaces.application.sector;
 
 import java.time.Instant;
-import java.util.UUID;
 import java.util.Map;
+import java.util.UUID;
 
 import com.mapit.spaces.domain.sector.Sector;
 
