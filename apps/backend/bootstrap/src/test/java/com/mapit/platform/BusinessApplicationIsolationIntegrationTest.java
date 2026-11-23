@@ -19,7 +19,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/** MAP-261: la migración V34 aísla las solicitudes previas al alta con el rol runtime. */
+/** MAP-261: la migración V40 aísla las solicitudes previas al alta con el rol runtime. */
 @Tag("integration")
 @SpringBootTest
 @Testcontainers

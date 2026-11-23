@@ -37,6 +37,7 @@ import com.mapit.identity.domain.UserRole;
 import com.mapit.platform.domain.AdminInvitationEmailPort;
 import com.mapit.platform.domain.BusinessApplicationDecisionEmailPort;
 import com.mapit.platform.domain.BusinessApplicationStatus;
+import com.mapit.shared.invitation.MemberInvitationMail;
 import com.mapit.shared.tenant.TenantId;
 
 /** MAP-264: la bandeja usa RLS de platform y autorización real por rol. */
@@ -66,7 +67,8 @@ class BusinessApplicationReviewIntegrationTest {
   @Autowired JdbcTemplate jdbc;
   @Autowired PlatformTransactionManager transactions;
   @Autowired AccessTokenIssuer tokens;
-  @MockitoBean AdminInvitationEmailPort invitationEmail;
+  @MockitoBean(extraInterfaces = MemberInvitationMail.class)
+  AdminInvitationEmailPort invitationEmail;
   @MockitoBean BusinessApplicationDecisionEmailPort decisionEmail;
 
   @Test
@@ -264,7 +266,24 @@ class BusinessApplicationReviewIntegrationTest {
   }
 
   private String token(UserRole role) {
-    return tokens.issue(new AuthenticatedUser(UUID.randomUUID(), TenantId.of("auth-a"),
-        "review@example.test", "Reviewer", role)).value();
+    UUID id = UUID.randomUUID();
+    String tenant = role == UserRole.SUPER_ADMIN ? "platform" : "auth-a";
+    String email = "review-" + id + "@example.test";
+    new TransactionTemplate(transactions).executeWithoutResult(tx -> {
+      if ("auth-a".equals(tenant)) {
+        jdbc.update("""
+            insert into tenant (id, name, slug, status, vertical)
+            values ('auth-a', 'Authorization test', 'auth-a', 'ACTIVE', 'RESTAURANT')
+            on conflict (id) do nothing
+            """);
+      }
+      jdbc.queryForObject("select set_config('app.tenant_id', ?, true)", String.class, tenant);
+      jdbc.update("""
+          insert into app_user (id, tenant_id, email, password_hash, full_name, role)
+          values (?, ?, ?, 'unused-test-hash', 'Review test user', ?)
+          """, id, tenant, email, role.name());
+    });
+    return tokens.issue(new AuthenticatedUser(id, TenantId.of(tenant),
+        email, "Review test user", role)).value();
   }
 }
