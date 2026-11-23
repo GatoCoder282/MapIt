@@ -16,11 +16,20 @@ import com.mapit.spaces.domain.Slug;
  */
 public interface FloorRepository {
 
-  /** Pisos vivos de un establecimiento, ordenados por nivel ascendente. */
+  /** Pisos vivos de un establecimiento, en orden de presentación. */
   List<Floor> findAliveByEstablishmentId(TenantId tenantId, UUID establishmentId);
+
+  default boolean reorder(
+      TenantId tenantId, UUID establishmentId, List<UUID> previousIds, List<UUID> floorIds) {
+    throw new UnsupportedOperationException();
+  }
 
   /** Busca uno vivo por id. Vacío si no existe, está dado de baja o es de otro tenant. */
   Optional<Floor> findAliveById(TenantId tenantId, UUID id);
+
+  default Optional<Floor> findAliveByIdForUpdate(TenantId tenantId, UUID id) {
+    return findAliveById(tenantId, id);
+  }
 
   /** Busca un piso vivo por su slug para detectar conflictos. */
   Optional<Floor> findAliveBySlug(TenantId tenantId, UUID establishmentId, Slug slug);

@@ -74,6 +74,12 @@ export interface SectorPlacement {
 /** Contexto de edición del lienzo (HU-4.01): sector (detalle) o planta (composición). */
 export type MapLayoutKind = 'sector' | 'floor';
 
+export interface RoomAppearance {
+  readonly floorColor: string;
+  readonly wallColor: string;
+  readonly floorPattern: 'plain' | 'tile' | 'wood';
+}
+
 export interface MapLayout {
   readonly floorId: string;
   readonly name: string;
@@ -81,6 +87,8 @@ export interface MapLayout {
   readonly elements: readonly SpaceElement[];
   /** Versión del esquema del layout, para migrar mapas guardados. */
   readonly schemaVersion: number;
+  readonly vertical?: string;
+  readonly appearance?: RoomAppearance;
   /**
    * HU-4.01: contexto del editor. `sector` (por defecto) = distribución interna;
    * `floor` = composición de sectores sobre el lienzo de la planta.

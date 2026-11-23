@@ -8,8 +8,9 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { localizeString } from '../../../core/strings';
-import { SpacesStore } from '../model/spaces-store';
+import type { Sector } from '@mapit/api-client';
+import { localizeString, STRINGS } from '../strings';
+import { SpacesStore } from './spaces-store';
 
 /** Formulario inline de creación de sector (CU-05 · MAP-70). */
 @Component({
@@ -40,52 +41,68 @@ import { SpacesStore } from '../model/spaces-store';
         <p class="message error" role="alert">{{ localizeString(error) }}</p>
       }
 
-      <label class="name-field">
-        <span class="field-label">{{ store.strings_.sectors.form.nameLabel }}</span>
-        <div class="input-wrapper">
+      <form (submit)="save($event)">
+        @if (floorName(); as name) {
+          <p class="field-hint">{{ strings.floors.title }} · {{ name }}</p>
+        }
+        <label class="name-field">
+          <span class="field-label">{{ store.strings_.sectors.form.nameLabel }}</span>
+          <div class="input-wrapper">
+            <input
+              #nameInput
+              type="text"
+              [value]="store.sectorDraft().name"
+              [attr.maxlength]="store.strings_.sectors.form.nameMaxLength"
+              [placeholder]="store.strings_.sectors.form.namePlaceholder"
+              (input)="store.setSectorName(nameInput.value)"
+              [disabled]="store.saving()"
+              autocomplete="off"
+            />
+            <span class="char-count"
+              >{{ store.sectorDraft().name.length }}/{{
+                store.strings_.sectors.form.nameMaxLength
+              }}</span
+            >
+          </div>
+          <p class="field-hint">{{ store.strings_.sectors.form.slugHint }}</p>
+        </label>
+        <label class="name-field">
+          <span class="field-label">{{ strings.editor.capacity }}</span>
           <input
-            #nameInput
-            type="text"
-            [value]="store.sectorDraft().name"
-            [attr.maxlength]="store.strings_.sectors.form.nameMaxLength"
-            [placeholder]="store.strings_.sectors.form.namePlaceholder"
-            (input)="store.setSectorName(nameInput.value)"
+            #capacity
+            type="number"
+            min="1"
+            max="2147483647"
             [disabled]="store.saving()"
-            autocomplete="off"
+            [value]="store.sectorDraft().capacity ?? ''"
+            (input)="store.setSectorCapacity(capacity.valueAsNumber)"
           />
-          <span class="char-count"
-            >{{ store.sectorDraft().name.length }}/{{
-              store.strings_.sectors.form.nameMaxLength
-            }}</span
-          >
-        </div>
-        <p class="field-hint">{{ store.strings_.sectors.form.slugHint }}</p>
-      </label>
+        </label>
 
-      <div class="form-actions">
-        <button
-          class="btn-secondary"
-          type="button"
-          [disabled]="store.saving()"
-          (click)="onCancel()"
-        >
-          {{ store.strings_.sectors.form.cancelButton }}
-        </button>
-        <button
-          class="btn-primary"
-          type="button"
-          [disabled]="store.saving() || !store.sectorDraft().name.trim()"
-          (click)="save()"
-        >
-          {{
-            store.saving()
-              ? store.strings_.sectors.form.saving
-              : store.isEditingSector()
-                ? store.strings_.sectors.form.updateButton
-                : store.strings_.sectors.form.saveButton
-          }}
-        </button>
-      </div>
+        <div class="form-actions">
+          <button
+            class="btn-secondary"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="onCancel()"
+          >
+            {{ store.strings_.sectors.form.cancelButton }}
+          </button>
+          <button
+            class="btn-primary"
+            type="submit"
+            [disabled]="store.saving() || !store.sectorDraft().name.trim()"
+          >
+            {{
+              store.saving()
+                ? store.strings_.sectors.form.saving
+                : store.isEditingSector()
+                  ? store.strings_.sectors.form.updateButton
+                  : store.strings_.sectors.form.saveButton
+            }}
+          </button>
+        </div>
+      </form>
     </div>
   `,
   styles: `
@@ -258,10 +275,14 @@ import { SpacesStore } from '../model/spaces-store';
 export class SectorFormComponent {
   protected readonly localizeString = localizeString;
   readonly floorId = input.required<string>();
-  readonly saved = output<void>();
+  readonly saved = output<Sector>();
   readonly formClosed = output<void>();
 
   protected readonly store = inject(SpacesStore);
+  protected readonly strings = STRINGS.spaces;
+  protected readonly floorName = computed(
+    () => this.store.floors().find((floor) => floor.id === this.floorId())?.name,
+  );
   private readonly baseline = signal<string | null>(null);
   private editing = false;
   readonly dirty = computed(() => {
@@ -280,12 +301,13 @@ export class SectorFormComponent {
     });
   }
 
-  protected save(): void {
+  protected save(event: Event): void {
+    event.preventDefault();
     const name = this.store.sectorDraft().name.trim();
     if (!name) return;
 
-    this.store.saveSector(this.floorId(), name).subscribe({
-      next: () => this.saved.emit(),
+    this.store.saveSector(this.floorId(), name, this.store.sectorDraft().capacity).subscribe({
+      next: (sector) => this.saved.emit(sector),
       error: () => {}, // Error handled in store
     });
   }

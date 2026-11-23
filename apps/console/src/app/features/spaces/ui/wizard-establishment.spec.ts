@@ -8,8 +8,8 @@ import { BehaviorSubject, of } from 'rxjs';
 
 import { EstablishmentContext } from '../../../core/establishment-context';
 import { STRINGS } from '../../../core/strings';
-import { SpacesApiService } from '../data/spaces-api';
-import { SpacesStore } from '../model/spaces-store';
+import { SpacesApiService } from '../../../core/establishment-structure/spaces-api';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
 import { WizardEstablishmentComponent } from './wizard-establishment';
 
 const ACTIVE: AccessibleEstablishment = {

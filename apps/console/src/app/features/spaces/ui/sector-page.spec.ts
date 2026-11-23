@@ -5,7 +5,7 @@ import { of } from 'rxjs';
 
 import { FeatureFlagService } from '@mapit/feature-flags';
 import { STRINGS } from '../../../core/strings';
-import { SpacesStore } from '../model/spaces-store';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
 import { SectorPageComponent } from './sector-page';
 
 describe('SectorPageComponent: borrador anidado', () => {

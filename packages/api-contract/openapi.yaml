@@ -3582,7 +3582,6 @@ paths:
       summary: Listar los pisos de un establecimiento
       description: Devuelve todos los pisos asociados a un establecimiento específico.
       operationId: listFloorsByEstablishment
-      security: [] # Temporary
       responses:
         "200":
           headers:
@@ -3608,7 +3607,6 @@ paths:
       summary: Crear un piso
       description: Crea un nuevo piso para un establecimiento específico. El slug se autogenera y se valida su unicidad.
       operationId: createFloor
-      security: [] # Temporary
       requestBody:
         required: true
         content:
@@ -3636,6 +3634,42 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /establishments/{establishmentId}/floors/order:
+    put:
+      tags: [spaces]
+      summary: Guardar el orden de presentación de las plantas
+      operationId: reorderFloors
+      parameters:
+        - name: establishmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloorOrderRequest"
+      responses:
+        "200":
+          description: Plantas en el orden guardado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Floor"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /floors/{id}:
     parameters:
       - name: id
@@ -3652,7 +3686,6 @@ paths:
       summary: Obtener un piso
       description: Devuelve un piso específico por su ID.
       operationId: getFloor
-      security: [] # Temporary
       responses:
         "200":
           headers:
@@ -3676,7 +3709,6 @@ paths:
       summary: Actualizar un piso
       description: Actualiza un piso existente. El slug no se puede modificar.
       operationId: updateFloor
-      security: [] # Temporary
       requestBody:
         required: true
         content:
@@ -3710,7 +3742,6 @@ paths:
       summary: Eliminar un piso
       description: Elimina un piso (soft delete).
       operationId: deleteFloor
-      security: [] # Temporary
       responses:
         "204":
           headers:
@@ -3747,7 +3778,6 @@ paths:
         colocados (colocación + dimensiones intrínsecas) y los elementos de cada
         sector en solo-lectura. Sustituye el fan-out cliente piso→sectores→elementos.
       operationId: getFloorLayout
-      security: [] # Temporary
       responses:
         "200":
           headers:
@@ -3872,7 +3902,6 @@ paths:
       summary: Listar los sectores de un piso
       description: Devuelve todos los sectores asociados a un piso específico.
       operationId: listSectorsByFloor
-      security: [] # Temporary
       responses:
         "200":
           headers:
@@ -3898,7 +3927,6 @@ paths:
       summary: Crear un sector
       description: Crea un nuevo sector para un piso específico. El slug se autogenera y se valida su unicidad.
       operationId: createSector
-      security: [] # Temporary
       requestBody:
         required: true
         content:
@@ -3925,6 +3953,51 @@ paths:
           $ref: "#/components/responses/Conflict" # If generated slug conflicts
         "500":
           $ref: "#/components/responses/ServerError"
+
+  /sectors/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [spaces]
+      summary: Actualizar un sector
+      operationId: updateSector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SectorCreateRequest"
+      responses:
+        "200":
+          description: Sector actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sector"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [spaces]
+      summary: Dar de baja un sector sin elementos activos
+      operationId: deleteSector
+      responses:
+        "204":
+          description: Sector dado de baja
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   # ── Elementos espaciales (HU-2.03 / CU-08) ────────────────────────────────
   # `security: []` es TEMPORAL, igual que en establishments/floors/sectors: la
@@ -4121,12 +4194,10 @@ paths:
       tags: [spaces]
       summary: Guardar el layout de un sector (por lotes)
       description: |
-        Guardado transaccional de la distribución interna (RN-7): dimensiones
-        intrínsecas del sector + geometría de sus elementos. Nunca toca el
-        `state` operativo (RN-9). Cada recurso lleva su `updatedAt` observado;
-        conflicto → 409 con la lista de recursos que cambiaron.
+        Guarda dimensiones, geometría, altas, bajas y metadatos en una transacción.
+        Conserva el estado operativo de los elementos existentes. Devuelve 409 si
+        hay cambios concurrentes o si se intenta retirar un elemento con reservas activas.
       operationId: saveSectorLayout
-      security: [] # Temporary
       requestBody:
         required: true
         content:
@@ -4147,6 +4218,8 @@ paths:
           $ref: "#/components/responses/BadRequest" # Geometría inválida o elemento fuera del sector
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -6207,6 +6280,11 @@ components:
       type: object
       required: [id, name, slug, createdAt, updatedAt, x, y, rotation, width, height]
       properties:
+        maxCapacity:
+          type: [integer, "null"]
+          minimum: 1
+        appearance:
+          $ref: "#/components/schemas/SectorAppearance"
         id:
           type: string
           format: uuid
@@ -6266,7 +6344,7 @@ components:
 
     SectorCreateRequest:
       type: object
-      required: [name, slug]
+      required: [name]
       properties:
         name:
           type: string
@@ -6275,8 +6353,12 @@ components:
         slug:
           type: string
           pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          description: Si se omite, se genera a partir del nombre.
           minLength: 2
           maxLength: 63
+        maxCapacity:
+          type: integer
+          minimum: 1
 
     # ── Elementos espaciales (HU-2.03) ──────────────────────────────────────
     SpaceElement:
@@ -6348,6 +6430,8 @@ components:
       type: object
       required: [id, name, x, y, rotation, width, height, updatedAt, elements]
       properties:
+        appearance:
+          $ref: "#/components/schemas/SectorAppearance"
         id:
           type: string
           format: uuid
@@ -6356,6 +6440,9 @@ components:
           type: string
           minLength: 1
           maxLength: 100
+        maxCapacity:
+          type: [integer, "null"]
+          minimum: 1
         x:
           type: number
           format: double
@@ -6402,8 +6489,26 @@ components:
           items:
             $ref: "#/components/schemas/SectorLayoutSector"
 
+    FloorOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [previousIds, floorIds]
+      properties:
+        previousIds:
+          description: Orden observado por el cliente, sin IDs repetidos.
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { type: string, format: uuid }
+        floorIds:
+          description: Permutación completa en el nuevo orden, sin IDs repetidos.
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { type: string, format: uuid }
+
     SectorPlacementUpdate:
-      description: Colocación de un sector dentro de la planta (vista de planta, RN-6).
+      description: Colocación de un sector dentro de la planta. Si se incluyen dimensiones, deben enviarse ambas y contener todos los elementos existentes.
       type: object
       additionalProperties: false
       required: [id, x, y, rotation, updatedAt]
@@ -6422,6 +6527,14 @@ components:
         rotation:
           type: number
           format: double
+        width:
+          type: number
+          format: double
+          minimum: 20
+        height:
+          type: number
+          format: double
+          minimum: 20
         updatedAt:
           type: string
           format: date-time
@@ -6458,12 +6571,13 @@ components:
 
     SectorLayoutUpdateRequest:
       description: >-
-        Guardado transaccional de la distribución interna del sector: dimensiones
-        del sector + geometría de sus elementos. Nunca toca `state` (RN-9).
+        Guardado transaccional de la distribución interna y los elementos del sector.
       type: object
       additionalProperties: false
       required: [sector, elements]
       properties:
+        appearance:
+          $ref: "#/components/schemas/SectorAppearance"
         sector:
           type: object
           additionalProperties: false
@@ -6484,6 +6598,97 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SectorLayoutElementUpdate"
+        createdElements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorLayoutElementCreate"
+        deletedElements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorLayoutElementDelete"
+        metadataUpdates:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorLayoutMetadataUpdate"
+
+    SectorAppearance:
+      type: [object, "null"]
+      additionalProperties: false
+      description: Apariencia persistida del sector. Ausente o null al guardar conserva la apariencia actual.
+      properties:
+        room:
+          $ref: "#/components/schemas/SectorRoomAppearance"
+        elements:
+          type: object
+          maxProperties: 2000
+          additionalProperties:
+            $ref: "#/components/schemas/SectorElementAppearance"
+
+    SectorRoomAppearance:
+      type: object
+      additionalProperties: false
+      properties:
+        floorColor: { type: string, pattern: "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" }
+        wallColor: { type: string, pattern: "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" }
+        floorPattern: { type: string, pattern: "^[a-zA-Z0-9_-]{1,64}$" }
+
+    SectorElementAppearance:
+      type: object
+      additionalProperties: false
+      properties:
+        color: { type: string, pattern: "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" }
+        variant: { type: string, pattern: "^[a-zA-Z0-9_-]{1,64}$" }
+        preset: { type: string, pattern: "^[a-zA-Z0-9_-]{1,64}$" }
+        boardColor: { type: string, pattern: "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" }
+        boardMaterial: { type: string, pattern: "^[a-zA-Z0-9_-]{1,64}$" }
+        boardEdge: { type: string, pattern: "^[a-zA-Z0-9_-]{1,64}$" }
+        chairStyle: { type: string, pattern: "^[a-zA-Z0-9_-]{1,64}$" }
+        chairArms: { type: boolean }
+        showName: { type: boolean }
+        showCapacity: { type: boolean }
+        labelStyle: { type: string, pattern: "^[a-zA-Z0-9_-]{1,64}$" }
+        labelPosition: { type: string, enum: [top, center, bottom] }
+        seatColor: { type: string, pattern: "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" }
+        visualScale: { type: string, enum: [small, medium, large] }
+        fillOpacity: { type: integer, minimum: 0, maximum: 100 }
+        cornerRadius: { type: integer, minimum: 0, maximum: 40 }
+        zoneBorder: { type: string, enum: [solid, dashed, none] }
+        zoneBorderColor: { type: string, pattern: "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" }
+
+    SectorLayoutElementCreate:
+      type: object
+      additionalProperties: false
+      required: [id, type, x, y, width, height, rotation]
+      properties:
+        id: { type: string, format: uuid }
+        type:
+          type: string
+          enum: [TABLE, BAR, SECTOR_ZONE, STAGE, SEAT, ROOM, DECOR]
+        x: { type: number, format: double, minimum: 0 }
+        y: { type: number, format: double, minimum: 0 }
+        width: { type: number, format: double, minimum: 20 }
+        height: { type: number, format: double, minimum: 20 }
+        rotation: { type: number, format: double }
+        label: { type: [string, "null"], maxLength: 120 }
+        capacity: { type: [integer, "null"], minimum: 1 }
+
+    SectorLayoutElementDelete:
+      type: object
+      additionalProperties: false
+      required: [id, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        updatedAt: { type: string, format: date-time }
+
+    SectorLayoutMetadataUpdate:
+      type: object
+      additionalProperties: false
+      required: [id, label, capacity, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: [string, "null"], maxLength: 120 }
+        capacity: { type: [integer, "null"], minimum: 1 }
+        updatedAt: { type: string, format: date-time }
 
     SectorLayoutElementUpdate:
       description: Geometría de un elemento dentro de su sector (vista de sector, RN-2).
@@ -6541,6 +6746,16 @@ components:
           type: string
           format: uuid
           description: Sector a duplicar (mismo tenant; ajeno → 404).
+        x:
+          type: number
+          format: double
+          minimum: 0
+          description: Posición horizontal de la copia. Requiere y si se envía.
+        y:
+          type: number
+          format: double
+          minimum: 0
+          description: Posición vertical de la copia. Requiere x si se envía.
         name:
           type: string
           minLength: 1

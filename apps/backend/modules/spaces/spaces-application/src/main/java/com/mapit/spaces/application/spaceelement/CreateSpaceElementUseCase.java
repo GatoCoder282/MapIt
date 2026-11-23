@@ -45,12 +45,13 @@ public class CreateSpaceElementUseCase {
 
     // Sector debe existir y ser del tenant actual; la vertical se toma de su establecimiento.
     var sectorId = new SectorId(command.sectorId());
-    var vertical = support.verticalDelSector(tenantId, sectorId);
+    var sector = support.lockSector(tenantId, sectorId);
+    var vertical = support.verticalDelSector(tenantId, sector);
     // HU-4.01 (RN-10): el elemento debe caber en las dimensiones reales del sector.
     if (command.x() != null && command.y() != null
         && command.width() != null && command.height() != null) {
       support.validarQueCabeEnElSector(
-          support.sectorVivo(tenantId, sectorId),
+          sector,
           command.x(), command.y(), command.width(), command.height(),
           command.rotation() != null ? command.rotation() : 0.0);
     }

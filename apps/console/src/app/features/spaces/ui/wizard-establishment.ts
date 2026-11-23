@@ -20,8 +20,8 @@ import { LucideBedDouble, LucideChefHat, LucideMartini, LucidePartyPopper } from
 
 import { localizeString, STRINGS } from '../../../core/strings';
 import { SLUG_PATTERN } from '../../../core/patterns';
-import { SpacesApiService } from '../data/spaces-api';
-import { SpacesStore } from '../model/spaces-store';
+import { SpacesApiService } from '../../../core/establishment-structure/spaces-api';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
 import { EstablishmentContext } from '../../../core/establishment-context';
 import { confirmOperationalExit } from '../../../core/operational-exit-guard';
 

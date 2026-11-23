@@ -29,6 +29,10 @@ export class MapEditorApiService {
     return this.api.listSectorsByFloor({ floorId });
   }
 
+  createFloorCanvas(floorId: string, name: string, slug: string): Observable<Sector> {
+    return this.api.createSector({ floorId, sectorCreateRequest: { name, slug } });
+  }
+
   listFloorsByEstablishment(establishmentId: string): Observable<Floor[]> {
     return this.api.listFloorsByEstablishment({ establishmentId });
   }

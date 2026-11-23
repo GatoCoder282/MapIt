@@ -9,7 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
+import com.mapit.spaces.application.floor.FloorNotFoundException;
 import com.mapit.spaces.domain.Slug;
+import com.mapit.spaces.domain.floor.FloorRepository;
+import com.mapit.spaces.domain.layout.Geometry;
 import com.mapit.spaces.domain.sector.Sector;
 import com.mapit.spaces.domain.sector.SectorId;
 import com.mapit.spaces.domain.sector.SectorRepository;
@@ -28,16 +31,21 @@ public class CreateSectorUseCase {
   private static final int DEFAULT_MAX_CAPACITY = 1;
 
   private final SectorRepository repository;
+  private final FloorRepository floors;
   private final TenantContext tenantContext;
 
-  public CreateSectorUseCase(SectorRepository repository, TenantContext tenantContext) {
+  public CreateSectorUseCase(
+      SectorRepository repository, FloorRepository floors, TenantContext tenantContext) {
     this.repository = repository;
+    this.floors = floors;
     this.tenantContext = tenantContext;
   }
 
   @Transactional
   public SectorResponse create(CreateSectorCommand command) {
     TenantId tenantId = tenantContext.require();
+    var floor = floors.findAliveByIdForUpdate(tenantId, command.floorId())
+        .orElseThrow(() -> new FloorNotFoundException(command.floorId()));
 
     // El contrato dice que el slug se autogenera en el servidor: el cliente manda "".
     Slug slug =
@@ -61,7 +69,10 @@ public class CreateSectorUseCase {
             slug,
             now,
             null);
-    Sector saved = repository.save(sector);
+    var size = Geometry.of(
+        Math.min(sector.geometry().width(), floor.canvasWidth()),
+        Math.min(sector.geometry().height(), floor.canvasHeight()));
+    Sector saved = repository.save(sector.resize(size, now, null));
     return toResponse(saved, now);
   }
 

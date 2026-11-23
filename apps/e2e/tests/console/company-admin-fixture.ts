@@ -2,7 +2,12 @@ import { expect, type APIRequestContext } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 
 /** Cuenta ADMIN real y local propios del test; nunca reutiliza el tenant de plataforma. */
-export async function companyAdminFixture(request: APIRequestContext) {
+export type CompanyVertical = 'RESTAURANT' | 'NIGHTCLUB' | 'HOTEL' | 'EVENT_HALL';
+
+export async function companyAdminFixture(
+  request: APIRequestContext,
+  vertical: CompanyVertical = 'RESTAURANT',
+) {
   const api = process.env['API_BASE_URL'] ?? 'http://localhost:8080/api/v1';
   const mail = process.env['MAILPIT_URL'] ?? 'http://localhost:8025';
   const slug = 'home-' + randomUUID();
@@ -21,7 +26,7 @@ export async function companyAdminFixture(request: APIRequestContext) {
     data: {
       name: 'Empresa de prueba Home',
       slug,
-      vertical: 'RESTAURANT',
+      vertical,
       administratorEmail: email,
     },
   });
@@ -56,7 +61,7 @@ export async function companyAdminFixture(request: APIRequestContext) {
   const accessToken = session.accessToken;
   const venue = await request.post(api + '/establishments', {
     headers: { Authorization: 'Bearer ' + accessToken },
-    data: { name: 'Sede Home', slug: 'sede', type: 'RESTAURANT' },
+    data: { name: 'Sede Home', slug: 'sede', type: vertical },
   });
   expect(venue.status()).toBe(201);
   return {

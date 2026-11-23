@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,6 +22,7 @@ import com.mapit.spaces.application.floor.FloorNotFoundException;
 import com.mapit.spaces.application.spaceelement.DeleteSpaceElementUseCase;
 import com.mapit.spaces.application.spaceelement.SpaceElementHasActiveReservationsException;
 import com.mapit.spaces.application.spaceelement.SpaceElementNotFoundException;
+import com.mapit.spaces.application.spaceelement.SpaceElementSupport;
 import com.mapit.spaces.domain.AuditTrail;
 import com.mapit.spaces.domain.Slug;
 import com.mapit.spaces.domain.establishment.Establishment;
@@ -114,8 +116,10 @@ class LayoutUseCasesTest {
         };
 
     getLayout = new GetFloorLayoutUseCase(layouts, tenantContext);
-    saveFloorLayout = new SaveFloorLayoutUseCase(floors, sectors, tenantContext, CLOCK);
-    saveSectorLayout = new SaveSectorLayoutUseCase(sectors, elements, tenantContext, CLOCK);
+    saveFloorLayout = new SaveFloorLayoutUseCase(floors, sectors, elements, tenantContext, CLOCK);
+    saveSectorLayout = new SaveSectorLayoutUseCase(sectors, elements,
+        new SpaceElementSupport(sectors, floors, establishments),
+        noReservations, tenantContext, CLOCK);
     duplicateSector = new DuplicateSectorUseCase(
         sectors, elements, floors, establishments, tenantContext, CLOCK);
     deleteElement = new DeleteSpaceElementUseCase(elements, noReservations, tenantContext, CLOCK);
@@ -187,6 +191,24 @@ class LayoutUseCasesTest {
   // ===== Guardado de sector =====
 
   @Test
+  void resize_desde_la_planta_preserva_elementos_y_rechaza_recortes() {
+    var version = sector1.audit().updatedAt();
+    var invalid = new SaveFloorLayoutCommand.SectorPlacement(SECTOR_1, 10, 10, 0, version, 200.0, 120.0);
+    assertThatThrownBy(() -> saveFloorLayout.save(FLOOR_ID,
+        new SaveFloorLayoutCommand(1200, 800, floor.audit().updatedAt(), List.of(invalid))))
+        .isInstanceOf(LayoutOutOfBoundsException.class);
+    assertThat(sectorStore).contains(sector1);
+
+    var originalElements = List.copyOf(elementStore);
+    var valid = new SaveFloorLayoutCommand.SectorPlacement(SECTOR_1, 10, 10, 0, version, 240.0, 120.0);
+    saveFloorLayout.save(FLOOR_ID,
+        new SaveFloorLayoutCommand(1200, 800, floor.audit().updatedAt(), List.of(valid)));
+    assertThat(sectorStore.stream().filter(sector -> sector.id().equals(sector1.id())).findFirst())
+        .hasValueSatisfying(sector -> assertThat(sector.geometry()).isEqualTo(Geometry.of(240, 120)));
+    assertThat(elementStore).containsExactlyElementsOf(originalElements);
+  }
+
+  @Test
   void guardar_layout_de_sector_actualiza_geometria_sin_tocar_el_estado() {
     var el = elementStore.get(0);
     var geom = new SaveSectorLayoutCommand.ElementGeometry(
@@ -199,6 +221,74 @@ class LayoutUseCasesTest {
     assertThat(saved.x()).isEqualTo(300);
     assertThat(saved.rotation()).isEqualTo(90);
     assertThat(saved.state()).isEqualTo(SpaceElementState.OCCUPIED); // RN-9
+  }
+
+  @Test
+  void guardar_layout_combina_geometria_metadatos_altas_y_bajas() {
+    var table = elementStore.get(0);
+    var removed = elementStore.get(1);
+    var decorId = UUID.randomUUID();
+    var command = new SaveSectorLayoutCommand(
+        500, 300, sector1.audit().updatedAt(),
+        List.of(new SaveSectorLayoutCommand.ElementGeometry(
+            table.id().value(), 110, 20, 80, 80, 0, table.audit().updatedAt())),
+        List.of(new SaveSectorLayoutCommand.ElementCreate(
+            decorId, "DECOR", 240, 40, 50, 50, 0, "Maceta", null)),
+        List.of(new SaveSectorLayoutCommand.ElementDelete(removed.id().value(), removed.audit().updatedAt())),
+        List.of(new SaveSectorLayoutCommand.MetadataUpdate(table.id().value(), "Mesa 1", 6, table.audit().updatedAt())));
+
+    var saved = saveSectorLayout.save(SECTOR_1, command);
+    assertThat(saved.sector().geometry().width()).isEqualTo(500);
+    assertThat(saved.elements()).hasSize(2);
+    assertThat(saved.elements()).filteredOn(element -> element.id().equals(table.id()))
+        .singleElement().satisfies(element -> {
+          assertThat(element.x()).isEqualTo(110);
+          assertThat(element.label()).isEqualTo("Mesa 1");
+          assertThat(element.capacity()).isEqualTo(6);
+          assertThat(element.state()).isEqualTo(SpaceElementState.OCCUPIED);
+        });
+    assertThat(saved.elements()).filteredOn(element -> element.id().value().equals(decorId))
+        .singleElement().satisfies(element -> assertThat(element.label()).isEqualTo("Maceta"));
+    assertThat(elementStore).filteredOn(element -> element.id().equals(removed.id()))
+        .singleElement().satisfies(element -> assertThat(element.isDeleted()).isTrue());
+  }
+
+  @Test
+  void guarda_apariencia_y_preserva_al_editar_solo_geometria() {
+    var element = elementStore.getFirst();
+    var appearance = Map.<String, Object>of("room", Map.of("floorColor", "#c0ffee"),
+        "elements", Map.of(element.id().value().toString(), Map.of("boardMaterial", "wood")));
+    var saved = saveSectorLayout.save(SECTOR_1, new SaveSectorLayoutCommand(
+        500, 300, sector1.audit().updatedAt(), List.of(), List.of(), List.of(), List.of(), appearance));
+    var resaved = saveSectorLayout.save(SECTOR_1, new SaveSectorLayoutCommand(
+        500, 300, saved.sector().audit().updatedAt(), List.of()));
+    assertThat(resaved.sector().appearance()).isEqualTo(appearance);
+    assertThat(resaved.elements().getFirst().state()).isEqualTo(element.state());
+
+    var foreignAppearance = Map.<String, Object>of("elements",
+        Map.of(UUID.randomUUID().toString(), Map.of("color", "#ffffff")));
+    assertThatThrownBy(() -> saveSectorLayout.save(SECTOR_1, new SaveSectorLayoutCommand(
+        500, 300, resaved.sector().audit().updatedAt(), List.of(),
+        List.of(), List.of(), List.of(), foreignAppearance)))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void una_baja_con_reserva_rechaza_el_lote_completo() {
+    var table = elementStore.get(0);
+    var sectors = pantrySectors(sectorStore);
+    var guarded = new SaveSectorLayoutUseCase(
+        sectors, pantryElements(elementStore),
+        new SpaceElementSupport(sectors, pantryFloors(List.of(floor)), establishments),
+        (tenant, element) -> true, tenantContext, CLOCK);
+    var command = new SaveSectorLayoutCommand(500, 300, sector1.audit().updatedAt(),
+        List.of(), List.of(), List.of(new SaveSectorLayoutCommand.ElementDelete(
+            table.id().value(), table.audit().updatedAt())), List.of());
+
+    assertThatThrownBy(() -> guarded.save(SECTOR_1, command))
+        .isInstanceOf(SpaceElementHasActiveReservationsException.class);
+    assertThat(sectorStore.getFirst()).isEqualTo(sector1);
+    assertThat(elementStore.getFirst()).isEqualTo(table);
   }
 
   @Test

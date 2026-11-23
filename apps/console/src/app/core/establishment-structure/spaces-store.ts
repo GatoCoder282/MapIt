@@ -4,6 +4,7 @@ import type {
   Establishment,
   EstablishmentCreateRequest,
   Floor,
+  EstablishmentType,
   Sector,
   SpaceElement,
 } from '@mapit/api-client';
@@ -15,9 +16,9 @@ import {
   type EstablishmentDraft,
   type FloorDraft,
   type SectorDraft,
-} from '../data/spaces-api';
-import { STRINGS } from '../../../core/strings';
-import { EstablishmentContext } from '../../../core/establishment-context';
+} from './spaces-api';
+import { STRINGS } from '../strings';
+import { EstablishmentContext } from '../establishment-context';
 
 /** Deriva un slug válido desde el nombre (misma regla que `Slug.fromName` del backend). */
 function slugify(name: string): string {
@@ -37,6 +38,7 @@ const EMPTY_FLOOR_DRAFT: FloorDraft = {
 
 const EMPTY_SECTOR_DRAFT: SectorDraft = {
   name: '',
+  capacity: undefined,
 };
 
 /**
@@ -60,7 +62,7 @@ export class SpacesStore {
   // Contexto del wizard (CU-05): el paso 2 siempre opera sobre UN establecimiento,
   // el creado/seleccionado en el paso 1. Sin él no se carga ni crea nada.
   private readonly establishmentIdState = signal<string | null>(null);
-  private readonly establishmentTypeState = signal<string | null>(null);
+  private readonly establishmentTypeState = signal<EstablishmentType | null>(null);
 
   // Floor state
   private readonly floorsState = signal<Floor[]>([]);
@@ -74,7 +76,7 @@ export class SpacesStore {
   private readonly sectorsLoadingState = signal<Record<string, boolean>>({});
   private readonly sectorDraftState = signal<SectorDraft>({ ...EMPTY_SECTOR_DRAFT });
   private readonly editingSectorIdState = signal<string | null>(null);
-  private readonly editingSectorBaseline = signal<string | null>(null);
+  private readonly editingSectorBaseline = signal<SectorDraft | null>(null);
   private sectorDraftRevision = 0;
 
   // SpaceElement state (keyed by sectorId): lectura para el resumen del wizard.
@@ -106,19 +108,31 @@ export class SpacesStore {
   readonly busy = this.savingState.asReadonly();
   readonly dirty = computed(() => {
     const floorName = this.floorDraftState().name;
-    const sectorName = this.sectorDraftState().name;
+    const sector = this.sectorDraftState();
+    const baseline = this.editingSectorBaseline();
     return (
       (this.editingFloorIdState() !== null
         ? floorName !== this.editingFloorBaseline()
         : floorName.trim() !== '') ||
-      (this.editingSectorIdState() !== null
-        ? sectorName !== this.editingSectorBaseline()
-        : sectorName.trim() !== '')
+      (baseline ? sector.name !== baseline.name : sector.name.trim() !== '') ||
+      sector.capacity !== baseline?.capacity
     );
   });
   readonly error = this.errorState.asReadonly();
   readonly establishmentId = this.establishmentIdState.asReadonly();
   readonly establishmentType = this.establishmentTypeState.asReadonly();
+
+  loadEstablishmentType(id: string): void {
+    this.api
+      .getEstablishment(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (venue) => {
+          if (this.context.active()?.id === venue.id) this.establishmentTypeState.set(venue.type);
+        },
+        error: () => this.establishmentTypeState.set(null),
+      });
+  }
 
   constructor() {
     effect(() => {
@@ -247,7 +261,7 @@ export class SpacesStore {
     this.floorDraftState.update((draft) => ({ ...draft, name }));
   }
 
-  saveFloor(): void {
+  saveFloor(onSaved?: (floor: Floor) => void): void {
     const draft = this.floorDraft();
     const name = draft.name.trim();
 
@@ -290,12 +304,12 @@ export class SpacesStore {
         if (epoch !== this.epoch || this.context.active()?.id !== establishmentId) return;
         // Tras crear, reordenar por nivel: el nuevo piso siempre queda al final.
         this.floorsState.update((floors) =>
-          (editingId === null
+          editingId === null
             ? [...floors, saved]
-            : floors.map((floor) => (floor.id === saved.id ? saved : floor))
-          ).sort((a, b) => a.level - b.level),
+            : floors.map((floor) => (floor.id === saved.id ? saved : floor)),
         );
         if (this.floorDraftRevision === draftRevision) this.startNewFloor();
+        onSaved?.(saved);
       },
       error: (response: { status?: number }) => {
         if (epoch !== this.epoch || this.context.active()?.id !== establishmentId) return;
@@ -308,20 +322,44 @@ export class SpacesStore {
     });
   }
 
-  /**
-   * Reordena pisos tras un drag & drop (optimista, solo local).
-   * No existe endpoint de reorden en el contrato todavía: el orden persiste
-   * solo en memoria hasta que CU-05 defina `PATCH /floors/reorder`.
-   */
   reorderFloors(previousIndex: number, currentIndex: number): void {
-    if (previousIndex === currentIndex) return;
-    this.floorsState.update((floors) => {
-      const next = [...floors];
-      const [moved] = next.splice(previousIndex, 1);
-      if (!moved) return floors;
-      next.splice(currentIndex, 0, moved);
-      return next;
-    });
+    const establishmentId = this.establishmentId();
+    const previous = this.floors().map((floor) => floor.id);
+    const moved = previous[previousIndex];
+    if (
+      !establishmentId ||
+      !moved ||
+      currentIndex < 0 ||
+      currentIndex >= previous.length ||
+      previousIndex === currentIndex ||
+      this.busy() ||
+      this.context.status() !== 'ready' ||
+      establishmentId !== this.context.active()?.id
+    )
+      return;
+    const next = [...previous];
+    next.splice(previousIndex, 1);
+    next.splice(currentIndex, 0, moved);
+    const epoch = this.epoch;
+    const finishWrite = this.beginWrite();
+    this.errorState.set(null);
+    this.api
+      .reorderFloors(establishmentId, previous, next)
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(finishWrite))
+      .subscribe({
+        next: (floors) => {
+          if (epoch === this.epoch) this.floorsState.set(floors);
+        },
+        error: (error: { status?: number }) => {
+          if (epoch !== this.epoch) return;
+          if (error.status === 409) this.loadFloors();
+          this.errorState.set(
+            error.status === 409
+              ? STRINGS.spaces.floorEditor.errors.conflict
+              : this.floorStrings.errors.saveFailed,
+          );
+        },
+      });
   }
 
   removeFloor(id: string): void {
@@ -358,8 +396,13 @@ export class SpacesStore {
             this.startNewFloor();
           }
         },
-        error: () => {
-          if (epoch === this.epoch) this.errorState.set(this.floorStrings.errors.deleteFailed);
+        error: (response: { status?: number }) => {
+          if (epoch === this.epoch)
+            this.errorState.set(
+              response.status === 409
+                ? this.floorStrings.errors.deleteBlocked
+                : this.floorStrings.errors.deleteFailed,
+            );
         },
       });
   }
@@ -428,10 +471,12 @@ export class SpacesStore {
   editSector(sector: Sector): void {
     if (!this.allSectors().some((item) => item.id === sector.id)) return;
     this.editingSectorIdState.set(sector.id);
-    this.editingSectorBaseline.set(sector.name);
-    this.sectorDraftState.set({
+    const draft = {
       name: sector.name,
-    });
+      capacity: sector.maxCapacity ?? undefined,
+    };
+    this.editingSectorBaseline.set(draft);
+    this.sectorDraftState.set(draft);
     this.errorState.set(null);
   }
 
@@ -440,7 +485,15 @@ export class SpacesStore {
     this.sectorDraftState.update((draft) => ({ ...draft, name }));
   }
 
-  saveSector(floorId: string, name: string): Observable<Sector> {
+  setSectorCapacity(capacity: number): void {
+    this.sectorDraftRevision++;
+    this.sectorDraftState.update((draft) => ({
+      ...draft,
+      capacity: Number.isNaN(capacity) ? undefined : capacity,
+    }));
+  }
+
+  saveSector(floorId: string, name: string, capacity?: number): Observable<Sector> {
     if (
       this.context.status() !== 'ready' ||
       this.context.active()?.id !== this.establishmentIdState() ||
@@ -470,8 +523,8 @@ export class SpacesStore {
     this.errorState.set(null);
     const request$ =
       editingId === null
-        ? this.api.createSector(floorId, trimmedName)
-        : this.api.updateSector(editingId, trimmedName);
+        ? this.api.createSector(floorId, trimmedName, capacity)
+        : this.api.updateSector(editingId, trimmedName, capacity);
 
     return request$.pipe(
       takeUntilDestroyed(this.destroyRef),
@@ -615,8 +668,13 @@ export class SpacesStore {
             this.startNewSector();
           }
         },
-        error: () => {
-          if (epoch === this.epoch) this.errorState.set(this.sectorStrings.errors.deleteFailed);
+        error: (response: { status?: number }) => {
+          if (epoch === this.epoch)
+            this.errorState.set(
+              response.status === 409
+                ? this.sectorStrings.errors.deleteBlocked
+                : this.sectorStrings.errors.deleteFailed,
+            );
         },
       });
   }

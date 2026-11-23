@@ -32,6 +32,11 @@
               {
                 "glob": "**/*",
                 "input": "apps/console/public"
+              },
+              {
+                "glob": "**/*",
+                "input": "libs/map-engine/assets/sprites",
+                "output": "assets/map/sprites"
               }
             ],
             "styles": ["apps/console/src/styles.scss"],
@@ -109,6 +114,11 @@
               {
                 "glob": "**/*",
                 "input": "apps/public-web/public"
+              },
+              {
+                "glob": "**/*",
+                "input": "libs/map-engine/assets/sprites",
+                "output": "assets/map/sprites"
               }
             ],
             "styles": ["apps/public-web/src/styles.scss"],

@@ -219,6 +219,7 @@ Table floor {
   establishment_id uuid        [not null, ref: > establishment.id]
   name             text        [not null]
    level            int         [not null, note: 'Orden vertical: 0-999']
+  display_order    int         [note: 'Orden visual opcional, independiente del nivel físico']
   slug             text        [note: 'Opcional; único por establecimiento entre filas vivas']
   canvas_width     double      [not null, default: 1200, note: 'HU-4.01: ancho del lienzo de la planta']
   canvas_height    double      [not null, default: 800, note: 'HU-4.01: alto del lienzo de la planta']
@@ -244,6 +245,7 @@ Table floor {
 }
 
 Table sector {
+  appearance jsonb [not null, default: `'{"elements":{}}'`, note: 'Propiedades visuales de sala y elementos, independientes del estado operativo.']
   id           uuid        [pk]
   tenant_id    text        [not null, ref: > tenant.id]
   floor_id     uuid        [not null, ref: > floor.id]

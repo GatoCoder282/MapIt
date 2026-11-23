@@ -1,12 +1,16 @@
 package com.mapit.spaces.infrastructure.sector;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import org.hibernate.annotations.ColumnTransformer;
 
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.spaces.domain.AuditTrail;
@@ -54,6 +58,11 @@ public class SectorJpaEntity {
   @Column(name = "height", nullable = false)
   private double height;
 
+  @Convert(converter = SectorAppearanceConverter.class)
+  @Column(name = "appearance", nullable = false, columnDefinition = "jsonb")
+  @ColumnTransformer(write = "?::jsonb")
+  private Map<String, Object> appearance;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -77,6 +86,7 @@ public class SectorJpaEntity {
       double rotation,
       double width,
       double height,
+      Map<String, Object> appearance,
       Instant createdAt,
       Instant updatedAt,
       Instant deletedAt) {
@@ -91,6 +101,7 @@ public class SectorJpaEntity {
     this.rotation = rotation;
     this.width = width;
     this.height = height;
+    this.appearance = appearance;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
     this.deletedAt = deletedAt;
@@ -110,6 +121,7 @@ public class SectorJpaEntity {
         sector.placement().rotation(),
         sector.geometry().width(),
         sector.geometry().height(),
+        sector.appearance(),
         audit.createdAt(),
         audit.updatedAt(),
         audit.deletedAt());
@@ -126,6 +138,7 @@ public class SectorJpaEntity {
         Slug.of(slug),
         Geometry.of(width, height),
         Placement.of(placementX, placementY, rotation),
-        audit);
+        audit,
+        appearance);
   }
 }

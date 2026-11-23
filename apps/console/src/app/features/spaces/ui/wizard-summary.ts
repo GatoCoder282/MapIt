@@ -15,8 +15,8 @@ import { map, switchMap } from 'rxjs/operators';
 import type { Establishment, Floor, Sector } from '@mapit/api-client';
 
 import { localizeString, STRINGS } from '../../../core/strings';
-import { SpacesApiService } from '../data/spaces-api';
-import { SpacesStore } from '../model/spaces-store';
+import { SpacesApiService } from '../../../core/establishment-structure/spaces-api';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
 import { FeatureFlagService } from '@mapit/feature-flags';
 import { EstablishmentContext } from '../../../core/establishment-context';
 

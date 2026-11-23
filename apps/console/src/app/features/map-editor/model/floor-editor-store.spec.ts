@@ -166,14 +166,14 @@ describe('FloorEditorStore (HU-4.01)', () => {
     expect(mockApi.duplicateSector).not.toHaveBeenCalled();
   });
 
-  it('keeps duplicate busy through the layout reload and placement save', () => {
+  it('keeps duplicate busy until the updated layout is loaded', () => {
     store.loadFloor('floor-1');
     const reload = new Subject<FloorLayoutResponse>();
     mockApi.getFloorLayout.mockReturnValueOnce(reload);
     store.duplicateSector('sector-1');
     expect(store.busy()).toBe(true);
     reload.next(LAYOUT_RESPONSE);
-    expect(mockApi.saveFloorLayout).toHaveBeenCalled();
+    expect(mockApi.saveFloorLayout).not.toHaveBeenCalled();
     expect(store.busy()).toBe(true);
     reload.complete();
     expect(store.busy()).toBe(false);
@@ -217,10 +217,28 @@ describe('FloorEditorStore (HU-4.01)', () => {
 
     expect(mockApi.saveFloorLayout).toHaveBeenCalledWith('floor-1', {
       floor: { canvasWidth: 1200, canvasHeight: 800, updatedAt: NOW },
-      sectors: [{ id: 'sector-1', x: 100, y: 50, rotation: 90, updatedAt: NOW }],
+      sectors: [{ id: 'sector-1', x: 300, y: 50, rotation: 90, updatedAt: NOW }],
     });
     expect(store.dirty()).toBe(false);
     expect(store.saving()).toBe(false);
+  });
+
+  it('ajusta bordes contiguos al soltar y permite desactivar el ajuste', () => {
+    const first = LAYOUT_RESPONSE.sectors[0]!;
+    mockApi.getFloorLayout.mockReturnValueOnce(
+      of({
+        ...LAYOUT_RESPONSE,
+        sectors: [first, { ...first, id: 'sector-2', x: 500, y: 10, elements: [] }],
+      }),
+    );
+    store.loadFloor('floor-1');
+    store.dropSector('sector-2', 415, 15);
+    expect(store.sectors()[1]?.position).toEqual({ x: 410, y: 10 });
+    expect(store.sectors()[0]?.children[0]?.position).toEqual({ x: 20, y: 20 });
+
+    store.snap.set(false);
+    store.dropSector('sector-2', 415, 15);
+    expect(store.sectors()[1]?.position).toEqual({ x: 415, y: 15 });
   });
 
   it('un 409 marca los ids en conflicto sin perder el error visible (RN-7)', () => {
@@ -239,7 +257,7 @@ describe('FloorEditorStore (HU-4.01)', () => {
     expect(store.dirty()).toBe(true); // el borrador local no se pierde
   });
 
-  it('duplicateSector recarga y coloca la copia en el punto de drop (RN-5)', () => {
+  it('duplica y coloca la copia en una única escritura (RN-5)', () => {
     store.loadFloor('floor-1');
     vi.runAllTicks();
 
@@ -248,9 +266,83 @@ describe('FloorEditorStore (HU-4.01)', () => {
 
     expect(mockApi.duplicateSector).toHaveBeenCalledWith('floor-1', {
       sourceSectorId: 'sector-1',
+      x: 300,
+      y: 200,
     });
-    // Tras el duplicado se recarga (mocks idempotentes devuelven el mismo layout) y
-    // se intenta guardar la colocación desde el drop.
-    expect(mockApi.saveFloorLayout).toHaveBeenCalled();
+    expect(mockApi.getFloorLayout).toHaveBeenCalledTimes(2);
+    expect(mockApi.saveFloorLayout).not.toHaveBeenCalled();
+  });
+
+  it('guarda el tamaño desde la planta sin enviar cambios de elementos', () => {
+    store.loadFloor('floor-1');
+    store.updatePlacement('sector-1', { width: 260, height: 220 });
+    expect(store.selectedSector()).toBeNull();
+    expect(store.sectors()[0]?.children[0]?.position).toEqual({ x: 20, y: 20 });
+    store.saveLayout();
+    expect(mockApi.saveFloorLayout).toHaveBeenCalledWith('floor-1', {
+      floor: { canvasWidth: 1200, canvasHeight: 800, updatedAt: NOW },
+      sectors: [
+        { id: 'sector-1', x: 10, y: 10, width: 260, height: 220, rotation: 0, updatedAt: NOW },
+      ],
+    });
+  });
+  it('restores canvas and pending sector edits with undo and redo', () => {
+    store.loadFloor('floor-1');
+    store.moveSector('sector-1', 100, 80);
+    store.resizeCanvas(1600, 1000);
+    store.undo();
+    expect(store.canvasSize()).toEqual({ width: 1200, height: 800 });
+    expect(store.sectors()[0]?.position).toEqual({ x: 100, y: 80 });
+    expect(store.dirty()).toBe(true);
+    store.undo();
+    expect(store.sectors()[0]?.position).toEqual({ x: 10, y: 10 });
+    expect(store.dirty()).toBe(false);
+    expect(store.canUndo()).toBe(false);
+    store.redo();
+    expect(store.sectors()[0]?.position).toEqual({ x: 100, y: 80 });
+    store.redo();
+    expect(store.canvasSize()).toEqual({ width: 1600, height: 1000 });
+    store.saveLayout();
+    expect(mockApi.saveFloorLayout).toHaveBeenCalledWith(
+      'floor-1',
+      expect.objectContaining({
+        sectors: [{ id: 'sector-1', x: 100, y: 80, rotation: 0, updatedAt: NOW }],
+      }),
+    );
+    expect(store.canUndo()).toBe(false);
+  });
+
+  it('rejects an invalid reduction without history and clears redo on new edits', () => {
+    store.loadFloor('floor-1');
+    store.resizeCanvas(100, 100);
+    expect(store.canvasSize()).toEqual({ width: 1200, height: 800 });
+    expect(store.canUndo()).toBe(false);
+    store.resizeCanvas(1600, 1000);
+    store.undo();
+    expect(store.canRedo()).toBe(true);
+    store.moveSector('sector-1', 120, 90);
+    expect(store.canRedo()).toBe(false);
+  });
+
+  it('saves an empty configured floor without inventing sectors', () => {
+    mockApi.getFloorLayout.mockReturnValueOnce(of({ ...LAYOUT_RESPONSE, sectors: [] }));
+    mockApi.saveFloorLayout.mockReturnValueOnce(
+      of({
+        ...LAYOUT_RESPONSE,
+        floor: { ...LAYOUT_RESPONSE.floor, canvasWidth: 1600, canvasHeight: 1000 },
+        sectors: [],
+      }),
+    );
+    store.loadFloor('floor-1');
+    store.resizeCanvas(1600, 1000);
+    store.saveLayout();
+    expect(mockApi.saveFloorLayout).toHaveBeenCalledWith('floor-1', {
+      floor: { canvasWidth: 1600, canvasHeight: 1000, updatedAt: NOW },
+      sectors: [],
+    });
+    expect(store.sectors()).toEqual([]);
+    expect(store.canvasSize()).toEqual({ width: 1600, height: 1000 });
+    expect(store.saved()).toBe(true);
+    expect(store.dirty()).toBe(false);
   });
 });

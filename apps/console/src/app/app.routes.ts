@@ -1,8 +1,11 @@
 import { authGuard, roleGuard } from '@mapit/auth';
-import { type Routes } from '@angular/router';
+import { featureFlagGuard } from '@mapit/feature-flags';
+import { inject } from '@angular/core';
+import { convertToParamMap, Router, type Routes } from '@angular/router';
 
 import { STRINGS } from './core/strings';
 import { operationalExitGuard } from './core/operational-exit-guard';
+import { StructureEditorContext } from './core/structure-editor-context';
 
 /**
  * Rutas de la consola de staff.
@@ -114,18 +117,56 @@ export const routes: Routes = [
               ),
           },
           {
+            path: 'structure',
+            canActivate: [
+              roleGuard('ADMIN', 'MANAGER'),
+              featureFlagGuard('spaces.floors', '/home'),
+              featureFlagGuard('map-editor.enabled', '/home'),
+            ],
+            canDeactivate: [operationalExitGuard],
+            providers: [StructureEditorContext],
+            loadComponent: () =>
+              import('./core/establishment-structure/establishment-structure').then(
+                (m) => m.EstablishmentStructureComponent,
+              ),
+            children: [
+              {
+                path: ':floorId/configure',
+                redirectTo: ({ params, queryParams }) =>
+                  inject(Router).createUrlTree(['/spaces/editor'], {
+                    queryParams: {
+                      floorId: convertToParamMap(params).get('floorId'),
+                      sectorId: convertToParamMap(queryParams).get('sectorId'),
+                    },
+                  }),
+              },
+              {
+                path: ':floorId',
+                redirectTo: ({ params, queryParams }) =>
+                  inject(Router).createUrlTree(['/spaces/editor'], {
+                    queryParams: {
+                      floorId: convertToParamMap(params).get('floorId'),
+                      sectorId: convertToParamMap(queryParams).get('sectorId'),
+                    },
+                  }),
+              },
+            ],
+          },
+          {
             path: 'floors',
             pathMatch: 'full',
             redirectTo: 'setup',
           },
           {
             path: 'floors/:establishmentId',
+            canActivate: [featureFlagGuard('spaces.floors', '/home')],
             canDeactivate: [operationalExitGuard],
             loadComponent: () =>
               import('./features/spaces/ui/spaces').then((m) => m.SpacesComponent),
           },
           {
             path: 'floors/:floorId/sectors',
+            canActivate: [featureFlagGuard('spaces.sectors', '/home')],
             canDeactivate: [operationalExitGuard],
             loadComponent: () =>
               import('./features/spaces/ui/sector-page').then((m) => m.SectorPageComponent),
@@ -144,8 +185,13 @@ export const routes: Routes = [
               ),
           },
           {
-            // CU-06 (MAP-196): editor visual de elementos espaciales (Konva.js).
-            path: 'editor/:sectorId',
+            path: 'editor',
+            pathMatch: 'full',
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            canActivate: [
+              roleGuard('ADMIN', 'MANAGER'),
+              featureFlagGuard('map-editor.enabled', '/home'),
+            ],
             canDeactivate: [operationalExitGuard],
             loadComponent: () =>
               import('./features/map-editor/ui/map-editor-page').then(
@@ -153,13 +199,28 @@ export const routes: Routes = [
               ),
           },
           {
-            // HU-4.01: vista de planta — composición de sectores sobre el lienzo.
-            path: 'floors/:floorId/editor',
+            // CU-06 (MAP-196): editor visual de elementos espaciales (Konva.js).
+            path: 'editor/:sectorId',
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            canActivate: [
+              roleGuard('ADMIN', 'MANAGER'),
+              featureFlagGuard('map-editor.enabled', '/home'),
+            ],
             canDeactivate: [operationalExitGuard],
             loadComponent: () =>
-              import('./features/map-editor/ui/floor-editor-page').then(
-                (m) => m.FloorEditorPageComponent,
+              import('./features/map-editor/ui/map-editor-page').then(
+                (m) => m.MapEditorPageComponent,
               ),
+          },
+          {
+            path: 'floors/:floorId/editor',
+            redirectTo: ({ params, queryParams }) =>
+              inject(Router).createUrlTree(['/spaces/editor'], {
+                queryParams: {
+                  floorId: convertToParamMap(params).get('floorId'),
+                  sectorId: convertToParamMap(queryParams).get('sectorId'),
+                },
+              }),
           },
         ],
       },

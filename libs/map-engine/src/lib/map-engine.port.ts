@@ -1,6 +1,12 @@
 import { InjectionToken, type Signal } from '@angular/core';
 
-import { type ElementState, type MapLayout, type SpaceElementId } from './map-layout.model';
+import {
+  type ElementState,
+  type MapLayout,
+  type Point,
+  type SpaceElement,
+  type SpaceElementId,
+} from './map-layout.model';
 
 /**
  * PUERTO del motor de mapa.
@@ -41,6 +47,15 @@ export interface MapEnginePort {
   /** Habilita o deshabilita la edición (la vista de operación es de solo lectura). */
   setEditable(editable: boolean): void;
 
+  readonly zoom?: Signal<number>;
+  fitToViewport?(limits?: { min: number; max: number }): void;
+  zoomBy?(factor: number): void;
+  setPanning?(enabled: boolean): void;
+  setGridVisible?(visible: boolean): void;
+  setLayoutFinish?(enabled: boolean): void;
+  furniturePreview?(element: SpaceElement): string | null;
+  viewportToModel?(point: Point): Point;
+
   /** Libera recursos. Obligatorio: el canvas retiene memoria si no se llama. */
   destroy(): void;
 
@@ -58,6 +73,7 @@ export interface MapEnginePort {
       y: number;
       width: number;
       height: number;
+      rotation?: number;
     }) => void,
   ): void;
 
@@ -77,12 +93,20 @@ export interface MapEnginePort {
    */
   onSectorDragEnd?(cb: (payload: { id: SpaceElementId; x: number; y: number }) => void): void;
 
-  /**
-   * HU-4.01 (modo `floor`): fin de rotación de un sector. El resize de un sector
-   * NO existe en la vista de planta (sus dimensiones se editan en la vista de
-   * sector, D-3).
-   */
+  /** Fin de rotación de un sector en la vista de planta. */
   onSectorRotateEnd?(cb: (payload: { id: SpaceElementId; rotation: number }) => void): void;
+
+  onSectorResizeEnd?(
+    cb: (payload: {
+      id: SpaceElementId;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => void,
+  ): void;
+
+  setSelectedSector?(id: SpaceElementId | null): void;
 
   /** HU-4.01 (modo `floor`): clic en un sector (o fondo para deseleccionar). */
   onSectorClick?(cb: (payload: { id: SpaceElementId | null }) => void): void;

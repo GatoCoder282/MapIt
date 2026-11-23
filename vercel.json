@@ -4,6 +4,7 @@
     "deploymentEnabled": {
       "**": false,
       "feat/**": true,
+      "HU-2.04.B-—-Editor-de-mapas": true,
       "main": true
     }
   }

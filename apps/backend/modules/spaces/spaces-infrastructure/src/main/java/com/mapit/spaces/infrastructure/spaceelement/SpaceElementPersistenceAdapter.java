@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.EntityManager;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -24,11 +26,20 @@ public class SpaceElementPersistenceAdapter implements SpaceElementRepository {
 
   private final SpaceElementSpringDataRepository repository;
   private final JdbcTemplate jdbcTemplate;
+  private final EntityManager entityManager;
 
   public SpaceElementPersistenceAdapter(
-      SpaceElementSpringDataRepository repository, JdbcTemplate jdbcTemplate) {
+      SpaceElementSpringDataRepository repository, JdbcTemplate jdbcTemplate, EntityManager entityManager) {
     this.repository = repository;
     this.jdbcTemplate = jdbcTemplate;
+    this.entityManager = entityManager;
+  }
+
+  @Override
+  public List<SpaceElement> findAliveBySectorIdForUpdate(TenantId tenantId, UUID sectorId) {
+    setDatabaseTenant(tenantId);
+    return repository.findAllByTenantIdAndSectorIdAndDeletedAtIsNullOrderById(tenantId.value(), sectorId)
+        .stream().map(SpaceElementJpaEntity::toDomain).toList();
   }
 
   @Override
@@ -53,7 +64,16 @@ public class SpaceElementPersistenceAdapter implements SpaceElementRepository {
   @Override
   public SpaceElement save(SpaceElement element) {
     setDatabaseTenant(element.tenantId());
-    return repository.save(SpaceElementJpaEntity.fromDomain(element)).toDomain();
+    var saved = repository.saveAndFlush(SpaceElementJpaEntity.fromDomain(element));
+    entityManager.refresh(saved);
+    return saved.toDomain();
+  }
+
+  @Override
+  public void insert(SpaceElement element) {
+    setDatabaseTenant(element.tenantId());
+    entityManager.persist(SpaceElementJpaEntity.fromDomain(element));
+    entityManager.flush();
   }
 
   private void setDatabaseTenant(TenantId tenantId) {

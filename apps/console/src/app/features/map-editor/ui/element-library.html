@@ -1,0 +1,180 @@
+<section class="element-library" aria-labelledby="element-library-title">
+  <form (submit)="insert($event)">
+    <header>
+      <span class="heading-icon"><svg lucidePlus aria-hidden="true"></svg></span>
+      <div>
+        <h2 #heading id="element-library-title" tabindex="-1">{{ editorStrings.workspace.add }}</h2>
+        <p>{{ strings.hint }}</p>
+      </div>
+    </header>
+    <div class="body">
+      <h3>{{ strings.type }}</h3>
+      <div class="categories" role="group" [attr.aria-label]="strings.type">
+        @for (group of categories(); track group.key) {
+          <button
+            type="button"
+            class="category-button"
+            [attr.aria-pressed]="category()?.key === group.key"
+            (click)="activeCategory.set(group.key); query.set('')"
+          >
+            <mapit-element-type-icon [type]="group.type" [size]="28" />{{ group.label
+            }}<svg lucideChevronRight aria-hidden="true"></svg>
+          </button>
+        }
+      </div>
+      @if (store.templates().length > 5) {
+        <label class="search"
+          >{{ strings.search }}<input #search type="search" [value]="query()" (input)="query.set(search.value)"
+        /></label>
+      }
+      @if (selectedModel(); as selected) {
+        <div class="model-heading">
+          <span class="heading-icon"><mapit-element-type-icon [type]="selected.type" [size]="28" /></span>
+          <div>
+            <h3>{{ catalogStrings.heading.replace('{category}', category()?.label ?? typeStrings[selected.type]) }}</h3>
+            <p>{{ strings.modelsHint }}</p>
+          </div>
+        </div>
+      }
+      <div class="cards" role="group" [attr.aria-label]="strings.model">
+        @for (model of visibleModels(); track model.key) {
+          <button
+            type="button"
+            class="card"
+            [attr.data-testid]="'library-card-' + model.key"
+            [attr.aria-pressed]="selectedModel()?.key === model.key"
+            [draggable]="store.canEdit() && !store.busy()"
+            (dragstart)="beginDrag($event, model)"
+            (dragend)="endDrag()"
+            (click)="choose(model)"
+          >
+            @if (selectedModel()?.key === model.key) {
+              <span class="check"><svg lucideCheck aria-hidden="true"></svg></span>
+            }
+            @if (previews()[model.key]; as preview) {
+              @if (model.arrangement) {
+                <span
+                  class="arrangement-preview"
+                  [style.grid-template-columns]="'repeat(' + model.arrangement.columns + ', minmax(0, 1fr))'"
+                >
+                  @for (index of previewItems(model); track index) {
+                    <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- vista previa del lienzo como Data URL -->
+                    <img draggable="false" [src]="preview" alt="" width="30" height="30" />
+                  }
+                </span>
+              } @else {
+                <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- vista previa del lienzo como Data URL -->
+                <img draggable="false" [src]="preview" alt="" width="120" height="100" />
+              }
+            } @else {
+              <mapit-element-type-icon [type]="model.type" [size]="70" />
+            }
+            <span>{{ model.label }}</span>
+          </button>
+        } @empty {
+          <p class="hint" role="status">{{ types().length ? strings.noMatches : strings.catalogPending }}</p>
+        }
+      </div>
+      <div class="fields">
+        <h3>{{ catalogStrings.configuration }}</h3>
+        @if (selectedModel()?.arrangement) {
+          <p class="hint">{{ catalogStrings.arrangementHint }}</p>
+          <div class="arrangement-fields">
+            <label
+              >{{ catalogStrings.rows
+              }}<input
+                #rowCount
+                type="number"
+                min="1"
+                max="10"
+                required
+                [value]="rows()"
+                (input)="rows.set(rowCount.valueAsNumber)"
+            /></label>
+            <label
+              >{{ catalogStrings.columns
+              }}<input
+                #columnCount
+                type="number"
+                min="1"
+                max="10"
+                required
+                [value]="columns()"
+                (input)="columns.set(columnCount.valueAsNumber)"
+            /></label>
+            <label
+              >{{ catalogStrings.gap
+              }}<input
+                #spacing
+                type="number"
+                min="0"
+                max="200"
+                required
+                [value]="gap()"
+                (input)="gap.set(spacing.valueAsNumber)"
+            /></label>
+          </div>
+          @if (!arrangementFits()) {
+            <p role="alert">{{ catalogStrings.noFit }}</p>
+          }
+        }
+        @if (reservable()) {
+          <div class="capacity-field">
+            <label for="new-element-capacity">{{ editorStrings.capacity }}</label>
+            <span class="stepper">
+              <button
+                type="button"
+                [disabled]="capacity() <= 1"
+                [attr.aria-label]="strings.decreaseCapacity"
+                (click)="capacity.set(capacity() - 1)"
+              >
+                <svg lucideMinus aria-hidden="true"></svg>
+              </button>
+              <input
+                #capacityInput
+                id="new-element-capacity"
+                type="number"
+                min="1"
+                max="2147483647"
+                step="1"
+                required
+                [value]="capacity()"
+                (input)="capacity.set(capacityInput.valueAsNumber)"
+              />
+              <button
+                type="button"
+                [disabled]="capacity() >= 2147483647"
+                [attr.aria-label]="strings.increaseCapacity"
+                (click)="capacity.set(capacity() + 1)"
+              >
+                <svg lucidePlus aria-hidden="true"></svg>
+              </button>
+            </span>
+          </div>
+        }
+        <label class="name-field"
+          >{{ selectedModel()?.type === 'ROOM' ? catalogStrings.identifier : strings.optionalName
+          }}<input
+            #elementName
+            type="text"
+            [attr.maxlength]="selectedModel()?.arrangement ? 110 : 120"
+            autocomplete="off"
+            [placeholder]="strings.namePlaceholder"
+            [value]="name()"
+            (input)="name.set(elementName.value)"
+        /></label>
+      </div>
+    </div>
+    <footer>
+      <p>{{ strings.styleHint }}</p>
+      <button
+        type="submit"
+        class="insert"
+        data-testid="library-insert"
+        [disabled]="!valid() || !store.canEdit() || store.busy()"
+      >
+        <svg lucidePlus aria-hidden="true"></svg>{{ strings.insert }}
+      </button>
+    </footer>
+  </form>
+</section>

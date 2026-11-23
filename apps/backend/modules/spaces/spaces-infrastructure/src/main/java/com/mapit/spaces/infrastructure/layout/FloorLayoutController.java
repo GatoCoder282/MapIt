@@ -3,6 +3,7 @@ package com.mapit.spaces.infrastructure.layout;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -30,11 +31,11 @@ import com.mapit.spaces.application.layout.SaveFloorLayoutCommand;
 import com.mapit.spaces.application.layout.SaveFloorLayoutUseCase;
 import com.mapit.spaces.application.sector.SectorNotFoundException;
 import com.mapit.spaces.application.spaceelement.InvalidElementTypeForVerticalException;
+import com.mapit.spaces.application.spaceelement.SpaceElementResponse;
 import com.mapit.spaces.domain.floor.Floor;
 import com.mapit.spaces.domain.layout.FloorLayout;
 import com.mapit.spaces.domain.layout.SectorLayout;
 import com.mapit.spaces.domain.sector.Sector;
-import com.mapit.spaces.domain.spaceelement.SpaceElement;
 import com.mapit.spaces.infrastructure.SpacesProblemTypes;
 
 /**
@@ -73,7 +74,7 @@ public class FloorLayoutController {
         request.floor().updatedAt(),
         request.sectors().stream()
             .map(s -> new SaveFloorLayoutCommand.SectorPlacement(
-                s.id(), s.x(), s.y(), s.rotation(), s.updatedAt()))
+                s.id(), s.x(), s.y(), s.rotation(), s.updatedAt(), s.width(), s.height()))
             .toList());
     Floor saved = saveFloorLayout.save(floorId, command);
     return FloorLayoutResponse.fromDomain(getFloorLayout.get(saved.id()));
@@ -86,7 +87,7 @@ public class FloorLayoutController {
         duplicateSector.duplicate(
             floorId,
             new DuplicateSectorCommand(
-                request.sourceSectorId(), request.name(), request.slug()));
+                request.sourceSectorId(), request.name(), request.slug(), request.x(), request.y()));
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(SectorLayoutResponse.fromDomain(duplicated));
   }
@@ -128,38 +129,29 @@ public class FloorLayoutController {
       double canvasWidth, double canvasHeight, @NotNull Instant updatedAt) {}
 
   public record SectorPlacementRequest(
-      @NotNull UUID id, double x, double y, double rotation, @NotNull Instant updatedAt) {}
+      @NotNull UUID id, double x, double y, double rotation, @NotNull Instant updatedAt,
+      Double width, Double height) {}
 
   public record FloorLayoutUpdateRequest(
       @NotNull @Valid FloorCanvasPatch floor,
       @NotNull List<@Valid SectorPlacementRequest> sectors) {}
 
   public record SectorDuplicateRequest(
-      @NotNull UUID sourceSectorId, String name, String slug) {}
-
-  public record SpaceElementDto(
-      UUID id, UUID sectorId, String type, double x, double y,
-      double width, double height, double rotation, String state,
-      Instant createdAt, Instant updatedAt) {
-    static SpaceElementDto fromDomain(SpaceElement el) {
-      return new SpaceElementDto(
-          el.id().value(), el.sectorId(), el.type().name(),
-          el.x(), el.y(), el.width(), el.height(), el.rotation(),
-          el.state().name(), el.audit().createdAt(), el.audit().updatedAt());
-    }
-  }
+      @NotNull UUID sourceSectorId, String name, String slug, Double x, Double y) {}
 
   public record SectorLayoutDto(
-      UUID id, String name, double x, double y, double rotation,
-      double width, double height, Instant updatedAt, List<SpaceElementDto> elements) {
+      UUID id, String name, Integer maxCapacity, double x, double y, double rotation,
+      double width, double height, Instant updatedAt, List<SpaceElementResponse> elements,
+      Map<String, Object> appearance) {
     static SectorLayoutDto fromDomain(SectorLayout layout) {
       Sector s = layout.sector();
       return new SectorLayoutDto(
-          s.id().value(), s.name(),
+          s.id().value(), s.name(), s.maxCapacity(),
           s.placement().x(), s.placement().y(), s.placement().rotation(),
           s.geometry().width(), s.geometry().height(),
           s.audit().updatedAt(),
-          layout.elements().stream().map(SpaceElementDto::fromDomain).toList());
+          layout.elements().stream().map(SpaceElementResponse::fromDomain).toList(),
+          s.appearance());
     }
   }
 
@@ -182,24 +174,24 @@ public class FloorLayoutController {
     }
   }
 
-  public record SectorLayoutResponse(SectorDto sector, List<SpaceElementDto> elements) {
+  public record SectorLayoutResponse(SectorDto sector, List<SpaceElementResponse> elements) {
     static SectorLayoutResponse fromDomain(SectorLayout layout) {
       return new SectorLayoutResponse(
           SectorDto.fromDomain(layout.sector()),
-          layout.elements().stream().map(SpaceElementDto::fromDomain).toList());
+          layout.elements().stream().map(SpaceElementResponse::fromDomain).toList());
     }
   }
 
   public record SectorDto(
       UUID id, String name, String slug, Integer maxCapacity,
       double x, double y, double rotation, double width, double height,
-      Instant createdAt, Instant updatedAt) {
+      Instant createdAt, Instant updatedAt, Map<String, Object> appearance) {
     public static SectorDto fromDomain(Sector s) {
       return new SectorDto(
           s.id().value(), s.name(), s.slug().value(), s.maxCapacity(),
           s.placement().x(), s.placement().y(), s.placement().rotation(),
           s.geometry().width(), s.geometry().height(),
-          s.audit().createdAt(), s.audit().updatedAt());
+          s.audit().createdAt(), s.audit().updatedAt(), s.appearance());
     }
   }
 }

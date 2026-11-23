@@ -79,12 +79,116 @@ describe('KonvaMapEngine', () => {
     });
   });
 
+  it('renders the oval table model with rounded geometry and six seats', () => {
+    engine.mount(host, {
+      ...layout,
+      elements: [
+        { ...element, size: { width: 160, height: 100 }, attributes: { finishVariant: 'oval' } },
+      ],
+    });
+    engine.setLayoutFinish(true);
+    expect(node().findOne<Konva.Rect>('.shape')!.cornerRadius()).toBe(50);
+    const artwork = node().findOne<Konva.Group>('.operational-art')!;
+    expect(artwork.getChildren().filter((child) => child.getClassName() === 'Group')).toHaveLength(
+      6,
+    );
+  });
+
   afterEach(() => {
     engine.destroy();
     host.remove();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     TestBed.resetTestingModule();
+  });
+
+  it('keeps model coordinates stable through fit, zoom and external drop', () => {
+    const onDrop = vi.fn();
+    engine.mount(host, layout);
+    engine.onExternalDrop(onDrop);
+    engine.fitToViewport({ min: 0.1, max: 2 });
+    const center = { x: 200, y: 150 };
+    expect(engine.viewportToModel(center)).toEqual(center);
+    engine.zoomBy(3);
+    expect(engine.zoom()).toBe(2);
+    expect(engine.viewportToModel(center)).toEqual(center);
+    const event = new MouseEvent('drop', { clientX: 120, clientY: 130, cancelable: true });
+    Object.defineProperty(event, 'dataTransfer', { value: { getData: () => 'base:TABLE' } });
+    host.dispatchEvent(event);
+    expect(onDrop).toHaveBeenCalledWith({ key: 'base:TABLE', x: 160, y: 140 });
+    const table = node();
+    const dragBound = table.dragBoundFunc();
+    const limited = dragBound.call(table, { x: 600, y: 600 }, new Event('pointermove'));
+    expect(engine.viewportToModel(limited)).toEqual({ x: 320, y: 220 });
+    expect(engine.exportLayout()).toEqual(layout);
+    engine.setPanning(true);
+    expect(table.draggable()).toBe(false);
+    engine.setPanning(false);
+    expect(table.draggable()).toBe(true);
+  });
+
+  it('draws the editor finish and refreshes the capacity badge on the same element', () => {
+    engine.mount(host, layout);
+    engine.setLayoutFinish(true);
+    expect(node().findOne('.operational-art')).toBeDefined();
+    expect(node().findOne('.state-marker')).toBeUndefined();
+    expect(node().findOne('.capacity-text')).toBeUndefined();
+    engine.load({ ...layout, elements: [{ ...element, capacity: 4 }] });
+    const capacity = () => node().findOne<Konva.Text>('.capacity-text');
+    expect(capacity()?.text()).toBe('4');
+    engine.load({ ...layout, elements: [{ ...element, capacity: 6 }] });
+    expect(capacity()?.text()).toBe('6');
+    engine.load(layout);
+    expect(capacity()).toBeUndefined();
+  });
+
+  it('applies advanced label preferences without changing the operational element', () => {
+    const table = { ...element, capacity: 4, attributes: { mapLabelStyle: 'outline' } };
+    engine.mount(host, { ...layout, elements: [table] });
+    engine.setLayoutFinish(true);
+    expect(node().findOne('.editor-label-bg')).toBeDefined();
+    engine.setSelectedElement(table.id);
+    expect(node().findOne<Konva.Rect>('.pill-bg')?.fill()).toBe('#ffffff');
+
+    const hidden = {
+      ...table,
+      attributes: { ...table.attributes, showMapName: false, showMapCapacity: false },
+    };
+    engine.load({ ...layout, elements: [hidden] });
+    expect(node().findOne('.label')?.visible()).toBe(false);
+    expect(node().findOne('.editor-label-bg')).toBeUndefined();
+    expect(node().findOne('.name-pill')).toBeUndefined();
+    expect(node().findOne('.capacity-text')).toBeUndefined();
+    expect(engine.exportLayout().elements[0]).toMatchObject({ capacity: 4, state: 'AVAILABLE' });
+  });
+
+  it('renders the stored zone border, fill and label position while selected', () => {
+    const zone: SpaceElement = {
+      ...element,
+      type: 'SECTOR_ZONE',
+      reservable: false,
+      capacity: null,
+      attributes: {
+        finishVariant: 'rounded',
+        finishColor: '#93c5fd',
+        fillOpacity: 50,
+        cornerRadius: 18,
+        zoneBorder: 'dashed',
+        zoneBorderColor: '#388556',
+        mapLabelPosition: 'top',
+      },
+    };
+    engine.mount(host, { ...layout, elements: [zone] });
+    engine.setLayoutFinish(true);
+    engine.setSelectedElement(zone.id);
+    const shape = node().findOne<Konva.Rect>('.shape')!;
+    expect(shape.fill()).toBe('#93c5fd80');
+    expect(shape.cornerRadius()).toBe(18);
+    expect(shape.dash()).toEqual([7, 5]);
+    expect(node().findOne('.label')?.getAttr('y')).toBe(8);
+    engine.setSelectedElement(null);
+    expect(shape.stroke()).toBe('#388556');
+    expect(engine.exportLayout().elements[0]?.position).toEqual(zone.position);
   });
 
   it('keeps readonly through mount and load, while programmatic selection does not click or edit', () => {

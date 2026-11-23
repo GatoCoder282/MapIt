@@ -4,11 +4,14 @@ import {
   computed,
   effect,
   inject,
+  input,
+  output,
   signal,
 } from '@angular/core';
 import { FeatureFlagService } from '@mapit/feature-flags';
-import { localizeString } from '../../../core/strings';
-import { SpacesStore } from '../model/spaces-store';
+import type { Floor } from '@mapit/api-client';
+import { localizeString } from '../strings';
+import { SpacesStore } from './spaces-store';
 
 /** Formulario de creación/edición de planta (CU-05 · MAP-69). */
 @Component({
@@ -83,12 +86,12 @@ import { SpacesStore } from '../model/spaces-store';
                     : store.strings_.floors.form.saveButton
               }}
             </button>
-            @if (store.isEditingFloor()) {
+            @if (dismissible() || store.isEditingFloor()) {
               <button
                 class="secondary"
                 type="button"
                 [disabled]="store.saving()"
-                (click)="store.startNewFloor()"
+                (click)="cancel()"
               >
                 {{ store.strings_.floors.form.cancelButton }}
               </button>
@@ -216,6 +219,9 @@ import { SpacesStore } from '../model/spaces-store';
   `,
 })
 export class PisoFormComponent {
+  readonly dismissible = input(false);
+  readonly saved = output<Floor>();
+  readonly formClosed = output<void>();
   protected readonly localizeString = localizeString;
   protected readonly store = inject(SpacesStore);
   protected readonly flags = inject(FeatureFlagService);
@@ -245,6 +251,11 @@ export class PisoFormComponent {
   /** Handler del submit nativo: previene la recarga y delega en el store. */
   protected save(event: Event): void {
     event.preventDefault();
-    this.store.saveFloor();
+    this.store.saveFloor((floor) => this.saved.emit(floor));
+  }
+
+  protected cancel(): void {
+    this.store.startNewFloor();
+    this.formClosed.emit();
   }
 }

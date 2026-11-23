@@ -2,6 +2,7 @@ package com.mapit.spaces.application.floor;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.spaces.application.establishment.EstablishmentNotFoundException;
+import com.mapit.spaces.application.layout.LayoutConflictException;
 import com.mapit.spaces.domain.Slug;
 import com.mapit.spaces.domain.establishment.EstablishmentRepository;
 import com.mapit.spaces.domain.floor.Floor;
@@ -68,6 +70,23 @@ public class FloorService {
   }
 
   @Transactional
+  public List<Floor> reorder(UUID establishmentId, List<UUID> previousIds, List<UUID> floorIds) {
+    var previous = new HashSet<>(previousIds);
+    var requested = new HashSet<>(floorIds);
+    if (previous.size() != previousIds.size() || requested.size() != floorIds.size()
+        || !previous.equals(requested)) {
+      throw new IllegalArgumentException("La lista debe conservar todas las plantas sin repetirlas");
+    }
+    var tenantId = tenantContext.require();
+    establishmentRepository.findAliveById(tenantId, establishmentId)
+        .orElseThrow(() -> new EstablishmentNotFoundException(establishmentId));
+    if (!floorRepository.reorder(tenantId, establishmentId, previousIds, floorIds)) {
+      throw new LayoutConflictException(List.of(establishmentId));
+    }
+    return floorRepository.findAliveByEstablishmentId(tenantId, establishmentId);
+  }
+
+  @Transactional
   public Floor create(
       UUID establishmentId,
       String name,
@@ -109,7 +128,7 @@ public class FloorService {
   public Floor update(UUID id, String name, String slugValue) {
     TenantId tenantId = tenantContext.require();
     Floor actual = floorRepository
-        .findAliveById(tenantId, id)
+        .findAliveByIdForUpdate(tenantId, id)
         .orElseThrow(() -> new FloorNotFoundException(id));
 
     // Resolver slug si se proporciona
@@ -129,7 +148,7 @@ public class FloorService {
   public void softDelete(UUID id) {
     TenantId tenantId = tenantContext.require();
     Floor actual = floorRepository
-        .findAliveById(tenantId, id)
+        .findAliveByIdForUpdate(tenantId, id)
         .orElseThrow(() -> new FloorNotFoundException(id));
 
     // RN: un piso con sectores vivos no se puede dar de baja — quedarían sectores

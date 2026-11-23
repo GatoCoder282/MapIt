@@ -8,11 +8,15 @@ import type {
   SpaceElement,
   SpaceElementId,
   Size,
+  Point,
   ElementState,
   SpaceElementType,
   SpaceAvailability,
 } from '../../map-layout.model';
+import { constrainPlacement } from '../../map-geometry';
 import { MAP_ENGINE, type MapEnginePort } from '../../map-engine.port';
+import { SpriteCatalog, type SpriteResource } from './sprite-catalog';
+import { furnitureFinish, roomFinish } from './operational-art';
 
 const DEFAULT_SECTOR_SIZE: Size = { width: 1200, height: 800 };
 
@@ -69,6 +73,9 @@ function paintState(el: SpaceElement): ElementState {
 }
 
 /** Paleta del editor (espejo de --mapit-editor-* de ui-kit; el adaptador es imperativo). */
+const TABLE_FILL = '#f3d6ae';
+const CHAIR_FILL = '#7597b7';
+
 const EDITOR = {
   selection: '#2563eb',
   selectionFill: '#93c5fd',
@@ -86,7 +93,6 @@ function createElementNode(
   sectorSize: { width: number; height: number },
 ): Konva.Group {
   const { width: elementWidth, height: elementHeight } = element.size;
-  const { width: sectorWidth, height: sectorHeight } = sectorSize;
 
   // Ensure valid initial positions (defensive: API might return undefined)
   const initialX =
@@ -94,7 +100,7 @@ function createElementNode(
   const initialY =
     typeof element.position.y === 'number' && !isNaN(element.position.y) ? element.position.y : 0;
 
-  const group = new Konva.Group({
+  const group: Konva.Group = new Konva.Group({
     id: element.id,
     x: initialX,
     y: initialY,
@@ -102,38 +108,11 @@ function createElementNode(
     height: elementHeight,
     rotation: element.rotation,
     draggable: true,
-    dragBoundFunc: (pos: Konva.Vector2d) => {
-      // Use the group from closure to get actual dimensions and rotation
-      const rotation = group.rotation();
-      const w = group.width();
-      const h = group.height();
-
-      // Convertir rotación a radianes
-      const rad = (rotation * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-
-      // Calcular las 4 esquinas del objeto rotado respecto a su origen (0,0)
-      // La caja AABB es el rectángulo que envuelve el objeto rotado
-      const corners = [
-        { x: 0, y: 0 }, // Arriba-Izquierda
-        { x: w * cos, y: w * sin }, // Arriba-Derecha
-        { x: -h * sin, y: h * cos }, // Abajo-Izquierda
-        { x: w * cos - h * sin, y: w * sin + h * cos }, // Abajo-Derecha
-      ];
-
-      // Encontrar los deltas mínimos y máximos de la caja rotada (AABB)
-      const minX = Math.min(...corners.map((c) => c.x));
-      const maxX = Math.max(...corners.map((c) => c.x));
-      const minY = Math.min(...corners.map((c) => c.y));
-      const maxY = Math.max(...corners.map((c) => c.y));
-
-      // Calcular los límites reales permitidos para pos.x y pos.y
-      // sectorWidth y sectorHeight vienen del scope de la función
-      const newX = Math.max(-minX, Math.min(pos.x, sectorWidth - maxX));
-      const newY = Math.max(-minY, Math.min(pos.y, sectorHeight - maxY));
-
-      return { x: newX, y: newY };
+    dragBoundFunc: (absolute: Point) => {
+      const transform = group.getParent()!.getAbsoluteTransform();
+      const pos = transform.copy().invert().point(absolute);
+      const bounds = (group.getAttr('sectorSize') as Size | undefined) ?? sectorSize;
+      return transform.point(constrainPlacement(pos, group.size(), bounds, group.rotation()));
     },
     name: 'space-element',
   });
@@ -169,8 +148,8 @@ function createElementNode(
 
   const label = new Konva.Text({
     text: element.label,
-    x: width / 2,
-    y: height + 16,
+    x: (width - Math.max(width, 80)) / 2,
+    y: height + 8,
     fontSize: 11,
     fontFamily: 'system-ui, sans-serif',
     fill: EDITOR.panelMuted,
@@ -179,44 +158,8 @@ function createElementNode(
     name: 'label',
   });
 
-  const radius = 14;
-  const offset = 12; // Separación desde la esquina
-
-  const capacityIndicator =
-    element.capacity !== null && element.reservable
-      ? new Konva.Circle({
-          x: width - offset,
-          y: offset,
-          radius: radius,
-          fill: EDITOR.selection,
-          stroke: '#ffffff',
-          strokeWidth: 2,
-          name: 'capacity-bg',
-        })
-      : null;
-
-  const capacityText = capacityIndicator
-    ? new Konva.Text({
-        x: width - offset, // Mismo centro que el círculo
-        y: offset,
-        text: String(element.capacity),
-        fontSize: 14,
-        fontStyle: 'bold',
-        fontFamily: 'system-ui, sans-serif',
-        fill: '#ffffff',
-        align: 'center',
-        verticalAlign: 'middle',
-        width: radius * 2,
-        offsetX: radius, // Desplaza la caja de texto a la izquierda por la mitad de su ancho
-        offsetY: 7, // Desplaza hacia arriba la mitad del tamaño de la fuente (14/2)
-        name: 'capacity-text',
-      })
-    : null;
-
   group.add(shape);
   group.add(label);
-  if (capacityIndicator) group.add(capacityIndicator);
-  if (capacityText) group.add(capacityText);
 
   return group;
 }
@@ -227,7 +170,7 @@ function createSectorNode(
 ): Konva.Group {
   const { width: sectorWidth, height: sectorHeight } = sector.size;
 
-  const group = new Konva.Group({
+  const group: Konva.Group = new Konva.Group({
     id: sector.id,
     x: sector.position.x,
     y: sector.position.y,
@@ -235,24 +178,10 @@ function createSectorNode(
     height: sectorHeight,
     rotation: sector.rotation,
     draggable: true,
-    dragBoundFunc: (pos: Konva.Vector2d) => {
-      const rad = (group.rotation() * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      const corners = [
-        { x: 0, y: 0 },
-        { x: sectorWidth * cos, y: sectorWidth * sin },
-        { x: -sectorHeight * sin, y: sectorHeight * cos },
-        { x: sectorWidth * cos - sectorHeight * sin, y: sectorWidth * sin + sectorHeight * cos },
-      ];
-      const minX = Math.min(...corners.map((c) => c.x));
-      const maxX = Math.max(...corners.map((c) => c.x));
-      const minY = Math.min(...corners.map((c) => c.y));
-      const maxY = Math.max(...corners.map((c) => c.y));
-      return {
-        x: Math.max(-minX, Math.min(pos.x, canvasSize.width - maxX)),
-        y: Math.max(-minY, Math.min(pos.y, canvasSize.height - maxY)),
-      };
+    dragBoundFunc: (absolute: Point) => {
+      const transform = group.getParent()!.getAbsoluteTransform();
+      const pos = transform.copy().invert().point(absolute);
+      return transform.point(constrainPlacement(pos, group.size(), canvasSize, group.rotation()));
     },
     name: 'sector-node',
   });
@@ -310,7 +239,7 @@ function createSectorNode(
   return group;
 }
 
-function createTransformer(layer: Konva.Layer, engine: KonvaMapEngine): Konva.Transformer {
+function createTransformer(layer: Konva.Layer): Konva.Transformer {
   const transformer = new Konva.Transformer({
     enabledAnchors: [
       'top-left',
@@ -342,20 +271,7 @@ function createTransformer(layer: Konva.Layer, engine: KonvaMapEngine): Konva.Tr
     ignoreStroke: true,
     visible: false,
     name: 'transformer',
-    boundBoxFunc: (oldBox, newBox) => {
-      const sectorWidth = engine.layout()?.size?.width || 0;
-      const sectorHeight = engine.layout()?.size?.height || 0;
-
-      if (
-        newBox.x < 0 ||
-        newBox.y < 0 ||
-        newBox.x + newBox.width > sectorWidth ||
-        newBox.y + newBox.height > sectorHeight
-      ) {
-        return oldBox;
-      }
-      return newBox;
-    },
+    flipEnabled: false,
   });
   layer.add(transformer);
   return transformer;
@@ -363,6 +279,233 @@ function createTransformer(layer: Konva.Layer, engine: KonvaMapEngine): Konva.Tr
 
 @Injectable({ providedIn: 'root' })
 export class KonvaMapEngine implements MapEnginePort {
+  private readonly cameraZoom = signal(1);
+  readonly zoom = this.cameraZoom.asReadonly();
+  private cameraLimits = { min: 0.05, max: 4 };
+  private fitted = false;
+  private panning = false;
+  private showGrid = true;
+  private layoutFinish = false;
+  private catalog: SpriteCatalog | null = null;
+
+  setLayoutFinish(enabled: boolean): void {
+    this.layoutFinish = enabled;
+    if (this.stage) {
+      this.drawBackground(this.layout());
+      this.load(this.layout());
+    }
+  }
+
+  furniturePreview(element: SpaceElement): string | null {
+    const graphic =
+      element.type === 'SECTOR_ZONE'
+        ? (furnitureFinish(element, this.isRoundFurniture(element)) ??
+          new Konva.Group().add(
+            new Konva.Rect({
+              x: 5,
+              y: 5,
+              width: 90,
+              height: 90,
+              ...this.zoneStyle(element, 100),
+            }),
+          ))
+        : furnitureFinish(element, this.isRoundFurniture(element));
+    if (!graphic) return null;
+    if (element.type === 'SECTOR_ZONE' && element.attributes['showMapName'] !== false) {
+      const style = element.attributes['mapLabelStyle'];
+      const text = new Konva.Text({
+        x: 7,
+        width: 86,
+        padding: 6,
+        align: 'center',
+        text: element.label,
+        ellipsis: true,
+        wrap: 'none',
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: 10,
+        fontStyle: 'bold',
+        fill: style === 'filled' ? '#ffffff' : EDITOR.panelText,
+      });
+      const y = this.zoneLabelY(element, text.height(), 100);
+      if (style !== 'text')
+        graphic.add(
+          new Konva.Rect({
+            x: (100 - Math.min(text.getTextWidth() + 12, 86)) / 2,
+            y,
+            width: Math.min(text.getTextWidth() + 12, 86),
+            height: text.height(),
+            fill: style === 'filled' ? EDITOR.selection : '#ffffff',
+            cornerRadius: 8,
+          }),
+        );
+      graphic.add(text.y(y));
+    }
+    const { width, height } = element.size;
+    const maxSide = Math.max(width, height);
+    graphic.scale({ x: width / maxSide, y: height / maxSide });
+    try {
+      return graphic.toDataURL({
+        x: ((100 * width) / maxSide - 116) / 2,
+        y: ((100 * height) / maxSide - 116) / 2,
+        width: 116,
+        height: 116,
+        pixelRatio: 2,
+      });
+    } finally {
+      graphic.destroy();
+    }
+  }
+
+  private zoneStyle(element: SpaceElement, side: number) {
+    const { finishColor, finishVariant, fillOpacity, cornerRadius, zoneBorderColor, zoneBorder } =
+      element.attributes;
+    const color = typeof finishColor === 'string' && finishColor ? finishColor : '#93c5fd';
+    const opacity = typeof fillOpacity === 'number' ? fillOpacity : 65;
+    const alpha = Math.round((Math.min(100, Math.max(0, opacity)) * 255) / 100)
+      .toString(16)
+      .padStart(2, '0');
+    const radius =
+      finishVariant === 'rounded' ? (typeof cornerRadius === 'number' ? cornerRadius : 16) : 0;
+    return {
+      fill: color.slice(0, 7) + alpha,
+      cornerRadius: Math.min(radius, side / 2),
+      stroke: typeof zoneBorderColor === 'string' && zoneBorderColor ? zoneBorderColor : '#2563eb',
+      strokeWidth: 2,
+      strokeEnabled: zoneBorder !== 'none',
+      dash: !zoneBorder || zoneBorder === 'dashed' ? [7, 5] : [],
+    };
+  }
+
+  private zoneLabelY(element: SpaceElement, labelHeight: number, height: number): number {
+    switch (element.attributes['mapLabelPosition']) {
+      case 'top':
+        return 8;
+      case 'bottom':
+        return Math.max(8, height - labelHeight - 8);
+      default:
+        return (height - labelHeight) / 2;
+    }
+  }
+
+  private isRoundFurniture(el: SpaceElement): boolean {
+    const variant = el.attributes['finishVariant'];
+    return (
+      variant === 'round' ||
+      variant === 'oval' ||
+      variant === 'vip-round' ||
+      variant === 'high-table' ||
+      (!variant &&
+        (el.type === 'TABLE' || el.type === 'SEAT') &&
+        Math.max(el.size.width, el.size.height) / Math.min(el.size.width, el.size.height) < 1.15)
+    );
+  }
+
+  private viewportEvents: AbortController | null = null;
+
+  fitToViewport(limits = this.cameraLimits): void {
+    if (!this.stage) return;
+    this.cameraLimits = limits;
+    const { width, height } = this.layout().size;
+    const margin = this.layoutFinish ? 52 : 40;
+    const scale = this.clampZoom(
+      Math.min((this.stage.width() - margin) / width, (this.stage.height() - margin) / height, 1),
+    );
+    this.fitted = true;
+    const floor = this.layer?.findOne<Konva.Rect>('.sector-border');
+    floor?.setAttrs({ fill: '#f8f5ee', stroke: '#3a4e65', strokeWidth: 2, shadowOpacity: 0 });
+    this.applyCamera(scale, {
+      x: (this.stage.width() - width * scale) / 2,
+      y: (this.stage.height() - height * scale) / 2,
+    });
+  }
+
+  viewportToModel(point: Point): Point {
+    return this.elementsLayer?.getAbsoluteTransform().copy().invert().point(point) ?? point;
+  }
+
+  zoomBy(factor: number): void {
+    if (!this.stage) return;
+    this.zoomAt(factor, { x: this.stage.width() / 2, y: this.stage.height() / 2 });
+  }
+
+  setGridVisible(visible: boolean): void {
+    this.showGrid = visible;
+    this.layer?.findOne('.grid')?.visible(visible);
+    this.layer?.batchDraw();
+  }
+
+  setPanning(enabled: boolean): void {
+    this.panning = enabled;
+    if (this.hostElement) {
+      this.hostElement.style.cursor = enabled ? 'grab' : '';
+      this.hostElement.style.touchAction = enabled ? 'none' : '';
+    }
+    this.elementsLayer?.listening(!enabled);
+    this.syncEditableState();
+    this.transformer?.visible(!enabled && this._editable() && this._selectedElement() !== null);
+  }
+
+  private clampZoom(value: number): number {
+    return Math.max(this.cameraLimits.min, Math.min(this.cameraLimits.max, value));
+  }
+
+  private zoomAt(factor: number, point: Point): void {
+    const model = this.viewportToModel(point);
+    const scale = this.clampZoom(this.zoom() * factor);
+    this.fitted = false;
+    this.applyCamera(scale, { x: point.x - model.x * scale, y: point.y - model.y * scale });
+  }
+
+  private applyCamera(scale: number, position: Point): void {
+    this.cameraZoom.set(scale);
+    for (const layer of [this.layer, this.elementsLayer]) {
+      layer?.position(position);
+      layer?.scale({ x: scale, y: scale });
+      layer?.batchDraw();
+    }
+    this.transformer?.forceUpdate();
+    this.sectorTransformer?.forceUpdate();
+    this.layer?.findOne<Konva.Rect>('.sector-border')?.strokeWidth(Math.min(11, 5 / scale));
+  }
+
+  private setupViewport(host: HTMLElement): void {
+    this.viewportEvents = new AbortController();
+    const options = { signal: this.viewportEvents.signal };
+    const point = (event: MouseEvent): Point => {
+      const rect = host.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    };
+    let pan: { id: number; start: Point; origin: Point } | null = null;
+    host.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (!this.panning || !event.isPrimary || event.button !== 0 || !this.elementsLayer) return;
+        pan = { id: event.pointerId, start: point(event), origin: this.elementsLayer.position() };
+        host.setPointerCapture(event.pointerId);
+      },
+      options,
+    );
+    host.addEventListener(
+      'pointermove',
+      (event) => {
+        if (!this.panning || !pan || event.pointerId !== pan.id) return;
+        const current = point(event);
+        this.fitted = false;
+        this.applyCamera(this.zoom(), {
+          x: pan.origin.x + current.x - pan.start.x,
+          y: pan.origin.y + current.y - pan.start.y,
+        });
+      },
+      options,
+    );
+    host.addEventListener(
+      'lostpointercapture',
+      () => {
+        pan = null;
+      },
+      options,
+    );
+  }
   private stage: Konva.Stage | null = null;
   private layer: Konva.Layer | null = null;
   private transformer: Konva.Transformer | null = null;
@@ -397,6 +540,7 @@ export class KonvaMapEngine implements MapEnginePort {
     y: number;
     width: number;
     height: number;
+    rotation?: number;
   }) => void)[] = [];
   private clickCallbacks: ((payload: { id: SpaceElementId | null }) => void)[] = [];
 
@@ -411,6 +555,13 @@ export class KonvaMapEngine implements MapEnginePort {
     rotation: number;
   }) => void)[] = [];
   private sectorClickCallbacks: ((payload: { id: SpaceElementId | null }) => void)[] = [];
+  private sectorResizeCallbacks: ((payload: {
+    id: SpaceElementId;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => void)[] = [];
   private externalDropCallbacks: ((payload: { key: string; x: number; y: number }) => void)[] = [];
   private sectorTransformer: Konva.Transformer | null = null;
   private selectedSectorId: SpaceElementId | null = null;
@@ -433,21 +584,21 @@ export class KonvaMapEngine implements MapEnginePort {
       width: host.clientWidth || layout.size.width,
       height: host.clientHeight || layout.size.height,
     });
-    this.layer = new Konva.Layer();
+    this.layer = new Konva.Layer({ listening: false });
 
     this.elementsLayer = new Konva.Layer();
 
     this.stage.add(this.layer);
     this.stage.add(this.elementsLayer);
 
-    this.transformer = createTransformer(this.elementsLayer, this);
-    // Ensure transformer is in the elementsLayer
-    this.elementsLayer.add(this.transformer);
+    this.transformer = createTransformer(this.elementsLayer);
 
     // HU-4.01: transformer del modo planta � solo rotación de sectores (su tamaño
     // intrínseco se edita en la vista de sector, D-3) y sin anclas de resize.
     const sectorTr = new Konva.Transformer({
-      enabledAnchors: [],
+      enabledAnchors: ['middle-right', 'bottom-center', 'bottom-right'],
+      keepRatio: false,
+      flipEnabled: false,
       rotateEnabled: true,
       rotationSnaps: [0, 45, 90, 135, 180, 225, 270, 315],
       borderEnabled: true,
@@ -465,18 +616,35 @@ export class KonvaMapEngine implements MapEnginePort {
       if (!this._editable() || this._isProgrammaticTransform) return;
       const target = sectorTr.nodes()[0];
       if (!target) return;
-      // Solo rotación: el tamaño intrínseco no se edita en la vista de planta (D-3).
+      const sector = this.layout().sectors?.find((item) => item.id === target.id());
+      if (!sector) return;
+      const width = Math.max(20, Math.round(sector.size.width * target.scaleX()));
+      const height = Math.max(20, Math.round(sector.size.height * target.scaleY()));
       target.scale({ x: 1, y: 1 });
       const rotation = ((Math.round(target.rotation()) % 360) + 360) % 360;
       target.rotation(rotation);
-      this.sectorRotateEndCallbacks.forEach((cb) => cb({ id: target.id(), rotation }));
+      if (width !== sector.size.width || height !== sector.size.height) {
+        const { x, y } = target.position();
+        this.sectorResizeCallbacks.forEach((cb) => cb({ id: target.id(), x, y, width, height }));
+      } else {
+        this.sectorRotateEndCallbacks.forEach((cb) => cb({ id: target.id(), rotation }));
+      }
       sectorTr.forceUpdate();
       this.elementsLayer?.batchDraw();
     });
 
-    this.drawBackground(layout);
     this.load(layout);
 
+    const catalog = new SpriteCatalog();
+    this.catalog = catalog;
+    void catalog.load().then(() => {
+      if (this.catalog !== catalog) return;
+      for (const el of this.layout().elements) {
+        const node = this.elementsLayer?.findOne<Konva.Group>('#' + el.id);
+        if (node) this.syncSprite(node, el);
+      }
+    });
+    this.setupViewport(host);
     this.setupStageEvents();
     this.setupExternalDrop(host);
     this.setupResizeObserver();
@@ -487,7 +655,9 @@ export class KonvaMapEngine implements MapEnginePort {
     this.resizeObserver = new ResizeObserver(() => {
       if (this.hostElement && this.stage) {
         const { width, height } = this.hostElement.getBoundingClientRect();
+        if (!width || !height) return;
         this.stage.size({ width, height });
+        if (this.fitted) this.fitToViewport();
       }
     });
     this.resizeObserver.observe(this.hostElement);
@@ -497,7 +667,7 @@ export class KonvaMapEngine implements MapEnginePort {
     if (!this.stage || !this.elementsLayer || !this.transformer) return;
 
     this.stage.on('click tap', (e: KonvaEventObject<MouseEvent>) => {
-      if (e.target === this.stage) {
+      if (!this.panning && e.target === this.stage) {
         this.deselectElement();
         this.deselectSector();
         this.clickCallbacks.forEach((cb) => cb({ id: null }));
@@ -506,6 +676,7 @@ export class KonvaMapEngine implements MapEnginePort {
     });
 
     this.elementsLayer.on('click tap', (e: KonvaEventObject<MouseEvent>) => {
+      if (this.panning) return;
       // Ignore clicks on transformer handles
       if (this.transformer && e.target.getAncestors?.().includes(this.transformer)) return;
       if (this.sectorTransformer && e.target.getAncestors?.().includes(this.sectorTransformer))
@@ -528,7 +699,6 @@ export class KonvaMapEngine implements MapEnginePort {
 
   /**
    * HU-4.01: convierte un drop HTML5 (desde la biblioteca) en coordenadas de lienzo.
-   * El stage vive en (0,0) del host: sin pan/zoom actual, basta la resta del rect.
    */
   private setupExternalDrop(host: HTMLElement): void {
     host.addEventListener('dragover', this.handleDragOver);
@@ -536,19 +706,23 @@ export class KonvaMapEngine implements MapEnginePort {
   }
 
   private readonly handleDragOver = (event: DragEvent): void => {
-    if (!this._editable()) return;
+    if (!this._editable() || this.panning) return;
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
   };
 
   private readonly handleDrop = (event: DragEvent): void => {
-    if (!this._editable() || !this.hostElement) return;
+    if (!this._editable() || this.panning || !this.hostElement) return;
     event.preventDefault();
     const key = event.dataTransfer?.getData('text/plain');
     if (!key) return;
     const rect = this.hostElement.getBoundingClientRect();
-    const x = Math.max(0, Math.round(event.clientX - rect.left));
-    const y = Math.max(0, Math.round(event.clientY - rect.top));
+    const model = this.viewportToModel({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    });
+    const x = Math.max(0, Math.round(model.x));
+    const y = Math.max(0, Math.round(model.y));
     this.externalDropCallbacks.forEach((cb) => cb({ key, x, y }));
   };
 
@@ -557,47 +731,55 @@ export class KonvaMapEngine implements MapEnginePort {
     this.layer.destroyChildren();
 
     const { width, height } = layout.size;
-    const gridSize = 50;
-
-    const gridLayer = new Konva.Layer({
-      listening: false, // Prevent grid/border from intercepting pointer events
-    });
-    for (let x = 0; x <= width; x += gridSize) {
-      gridLayer.add(
-        new Konva.Rect({ x, y: 0, width: 1, height, stroke: '#e5e7eb', strokeWidth: 0.5 }),
-      );
-    }
-    for (let y = 0; y <= height; y += gridSize) {
-      gridLayer.add(
-        new Konva.Rect({ x: 0, y, width, height: 1, stroke: '#e5e7eb', strokeWidth: 0.5 }),
-      );
-    }
-
-    const border = new Konva.Rect({
-      x: 0,
-      y: 0,
-      width,
-      height,
-      stroke: EDITOR.furnitureStroke,
-      strokeWidth: 2,
-      fill: 'transparent',
-      name: 'sector-border',
-    });
-    gridLayer.add(border);
-
-    // Sin título dentro del lienzo: el nombre del sector ya vive en el header
-    // del editor; dibujarlo aquí duplicaba la información sobre el grid.
-
-    // Add gridLayer BEFORE elementsLayer so it renders underneath
-    this.stage!.add(gridLayer);
-    this.stage!.add(this.layer);
-    this.stage!.add(this.elementsLayer!);
+    this.layer.add(
+      this.layoutFinish
+        ? roomFinish(layout.size, layout.appearance)
+        : new Konva.Rect({
+            width,
+            height,
+            name: 'sector-border',
+            fill: this.fitted ? '#f8f5ee' : EDITOR.furniture,
+            stroke: this.fitted ? '#3a4e65' : EDITOR.furnitureStroke,
+            strokeWidth: 2,
+          }),
+    );
+    this.layer.add(
+      new Konva.Shape({
+        name: 'grid',
+        visible: this.showGrid,
+        stroke: EDITOR.grid,
+        strokeWidth: 1,
+        sceneFunc: (context, shape) => {
+          context.beginPath();
+          for (let x = 50; x < width; x += 50) {
+            context.moveTo(x, 0);
+            context.lineTo(x, height);
+          }
+          for (let y = 50; y < height; y += 50) {
+            context.moveTo(0, y);
+            context.lineTo(width, y);
+          }
+          context.strokeShape(shape);
+        },
+      }),
+    );
+    this.layer.batchDraw();
   }
 
   load(layout: MapLayout): void {
     if (!this.elementsLayer) return;
 
+    const previous = this._layout();
     this._layout.set(layout);
+    if (
+      !this.layer?.hasChildren() ||
+      previous.size.width !== layout.size.width ||
+      previous.size.height !== layout.size.height ||
+      previous.appearance !== layout.appearance
+    ) {
+      this.drawBackground(layout);
+      if (this.fitted) this.fitToViewport();
+    }
 
     if (layout.kind === 'floor') {
       this.loadFloorSectors(layout);
@@ -612,9 +794,11 @@ export class KonvaMapEngine implements MapEnginePort {
       const node = this.elementsLayer!.findOne(`#${el.id}`) as Konva.Group;
 
       if (node && isKonvaGroup(node)) {
+        this.syncAppearance(node, el, sectorSize);
         // Nodo existente: sincronizar TODA la geometría (posición, rotación, tamaño)
         node.position({ x: el.position.x, y: el.position.y });
         node.rotation(el.rotation);
+        node.size(el.size);
 
         // Actualizar tamaño de la figura principal (.shape)
         const shape = node.findOne('.shape') as Konva.Rect;
@@ -623,24 +807,6 @@ export class KonvaMapEngine implements MapEnginePort {
           shape.height(el.size.height);
           this.paintElement(shape, el);
         }
-
-        // Actualizar label (centrado horizontal)
-        const label = node.findOne('.label') as Konva.Text;
-        if (label) {
-          label.x(el.size.width / 2);
-          label.y(el.size.height + 16);
-          label.width(Math.max(el.size.width, 80));
-        }
-
-        // Actualizar capacity-bg y capacity-text si existen
-        const capBg = node.findOne('.capacity-bg') as Konva.Circle;
-        const capText = node.findOne('.capacity-text') as Konva.Text;
-        if (capBg && capText) {
-          capBg.x(el.size.width - 10);
-          capBg.y(10);
-          capText.x(el.size.width - 10);
-          capText.y(10);
-        }
       } else {
         // Nodo nuevo: crearlo, agregarlo a la capa y ATAR handlers
         const newNode = createElementNode(el, sectorSize);
@@ -648,7 +814,7 @@ export class KonvaMapEngine implements MapEnginePort {
 
         // CRÍTICO: Atar los eventos de arrastre/clic a este nuevo nodo
         this.attachDragHandlers(newNode);
-        this.attachTransformHandlers(newNode);
+        this.syncAppearance(newNode, el, sectorSize);
       }
     });
     // 2. Limpieza de seguridad: borrar nodos que ya no existen en el layout
@@ -684,6 +850,219 @@ export class KonvaMapEngine implements MapEnginePort {
     if (this._selectedElement()) this.selectElement(this._selectedElement()!);
 
     this.elementsLayer.batchDraw();
+  }
+
+  private syncAppearance(node: Konva.Group, el: SpaceElement, bounds: Size): void {
+    node.setAttr('sectorSize', bounds);
+    const shape = node.findOne<Konva.Rect>('.shape')!;
+    const minSide = Math.min(el.size.width, el.size.height);
+    const isRound = this.isRoundFurniture(el);
+    shape.cornerRadius(isRound ? minSide / 2 : 6);
+    node.findOne<Konva.Text>('.label')?.visible(el.attributes['showMapName'] !== false);
+    this.syncRestingLabel(node, el);
+    this.syncFurnitureFallback(node, el, isRound);
+    this.syncCapacity(node, el);
+    this.paintElement(shape, el);
+    this.syncSprite(node, el);
+  }
+
+  private syncRestingLabel(node: Konva.Group, el: SpaceElement): void {
+    const label = node.findOne<Konva.Text>('.label');
+    if (!label) return;
+    const zone = el.type === 'SECTOR_ZONE';
+    const style = el.attributes['mapLabelStyle'] ?? (zone ? 'outline' : undefined);
+    const y = zone ? this.zoneLabelY(el, label.height(), el.size.height) : el.size.height + 8;
+    const labelWidth = Math.max(el.size.width, 80);
+    label.setAttrs({
+      text: el.label,
+      x: (el.size.width - labelWidth) / 2,
+      y,
+      width: labelWidth,
+      fill:
+        style === 'filled' ? '#ffffff' : style === 'outline' ? EDITOR.selection : EDITOR.panelMuted,
+    });
+    let badge = node.findOne<Konva.Rect>('.editor-label-bg');
+    if (!label.visible() || (style !== 'filled' && style !== 'outline')) {
+      badge?.destroy();
+      return;
+    }
+    if (!badge) {
+      badge = new Konva.Rect({ name: 'editor-label-bg', listening: false, cornerRadius: 8 });
+      node.add(badge);
+      badge.zIndex(label.zIndex());
+    }
+    const width = Math.min(label.getTextWidth(), labelWidth) + 10;
+    badge.setAttrs({
+      x: (el.size.width - width) / 2,
+      y: label.y() - 3,
+      width,
+      height: label.height() + 6,
+      fill: style === 'filled' ? EDITOR.selection : '#ffffff',
+      stroke: EDITOR.selection,
+      strokeWidth: 1,
+    });
+  }
+
+  private syncCapacity(node: Konva.Group, element: SpaceElement): void {
+    let badge = node.findOne<Konva.Circle>('.capacity-bg');
+    let text = node.findOne<Konva.Text>('.capacity-text');
+    if (
+      !element.reservable ||
+      element.capacity === null ||
+      element.attributes['showMapCapacity'] === false
+    ) {
+      badge?.destroy();
+      text?.destroy();
+      return;
+    }
+    if (!badge || !text) {
+      badge = new Konva.Circle({
+        name: 'capacity-bg',
+        radius: 14,
+        fill: EDITOR.selection,
+        stroke: '#ffffff',
+        strokeWidth: 2,
+        listening: false,
+      });
+      text = new Konva.Text({
+        name: 'capacity-text',
+        fontSize: 14,
+        fontStyle: 'bold',
+        fontFamily: 'system-ui, sans-serif',
+        fill: '#ffffff',
+        align: 'center',
+        width: 28,
+        offsetX: 14,
+        offsetY: 7,
+        listening: false,
+      });
+      node.add(badge, text);
+    }
+    const position = { x: element.size.width - 12, y: 12 };
+    badge.position(position);
+    text.position(position);
+    text.text(String(element.capacity));
+  }
+
+  private syncFurnitureFallback(node: Konva.Group, el: SpaceElement, round: boolean): void {
+    let previous = node.findOne<Konva.Group>('.table-fallback');
+    if (this.layoutFinish) {
+      const key = JSON.stringify([
+        el.type,
+        round,
+        el.size.height > el.size.width,
+        el.attributes['finishColor'],
+        el.attributes['finishVariant'],
+        el.attributes['boardColor'],
+        el.attributes['boardMaterial'],
+        el.attributes['boardEdge'],
+        el.attributes['chairStyle'],
+        el.attributes['chairArms'],
+        el.attributes['seatColor'],
+        el.attributes['visualScale'],
+      ]);
+      if (previous?.getAttr('finish') !== key) {
+        previous?.destroy();
+        previous = furnitureFinish(el, round) ?? undefined;
+        if (previous) {
+          previous.addName('table-fallback');
+          previous.setAttr('finish', key);
+          node.add(previous);
+          previous.zIndex(1);
+        }
+      }
+      previous?.scale({ x: el.size.width / 100, y: el.size.height / 100 });
+      previous?.visible(!node.findOne('.map-sprite'));
+      return;
+    }
+    if (previous?.hasName('operational-art')) previous.destroy();
+    if (el.type !== 'TABLE' || el.availability) return;
+    const decor =
+      node.findOne<Konva.Group>('.table-fallback') ??
+      new Konva.Group({ name: 'table-fallback', listening: false });
+    if (!decor.getParent()) {
+      const seat = (x: number, y: number, width: number, height: number) =>
+        new Konva.Rect({
+          x,
+          y,
+          width,
+          height,
+          cornerRadius: 8,
+          fill: CHAIR_FILL,
+          stroke: '#587896',
+          strokeWidth: 1.3,
+        });
+      decor.add(
+        seat(35, 4, 30, 16),
+        seat(35, 80, 30, 16),
+        seat(4, 35, 16, 30),
+        seat(80, 35, 16, 30),
+        new Konva.Rect({
+          x: 17,
+          y: 17,
+          width: 66,
+          height: 66,
+          name: 'table-top',
+          fill: TABLE_FILL,
+          stroke: '#ba9671',
+          strokeWidth: 1.3,
+        }),
+      );
+      node.add(decor);
+      decor.zIndex(1);
+    }
+    decor.scale({ x: el.size.width / 100, y: el.size.height / 100 });
+    decor.findOne<Konva.Rect>('.table-top')?.cornerRadius(round ? 33 : 9);
+    decor.visible(!node.findOne('.map-sprite'));
+  }
+
+  private syncSprite(node: Konva.Group, el: SpaceElement): void {
+    const catalog = this.catalog;
+    const sprite = catalog?.lookup(el, this.layout().vertical);
+    const old = node.findOne<Konva.Image>('.map-sprite');
+    if (!catalog || !sprite) {
+      old?.destroy();
+      node.findOne('.table-fallback')?.show();
+      node.setAttr('spritePath', '');
+      return;
+    }
+    const variant = el.attributes['spriteVariant'];
+    const path =
+      (typeof variant === 'string' ? sprite.variants?.[variant] : undefined) ?? sprite.path;
+    if (node.getAttr('spritePath') === path) {
+      if (old) this.sizeSprite(old, sprite, el.size);
+      return;
+    }
+    old?.destroy();
+    node.findOne('.table-fallback')?.show();
+    node.setAttr('spritePath', path);
+    void catalog.image(path).then((image) => {
+      if (
+        !image ||
+        this.catalog !== catalog ||
+        !node.getStage() ||
+        node.getAttr('spritePath') !== path
+      )
+        return;
+      const current = this.layout().elements.find((item) => item.id === el.id);
+      if (!current) return;
+      const graphic = new Konva.Image({ image, name: 'map-sprite', listening: false });
+      this.sizeSprite(graphic, sprite, current.size);
+      node.add(graphic);
+      graphic.zIndex(1);
+      node.findOne('.table-fallback')?.hide();
+      node.getLayer()?.batchDraw();
+    });
+  }
+
+  private sizeSprite(node: Konva.Image, sprite: SpriteResource, size: Size): void {
+    const width = Math.min(size.width, size.height * sprite.aspectRatio);
+    const height = width / sprite.aspectRatio;
+    node.size({ width, height });
+    node.position({
+      x: (size.width - width) * sprite.anchor.x,
+      y: (size.height - height) * sprite.anchor.y,
+    });
   }
 
   // ===== HU-4.01: modo planta (sectores como nodos compuestos) =====
@@ -785,6 +1164,11 @@ export class KonvaMapEngine implements MapEnginePort {
     this.elementsLayer.batchDraw();
   }
 
+  setSelectedSector(id: SpaceElementId | null): void {
+    if (id === null) this.deselectSector();
+    else this.selectSector(id);
+  }
+
   private deselectSector(): void {
     this.selectedSectorId = null;
     if (!this.sectorTransformer) return;
@@ -837,6 +1221,8 @@ export class KonvaMapEngine implements MapEnginePort {
       // Verificar si el transformer ya está en este nodo
       const currentNodes = this.transformer.nodes();
       if (currentNodes.length > 0 && currentNodes[0] === node && this._editable()) {
+        this.showNamePill(node);
+        this.transformer.forceUpdate();
         return; // Ya está completamente configurado
       }
       // Si llegamos aquí, es un nodo nuevo recreado - necesitamos reconectar handlers
@@ -856,7 +1242,7 @@ export class KonvaMapEngine implements MapEnginePort {
     this.showNamePill(node);
 
     this.transformer.nodes(this._editable() ? [node] : []);
-    if (this._editable()) this.transformer.show();
+    if (this._editable() && !this.panning) this.transformer.show();
     else this.transformer.hide();
 
     // Ensure transformer is in the elementsLayer before moving to top
@@ -880,7 +1266,7 @@ export class KonvaMapEngine implements MapEnginePort {
     this.elementsLayer.batchDraw();
 
     if (this._editable()) {
-      node.draggable(true);
+      node.draggable(!this.panning);
       this.attachDragHandlers(node);
       this.attachTransformHandlers(node);
     }
@@ -917,18 +1303,39 @@ export class KonvaMapEngine implements MapEnginePort {
   private applySelectionPaint(node: Konva.Group, selected: boolean): void {
     const shape = node.findOne('.shape');
     if (!isKonvaRect(shape)) return;
+    const el = this._layout().elements.find((e) => e.id === node.id());
     if (selected) {
-      shape.fill(EDITOR.selectionFill);
+      if (el?.type === 'SECTOR_ZONE') {
+        shape.setAttrs({
+          ...this.zoneStyle(el, Math.min(el.size.width, el.size.height)),
+          stroke: EDITOR.selection,
+          strokeEnabled: true,
+        });
+        return;
+      }
+      shape.fill(this.layoutFinish ? '#61a0ff35' : EDITOR.selectionFill);
+      if (this.layoutFinish) shape.cornerRadius(10);
       shape.stroke(EDITOR.selection);
       shape.strokeWidth(2);
       return;
     }
-    const el = this._layout().elements.find((e) => e.id === node.id());
     if (el) this.paintElement(shape, el);
   }
 
   private paintElement(shape: Konva.Rect, el: SpaceElement): void {
-    const state = paintState(el);
+    if (el.type === 'SECTOR_ZONE') {
+      shape.setAttrs({
+        ...this.zoneStyle(el, Math.min(el.size.width, el.size.height)),
+        shadowEnabled: false,
+      });
+      return;
+    }
+    const state = this.layoutFinish ? 'AVAILABLE' : paintState(el);
+    if (this.layoutFinish && shape.getParent()?.findOne('.operational-art')) {
+      shape.setAttrs({ fill: 'transparent', stroke: 'transparent', shadowEnabled: false });
+      return;
+    }
+    shape.shadowEnabled(true);
     shape.fill(EDITOR.furniture);
     shape.stroke(state === 'AVAILABLE' ? EDITOR.furnitureStroke : STATE_COLORS[state].stroke);
     shape.strokeWidth(state === 'AVAILABLE' ? 1.5 : 3);
@@ -938,14 +1345,16 @@ export class KonvaMapEngine implements MapEnginePort {
   private showNamePill(node: Konva.Group): void {
     this.hideNamePill(node);
     const el = this._layout().elements.find((e) => e.id === node.id());
-    if (!el) return;
+    if (!el || el.type === 'SECTOR_ZONE') return;
+    if (el.attributes['showMapName'] === false) return;
 
+    const labelStyle = el.attributes['mapLabelStyle'];
     const text = new Konva.Text({
       text: el.label,
       fontSize: 11,
       fontStyle: 'bold',
       fontFamily: 'system-ui, sans-serif',
-      fill: '#ffffff',
+      fill: labelStyle === 'outline' || labelStyle === 'text' ? EDITOR.selection : '#ffffff',
       name: 'pill-text',
     });
     const paddingX = 10;
@@ -954,7 +1363,10 @@ export class KonvaMapEngine implements MapEnginePort {
     const pill = new Konva.Rect({
       width: pillWidth,
       height: pillHeight,
-      fill: EDITOR.selection,
+      fill: labelStyle === 'outline' ? '#ffffff' : EDITOR.selection,
+      ...(labelStyle === 'outline' ? { stroke: EDITOR.selection } : {}),
+      strokeWidth: 1,
+      visible: labelStyle !== 'text',
       cornerRadius: pillHeight / 2,
       shadowColor: 'rgba(0,0,0,0.16)',
       shadowBlur: 6,
@@ -977,6 +1389,7 @@ export class KonvaMapEngine implements MapEnginePort {
 
   private hideNamePill(node: Konva.Node): void {
     if (!(node instanceof Konva.Container)) return;
+
     const pills = node.find<Konva.Group>('.name-pill');
     pills.forEach((pill) => pill.destroy());
   }
@@ -1021,14 +1434,15 @@ export class KonvaMapEngine implements MapEnginePort {
         typeof currentY === 'number' &&
         !isNaN(currentY)
       ) {
-        const x = Math.max(0, Math.round(currentX));
-        const y = Math.max(0, Math.round(currentY));
+        const x = Math.max(0, currentX);
+        const y = Math.max(0, currentY);
         this.dragMoveCallbacks.forEach((cb) => cb({ id: node.id(), x, y }));
       }
     });
 
     node.on('dragend.mapDrag', () => {
       if (!this._editable()) return;
+      node.opacity(1);
       const shape = node.findOne('.shape');
       if (isKonvaRect(shape)) {
         shape.shadowColor(originalShadowColor);
@@ -1076,7 +1490,7 @@ export class KonvaMapEngine implements MapEnginePort {
       if (!this._editable() || this._isProgrammaticTransform) return;
 
       // Get the current transform state from the transformer
-      const rotation = Math.round(this.transformer!.rotation() % 360);
+      const rotation = ((Math.round(node.rotation()) % 360) + 360) % 360;
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const scaleX = this.transformer!.getNode()!.scaleX();
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
@@ -1089,11 +1503,15 @@ export class KonvaMapEngine implements MapEnginePort {
       const newWidth = Math.max(20, Math.round(shape.width() * Math.abs(scaleX)));
       const newHeight = Math.max(20, Math.round(shape.height() * Math.abs(scaleY)));
 
-      // Check bounds before applying - use node's x,y and new dimensions
-      // Check bounds before applying - use node's x,y and new dimensions
+      node.rotation(rotation);
       if (this.isElementOutOfBounds(node, newWidth, newHeight)) {
-        // Revert scale only, keep rotation
+        const original = this.layout().elements.find((el) => el.id === node.id());
+        if (original) {
+          node.position(original.position);
+          node.rotation(original.rotation);
+        }
         node.scale({ x: 1, y: 1 });
+        this.transformer?.forceUpdate();
         this.elementsLayer!.batchDraw();
         return;
       }
@@ -1111,8 +1529,8 @@ export class KonvaMapEngine implements MapEnginePort {
       // Update label position
       const label = node.findOne('.label');
       if (!isKonvaText(label)) return;
-      label.x(newWidth / 2);
-      label.y(newHeight + 16);
+      label.x((newWidth - Math.max(newWidth, 80)) / 2);
+      label.y(newHeight + 8);
       label.width(Math.max(newWidth, 80));
 
       // Update capacity indicator positions
@@ -1129,7 +1547,14 @@ export class KonvaMapEngine implements MapEnginePort {
       // Note: resize from left/top anchors changes x,y position
       this.rotateEndCallbacks.forEach((cb) => cb({ id: node.id(), rotation }));
       this.resizeEndCallbacks.forEach((cb) =>
-        cb({ id: node.id(), x: node.x(), y: node.y(), width: newWidth, height: newHeight }),
+        cb({
+          id: node.id(),
+          x: node.x(),
+          y: node.y(),
+          width: newWidth,
+          height: newHeight,
+          rotation,
+        }),
       );
 
       this.elementsLayer!.batchDraw();
@@ -1145,41 +1570,25 @@ export class KonvaMapEngine implements MapEnginePort {
   }
 
   private isElementOutOfBounds(node: Konva.Group, width: number, height: number): boolean {
-    const rotation = node.rotation();
-
-    // For simplicity, check if the bounding box of the rotated element fits in the sector
-    // This is a conservative check - we check if the rotated element's bounding box fits
-    const halfW = width / 2;
-    const halfH = height / 2;
-    // const sectorSize = { width: this._layout().size.width, height: this._layout().size.height };
-
-    // Calculate the four corners of the rotated rectangle
-    // const cos = Math.cos((rotation * Math.PI) / 180);
-    // const sin = Math.sin((rotation * Math.PI) / 180);
-
-    const corners = [
-      { x: -halfW, y: -halfH },
-      { x: halfW, y: -halfH },
-      { x: halfW, y: halfH },
-      { x: -halfW, y: halfH },
-    ];
-
-    for (const corner of corners) {
-      const rx =
-        corner.x * Math.cos((rotation * Math.PI) / 180) -
-        corner.y * Math.sin((rotation * Math.PI) / 180);
-      const ry =
-        corner.x * Math.sin((rotation * Math.PI) / 180) +
-        corner.y * Math.cos((rotation * Math.PI) / 180);
-      const worldX = node.x() + rx;
-      const worldY = node.y() + ry;
-
-      const sectorSize = this.layout().size;
-      if (worldX < 0 || worldX > sectorSize.width || worldY < 0 || worldY > sectorSize.height) {
-        return true;
-      }
-    }
-    return false;
+    const radians = (node.rotation() * Math.PI) / 180;
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    const size = this.layout().size;
+    return [
+      { x: 0, y: 0 },
+      { x: width, y: 0 },
+      { x: width, y: height },
+      { x: 0, y: height },
+    ].some(({ x, y }) => {
+      const worldX = node.x() + x * cos - y * sin;
+      const worldY = node.y() + x * sin + y * cos;
+      return (
+        worldX < -0.001 ||
+        worldY < -0.001 ||
+        worldX > size.width + 0.001 ||
+        worldY > size.height + 0.001
+      );
+    });
   }
 
   setElementState(id: SpaceElementId, state: ElementState): void {
@@ -1219,7 +1628,7 @@ export class KonvaMapEngine implements MapEnginePort {
     for (const child of this.elementsLayer.getChildren()) {
       if (!child.hasName('space-element') && !child.hasName('sector-node')) continue;
       const node = child as Konva.Group;
-      node.draggable(this._editable());
+      node.draggable(this._editable() && !this.panning);
       if (this._editable()) {
         if (node.hasName('sector-node')) this.attachSectorHandlers(node);
         else this.attachDragHandlers(node);
@@ -1252,6 +1661,7 @@ export class KonvaMapEngine implements MapEnginePort {
     this.sectorDragEndCallbacks = [];
     this.sectorRotateEndCallbacks = [];
     this.sectorClickCallbacks = [];
+    this.sectorResizeCallbacks = [];
     this.externalDropCallbacks = [];
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
@@ -1259,6 +1669,15 @@ export class KonvaMapEngine implements MapEnginePort {
     }
     this.hostElement?.removeEventListener('dragover', this.handleDragOver);
     this.hostElement?.removeEventListener('drop', this.handleDrop);
+    this.catalog?.destroy();
+    this.catalog = null;
+    this.layoutFinish = false;
+    this.viewportEvents?.abort();
+    this.viewportEvents = null;
+    this.setPanning(false);
+    this.fitted = false;
+    this.cameraZoom.set(1);
+    this.showGrid = true;
     this._selectedElement.set(null);
     this.selectedSectorId = null;
     this.sectorTransformer = null;
@@ -1299,6 +1718,7 @@ export class KonvaMapEngine implements MapEnginePort {
       y: number;
       width: number;
       height: number;
+      rotation?: number;
     }) => void,
   ): void {
     this.resizeEndCallbacks.push(cb);
@@ -1316,6 +1736,18 @@ export class KonvaMapEngine implements MapEnginePort {
 
   onSectorRotateEnd(cb: (payload: { id: SpaceElementId; rotation: number }) => void): void {
     this.sectorRotateEndCallbacks.push(cb);
+  }
+
+  onSectorResizeEnd(
+    cb: (payload: {
+      id: SpaceElementId;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => void,
+  ): void {
+    this.sectorResizeCallbacks.push(cb);
   }
 
   onSectorClick(cb: (payload: { id: SpaceElementId | null }) => void): void {
