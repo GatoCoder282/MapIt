@@ -195,3 +195,9 @@ La preparación documental se verificó con Prettier sobre los tres Markdown, en
 ### Integración MVP — 2026-11-22
 
 V42 añade cola de hechos/candidatos con RLS y señal pendiente/versionada en notification. Puerto mínimo compartido para reserva creada; check-in reutiliza el eventId actual. Consumer por tenant/claim transaccional independiente de published_at/flag. La señal versionada se reclama después de persistir, con reintentos y autorización vigente; el cliente reconcilia HTTP en reconexión/invalida, sin deltas. V43 persiste solo categorías optativas actuales. GET/PATCH preferences bajo el mismo principal/gate; PATCH estricto/atómico. Configurar binding de sesión del transporte compartido y reconexión segura al cambiar identidad.
+
+### QA de infraestructura real — 2026-11-22
+
+El flujo E2E completo vive en apps/e2e/playwright.notifications.config.ts (desktop y Pixel 7); exige MAP286_QA_CONTAINER=mapit-map286-final-pg y MAP286_QA_DATABASE=map286_qa. El fixture comprueba V40→V41→V42→V43 antes de escribir y solo acepta esa base temporal. Usar Chrome instalado con E2E_BROWSER_CHANNEL=chrome; los servidores QA deben desactivar HMR/liveReload para que una caída de red no recargue artificialmente la página. No habilitar este arnés sobre datos de desarrollo. Resultados y comandos concretos en tasks.md.
+
+Rollback real verificado: OFF oculta/cierra el centro, conserva lecturas/datos y ON reconcilia por HTTP. Caer el proxy oculta la entrada; si solo cae Unleash, el proxy puede servir ON cacheado: backend pasa a 404 por falta de frescura, pero la campana permanece visible. Este escenario visual sigue pendiente antes del rollout; mantener OFF y no confundir disponibilidad del proxy con frescura upstream. Los fallos no alteraron login ni reglas de reservas/check-in.
