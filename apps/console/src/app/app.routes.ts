@@ -92,13 +92,13 @@ export const routes: Routes = [
           import('./features/operations/ui/space-monitor').then((m) => m.SpaceMonitor),
       },
       {
-        // Secciones del roadmap sin caso de uso todavía: placeholder honesto
-        // hasta que exista la feature real (mismo patrón que /admin/settings).
         path: 'users',
-        data: { title: STRINGS.staffShell.nav.users },
-        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+        canActivate: [roleGuard('ADMIN')],
+        loadComponent: () =>
+          import('./features/administration/users/ui/users').then((m) => m.Users),
       },
       {
+        // Secciones del roadmap sin caso de uso todavía.
         path: 'reports',
         data: { title: STRINGS.staffShell.nav.reports },
         loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
@@ -241,12 +241,25 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'reservations',
+        loadComponent: () =>
+          import('./features/reservations/ui/operational-reservations').then(
+            (m) => m.OperationalReservations,
+          ),
+      },
+      {
         path: 'reservations/new',
         pathMatch: 'full',
         redirectTo: ({ queryParams }) =>
           inject(Router).createUrlTree(['/map'], {
             queryParams: { ...queryParams, panel: 'quick' },
           }),
+      },
+      {
+        path: 'payments',
+        canActivate: [roleGuard('ADMIN', 'MANAGER')],
+        loadComponent: () =>
+          import('./features/payments/ui/operational-payments').then((m) => m.OperationalPayments),
       },
       {
         path: 'payment-methods',
@@ -263,7 +276,7 @@ export const routes: Routes = [
       {
         path: 'check-in',
         canDeactivate: [operationalExitGuard],
-        canActivate: [roleGuard('ADMIN', 'STAFF')],
+        canActivate: [roleGuard('ADMIN', 'MANAGER', 'STAFF')],
         loadComponent: () => import('./features/check-in/ui/check-in').then((m) => m.CheckIn),
       },
       {

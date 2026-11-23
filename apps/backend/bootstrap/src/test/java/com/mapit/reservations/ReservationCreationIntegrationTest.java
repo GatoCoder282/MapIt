@@ -174,6 +174,11 @@ class ReservationCreationIntegrationTest {
         .exchange().expectStatus().isOk().expectBody().jsonPath("$[0].notes").isEqualTo(note);
     http().get().uri("/api/v1/reservations")
         .header("Authorization", bearer(token(STAFF_B, TENANT_B, UserRole.STAFF)))
+        .exchange().expectStatus().isForbidden();
+    var otherAdmin = UUID.randomUUID();
+    user(otherAdmin, TENANT_B, "admin-b@reservation-flow.test", UserRole.ADMIN);
+    http().get().uri("/api/v1/reservations")
+        .header("Authorization", bearer(token(otherAdmin, TENANT_B, UserRole.ADMIN)))
         .exchange().expectStatus().isOk().expectBody().jsonPath("$").isEmpty();
     assertThat(jdbc.queryForObject(
         "select count(*) from realtime_event_outbox where tenant_id = ? and payload::text like ?",
@@ -316,6 +321,9 @@ class ReservationCreationIntegrationTest {
           .isCreated();
     }
 
+    UUID platformAdmin = UUID.randomUUID();
+    jdbc.update("insert into app_user(id,tenant_id,email,password_hash,full_name,role) values (?,'platform',?,'unused','Plataforma','SUPER_ADMIN')",
+        platformAdmin, "platform-" + platformAdmin + "@reservation.test");
     create(
             ESTABLISHMENT_A,
             PERSON_A,
@@ -331,7 +339,7 @@ class ReservationCreationIntegrationTest {
             List.of(ELEMENT_A),
             "2026-10-12T12:00:00Z",
             "2026-10-12T13:00:00Z",
-            token(UUID.randomUUID(), TENANT_A, UserRole.SUPER_ADMIN))
+            token(platformAdmin, "platform", UserRole.SUPER_ADMIN))
         .expectStatus()
         .isForbidden();
 

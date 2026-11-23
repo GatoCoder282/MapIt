@@ -1,0 +1,309 @@
+<section class="users-page">
+  <header class="page-header">
+    <h1>{{ strings.title }}</h1>
+    <p>{{ strings.intro }}</p>
+  </header>
+
+  <section class="panel invite-panel" [attr.aria-label]="strings.inviteTitle">
+    <h2>{{ strings.inviteTitle }}</h2>
+    <form data-testid="users-invite-form" [formGroup]="form" (ngSubmit)="invite()">
+      <div class="field">
+        <label for="invite-email">{{ strings.email }}</label>
+        <input
+          data-testid="users-invite-email"
+          id="invite-email"
+          type="email"
+          autocomplete="email"
+          formControlName="email"
+          required
+          maxlength="254"
+        />
+      </div>
+      <div class="field">
+        <label for="invite-role">{{ strings.role }}</label>
+        <select data-testid="users-invite-role" id="invite-role" formControlName="role">
+          <option value="MANAGER">{{ roles.MANAGER }}</option>
+          <option value="STAFF">{{ roles.STAFF }}</option>
+        </select>
+      </div>
+      <button
+        class="button primary"
+        data-testid="users-invite-submit"
+        type="submit"
+        [disabled]="form.invalid || store.saving()"
+      >
+        {{ strings.invite }}
+      </button>
+    </form>
+  </section>
+
+  @if (store.feedback()) {
+    <p class="notice success" role="status">{{ store.feedback() }}</p>
+  }
+  @if (store.error()) {
+    <p class="notice error" role="alert">{{ store.error() }}</p>
+  }
+
+  <section data-testid="users-invitations" class="panel" [attr.aria-label]="strings.invitationsTitle">
+    <h2>{{ strings.invitationsTitle }}</h2>
+    <p class="section-hint">{{ strings.resendHint }}</p>
+    @if (store.invitationError()) {
+      <p class="notice error" role="alert">{{ store.invitationError() }}</p>
+    }
+    @switch (store.invitationStatus()) {
+      @case ('loading') {
+        <p class="state" role="status">{{ strings.invitationsLoading }}</p>
+      }
+      @case ('error') {
+        <button class="button secondary" type="button" (click)="store.loadInvitations()">{{ strings.retry }}</button>
+      }
+      @case ('ready') {
+        @if (!store.invitations().length) {
+          <p class="empty-state">{{ strings.invitationsEmpty }}</p>
+        } @else {
+          <div class="table-wrap">
+            <table class="invitations-table">
+              <thead>
+                <tr>
+                  <th scope="col">{{ strings.email }}</th>
+                  <th scope="col">{{ strings.role }}</th>
+                  <th scope="col">{{ strings.status }}</th>
+                  <th scope="col">{{ strings.expires }}</th>
+                  <th scope="col">{{ strings.dispatchAttempted }}</th>
+                  <th scope="col">{{ strings.actions }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (invitation of store.invitations(); track invitation.id) {
+                  <tr data-testid="users-invitation-row">
+                    <td class="email-cell" [attr.data-label]="strings.email">{{ invitation.email }}</td>
+                    <td [attr.data-label]="strings.role">
+                      <span class="role-chip" [class.manager]="invitation.role === 'MANAGER'">{{
+                        roles[invitation.role]
+                      }}</span>
+                    </td>
+                    <td [attr.data-label]="strings.status">
+                      <span class="status-chip" [class.expired]="invitation.status === 'EXPIRED'">{{
+                        strings.invitationStatus[invitation.status]
+                      }}</span>
+                      <span class="dispatch-status">{{ strings.dispatch[invitation.dispatchStatus] }}</span>
+                    </td>
+                    <td [attr.data-label]="strings.expires">
+                      {{ invitation.expiresAt | localDate: locale() : 'medium' }}
+                    </td>
+                    <td [attr.data-label]="strings.dispatchAttempted">
+                      @if (invitation.dispatchAttemptedAt) {
+                        {{ invitation.dispatchAttemptedAt | localDate: locale() : 'medium' }}
+                      } @else {
+                        —
+                      }
+                    </td>
+                    <td class="actions-cell" [attr.data-label]="strings.actions">
+                      <button
+                        class="button secondary"
+                        data-testid="users-invitation-resend"
+                        type="button"
+                        [disabled]="store.saving() || !store.canResend(invitation)"
+                        [attr.aria-label]="strings.resend + ': ' + invitation.email"
+                        (click)="store.resend(invitation)"
+                      >
+                        {{ strings.resend }}
+                      </button>
+                      @if (!store.canResend(invitation)) {
+                        <span class="action-hint">{{ strings.cooldown }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <nav class="pagination" [attr.aria-label]="strings.invitationsTitle">
+          <button
+            class="button secondary"
+            type="button"
+            [disabled]="!store.canPrevInvitation()"
+            (click)="store.loadInvitations(store.invitationPage() - 1)"
+          >
+            {{ strings.previous }}
+          </button>
+          <span
+            >{{ strings.page }} {{ store.invitationPage() + 1 }} {{ strings.of }}
+            {{ store.invitationTotalPages() || 1 }} ({{ store.invitationTotalElements() }})</span
+          >
+          <button
+            class="button secondary"
+            type="button"
+            [disabled]="!store.canNextInvitation()"
+            (click)="store.loadInvitations(store.invitationPage() + 1)"
+          >
+            {{ strings.next }}
+          </button>
+        </nav>
+      }
+    }
+  </section>
+
+  <section data-testid="users-accounts" class="panel" [attr.aria-label]="strings.title">
+    <h2>{{ strings.title }}</h2>
+    @switch (store.status()) {
+      @case ('loading') {
+        <p class="state" role="status">{{ strings.loading }}</p>
+      }
+      @case ('error') {
+        <button class="button secondary" type="button" (click)="store.load()">{{ strings.retry }}</button>
+      }
+      @case ('ready') {
+        @if (!store.users().length) {
+          <p class="empty-state">{{ strings.empty }}</p>
+        } @else {
+          <div class="table-wrap">
+            <table class="accounts-table">
+              <thead>
+                <tr>
+                  <th scope="col">{{ strings.name }}</th>
+                  <th scope="col">{{ strings.email }}</th>
+                  <th scope="col">{{ strings.role }}</th>
+                  <th scope="col">{{ strings.status }}</th>
+                  <th scope="col">{{ strings.created }}</th>
+                  <th scope="col">{{ strings.actions }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (user of store.users(); track user.id) {
+                  <tr data-testid="users-account-row">
+                    <th class="name-cell" scope="row" [attr.data-label]="strings.name">{{ user.fullName }}</th>
+                    <td class="email-cell" [attr.data-label]="strings.email">{{ user.email }}</td>
+                    <td [attr.data-label]="strings.role">
+                      <span
+                        class="role-chip"
+                        [class.admin]="user.role === 'ADMIN'"
+                        [class.manager]="user.role === 'MANAGER'"
+                        >{{ roles[user.role] }}</span
+                      >
+                    </td>
+                    <td [attr.data-label]="strings.status">
+                      <span class="status-chip" [class.inactive]="!user.active">{{
+                        user.active ? strings.active : strings.inactive
+                      }}</span>
+                    </td>
+                    <td [attr.data-label]="strings.created">
+                      {{ user.createdAt | localDate: locale() : 'mediumDate' }}
+                    </td>
+                    <td class="actions-cell" [attr.data-label]="strings.actions">
+                      <button
+                        class="button text"
+                        type="button"
+                        (click)="store.detail(user)"
+                        [attr.aria-label]="strings.detail + ': ' + user.fullName"
+                      >
+                        {{ strings.detail }}
+                      </button>
+                      @if (store.canManage(user)) {
+                        <button
+                          class="button text"
+                          data-testid="users-change-role"
+                          type="button"
+                          (click)="ask(user, 'role')"
+                          [attr.aria-label]="strings.changeRole + ': ' + user.fullName"
+                        >
+                          {{ strings.changeRole }}
+                        </button>
+                        <button
+                          class="button text danger"
+                          data-testid="users-deactivate"
+                          type="button"
+                          (click)="ask(user, 'deactivate')"
+                          [attr.aria-label]="strings.deactivate + ': ' + user.fullName"
+                        >
+                          {{ strings.deactivate }}
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <nav class="pagination" [attr.aria-label]="strings.pagination">
+          <button
+            class="button secondary"
+            type="button"
+            [disabled]="!store.canPrev()"
+            (click)="store.load(store.page() - 1)"
+          >
+            {{ strings.previous }}
+          </button>
+          <span
+            >{{ strings.page }} {{ store.page() + 1 }} {{ strings.of }} {{ store.totalPages() || 1 }} ({{
+              store.totalElements()
+            }})</span
+          >
+          <button
+            class="button secondary"
+            type="button"
+            [disabled]="!store.canNext()"
+            (click)="store.load(store.page() + 1)"
+          >
+            {{ strings.next }}
+          </button>
+        </nav>
+      }
+    }
+  </section>
+
+  @if (store.selected(); as user) {
+    <section class="panel detail-panel" aria-live="polite" [attr.aria-label]="strings.detail">
+      <div class="detail-header">
+        <h2>{{ user.fullName }}</h2>
+        <button class="button secondary" type="button" (click)="store.selected.set(null)">{{ strings.close }}</button>
+      </div>
+      <dl class="detail-fields">
+        <div>
+          <dt>{{ strings.name }}</dt>
+          <dd>{{ user.fullName }}</dd>
+        </div>
+        <div>
+          <dt>{{ strings.email }}</dt>
+          <dd>{{ user.email }}</dd>
+        </div>
+        <div>
+          <dt>{{ strings.role }}</dt>
+          <dd>
+            <span class="role-chip" [class.admin]="user.role === 'ADMIN'" [class.manager]="user.role === 'MANAGER'">{{
+              roles[user.role]
+            }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>{{ strings.status }}</dt>
+          <dd>
+            <span class="status-chip" [class.inactive]="!user.active">{{
+              user.active ? strings.active : strings.inactive
+            }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>{{ strings.created }}</dt>
+          <dd>{{ user.createdAt | localDate: locale() : 'mediumDate' }}</dd>
+        </div>
+      </dl>
+      @if (user.active && user.role === 'STAFF') {
+        <mapit-staff-establishments [user]="user" />
+      }
+    </section>
+  }
+
+  <dialog #confirmation class="edit-dialog" (close)="store.pending.set(null)">
+    <h2>{{ store.pending()?.kind === 'role' ? strings.changeRole : strings.deactivate }}</h2>
+    <p>{{ store.pending()?.kind === 'role' ? strings.confirmRole : strings.confirmDeactivate }}</p>
+    <div class="dialog-actions">
+      <button class="button secondary" type="button" (click)="cancel()">{{ strings.cancel }}</button>
+      <button class="button primary" data-testid="users-confirm" type="button" (click)="confirm()">
+        {{ strings.confirm }}
+      </button>
+    </div>
+  </dialog>
+</section>

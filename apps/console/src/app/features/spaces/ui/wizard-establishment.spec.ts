@@ -28,12 +28,13 @@ const OTHER = {
 };
 
 describe('WizardEstablishmentComponent: setup y gestión', () => {
-  function setup(query: Record<string, string> = {}) {
+  function setup(query: Record<string, string> = {}, initialList = [ACTIVE, OTHER]) {
     const queryParams = new BehaviorSubject(convertToParamMap(query));
     const status = signal<'idle' | 'loading' | 'ready' | 'error'>('loading');
     const active = signal<AccessibleEstablishment | null>(null);
     const navigate = vi.fn().mockResolvedValue(true);
-    const listEstablishments = vi.fn(() => of([ACTIVE, OTHER]));
+    const listEstablishments = vi.fn(() => of(initialList));
+    const load = vi.fn().mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({ imports: [WizardEstablishmentComponent] });
     TestBed.overrideComponent(WizardEstablishmentComponent, {
@@ -53,7 +54,7 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
         },
         {
           provide: EstablishmentContext,
-          useValue: { active, status },
+          useValue: { active, status, load },
         },
         {
           provide: SpacesStore,
@@ -76,7 +77,7 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
       ],
     });
 
-    return { queryParams, status, active, navigate, listEstablishments };
+    return { queryParams, status, active, navigate, listEstablishments, load };
   }
 
   it('espera al contexto si entra cargando y salta directamente a la estructura activa', async () => {
@@ -119,6 +120,25 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
     fixture.destroy();
   });
 
+  it('muestra el formulario del primer establecimiento sin el parámetro manage', async () => {
+    const { status, listEstablishments } = setup({}, []);
+    status.set('ready');
+    await TestBed.compileComponents();
+    const fixture = TestBed.createComponent(WizardEstablishmentComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(listEstablishments).toHaveBeenCalledOnce();
+    expect(page.querySelector('form.form')).not.toBeNull();
+    expect(page.querySelector('input[name="name"]')).not.toBeNull();
+
+    const name = page.querySelector<HTMLInputElement>('input[name="name"]')!;
+    name.value = 'A1';
+    name.dispatchEvent(new Event('input'));
+    fixture.destroy();
+  });
+
   it('vuelve al selector para recargar la lista después de crear el primer establecimiento', async () => {
     const { listEstablishments, navigate } = setup({ manage: '1' });
     listEstablishments.mockReturnValue(of([]));
@@ -140,6 +160,7 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
       queryParams: { selectEstablishment: '1' },
       replaceUrl: true,
     });
+    fixture.destroy();
   });
 
   it('abre directamente el formulario nuevo desde Negocios y muestra el listado al terminar', async () => {

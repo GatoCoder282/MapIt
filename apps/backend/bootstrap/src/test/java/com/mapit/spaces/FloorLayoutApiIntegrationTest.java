@@ -60,12 +60,12 @@ class FloorLayoutApiIntegrationTest {
   @Autowired private AccessTokenIssuer tokens;
 
   private RestTestClient client() {
-    return client(TENANT);
+    return client(TENANT, ADMIN_ID);
   }
 
-  private RestTestClient client(String tenant) {
+  private RestTestClient client(String tenant, UUID actor) {
     String token = tokens.issue(new AuthenticatedUser(
-        ADMIN_ID, TenantId.of(tenant), "layout@example.test", "Layout tester", UserRole.ADMIN)).value();
+        actor, TenantId.of(tenant), "layout@example.test", "Layout tester", UserRole.ADMIN)).value();
     return RestTestClient.bindToServer().baseUrl("http://localhost:" + port)
         .defaultHeader("Authorization", "Bearer " + token).build();
   }
@@ -336,7 +336,13 @@ class FloorLayoutApiIntegrationTest {
 
     RestTestClient.bindToServer().baseUrl("http://localhost:" + port).build()
         .delete().uri(sector).exchange().expectStatus().isUnauthorized();
-    client("otro-tenant").delete().uri(sector).exchange().expectStatus().isNotFound();
+    var otherActor = UUID.randomUUID();
+    jdbcTemplate.update(
+        "insert into tenant (id, name, slug, status, vertical) values ('otro-tenant', 'Otro', 'otro-tenant', 'ACTIVE', 'RESTAURANT') on conflict do nothing");
+    jdbcTemplate.update(
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role) values (?, 'otro-tenant', 'layout-otro@example.test', 'unused', 'Layout tester', 'ADMIN')",
+        otherActor);
+    client("otro-tenant", otherActor).delete().uri(sector).exchange().expectStatus().isNotFound();
     client().delete().uri(floor).exchange().expectStatus().isEqualTo(409);
     client().delete().uri(sector).exchange().expectStatus().isEqualTo(409);
     assertThat(leerLayout().sectors().getFirst().elements().getFirst().id()).isEqualTo(element);

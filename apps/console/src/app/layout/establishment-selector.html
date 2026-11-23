@@ -64,7 +64,6 @@
       } @else if (establishments().length === 0) {
         <div class="state-message empty-state" role="status">
           <p>{{ strings.empty }}</p>
-          <button class="retry-button" type="button" (click)="retry.emit()">{{ strings.retry }}</button>
         </div>
       } @else {
         <fieldset class="establishment-list">

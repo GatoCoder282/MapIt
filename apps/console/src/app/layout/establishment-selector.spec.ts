@@ -152,10 +152,13 @@ describe('EstablishmentSelector', () => {
     fixture.componentRef.setInput('status', 'error');
     fixture.detectChanges();
     expect(host.textContent).toContain('No se pudieron cargar');
+    expect(host.querySelector('.error-state .retry-button')).not.toBeNull();
 
     fixture.componentRef.setInput('status', 'ready');
     fixture.detectChanges();
-    expect(host.textContent).toContain('No tienes establecimientos');
+    expect(host.textContent).toContain('Todavía no tienes establecimientos asignados');
+    expect(host.textContent).toContain('Contacta con el administrador');
+    expect(host.querySelector('.empty-state .retry-button')).toBeNull();
     expect(host.querySelector<HTMLButtonElement>('[data-testid="continue"]')!.disabled).toBe(true);
   });
 

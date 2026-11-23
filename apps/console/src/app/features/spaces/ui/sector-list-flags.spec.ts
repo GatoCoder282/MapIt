@@ -20,7 +20,10 @@ it('el proxy controla el enlace del editor y la lista de sectores sin recargar',
     ok: true,
     json: () =>
       Promise.resolve({
-        toggles: [{ name: 'spaces.sectors', enabled: true }],
+        toggles: [
+          { name: 'spaces.sectors', enabled: true },
+          { name: 'map-editor.enabled', enabled: false },
+        ],
       }),
   });
   vi.stubGlobal('fetch', fetchMock);
@@ -64,7 +67,10 @@ it('el proxy controla el enlace del editor y la lista de sectores sin recargar',
   TestBed.tick();
   expect(host.querySelector('a')?.getAttribute('href')).toContain('/spaces/editor/sector-1');
   expect(host.querySelector('a')?.getAttribute('aria-label')).toContain('Salón');
-  fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ toggles: [] }) });
+  fetchMock.mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ toggles: [{ name: 'spaces.sectors', enabled: false }] }),
+  });
   await vi.advanceTimersByTimeAsync(100);
   TestBed.tick();
   expect(TestBed.inject(FeatureFlagService).isEnabledNow('spaces.sectors')).toBe(false);

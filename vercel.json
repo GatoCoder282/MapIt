@@ -4,6 +4,7 @@
     "deploymentEnabled": {
       "**": false,
       "feat/**": true,
+      "HU-2.04-—-Navegación-integrada-pisos,-sectores-y-canvas": true,
       "main": true
     }
   }
