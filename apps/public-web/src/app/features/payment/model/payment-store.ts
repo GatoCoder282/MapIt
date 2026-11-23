@@ -4,7 +4,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   PREVIEW_CHECKOUT_PATH,
   PREVIEW_RECEIPT_PATH,
-  formatDecimalMoney,
   type PublicCheckout,
   type PreviewPaymentStatus,
   type PublicEstablishmentSummary,
@@ -15,6 +14,7 @@ import { PublicRuntimeConfig } from '../../../core/runtime-config';
 import { ReservationAccess } from '../../../core/reservation-access';
 import {
   formatPaymentExpiry,
+  formatPaymentMoney,
   formatReservationDate,
   formatReservationTime,
 } from '../data/payment-format';
@@ -172,7 +172,9 @@ export class PaymentStore {
     this.reservation() ? formatReservationDate(this.reservation()!) : '',
   );
   readonly time = computed(() =>
-    this.reservation() ? formatReservationTime(this.reservation()!) : '',
+    this.reservation()
+      ? formatReservationTime(this.reservation()!, this.venue()?.type === 'RESTAURANT')
+      : '',
   );
   readonly sharePath = computed(() => {
     if (this.previewEnabled()) return PREVIEW_CHECKOUT_PATH;
@@ -515,7 +517,7 @@ export class PaymentStore {
   }
   private amount(value: string | null | undefined): string {
     const currency = this.data()?.currency;
-    return value != null && currency ? formatDecimalMoney(value, currency) : '';
+    return value != null && currency ? formatPaymentMoney(value, currency) : '';
   }
   private realApi(): PublicPaymentApi {
     return this.injector.get(PublicPaymentApi);

@@ -102,6 +102,21 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     expect(est.status()).toBe(201);
     const estBody = (await est.json()) as { id: string };
 
+    if (process.env['API_BASE_URL']) {
+      await page.route('**/assets/config.json', async (route) => {
+        const response = await route.fetch();
+        const ws = new URL('/ws', API);
+        ws.protocol = ws.protocol === 'https:' ? 'wss:' : 'ws:';
+        await route.fulfill({
+          response,
+          json: {
+            ...((await response.json()) as Record<string, unknown>),
+            apiBaseUrl: API,
+            wsUrl: ws.toString(),
+          },
+        });
+      });
+    }
     // Arranca con la sede sembrada seleccionada también después de recargar.
     await page.addInitScript(
       ({ origin, session, tenantSlug, establishmentId }) => {
@@ -152,31 +167,16 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     });
     expect(fb.status()).toBe(201);
     const floorBId = ((await fb.json()) as { id: string }).id;
-    const layoutPath = `/floors/${floorBId}/layout`;
-    const [, loaded] = await Promise.all([
-      page.goto(`/spaces/floors/${floorBId}/editor?establishmentId=${estBody.id}`),
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === 'GET' &&
-          new URL(response.url()).pathname.endsWith(layoutPath),
-      ),
-    ]);
-    expect(loaded.status(), 'GET del plano de la planta B').toBe(200);
-    await expect(page.getByRole('heading', { name: `Planta B ${run}` })).toBeVisible();
-    await expect(page.getByTestId('floor-editor-canvas')).toBeVisible();
+    await page.goto(`/spaces/floors/${floorBId}/editor`);
+    await expect(page).toHaveURL(new RegExp('/spaces/editor\\?floorId=' + floorBId));
+    await expect(page.getByTestId('map-canvas')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Editar distribución' })).toBeVisible();
 
-    // Enter duplica el sector de la planta A en la planta B (RN-5).
-    const source = page.locator(`[data-testid="library-sector"][data-sector-id="${sectorId}"]`);
-    await expect(source).toHaveAttribute('aria-disabled', 'false');
-    const [dupResp, saved] = await Promise.all([
-      page.waitForResponse((r) => r.url().includes(':duplicate')),
-      page.waitForResponse(
-        (r) => r.request().method() === 'PUT' && new URL(r.url()).pathname.endsWith(layoutPath),
-      ),
-      source.press('Enter'),
-    ]);
-    expect(dupResp.status(), 'POST sectors:duplicate debe responder 201').toBe(201);
-    expect(saved.status()).toBe(200);
+    const dupResp = await request.post(`${API}/floors/${floorBId}/sectors:duplicate`, {
+      ...asTenant,
+      data: { sourceSectorId: sectorId, x: 40, y: 40 },
+    });
+    expect(dupResp.status()).toBe(201);
     const sectorsAfterCopy = await request.get(`${API}/floors/${floorBId}/sectors`, asTenant);
     expect(sectorsAfterCopy.ok()).toBe(true);
     const copies = (await sectorsAfterCopy.json()) as SectorListItem[];
@@ -184,17 +184,80 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     const copyId = copies[0]!.id;
     expect(copyId).not.toBe(sectorId);
 
-    await page.goto(`/spaces/editor/${sectorId}?floorId=${floorId}`);
-    await expect(page.getByRole('option', { name: /^TABLE/ }).first()).toBeVisible({
+    const menu = page.getByRole('button', { name: 'Abrir navegación' });
+    if (await menu.isVisible()) await menu.click();
+    await page.getByRole('link', { name: 'Mapa', exact: true }).first().click();
+    await expect(page).toHaveURL(/\/map$/);
+    await page.getByRole('link', { name: 'Editar distribución' }).click();
+    await expect(page).toHaveURL(new RegExp('/spaces/editor/' + sectorId));
+    await page.getByTestId('map-elements-tab').click();
+    await expect(page.getByTestId('map-element-row').first()).toBeVisible({
       timeout: 15_000,
     });
 
+    await page.getByTestId('map-element-row').first().click();
+    const x = page.getByTestId('map-element-x');
+    await x.fill('70');
+    await x.blur();
+    await expect(page.getByTestId('map-save')).toBeEnabled();
+    const [savedSector] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PUT' &&
+          new URL(response.url()).pathname.endsWith('/sectors/' + sectorId + '/layout'),
+        { timeout: 12_000 },
+      ),
+      page.getByTestId('map-save').click(),
+    ]);
+    expect(savedSector.status()).toBe(200);
+    await page.reload();
+    await page.getByTestId('map-elements-tab').click();
+    await page.getByTestId('map-element-row').first().click();
+    await expect(x).toHaveValue('70');
+
+    await page.getByTestId('map-go-monitor').click();
+    await expect(page).toHaveURL(new RegExp('/map.*sectorId=' + sectorId));
+    await expect(page.getByTestId('monitor-count-AVAILABLE')).toHaveText('1');
+    await page.getByRole('group', { name: 'Plano del sector' }).press('Enter');
+    await expect(page.getByRole('tabpanel', { name: 'Mesa' })).toBeVisible();
+    await expect(page.getByTestId('monitor-count-AVAILABLE')).toHaveText('1');
     await page.goBack();
-    const floorHeading = page.getByRole('heading', { name: `Planta B ${run}` });
+
+    // Una salida cancelada conserva el borrador. El servidor recibe la geometría solo al guardar.
+    await page.getByTestId('map-elements-tab').click();
+    await page.getByTestId('map-element-row').first().click();
+    await x.fill('90');
+    await x.blur();
+    await expect(page.getByTestId('map-save')).toBeEnabled();
+    await page.getByRole('link', { name: 'Inicio', exact: true }).first().click();
+    await page
+      .getByRole('dialog', { name: '¿Quieres guardar los cambios?' })
+      .getByRole('button', { name: 'Cancelar', exact: true })
+      .click();
+    await expect(page).toHaveURL(new RegExp('/spaces/editor/' + sectorId));
+    await expect(x).toHaveValue('90');
+
+    // Un 409 conserva el borrador y pide recargar antes de permitir otro guardado.
+    await page.route(
+      '**/sectors/' + sectorId + '/layout',
+      (route) => route.fulfill({ status: 409, json: { title: 'Conflicto de versión' } }),
+      { times: 1 },
+    );
+    await page.getByTestId('map-save').click();
+    await expect(page.getByRole('alert')).toContainText(/modificado por otro usuario/i);
+    await expect(x).toHaveValue('90');
+    await expect(page.getByTestId('map-save')).toBeDisabled();
+
+    await page.getByRole('button', { name: 'Deshacer' }).click();
+    await expect(x).toHaveValue('70');
+    await page.goBack();
+    await expect(page).toHaveURL(/\/map$/);
+    await page.goBack();
+    const floorHeading = page.getByRole('heading', { name: 'Editar distribución' });
     await expect(floorHeading).toBeVisible({ timeout: 15_000 });
     await page.reload();
     await expect(floorHeading).toBeVisible({ timeout: 15_000 });
-    const persisted = await request.get(`${API}${layoutPath}`, asTenant);
+    const persisted = await request.get(`${API}/floors/${floorBId}/layout`, asTenant);
     expect(persisted.ok()).toBe(true);
     expect(((await persisted.json()) as { sectors: unknown[] }).sectors).toContainEqual(
       expect.objectContaining({

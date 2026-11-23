@@ -5,8 +5,10 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import {
   LucideCamera,
   LucideCalendarDays,
@@ -51,7 +53,9 @@ export class CheckIn {
   protected readonly venue = computed(() =>
     this.establishmentContext.status() === 'ready' ? this.establishmentContext.active() : null,
   );
-  protected readonly mode = signal<LookupMode>('scan');
+  protected readonly cameraEnabled = inject(FeatureFlagService).isEnabled('check-in.camera');
+  private readonly selectedMode = signal<LookupMode>('scan');
+  protected readonly mode = computed(() => (this.cameraEnabled() ? this.selectedMode() : 'manual'));
   protected readonly scanning = computed(
     () => this.scanner.state() === 'starting' || this.scanner.state() === 'active',
   );
@@ -60,14 +64,19 @@ export class CheckIn {
     effect(() => {
       this.venue();
       this.scanner.stop();
-      this.mode.set('scan');
+      this.selectedMode.set(untracked(this.cameraEnabled) ? 'scan' : 'manual');
+    });
+    effect(() => {
+      if (this.cameraEnabled()) return;
+      this.scanner.stop();
+      this.selectedMode.set('manual');
     });
   }
 
   protected selectMode(mode: LookupMode): void {
-    if (this.mode() === mode) return;
+    if (this.mode() === mode || (mode === 'scan' && !this.cameraEnabled())) return;
     this.scanner.stop();
-    this.mode.set(mode);
+    this.selectedMode.set(mode);
   }
 
   protected navigateTabs(
@@ -101,6 +110,7 @@ export class CheckIn {
   }
 
   protected toggleCamera(video: HTMLVideoElement): void {
+    if (!this.cameraEnabled()) return;
     if (this.scanning()) this.scanner.stop();
     else void this.scanner.start(video, this.store.onScan);
   }

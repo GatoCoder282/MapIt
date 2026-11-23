@@ -41,19 +41,25 @@ export class BookingStore {
   readonly establishmentName = signal('');
   readonly timezone = signal('');
   readonly venue = signal<PublicEstablishmentSummary | null>(null);
+  readonly arrivalOnly = computed(
+    () => this.venue()?.type === 'RESTAURANT' || (!!this.startTime() && !this.endTime()),
+  );
   readonly venueStatus = signal<'loading' | 'ready' | 'error'>('loading');
   readonly ownReservation = signal<ReservationCheckout | null>(null);
   readonly ownStatus = signal<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   readonly ownWhen = computed(() => {
     const reservation = this.ownReservation();
-    return reservation
-      ? new Intl.DateTimeFormat(currentLocaleTag(), {
-          dateStyle: 'long',
-          timeStyle: 'short',
-          hourCycle: 'h23',
-          timeZone: reservation.timezone,
-        }).formatRange(new Date(reservation.startsAt), new Date(reservation.endsAt))
-      : '';
+    if (!reservation) return '';
+    const formatter = new Intl.DateTimeFormat(currentLocaleTag(), {
+      dateStyle: 'long',
+      timeStyle: 'short',
+      hourCycle: 'h23',
+      timeZone: reservation.timezone,
+    });
+    const start = new Date(reservation.startsAt);
+    return this.arrivalOnly()
+      ? formatter.format(start)
+      : formatter.formatRange(start, new Date(reservation.endsAt));
   });
   readonly submitted = signal(false);
   readonly reservation = signal<PublicReservation | null>(null);
@@ -85,7 +91,7 @@ export class BookingStore {
     return !number || number.startsWith('+') ? number : `${this.phoneCountry()} ${number}`;
   });
   readonly duration = computed(() => {
-    if (!this.intervalValid()) return '';
+    if (!this.endTime() || !this.intervalValid()) return '';
     const [startHour = 0, startMinute = 0] = this.startTime().split(':').map(Number);
     const [endHour = 0, endMinute = 0] = this.endTime().split(':').map(Number);
     const minutes = (endHour - startHour) * 60 + endMinute - startMinute;
@@ -112,7 +118,7 @@ export class BookingStore {
       .join(' ');
   });
   readonly intervalValid = computed(() =>
-    validPublicInterval(this.date(), this.startTime(), this.endTime()),
+    validPublicInterval(this.date(), this.startTime(), this.endTime(), !this.endTime()),
   );
   readonly canConfirm = computed(
     () =>
@@ -329,7 +335,7 @@ export class BookingStore {
           .create(tenantSlug, establishmentSlug, {
             date: this.date(),
             startTime: this.startTime(),
-            endTime: this.endTime(),
+            ...(this.endTime() ? { endTime: this.endTime() } : {}),
             spaceElementIds: new Set([elementId]),
             customer: {
               fullName: this.fullName().trim(),

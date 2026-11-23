@@ -123,7 +123,7 @@ export class AvailabilityPage {
       queryParams: {
         date: this.store.date(),
         startTime: this.store.startTime(),
-        endTime: this.store.endTime(),
+        endTime: this.store.requestedEndTime() || null,
         people: this.store.people(),
         elementId: this.store.selectedElementId(),
       },
@@ -148,7 +148,7 @@ export class AvailabilityPage {
       queryParams: {
         date: this.store.date(),
         startTime: this.store.startTime(),
-        endTime: this.store.endTime(),
+        endTime: this.store.requestedEndTime() || null,
         people: this.store.people(),
       },
     });

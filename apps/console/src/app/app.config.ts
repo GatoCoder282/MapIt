@@ -14,6 +14,7 @@ import { BASE_PATH } from '@mapit/api-client';
 import { FeatureFlagService, provideFeatureFlags } from '@mapit/feature-flags';
 import { provideRealtime } from '@mapit/realtime';
 import { provideRuntimeConfig, RuntimeConfigStore } from './core/runtime-config';
+import { EstablishmentContext } from './core/establishment-context';
 import { MAPIT_ECHARTS_THEME } from './core/theme/echarts-theme';
 import { provideEchartsCore } from 'ngx-echarts';
 // eslint-disable-next-line no-restricted-imports
@@ -64,7 +65,23 @@ export const appConfig: ApplicationConfig = {
 
     provideFeatureFlags(() => {
       const config = inject(RuntimeConfigStore).config();
-      return { proxyUrl: config.unleashProxyUrl, clientKey: config.unleashClientKey };
+      const session = inject(AuthSession);
+      const establishments = inject(EstablishmentContext);
+      return {
+        proxyUrl: config.unleashProxyUrl,
+        clientKey: config.unleashClientKey,
+        context: () => {
+          const user = session.user();
+          const active = establishments.active();
+          return {
+            ...(user ? { userId: user.id } : {}),
+            properties: {
+              ...(user ? { tenantId: user.tenantId } : {}),
+              ...(active ? { establishmentId: active.id } : {}),
+            },
+          };
+        },
+      };
     }),
 
     // La librerÃ­a realtime no conoce AuthSession ni Unleash. La consola conecta esos puertos

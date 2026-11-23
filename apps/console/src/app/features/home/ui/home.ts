@@ -15,6 +15,7 @@ import {
   LucideZap,
 } from '@lucide/angular';
 import { AuthSession } from '@mapit/auth';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import { currentLocaleTag, I18nService, LocalizedNumberPipe } from '@mapit/i18n';
 
 import { HomeStore } from '../model/home-store';
@@ -383,7 +384,23 @@ import { STRINGS } from '../../../core/strings';
               </span>
               <svg class="chevron" lucideChevronRight aria-hidden="true"></svg>
             </a>
-            <a class="quick" routerLink="/spaces/setup" data-testid="home-quick-estructura">
+            @if (monitorEnabled()) {
+              <a class="quick" routerLink="/map">
+                <span class="quick-icon" aria-hidden="true"><svg lucideLayers></svg></span>
+                <span class="quick-text">
+                  <strong>{{ strings.staffShell.nav.map }}</strong>
+                  <span class="muted">{{ monitorStrings.description }}</span>
+                </span>
+                <svg class="chevron" lucideChevronRight aria-hidden="true"></svg>
+              </a>
+            }
+            <a
+              class="quick"
+              [routerLink]="
+                structureEnabled() && floorsEnabled() ? '/spaces/structure' : '/spaces/setup'
+              "
+              data-testid="home-quick-estructura"
+            >
               <span class="quick-icon" aria-hidden="true"><svg lucideLayers></svg></span>
               <span class="quick-text">
                 <strong>{{ strings.adminDashboardHome.quickStructure }}</strong>
@@ -399,14 +416,21 @@ import { STRINGS } from '../../../core/strings';
               </span>
               <svg class="chevron" lucideChevronRight aria-hidden="true"></svg>
             </a>
-            <a class="quick" routerLink="/reservations/new" data-testid="home-quick-nueva-reserva">
-              <span class="quick-icon" aria-hidden="true"><svg lucideCalendarPlus></svg></span>
-              <span class="quick-text">
-                <strong>{{ strings.adminDashboardHome.quickReservation }}</strong>
-                <span class="muted">{{ strings.adminDashboardHome.quickReservationDesc }}</span>
-              </span>
-              <svg class="chevron" lucideChevronRight aria-hidden="true"></svg>
-            </a>
+            @if (monitorEnabled()) {
+              <a
+                class="quick"
+                routerLink="/map"
+                [queryParams]="{ panel: 'quick' }"
+                data-testid="home-quick-nueva-reserva"
+              >
+                <span class="quick-icon" aria-hidden="true"><svg lucideCalendarPlus></svg></span>
+                <span class="quick-text">
+                  <strong>{{ strings.adminDashboardHome.quickReservation }}</strong>
+                  <span class="muted">{{ strings.adminDashboardHome.quickReservationDesc }}</span>
+                </span>
+                <svg class="chevron" lucideChevronRight aria-hidden="true"></svg>
+              </a>
+            }
             @if (store.isSuperAdmin()) {
               <a class="quick" routerLink="/admin/tenants" data-testid="home-quick-plataforma">
                 <span class="quick-icon" aria-hidden="true"><svg lucideShieldCheck></svg></span>
@@ -1065,6 +1089,12 @@ import { STRINGS } from '../../../core/strings';
   `,
 })
 export class Home implements OnInit {
+  protected readonly structureEnabled = inject(FeatureFlagService).isEnabled('map-editor.enabled');
+  protected readonly floorsEnabled = inject(FeatureFlagService).isEnabled('spaces.floors');
+  protected readonly monitorEnabled = inject(FeatureFlagService).isEnabled(
+    'operations.space-monitor',
+  );
+  protected readonly monitorStrings = STRINGS.spaces.editor.monitor;
   protected readonly session = inject(AuthSession);
   protected readonly locale = inject(I18nService).locale;
   protected readonly strings = STRINGS;

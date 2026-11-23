@@ -6,6 +6,8 @@ El contexto `reservations` publicará una creación anónima por slugs de tenant
 
 El cliente público enviará fecha y horas locales; el backend las convertirá a instantes usando la zona IANA del establecimiento, evitando que el navegador dependa de su propia zona horaria.
 
+La hora de llegada de restaurantes se resolverá con la misma regla de dominio en disponibilidad y alta. Se conserva la interpretación de intervalos completos para los enlaces y clientes existentes.
+
 ## Patrones de diseño aplicados
 
 | Patrón              | Dónde                                                           | Por qué aquí                                                         | Alternativa descartada                               |

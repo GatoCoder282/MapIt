@@ -2,6 +2,7 @@ package com.mapit.spaces.domain.sector;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Map;
 import java.util.UUID;
 
 import com.mapit.shared.tenant.TenantId;
@@ -36,7 +37,8 @@ public record Sector(
     Slug slug,
     Geometry geometry,
     Placement placement,
-    AuditTrail audit) {
+    AuditTrail audit,
+    Map<String, Object> appearance) {
 
   private static final int NAME_MAX_LENGTH = 100;
   private static final int MAX_CAPACITY_MAX = 9999;
@@ -50,6 +52,7 @@ public record Sector(
     Objects.requireNonNull(geometry, "geometry no puede ser null");
     Objects.requireNonNull(placement, "placement no puede ser null");
     Objects.requireNonNull(audit, "audit no puede ser null");
+    appearance = SectorAppearance.normalize(appearance);
 
     name = name.trim();
     if (name.isEmpty()) {
@@ -67,6 +70,13 @@ public record Sector(
   }
 
   /** Compatibilidad con el contrato anterior a HU-4.01: geometry/placement por defecto. */
+  public Sector(
+      SectorId id, TenantId tenantId, UUID floorId, String name, Integer maxCapacity,
+      Slug slug, Geometry geometry, Placement placement, AuditTrail audit) {
+    this(id, tenantId, floorId, name, maxCapacity, slug, geometry, placement, audit,
+        SectorAppearance.normalize(null));
+  }
+
   public Sector(
       SectorId id,
       TenantId tenantId,
@@ -116,7 +126,7 @@ public record Sector(
     }
     return new Sector(
         id, tenantId, floorId, name, maxCapacity, slug,
-        geometry, placement, audit.touched(now, by));
+        geometry, placement, audit.touched(now, by), appearance);
   }
 
   /** Cambia la colocación dentro de la planta (vista de planta, RN-6). */
@@ -126,7 +136,7 @@ public record Sector(
     }
     return new Sector(
         id, tenantId, floorId, name, maxCapacity, slug,
-        geometry, newPlacement, audit.touched(now, by));
+        geometry, newPlacement, audit.touched(now, by), appearance);
   }
 
   /** Cambia las dimensiones intrínsecas del sector (vista de sector, RN-6). */
@@ -136,7 +146,7 @@ public record Sector(
     }
     return new Sector(
         id, tenantId, floorId, name, maxCapacity, slug,
-        newGeometry, placement, audit.touched(now, by));
+        newGeometry, placement, audit.touched(now, by), appearance);
   }
 
   /**
@@ -150,7 +160,11 @@ public record Sector(
     }
     return new Sector(
         id, tenantId, floorId, name, maxCapacity, slug,
-        geometry, placement, audit.deleted(now, by));
+        geometry, placement, audit.deleted(now, by), appearance);
+  }
+
+  public Sector withAppearance(Map<String, Object> value) {
+    return new Sector(id, tenantId, floorId, name, maxCapacity, slug, geometry, placement, audit, value);
   }
 
   public boolean isDeleted() {

@@ -3,11 +3,16 @@ package com.mapit.spaces.infrastructure.layout;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
+import java.util.Map;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +28,9 @@ import com.mapit.spaces.application.layout.LayoutOutOfBoundsException;
 import com.mapit.spaces.application.layout.SaveSectorLayoutCommand;
 import com.mapit.spaces.application.layout.SaveSectorLayoutUseCase;
 import com.mapit.spaces.application.sector.SectorNotFoundException;
-import com.mapit.spaces.domain.sector.Sector;
+import com.mapit.spaces.application.spaceelement.InvalidElementTypeForVerticalException;
+import com.mapit.spaces.application.spaceelement.SpaceElementHasActiveReservationsException;
+import com.mapit.spaces.application.spaceelement.SpaceElementResponse;
 import com.mapit.spaces.infrastructure.SpacesProblemTypes;
 import com.mapit.spaces.infrastructure.layout.FloorLayoutController.SectorDto;
 import com.mapit.spaces.infrastructure.layout.FloorLayoutController.SectorLayoutResponse;
@@ -34,16 +41,9 @@ import com.mapit.spaces.infrastructure.layout.FloorLayoutController.SectorLayout
 public class SectorLayoutController {
 
   private final SaveSectorLayoutUseCase saveSectorLayout;
-  private final com.mapit.spaces.domain.spaceelement.SpaceElementRepository elements;
-  private final com.mapit.shared.tenant.TenantContext tenantContext;
 
-  public SectorLayoutController(
-      SaveSectorLayoutUseCase saveSectorLayout,
-      com.mapit.spaces.domain.spaceelement.SpaceElementRepository elements,
-      com.mapit.shared.tenant.TenantContext tenantContext) {
+  public SectorLayoutController(SaveSectorLayoutUseCase saveSectorLayout) {
     this.saveSectorLayout = saveSectorLayout;
-    this.elements = elements;
-    this.tenantContext = tenantContext;
   }
 
   @PutMapping("/sectors/{sectorId}/layout")
@@ -56,12 +56,22 @@ public class SectorLayoutController {
         request.elements().stream()
             .map(e -> new SaveSectorLayoutCommand.ElementGeometry(
                 e.id(), e.x(), e.y(), e.width(), e.height(), e.rotation(), e.updatedAt()))
-            .toList());
-    Sector saved = saveSectorLayout.save(sectorId, command);
-    var live = elements.findAliveBySectorId(tenantContext.require(), sectorId);
+            .toList(),
+        request.createdElements().stream()
+            .map(e -> new SaveSectorLayoutCommand.ElementCreate(
+                e.id(), e.type(), e.x(), e.y(), e.width(), e.height(), e.rotation(), e.label(), e.capacity()))
+            .toList(),
+        request.deletedElements().stream()
+            .map(e -> new SaveSectorLayoutCommand.ElementDelete(e.id(), e.updatedAt()))
+            .toList(),
+        request.metadataUpdates().stream()
+            .map(e -> new SaveSectorLayoutCommand.MetadataUpdate(e.id(), e.label(), e.capacity(), e.updatedAt()))
+            .toList(),
+        request.appearance());
+    var saved = saveSectorLayout.save(sectorId, command);
     return new SectorLayoutResponse(
-        SectorDto.fromDomain(saved),
-        live.stream().map(FloorLayoutController.SpaceElementDto::fromDomain).toList());
+        SectorDto.fromDomain(saved.sector()),
+        saved.elements().stream().map(SpaceElementResponse::fromDomain).toList());
   }
 
   @ExceptionHandler(SectorNotFoundException.class)
@@ -83,7 +93,16 @@ public class SectorLayoutController {
     return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 
-  @ExceptionHandler({LayoutOutOfBoundsException.class, IllegalArgumentException.class})
+  @ExceptionHandler(SpaceElementHasActiveReservationsException.class)
+  ResponseEntity<ProblemDetail> handleActiveReservations(SpaceElementHasActiveReservationsException exception) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problem.setTitle("El elemento tiene reservas activas");
+    problem.setType(URI.create(SpacesProblemTypes.ELEMENT_HAS_ACTIVE_RESERVATIONS));
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+  }
+
+  @ExceptionHandler({LayoutOutOfBoundsException.class, IllegalArgumentException.class,
+      InvalidElementTypeForVerticalException.class})
   ResponseEntity<ProblemDetail> handleBadRequest(RuntimeException exception) {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
@@ -94,13 +113,35 @@ public class SectorLayoutController {
 
   // ---- DTOs ----
 
-  public record SectorGeometryPatch(double width, double height, @NotNull Instant updatedAt) {}
+  public record SectorGeometryPatch(@NotNull Double width, @NotNull Double height, @NotNull Instant updatedAt) {}
 
   public record ElementGeometryRequest(
-      @NotNull UUID id, double x, double y, double width, double height, double rotation,
+      @NotNull UUID id, @NotNull Double x, @NotNull Double y, @NotNull Double width,
+      @NotNull Double height, @NotNull Double rotation,
       @NotNull Instant updatedAt) {}
+
+  public record ElementCreateRequest(
+      @NotNull UUID id, @NotNull String type, @NotNull Double x, @NotNull Double y,
+      @NotNull Double width, @NotNull Double height, @NotNull Double rotation,
+      @Nullable @Size(max = 120) String label, @Nullable @Positive Integer capacity) {}
+
+  public record ElementDeleteRequest(@NotNull UUID id, @NotNull Instant updatedAt) {}
+
+  public record MetadataUpdateRequest(
+      @NotNull UUID id, @Nullable @Size(max = 120) String label,
+      @Nullable @Positive Integer capacity, @NotNull Instant updatedAt) {}
 
   public record SectorLayoutUpdateRequest(
       @NotNull @Valid SectorGeometryPatch sector,
-      @NotNull List<@Valid ElementGeometryRequest> elements) {}
+      @NotNull List<@NotNull @Valid ElementGeometryRequest> elements,
+      List<@NotNull @Valid ElementCreateRequest> createdElements,
+      List<@NotNull @Valid ElementDeleteRequest> deletedElements,
+      List<@NotNull @Valid MetadataUpdateRequest> metadataUpdates,
+      @Nullable Map<String, Object> appearance) {
+    public SectorLayoutUpdateRequest {
+      createdElements = Objects.requireNonNullElse(createdElements, List.of());
+      deletedElements = Objects.requireNonNullElse(deletedElements, List.of());
+      metadataUpdates = Objects.requireNonNullElse(metadataUpdates, List.of());
+    }
+  }
 }

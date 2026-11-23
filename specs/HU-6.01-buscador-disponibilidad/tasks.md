@@ -36,6 +36,8 @@
 
 ### Implementación
 
+- Para restaurantes, la consulta pública recibe fecha y hora de llegada. Disponibilidad y alta usan la misma regla de intervalo de 90 minutos y la ventana de la vertical.
+
 - OpenAPI: se añadió `GET /public/tenants/{tenantSlug}/establishments/{establishmentSlug}/availability`, con `date` ISO, salida mínima `{ establishmentId, date, elements: [{ id, type }] }` y acceso anónimo.
 - Backend: `reservations-domain` define el puerto/proyección; `reservations-application` resuelve el caso de uso en solo lectura; infraestructura filtra por tenant y establecimiento, aplica RLS, calcula el día local y excluye elementos no disponibles o con reservas solapadas.
 - Frontend: se añadió la pantalla pública responsive, ruta y enlaces desde las tarjetas; los estados de carga, error, resultados y lista vacía usan `STRINGS`.

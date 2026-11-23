@@ -4,12 +4,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
+import com.mapit.shared.vertical.VerticalCatalog;
 import com.mapit.spaces.domain.establishment.EstablishmentType;
 /**
  * Mapeo vertical → tipos de elemento válidos (HU-2.03, RN-4). Criterio provisional que
  * CU-07 refinará; si cambia, solo se toca {@link SpaceElementTypePolicy}.
  */
 class SpaceElementTypePolicyTest {
+
+  @Test
+  void everyVerticalUsesTheSharedCatalogWithoutChangingDomainRestrictions() {
+    for (var vertical : EstablishmentType.values()) {
+      assertThat(SpaceElementTypePolicy.permitidos(vertical))
+          .extracting(Enum::name)
+          .containsExactlyInAnyOrderElementsOf(VerticalCatalog.of(vertical.name()).allowedElementTypes());
+    }
+  }
 
   @Test
   void restaurante_admite_mesa_barra_escenario_y_decor() {

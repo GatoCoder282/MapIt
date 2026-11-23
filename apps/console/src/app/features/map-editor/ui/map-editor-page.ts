@@ -1,851 +1,587 @@
-﻿import {
+import {
   ChangeDetectionStrategy,
+  afterNextRender,
   Component,
-  DestroyRef,
+  computed,
   effect,
   inject,
+  linkedSignal,
   Injector,
-  NgZone,
-  type OnDestroy,
-  runInInjectionContext,
-  ChangeDetectorRef,
+  signal,
   untracked,
   viewChild,
   type ElementRef,
+  type OnDestroy,
 } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs/operators';
-import { type MapEnginePort, MAP_ENGINE } from '@mapit/map-engine';
+import { combineLatest, map } from 'rxjs';
+import { MAP_ENGINE } from '@mapit/map-engine';
+import { FeatureFlagService } from '@mapit/feature-flags';
+import { ElementTypeIconComponent } from '@mapit/ui-kit';
+import {
+  LucideCheck,
+  LucideCopy,
+  LucideClipboardPaste,
+  LucideDroplet,
+  LucideEye,
+  LucideGrid2x2,
+  LucideHand,
+  LucideLayers,
+  LucideMaximize,
+  LucideMinus,
+  LucideMousePointer2,
+  LucidePlus,
+  LucideRedo2,
+  LucideSave,
+  LucideSettings,
+  LucideSlidersHorizontal,
+  LucideUndo2,
+} from '@lucide/angular';
 import { ElementLibraryComponent } from './element-library';
 import { ElementPropertiesCardComponent } from './element-properties-card';
+import { LayoutStyleComponent } from './layout-style';
+import { withElementFinish, type LayoutStyle } from '../../../core/spatial-layout';
 import { MapEditorStore } from '../model/map-editor-store';
 import { localizeString, STRINGS } from '../../../core/strings';
-import { confirmOperationalExit } from '../../../core/operational-exit-guard';
+import { EstablishmentContext } from '../../../core/establishment-context';
+import {
+  EstablishmentStructureComponent,
+  type FloorZoneEntry,
+} from '../../../core/establishment-structure/establishment-structure';
+import { StructureEditorContext } from '../../../core/structure-editor-context';
+import { zoneSnapshot } from '../model/zone-snapshot';
+
+type EditorGuide = 'floor' | 'metadata' | 'geometry';
 
 @Component({
   selector: 'mapit-map-editor-page',
-  imports: [ElementLibraryComponent, ElementPropertiesCardComponent],
-  providers: [MapEditorStore],
+  imports: [
+    RouterLink,
+    EstablishmentStructureComponent,
+    ElementLibraryComponent,
+    ElementPropertiesCardComponent,
+    LayoutStyleComponent,
+    ElementTypeIconComponent,
+    LucideCheck,
+    LucideCopy,
+    LucideClipboardPaste,
+    LucideDroplet,
+    LucideEye,
+    LucideGrid2x2,
+    LucideHand,
+    LucideLayers,
+    LucideMaximize,
+    LucideMinus,
+    LucideMousePointer2,
+    LucidePlus,
+    LucideRedo2,
+    LucideSave,
+    LucideSettings,
+    LucideSlidersHorizontal,
+    LucideUndo2,
+  ],
+  providers: [MapEditorStore, StructureEditorContext],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="editor-page">
-      <header class="editor-header">
-        <div class="header-left">
-          <button class="btn-icon" (click)="goBack()" aria-label="{{ strings.back }}">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <line x1="19" y1="12" x2="5" y2="12" />
-              <polyline points="12 19 5 12 12 5" />
-            </svg>
-          </button>
-          <div class="sector-info">
-            <h1 class="sector-name">{{ store.sectorName() }}</h1>
-            <span class="sector-id">{{ store.sectorId() }}</span>
-          </div>
-        </div>
-        <div class="header-center">
-          @if (store.floors().length > 1) {
-            <div class="floor-selector">
-              <label for="floor-select" class="sr-only">{{ strings.selectFloor }}</label>
-              <select
-                id="floor-select"
-                [value]="store.selectedFloorId()"
-                [disabled]="store.busy() || store.loading()"
-                (change)="onFloorChange($event)"
-                class="floor-select"
-                aria-label="{{ strings.selectFloor }}"
-              >
-                @for (floor of store.floors(); track floor.id) {
-                  <option [value]="floor.id">{{ floor.name }}</option>
-                }
-              </select>
-            </div>
-          }
-          @if (store.sectorsForSelectedFloor().length > 1) {
-            <div class="sector-selector">
-              <label for="sector-select" class="sr-only">{{ strings.selectSector }}</label>
-              <select
-                id="sector-select"
-                [value]="store.sectorId()"
-                [disabled]="store.busy() || store.loading()"
-                (change)="onSectorChange($event)"
-                class="sector-select"
-                aria-label="{{ strings.selectSector }}"
-              >
-                @for (sector of store.sectorsForSelectedFloor(); track sector.id) {
-                  <option [value]="sector.id">{{ sector.name }}</option>
-                }
-              </select>
-            </div>
-          }
-        </div>
-        <div class="header-right">
-          @if (store.selectedId()) {
-            <button
-              class="btn-save-template"
-              type="button"
-              [disabled]="store.busy() || store.loading()"
-              (click)="openSaveTemplateDialog()"
-              [attr.aria-label]="strings.saveAsTemplate"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-              </svg>
-              {{ strings.saveAsTemplate }}
-            </button>
-          }
-          @if (store.saving()) {
-            <span class="saving-indicator" aria-live="polite">{{ strings.saving }}</span>
-          }
-          @if (store.error()) {
-            <div class="error-toast" role="alert">
-              {{ localizeString(store.error() ?? '') }}
-              <button class="btn-icon" (click)="store.clearError()" aria-label="Cerrar">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-          }
-        </div>
-      </header>
-
-      <main class="editor-main">
-        <aside class="editor-sidebar">
-          <div class="sidebar-section">
-            <h3>{{ strings.elements }}</h3>
-            <ul class="element-list" role="listbox" aria-label="{{ strings.elements }}">
-              @for (element of store.elements(); track element.id) {
-                <li
-                  class="element-item"
-                  [class.selected]="isSelected(element.id)"
-                  (click)="selectElement(element.id)"
-                  (keyup.enter)="selectElement(element.id)"
-                  (keydown.space)="selectElement(element.id)"
-                  role="option"
-                  [attr.aria-selected]="isSelected(element.id)"
-                  [attr.aria-disabled]="store.busy() || store.loading()"
-                  [class.disabled]="store.busy() || store.loading()"
-                  tabindex="0"
-                >
-                  <span class="element-type" [attr.data-type]="element.type">{{
-                    element.type
-                  }}</span>
-                  <span class="element-label">{{ element.label }}</span>
-                  <span class="element-pos"
-                    >({{ Math.round(element.position.x) }},
-                    {{ Math.round(element.position.y) }})</span
-                  >
-                </li>
-              } @empty {
-                <li class="empty-state">{{ strings.noElements }}</li>
-              }
-            </ul>
-          </div>
-
-          <div class="sidebar-section">
-            <h3>{{ strings.sectorSizeTitle }}</h3>
-            <div class="size-form">
-              <label>
-                {{ strings.sectorWidth }}
-                <input
-                  type="number"
-                  min="20"
-                  #sectorWidthInput
-                  [disabled]="store.busy() || store.loading()"
-                  [value]="store.sectorSize().width"
-                  class="size-input"
-                />
-              </label>
-              <label>
-                {{ strings.sectorHeight }}
-                <input
-                  type="number"
-                  min="20"
-                  #sectorHeightInput
-                  [disabled]="store.busy() || store.loading()"
-                  [value]="store.sectorSize().height"
-                  class="size-input"
-                />
-              </label>
-              <button
-                class="btn-secondary"
-                type="button"
-                [disabled]="store.busy() || store.loading()"
-                (click)="
-                  onApplySectorSize(sectorWidthInput.valueAsNumber, sectorHeightInput.valueAsNumber)
-                "
-              >
-                {{ strings.applySize }}
-              </button>
-            </div>
-          </div>
-
-          <div class="sidebar-section">
-            <div [attr.inert]="store.busy() || store.loading() ? '' : null">
-              <mapit-element-library />
-            </div>
-          </div>
-        </aside>
-
-        <div class="canvas-container" #canvasContainer>
-          <div #canvasHost class="canvas-host"></div>
-
-          @if (selectedElement(); as el) {
-            <mapit-element-card [element]="el" />
-          }
-        </div>
-      </main>
-    </div>
-  `,
-  styles: `
-    .editor-page {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      height: 100dvh;
-      background: var(--mapit-color-canvas);
-      color: var(--mapit-color-text);
-      font-family: var(--mapit-font-sans);
-    }
-
-    .editor-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      padding: 0.75rem 1rem;
-      background: var(--mapit-color-surface);
-      border-bottom: 1px solid var(--mapit-color-border);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      min-width: 0;
-    }
-
-    .btn-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.5rem;
-      height: 2.5rem;
-      border: none;
-      background: transparent;
-      color: var(--mapit-color-text);
-      border-radius: 0.5rem;
-      cursor: pointer;
-      transition: background 150ms ease;
-    }
-
-    .btn-icon:hover {
-      background: var(--mapit-color-surface-low);
-    }
-
-    .btn-icon:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
-    }
-
-    .sector-info {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-
-    .sector-name {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .sector-id,
-    .element-pos {
-      font: var(--mapit-text-metadata);
-      color: var(--mapit-color-text-muted);
-    }
-
-    .header-center,
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .saving-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.375rem;
-      font-size: 0.8125rem;
-      color: var(--mapit-color-primary);
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%,
-      100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.5;
-      }
-    }
-
-    .error-toast {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      padding: 0.5rem 0.75rem;
-      background: var(--mapit-color-error-bg);
-      color: var(--mapit-color-error);
-      border: 1px solid var(--mapit-color-error-border);
-      border-radius: 0.5rem;
-      font-size: 0.8125rem;
-      max-width: 20rem;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .saving-indicator {
-        animation: none;
-      }
-    }
-
-    .header-center {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex: 1;
-      justify-content: center;
-    }
-
-    .floor-selector,
-    .sector-selector {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .floor-select,
-    .sector-select {
-      min-width: 180px;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid var(--mapit-color-border);
-      border-radius: 0.5rem;
-      background: var(--mapit-color-surface);
-      color: var(--mapit-color-text);
-      font: inherit;
-      font-size: 0.875rem;
-      cursor: pointer;
-    }
-
-    .floor-select:hover,
-    .sector-select:hover,
-    .floor-select:focus-visible,
-    .sector-select:focus-visible {
-      outline: none;
-      border-color: var(--mapit-color-primary);
-      box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
-    }
-
-    .editor-main {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      min-height: 0;
-    }
-
-    .editor-sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      padding: 1rem;
-      background: var(--mapit-color-surface);
-      border-right: 1px solid var(--mapit-color-border);
-      overflow-y: auto;
-      min-height: 0;
-    }
-
-    .sidebar-section h3 {
-      margin: 0 0 0.5rem;
-      font-size: 0.8125rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--mapit-color-text-muted);
-    }
-
-    .element-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.375rem;
-    }
-
-    .element-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem;
-      background: var(--mapit-color-surface-low);
-      border: 1px solid transparent;
-      border-radius: 0.375rem;
-      cursor: pointer;
-      transition:
-        border-color var(--mapit-duration-fast) var(--mapit-ease-out),
-        background-color var(--mapit-duration-fast) var(--mapit-ease-out);
-    }
-
-    .element-item:hover {
-      border-color: var(--mapit-color-border);
-    }
-
-    .element-item.selected {
-      border-color: var(--mapit-color-primary);
-      background: var(--mapit-color-primary-bg);
-    }
-
-    .element-item.disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .element-type {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 1.5rem;
-      height: 1.5rem;
-      border-radius: 0.25rem;
-      font-size: 0.625rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      background: var(--mapit-color-primary);
-      color: var(--mapit-color-on-primary);
-    }
-
-    .element-label {
-      flex: 1;
-      font-size: 0.8125rem;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .empty-state,
-    .no-selection {
-      color: var(--mapit-color-text-muted);
-      font-size: 0.8125rem;
-    }
-
-    .empty-state {
-      padding: 1rem;
-      text-align: center;
-    }
-
-    .no-selection {
-      margin: 0;
-      font-style: italic;
-    }
-
-    .state-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.125rem 0.5rem;
-      border-radius: 9999px;
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .state-badge[data-state='AVAILABLE'] {
-      background: #dcfce7;
-      color: #166534;
-    }
-    .state-badge[data-state='OCCUPIED'] {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-    .state-badge[data-state='RESERVED'] {
-      background: #fef3c7;
-      color: #92400e;
-    }
-    .state-badge[data-state='CLEANING'] {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-    .state-badge[data-state='OUT_OF_SERVICE'] {
-      background: #f3f4f6;
-      color: #374151;
-    }
-
-    .no-selection {
-      margin: 0;
-      color: var(--mapit-color-text-muted);
-      font-size: 0.8125rem;
-      font-style: italic;
-    }
-
-    .btn-save-template,
-    .btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid var(--mapit-color-border);
-      border-radius: var(--mapit-radius-input);
-      background: var(--mapit-color-surface);
-      color: var(--mapit-color-text);
-      font: inherit;
-      font-size: 0.8125rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition:
-        border-color var(--mapit-duration-fast) var(--mapit-ease-out),
-        background-color var(--mapit-duration-fast) var(--mapit-ease-out);
-    }
-
-    .btn-save-template:hover:not(:disabled),
-    .btn-secondary:hover:not(:disabled) {
-      border-color: var(--mapit-color-primary);
-      background: var(--mapit-color-surface-low);
-    }
-
-    .btn-save-template:focus-visible,
-    .btn-secondary:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
-    }
-
-    .btn-save-template:disabled,
-    .btn-secondary:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .canvas-container {
-      position: relative;
-      overflow: hidden;
-      background: var(--mapit-editor-canvas, var(--mapit-color-canvas));
-    }
-
-    /* HU-4.01 v2: formulario "Tamaño del sector" — sin estilos cae al tema oscuro
-       del navegador (styles.scss define color-scheme: light dark). */
-    .size-form {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .size-form label {
-      font: var(--mapit-text-metadata);
-      color: var(--mapit-color-text-muted);
-    }
-
-    .size-input {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid var(--mapit-color-border-input);
-      border-radius: 8px;
-      background: var(--mapit-color-surface);
-      color: var(--mapit-color-text);
-      font: inherit;
-    }
-
-    .size-input:focus-visible {
-      outline: none;
-      border-color: var(--mapit-editor-selection);
-      box-shadow: 0 0 0 2px var(--mapit-color-focus-ring);
-    }
-
-    .canvas-host {
-      width: 100%;
-      height: 100%;
-      min-height: 100%;
-    }
-
-    @media (max-width: 64rem) {
-      .editor-main {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr;
-      }
-      .editor-sidebar {
-        flex-direction: row;
-        flex-wrap: wrap;
-        border-right: none;
-        border-bottom: 1px solid var(--mapit-color-border);
-      }
-      .sidebar-section {
-        flex: 1;
-        min-width: 200px;
-      }
-    }
-  `,
+  host: {
+    '(window:beforeunload)': 'beforeUnload($event)',
+    '(document:keydown)': 'onShortcut($event)',
+  },
+  templateUrl: './map-editor-page.html',
+  styleUrl: './map-editor-page.scss',
 })
 export class MapEditorPageComponent implements OnDestroy {
   protected readonly localizeString = localizeString;
-  protected readonly canvasHost = viewChild.required<ElementRef<HTMLDivElement>>('canvasHost');
-
+  private readonly canvasHost = viewChild<ElementRef<HTMLDivElement>>('canvasHost');
   protected readonly store = inject(MapEditorStore);
-  private readonly port = inject<MapEnginePort>(MAP_ENGINE);
+  protected readonly port = inject(MAP_ENGINE);
   private readonly route = inject(ActivatedRoute);
-  private readonly injector = inject(Injector);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
-  private readonly ngZone = inject(NgZone);
-  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly injector = inject(Injector);
+  private readonly flags = inject(FeatureFlagService);
+  protected readonly monitorEnabled = this.flags.isEnabled('operations.space-monitor');
+  private readonly floorsEnabled = this.flags.isEnabled('spaces.floors');
+  private readonly fromStructure = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('fromStructure') === '1')),
+    { initialValue: false },
+  );
+  protected readonly structureLink = computed(() =>
+    this.floorsEnabled() ? '/spaces/structure' : '/spaces/setup',
+  );
+  protected readonly exitSaving = signal(false);
+  protected readonly exitError = signal(false);
+  private readonly formError = signal<EditorGuide | null>(null);
+  protected readonly guide = signal<EditorGuide | null>(null);
+  protected readonly guideText = computed(() => {
+    const reason = this.guide();
+    return reason
+      ? {
+          title: this.strings.workspace[`${reason}Title`],
+          help: this.strings.workspace[`${reason}Help`],
+        }
+      : null;
+  });
+  protected readonly exitFailure = computed(() => {
+    const reason = this.formError();
+    const error = this.store.error();
+    if (reason) return this.strings.workspace[`${reason}Help`];
+    return error ? localizeString(error) : this.strings.workspace.exitError;
+  });
+  private readonly exitDialog = viewChild<ElementRef<HTMLDialogElement>>('exitDialog');
+  private readonly guideDialog = viewChild<ElementRef<HTMLDialogElement>>('guideDialog');
+  private exitResponse: { result: Promise<boolean>; resolve: (value: boolean) => void } | null =
+    null;
+  protected readonly dirty = computed(() => this.store.dirty() || this.hasFormDraft());
+  protected readonly establishment = inject(EstablishmentContext).active;
+  protected readonly propertiesTab = signal<'details' | 'style' | 'advanced'>('details');
+  protected readonly appearance = this.store.appearance;
+  protected readonly styleAvatar = computed(() => {
+    const element = this.store.selectedElement();
+    return element
+      ? this.port.furniturePreview?.(
+          withElementFinish(element, this.appearance().elements[element.id]),
+        )
+      : null;
+  });
   protected readonly strings = STRINGS.spaces.editor;
-  protected readonly Math = Math;
-  private readonly propertiesCard = viewChild(ElementPropertiesCardComponent);
-  private readonly sectorWidthInput = viewChild<ElementRef<HTMLInputElement>>('sectorWidthInput');
-  private readonly sectorHeightInput = viewChild<ElementRef<HTMLInputElement>>('sectorHeightInput');
-  private observedSectorId: string | null = null;
-  private approvedSectorId: string | null = null;
-
-  canDeactivate(): boolean {
-    return confirmOperationalExit(this.store.busy(), this.hasUnsavedChanges());
-  }
-
-  private confirmCurrentResourceExit(): boolean {
-    if (this.store.loading()) return false;
-    return this.canDeactivate();
-  }
-
-  private hasUnsavedChanges(): boolean {
+  protected readonly typeLabels = STRINGS.spaces.elements.types;
+  protected readonly panel = signal<'structure' | 'elements'>('structure');
+  protected readonly copied = signal(false);
+  private readonly elementLibrary = viewChild(ElementLibraryComponent);
+  protected readonly preview = signal(false);
+  protected readonly panning = signal(false);
+  protected readonly grid = signal(true);
+  protected readonly zoomPercent = computed(() => Math.round((this.port.zoom?.() ?? 1) * 100));
+  protected readonly locked = computed(() => this.store.busy() || this.store.loading());
+  protected readonly editable = computed(
+    () => this.store.canEdit() && !this.locked() && !this.preview() && !this.zoneId(),
+  );
+  protected readonly zoneId = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('zoneId'))),
+    { initialValue: null },
+  );
+  protected readonly zoneView = computed(() => zoneSnapshot(this.store.layout(), this.zoneId()));
+  protected readonly floorZones = computed(() => {
+    const result: Record<string, FloorZoneEntry[]> = {};
+    const activeFloor = this.store.selectedFloorId();
+    const activeSector = this.store.sectorId();
+    for (const [floorId, layout] of Object.entries(this.store.floorLayouts())) {
+      result[floorId] = layout.sectors.flatMap((sector) =>
+        floorId === activeFloor && sector.id === activeSector
+          ? []
+          : sector.elements
+              .filter(({ type }) => type === 'SECTOR_ZONE')
+              .map((zone) => ({
+                id: zone.id,
+                sectorId: sector.id,
+                label: zone.name ?? zone.label ?? this.typeLabels.SECTOR_ZONE,
+              })),
+      );
+    }
+    if (activeFloor && activeSector) {
+      (result[activeFloor] ??= []).push(
+        ...this.store
+          .elements()
+          .filter(({ type }) => type === 'SECTOR_ZONE')
+          .map(({ id, label }) => ({ id, label, sectorId: activeSector })),
+      );
+    }
+    return result;
+  });
+  protected readonly selectedFloor = computed(() =>
+    this.store.floors().find((floor) => floor.id === this.store.selectedFloorId()),
+  );
+  protected readonly floorName = computed(() => this.selectedFloor()?.name);
+  protected readonly floorDimensions = linkedSignal(() => {
+    const floor = this.selectedFloor();
+    return { width: floor?.canvasWidth ?? 0, height: floor?.canvasHeight ?? 0 };
+  });
+  protected readonly canApplyFloorDimensions = computed(() => {
+    const floor = this.selectedFloor();
+    const { width, height } = this.floorDimensions();
     return (
-      this.store.dirty() ||
-      (this.propertiesCard()?.dirty() ?? false) ||
-      this.hasUnappliedSectorSize()
+      !!floor &&
+      this.store.canEditMetadata() &&
+      !this.locked() &&
+      !this.store.conflict() &&
+      (!this.store.floorCanvas() || !this.dirty()) &&
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      width >= 20 &&
+      height >= 20 &&
+      (width !== floor.canvasWidth || height !== floor.canvasHeight)
     );
-  }
-
-  private hasUnappliedSectorSize(): boolean {
-    const width = this.sectorWidthInput()?.nativeElement.valueAsNumber;
-    const height = this.sectorHeightInput()?.nativeElement.valueAsNumber;
-    const size = this.store.sectorSize();
-    return width !== undefined && (width !== size.width || height !== size.height);
-  }
-
-  // Flag para garantizar montaje inicial infalible
-  private isCanvasMounted = false;
-
-  // Use store's selection state (selectedId, selectedElement are signals/computed in store)
-  readonly selectedElement = this.store.selectedElement;
-  readonly selectedElementId = this.store.selectedId;
-
-  // sectorId as signal from route params
-  readonly sectorId = toSignal(this.route.paramMap.pipe(map((params) => params.get('sectorId'))), {
-    initialValue: null,
   });
 
-  // sectorName as signal from query params
-  readonly sectorName = toSignal(
-    this.route.queryParamMap.pipe(map((params) => params.get('sectorName') || undefined)),
-    { initialValue: undefined },
-  );
+  protected setFloorDimension(axis: 'width' | 'height', value: number): void {
+    this.floorDimensions.update((size) => ({ ...size, [axis]: value }));
+  }
 
-  // floorId as signal from query params
-  readonly floorId = toSignal(
-    this.route.queryParamMap.pipe(map((params) => params.get('floorId') || undefined)),
-    { initialValue: undefined },
+  protected applyFloorDimensions(event: Event): void {
+    event.preventDefault();
+    if (!this.canApplyFloorDimensions()) return;
+    const { width, height } = this.floorDimensions();
+    this.store.saveFloorDimensions(width, height);
+  }
+  private readonly propertiesCard = viewChild(ElementPropertiesCardComponent);
+  private mounted = false;
+  private renderedSpace: string | null = null;
+  private readonly requested = toSignal(
+    combineLatest([this.route.paramMap, this.route.queryParamMap]).pipe(
+      map(([params, query]) => ({
+        sector: params.get('sectorId') ?? query.get('sectorId'),
+        floor: query.get('floorId'),
+      })),
+    ),
   );
+  private readonly manualFloor = signal<string | null>(null);
 
-  // Initialize layout sync effect in injection context (constructor)
-  private readonly layoutSyncEffect = runInInjectionContext(this.injector, () =>
+  constructor() {
     effect(() => {
-      const layout = this.store.layout();
-      if (!this.port || !this.canvasHost()?.nativeElement) return;
+      const floorId = this.store.selectedFloorId();
+      if (floorId) untracked(() => this.store.loadFloorZones(floorId));
+    });
+    effect(() => {
+      if (this.zoneId()) {
+        this.panel.set('structure');
+        this.propertiesTab.set('details');
+        untracked(() => this.store.selectElement(null));
+      }
+    });
+    effect(() => {
+      const request = this.requested();
+      if (!request) return;
+      untracked(() => this.store.openRoute(request.sector, request.floor));
+    });
 
+    effect(() => {
+      const host = this.canvasHost()?.nativeElement;
+      const zone = this.zoneView();
+      const base = zone ?? this.store.layout();
+      const appearance = this.appearance();
+      const sector = this.store.sectorId();
+      const floorId = this.store.selectedFloorId();
+      const floor = sector ? undefined : this.selectedFloor();
+      const layout = {
+        ...base,
+        ...(floor?.canvasWidth && floor.canvasHeight
+          ? { size: { width: floor.canvasWidth, height: floor.canvasHeight } }
+          : {}),
+        ...(appearance.room ? { appearance: appearance.room } : {}),
+        elements: base.elements.map((element) =>
+          withElementFinish(element, appearance.elements[element.id]),
+        ),
+      };
+      const space = zone ? this.zoneId() : (sector ?? floorId);
+      if (!host) return;
       untracked(() => {
-        // Chequeo booleano infalible
-        if (!this.isCanvasMounted) {
-          this.port.mount(this.canvasHost().nativeElement, layout);
-          this.isCanvasMounted = true;
+        if (!this.mounted) {
+          this.port.mount(host, layout);
+          this.port.setLayoutFinish?.(true);
+          this.mounted = true;
+          this.port.onDragMove(({ id, x, y }) => this.store.updateElementPositionLocal(id, x, y));
+          this.port.onDragEnd(({ id, x, y }) => this.store.dragElement(id, x, y));
+          this.port.onResizeEnd(({ id, x, y, width, height, rotation }) => {
+            this.store.resizeElement(id, x, y, width, height, rotation);
+          });
+          this.port.onElementClick(({ id }) => this.selectElement(id));
+          this.port.onExternalDrop?.(({ key, x, y }) => {
+            if (!this.editable() || !this.stageForms()) return;
+            if (key.startsWith('catalog:')) this.elementLibrary()?.dropModel(key, x, y);
+            else this.store.createElementFromDrop(key, x, y);
+          });
+          this.port.fitToViewport?.();
         } else {
           this.port.load(layout);
         }
-        this.port.setEditable(untracked(() => !this.store.busy() && !this.store.loading()));
-      });
-    }),
-  );
-
-  private readonly editabilityEffect = runInInjectionContext(this.injector, () =>
-    effect(() => this.port.setEditable(!this.store.busy() && !this.store.loading())),
-  );
-
-  // Load sectors when floorId changes
-  private readonly sectorsLoadEffect = runInInjectionContext(this.injector, () =>
-    effect(() => {
-      const floorId = this.floorId();
-      if (floorId) {
-        this.store.loadSectorsByFloor(floorId);
-      }
-    }),
-  );
-
-  // React to sectorId/sectorName changes
-  private readonly sectorLoadEffect = runInInjectionContext(this.injector, () =>
-    effect(() => {
-      const id = this.sectorId();
-      const name = this.sectorName();
-      if (!id) return;
-      const previousId = this.observedSectorId;
-      if (previousId && previousId !== id && this.approvedSectorId !== id) {
-        if (!this.confirmCurrentResourceExit()) {
-          void this.router.navigate(['/spaces/editor', previousId], {
-            queryParams: { sectorName: this.store.sectorName() },
-            replaceUrl: true,
-          });
-          return;
+        if (space !== this.renderedSpace) {
+          this.renderedSpace = space;
+          this.port.fitToViewport?.();
         }
-      }
-      this.approvedSectorId = null;
-      this.observedSectorId = id;
-      // untracked previene el bucle infinito de dependencias
-      untracked(() => this.store.loadSector(id, name));
-    }),
-  );
-
-  // Port event handlers (one-time setup, protected from signal changes)
-  private readonly portEventsEffect = runInInjectionContext(this.injector, () =>
-    effect(() => {
-      untracked(() => {
-        this.port.onDragStart((_id) => {
-          // No longer needed - drag state managed via activeDragCoords signal
-        });
-
-        this.port.onDragEnd((payload) => {
-          if (this.store.busy() || this.store.loading()) return;
-          this.store.dragElement(payload.id, payload.x, payload.y);
-        });
-
-        this.port.onDragMove((payload) => {
-          if (this.store.busy() || this.store.loading()) return;
-          this.ngZone.run(() => {
-            this.store.updateElementPositionLocal(payload.id, payload.x, payload.y);
-            this.cdr.markForCheck();
-          });
-        });
-
-        this.port.onRotateEnd((payload) => {
-          if (this.store.busy() || this.store.loading()) return;
-          this.store.rotateElement(payload.id, payload.rotation);
-        });
-
-        this.port.onResizeEnd((payload) => {
-          if (this.store.busy() || this.store.loading()) return;
-          this.store.resizeElement(payload.id, payload.x, payload.y, payload.width, payload.height);
-        });
-
-        this.port.onElementClick((payload) => {
-          const id = payload.id;
-          if (id) this.ngZone.run(() => this.selectElement(id));
-        });
-
-        // HU-4.01: drop de plantillas/estructuras desde la biblioteca lateral (F4).
-        this.port.onExternalDrop?.(({ key, x, y }) => {
-          if (this.store.busy() || this.store.loading()) return;
-          this.ngZone.run(() => {
-            this.store.createElementFromDrop(key, x, y);
-            this.cdr.markForCheck();
-          });
-        });
       });
-    }),
-  );
+    });
+
+    effect(() => {
+      const floor = this.manualFloor();
+      const sector = this.store.sectorId();
+      if (floor && floor === this.store.selectedFloorId() && !this.store.loading()) {
+        this.manualFloor.set(null);
+        void this.router.navigate(sector ? ['/spaces/editor', sector] : ['/spaces/editor'], {
+          queryParams: { floorId: floor, ...(this.fromStructure() ? { fromStructure: '1' } : {}) },
+          replaceUrl: true,
+        });
+      }
+    });
+    effect(() => {
+      const editable = this.editable();
+      untracked(() => this.port.setEditable(editable));
+    });
+    effect(() => {
+      const panning = this.panning();
+      untracked(() => this.port.setPanning?.(panning));
+    });
+    effect(() => this.port.setGridVisible?.(this.grid() && !this.preview()));
+    effect(() => {
+      const id = this.preview() ? null : this.store.selectedId();
+      untracked(() => this.port.setSelectedElement(id));
+    });
+  }
 
   ngOnDestroy(): void {
+    this.exitResponse?.resolve(false);
     this.port.destroy();
   }
 
-  protected goBack(): void {
-    window.history.back();
+  canDeactivate(): boolean | Promise<boolean> {
+    if (this.structureManager() && !this.structureManager()!.canDeactivate()) return false;
+    if (this.exitResponse) return this.exitResponse.result;
+    if (this.store.busy()) return false;
+    if (!this.dirty()) return true;
+    const dialog = this.exitDialog()?.nativeElement;
+    if (!dialog) return false;
+    let resolveExit!: (allow: boolean) => void;
+    const result = new Promise<boolean>((resolve) => {
+      resolveExit = resolve;
+    });
+    this.exitResponse = { result, resolve: resolveExit };
+    this.exitError.set(false);
+    dialog.showModal();
+    return result;
   }
 
-  protected onSectorChange(event: Event): void {
-    if (this.store.busy() || this.store.loading()) return;
-    const target = event.target as HTMLSelectElement;
-    const sectorId = target.value;
-    if (sectorId && sectorId !== this.store.sectorId()) {
-      if (!this.confirmCurrentResourceExit()) {
-        target.value = this.store.sectorId() ?? '';
-        return;
-      }
-      const sector = this.store.sectors().find((s) => s.id === sectorId);
-      this.approvedSectorId = sectorId;
-      void this.router.navigate(['/spaces/editor', sectorId], {
-        queryParams: { sectorName: sector?.name },
-      });
+  protected beforeUnload(event: BeforeUnloadEvent): void {
+    if (this.store.busy() || this.dirty()) event.preventDefault();
+  }
+
+  protected finishExit(allow: boolean): void {
+    const response = this.exitResponse;
+    this.exitResponse = null;
+    this.exitDialog()?.nativeElement.close();
+    response?.resolve(allow);
+  }
+
+  protected cancelExit(event: Event): void {
+    event.preventDefault();
+    if (!this.exitSaving()) this.finishExit(false);
+  }
+
+  protected discardAndExit(): void {
+    if (!this.store.discardChanges()) return;
+    this.propertiesCard()?.discardDraft();
+    this.finishExit(true);
+  }
+
+  protected async saveAndExit(): Promise<void> {
+    if (this.exitSaving()) return;
+    this.exitSaving.set(true);
+    this.exitError.set(false);
+    try {
+      if (await this.save()) this.finishExit(true);
+      else this.exitError.set(true);
+    } finally {
+      this.exitSaving.set(false);
     }
   }
 
-  protected onFloorChange(event: Event): void {
-    if (this.store.busy() || this.store.loading()) return;
-    const target = event.target as HTMLSelectElement;
-    const floorId = target.value;
-    if (floorId && floorId !== this.store.selectedFloorId()) {
-      if (!this.confirmCurrentResourceExit()) {
-        target.value = this.store.selectedFloorId() ?? '';
-        return;
-      }
-      this.store.selectFloor(floorId);
+  protected async save(): Promise<boolean> {
+    if (this.store.busy()) return false;
+    if (this.stageForms()) return await this.store.saveChanges();
+    const reason = this.formError();
+    if (reason && !this.exitSaving()) this.showGuide(reason);
+    return false;
+  }
+
+  private stageForms(): boolean {
+    this.formError.set(null);
+    const elementError = this.stageElement();
+    if (elementError) {
+      this.formError.set(elementError);
+      return false;
+    }
+    return true;
+  }
+
+  private hasFormDraft(): boolean {
+    return this.propertiesCard()?.dirty() ?? false;
+  }
+
+  protected focusLibrary(): void {
+    if (this.locked() || this.zoneId()) return;
+    if (this.structureManager() && !this.structureManager()!.canDeactivate()) return;
+    if (!this.store.selectedFloorId()) {
+      this.showGuide('floor');
+      return;
+    }
+    if (!this.stageForms()) return;
+    this.panel.set('elements');
+    if (!this.store.sectorId()) this.store.prepareFloorCanvas();
+    afterNextRender(() => this.elementLibrary()?.focus(), { injector: this.injector });
+  }
+
+  protected updateAppearance(update: (current: LayoutStyle) => LayoutStyle): void {
+    this.store.updateAppearance(update);
+  }
+
+  protected openStyle(tab: 'style' | 'advanced'): void {
+    const reason = this.stageElement();
+    if (reason) this.showGuide(reason);
+    else this.propertiesTab.set(tab);
+  }
+
+  private showGuide(reason: EditorGuide): void {
+    this.guide.set(reason);
+    afterNextRender(
+      () => {
+        const dialog = this.guideDialog()?.nativeElement;
+        if (dialog && !dialog.open) dialog.showModal();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  private readonly structureManager = viewChild(EstablishmentStructureComponent);
+
+  protected openZone(event: { floorId: string; zone: FloorZoneEntry }): void {
+    void this.router.navigate(['/spaces/editor', event.zone.sectorId], {
+      queryParams: { floorId: event.floorId, zoneId: event.zone.id },
+    });
+  }
+
+  protected async selectStructure(selection: {
+    floorId: string;
+    sectorId?: string;
+  }): Promise<void> {
+    await this.router.navigate(
+      selection.sectorId ? ['/spaces/editor', selection.sectorId] : ['/spaces/editor'],
+      { queryParams: { floorId: selection.floorId } },
+    );
+  }
+
+  protected refreshStructure(): void {
+    if (!this.dirty() && !this.locked()) this.store.reloadSector();
+  }
+
+  protected async selectFloor(id: string): Promise<void> {
+    if (id !== this.store.selectedFloorId() && !this.locked() && (await this.canDeactivate())) {
+      this.manualFloor.set(id);
+      this.store.selectFloor(id);
     }
   }
 
-  protected selectElement(id: string): void {
-    if (this.store.busy() || this.store.loading()) return;
-    if (id !== this.store.selectedId() && !this.confirmCurrentResourceExit()) return;
+  protected selectSector(id: string): void {
+    if (id === this.store.sectorId() || this.locked()) return;
+    void this.router.navigate(['/spaces/editor', id], {
+      queryParams: {
+        floorId: this.store.selectedFloorId(),
+        ...(this.fromStructure() ? { fromStructure: '1' } : {}),
+      },
+    });
+  }
+
+  protected selectElement(id: string | null): void {
+    if (this.zoneId()) return;
+    const reason =
+      id === this.store.selectedId() || this.preview() || this.locked()
+        ? null
+        : this.stageElement();
+    if (reason) this.showGuide(reason);
+    if (this.preview() || this.locked() || reason) {
+      this.port.setSelectedElement(this.preview() ? null : this.store.selectedId());
+      return;
+    }
     this.store.selectElement(id);
-    this.port.layout(); // trigger selection in port if needed
+    if (id === null) this.propertiesTab.set('details');
+    this.port.setSelectedElement(id);
   }
 
-  protected isSelected(id: string): boolean {
-    return this.store.selectedId() === id;
+  private stageElement(): EditorGuide | null {
+    const card = this.propertiesCard();
+    if (card && !card.applyMetadataDraft()) return 'metadata';
+    if (card && !card.applyGeometryDraft()) return 'geometry';
+    return null;
   }
 
-  /** HU-4.01: dimensiones del sector (RN-6: las edita la vista de sector). */
-  protected onApplySectorSize(width: number, height: number): void {
+  protected async reload(): Promise<void> {
+    if (await this.canDeactivate()) this.store.reloadSector();
+  }
+
+  protected onShortcut(event: KeyboardEvent): void {
     if (
-      !this.store.busy() &&
-      !this.store.loading() &&
-      Number.isFinite(width) &&
-      Number.isFinite(height)
+      !this.editable() ||
+      this.exitDialog()?.nativeElement.open ||
+      this.guideDialog()?.nativeElement.open ||
+      (event.target instanceof HTMLElement &&
+        event.target.closest('input, textarea, select, dialog, [contenteditable]'))
+    )
+      return;
+    if (
+      (event.key === 'Delete' || event.key === 'Backspace') &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
     ) {
-      this.store.saveSectorDimensions(width, height);
+      const element = this.store.selectedElement();
+      if (!element || event.repeat) return;
+      event.preventDefault();
+      this.store.confirmDeleteElement(element.id);
+      return;
     }
+    if (!event.ctrlKey && !event.metaKey) return;
+    switch (event.key.toLowerCase()) {
+      case 'c':
+        if (!this.store.selectedElement()) return;
+        this.copy();
+        break;
+      case 'v':
+        if (!this.store.canPaste()) return;
+        this.paste();
+        break;
+      case 's':
+        void this.save();
+        break;
+      case 'z':
+        if (event.shiftKey) this.store.redo();
+        else this.store.undo();
+        break;
+      case 'y':
+        this.store.redo();
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+  }
+
+  protected copy(): void {
+    if (this.editable() && this.stageForms()) this.copied.set(this.store.copySelectedElement());
+  }
+
+  protected paste(): void {
+    if (this.editable() && this.stageForms()) {
+      this.store.pasteElement();
+      this.propertiesTab.set('details');
+    }
+  }
+
+  protected duplicate(): void {
+    const el = this.store.selectedElement();
+    if (el && this.editable() && this.stageForms()) {
+      this.store.createElementFromDrop('copy:' + el.id, el.position.x + 24, el.position.y + 24);
+    }
+  }
+
+  protected togglePreview(): void {
+    if (!this.store.selectedFloorId()) {
+      this.showGuide('floor');
+      return;
+    }
+    if (!this.preview() && !this.stageForms()) {
+      const reason = this.formError();
+      if (reason) this.showGuide(reason);
+      return;
+    }
+    this.preview.update((value) => !value);
+    this.port.fitToViewport?.();
   }
 
   protected openSaveTemplateDialog(): void {

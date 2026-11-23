@@ -97,6 +97,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, ApiPaths.AUTH_GLOBAL_LOGIN)
                         .permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/sectors/*/layout",
+                            "/api/v1/floors/*/layout", "/api/v1/establishments/*/floors/order")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/floors/*/sectors:duplicate")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/establishments/*/floors",
+                            "/api/v1/floors/*/sectors")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/floors/*", "/api/v1/sectors/*")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/floors/*", "/api/v1/sectors/*")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
+                        .requestMatchers(HttpMethod.GET, "/api/v1/establishments/*/floors",
+                            "/api/v1/floors/*", "/api/v1/floors/*/sectors",
+                            "/api/v1/floors/*/layout", "/api/v1/sectors/*")
+                        .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name(), UserRole.STAFF.name())
                         .requestMatchers("/api/v1/sectors/*/elements", "/api/v1/sectors/*/elements/*",
                             "/v1/sectors/*/elements", "/v1/sectors/*/elements/*")
                         .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())

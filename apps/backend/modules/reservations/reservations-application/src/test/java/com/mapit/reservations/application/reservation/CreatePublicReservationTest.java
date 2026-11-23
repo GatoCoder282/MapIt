@@ -52,7 +52,7 @@ class CreatePublicReservationTest {
   void setUp() {
     establishments =
         new FakePublicEstablishments(
-            new PublicEstablishment(TENANT, ESTABLISHMENT, "America/La_Paz"));
+            new PublicEstablishment(TENANT, ESTABLISHMENT, "America/La_Paz", "RESTAURANT"));
     people = new FakePeople();
     FakeResources resources = new FakeResources();
     FakeConcurrencyGuard guard = new FakeConcurrencyGuard();
@@ -72,6 +72,7 @@ class CreatePublicReservationTest {
             auditEvents,
             tenantContext,
             actorContext,
+            CreateReservationTest.AUTHORIZED,
             clock);
     useCase =
         new CreatePublicReservation(

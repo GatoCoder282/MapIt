@@ -35,6 +35,8 @@ import com.mapit.reservations.domain.reservation.Reservation;
 import com.mapit.reservations.domain.reservation.ReservationId;
 import com.mapit.reservations.domain.reservation.ReservationRepository;
 import com.mapit.reservations.domain.reservation.ReservationTimeRange;
+import com.mapit.shared.security.ActorContext;
+import com.mapit.shared.security.EstablishmentAuthorizationPort;
 import com.mapit.shared.tenant.TenantId;
 
 class ReservationControllerTest {
@@ -107,6 +109,26 @@ class ReservationControllerTest {
   }
 
   @Test
+  void listaPorEstablecimientoConNombreDelCliente() {
+    when(listUseCase.execute(ESTABLISHMENT, NOW))
+        .thenReturn(List.of(new ReservationRepository.WithCustomer(reservation(), "Ana Pérez")));
+
+    client
+        .get()
+        .uri(uri -> uri.path("/api/v1/reservations")
+            .queryParam("establishmentId", ESTABLISHMENT)
+            .queryParam("endsAfter", NOW)
+            .build())
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$[0].customerName")
+        .isEqualTo("Ana Pérez");
+    verify(listUseCase).execute(ESTABLISHMENT, NOW);
+  }
+
+  @Test
   void listaLasReservasDelTenant() {
     when(listUseCase.execute()).thenReturn(List.of(reservation(), olderReservation()));
 
@@ -144,7 +166,9 @@ class ReservationControllerTest {
   @Test
   void rechazaLaLlamadaSinTenant() {
     InMemoryReservations repositorio = new InMemoryReservations();
-    ListReservations sinTenant = new ListReservations(repositorio, () -> Optional.empty());
+    ListReservations sinTenant = new ListReservations(
+        repositorio, () -> Optional.empty(), mock(ActorContext.class),
+        mock(EstablishmentAuthorizationPort.class));
 
     assertThatThrownBy(sinTenant::execute)
         .isInstanceOf(IllegalStateException.class)

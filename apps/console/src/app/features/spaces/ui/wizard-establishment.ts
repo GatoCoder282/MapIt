@@ -20,8 +20,8 @@ import { LucideBedDouble, LucideChefHat, LucideMartini, LucidePartyPopper } from
 
 import { localizeString, STRINGS } from '../../../core/strings';
 import { SLUG_PATTERN } from '../../../core/patterns';
-import { SpacesApiService } from '../data/spaces-api';
-import { SpacesStore } from '../model/spaces-store';
+import { SpacesApiService } from '../../../core/establishment-structure/spaces-api';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
 import { EstablishmentContext } from '../../../core/establishment-context';
 import { confirmOperationalExit } from '../../../core/operational-exit-guard';
 
@@ -1016,7 +1016,7 @@ export class WizardEstablishmentComponent {
       if (queryParams.get('manage') === '1') {
         if (!this.managementLoaded) {
           this.managementLoaded = true;
-          this.loadEstablishments();
+          this.loadEstablishments(queryParams.get('create') === '1');
         }
         return;
       }
@@ -1052,11 +1052,11 @@ export class WizardEstablishmentComponent {
     if (activeId) void this.router.navigate(['/spaces/floors', activeId]);
   }
 
-  private loadEstablishments(): void {
+  private loadEstablishments(create = false): void {
     this.api.listEstablishments().subscribe({
       next: (list) => {
         this.establishments.set(list);
-        this.modo.set(list.length > 0 ? 'list' : 'form');
+        this.modo.set(list.length > 0 && !create ? 'list' : 'form');
       },
       error: () => {
         // Sin listado no se puede elegir: se cae al formulario de alta.

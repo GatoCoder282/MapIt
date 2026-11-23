@@ -84,3 +84,7 @@
   `sector:<id>` (duplicado). Todo persiste, nada depende de recarga silenciosa.
 - Fueron explícitamente fuera y quedaron registrados: `label` de mesa (D-4),
   `TYPE_DEFAULTS` en backend (D-5), polígono de planta (D-2).
+
+### Editor y monitoreo de la Console
+
+La vista de sector edita borradores de geometría con deshacer/rehacer y guarda en una transacción versionada mediante el endpoint de layout existente. La cámara transforma drops y arrastres entre coordenadas del viewport y del modelo. Los campos de nombre y aforo conservan su endpoint separado.

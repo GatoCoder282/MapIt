@@ -84,7 +84,17 @@ test('checkout desde una reserva creada: anticipo, fallo recuperable y comproban
         totalAmount: null,
         paidAmount: state === 'CONFIRMED' ? '10.00' : '0.00',
         balanceAmount: null,
-        methods: [method],
+        methods: [
+          method,
+          {
+            id: 'mock-method',
+            displayName: 'QR de prueba',
+            provider: 'MOCK_GATEWAY',
+            verification: 'AUTOMATIC',
+            staticQrImage: null,
+            simulationPath: null,
+          },
+        ],
         historicalMethod: state === 'NEW' ? null : method,
         payment: state === 'NEW' ? null : payment(),
       },
@@ -145,6 +155,24 @@ test('checkout desde una reserva creada: anticipo, fallo recuperable y comproban
   await page.screenshot({ path: join(output, `${testInfo.project.name}.png`), fullPage: true });
   await page.getByTestId('start-payment').click();
   await expect(page.getByRole('alert')).toContainText('No pudimos completar');
+  const mobileMenu = page.getByTestId('mobile-menu-toggle');
+  if (await mobileMenu.isVisible()) await mobileMenu.click();
+  const language = page.getByTestId('language-select').filter({ visible: true });
+  await language.selectOption('en');
+  await expect(page.getByRole('heading', { name: 'Pay your deposit' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('Refresh the status before trying again');
+  await expect(page.getByTestId('checkout-summary')).toContainText('Unnamed Table');
+  await expect(page.getByTestId('payment-amount')).toContainText('10.00');
+  await expect(page.getByTestId('method-static')).toHaveAccessibleName(
+    /Pago con QR.*Manual verification/,
+  );
+  await expect(page.getByTestId('method-mock')).toHaveAccessibleName(/Test QR/);
+  await language.selectOption('ja-JP');
+  await expect(page.getByRole('heading', { name: '支払い方法' })).toBeVisible();
+  await expect(page.getByTestId('checkout-summary')).toContainText('名前のないテーブル');
+  await language.selectOption('es');
+  if (await mobileMenu.isVisible()) await mobileMenu.click();
+  expect(writes).toBe(1);
   await page.getByTestId('start-payment').click();
   await expect(page.getByTestId('payment-status')).toHaveAttribute(
     'data-status',
@@ -199,7 +227,12 @@ test('checkout desde una reserva creada: anticipo, fallo recuperable y comproban
     path: join(receiptOutput, testInfo.project.name + '.png'),
     fullPage: true,
   });
-  await page.getByRole('link', { name: 'Volver al pago', exact: true }).click();
+  if (await mobileMenu.isVisible()) await mobileMenu.click();
+  await language.selectOption('en');
+  await expect(page.getByRole('heading', { name: 'Deposit payment confirmed' })).toBeVisible();
+  await expect(page.getByTestId('receipt-page')).toContainText('Awaiting check-in');
+  if (await mobileMenu.isVisible()) await mobileMenu.click();
+  await page.getByRole('link', { name: 'Back to payment', exact: true }).click();
   await expect(page.getByTestId('checkout-page')).toBeVisible();
   await expect(page).not.toHaveURL(/login/);
 });

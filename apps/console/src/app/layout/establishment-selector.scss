@@ -378,6 +378,7 @@
   padding-top: 26px;
 }
 
+.create-button,
 .continue-button {
   display: inline-flex;
   align-items: center;
@@ -392,6 +393,7 @@
   color: var(--mapit-color-on-primary);
   font: var(--mapit-text-body-bold);
   cursor: pointer;
+  transition: background var(--mapit-duration-fast) var(--mapit-ease-out);
 
   svg {
     width: 18px;
@@ -410,6 +412,13 @@
   &:disabled {
     background: var(--mapit-color-text-muted);
     cursor: not-allowed;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .create-button,
+  .continue-button {
+    transition: none;
   }
 }
 

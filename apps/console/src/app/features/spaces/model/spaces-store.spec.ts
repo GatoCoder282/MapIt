@@ -4,8 +4,8 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { of, Subject } from 'rxjs';
 import type { Floor, Sector } from '@mapit/api-client';
-import { SpacesStore } from './spaces-store';
-import { SpacesApiService } from '../data/spaces-api';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
+import { SpacesApiService } from '../../../core/establishment-structure/spaces-api';
 import { EstablishmentContext } from '../../../core/establishment-context';
 
 describe('SpacesStore operational establishment context', () => {

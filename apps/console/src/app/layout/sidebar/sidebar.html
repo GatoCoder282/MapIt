@@ -55,29 +55,41 @@
         <button
           class="nav-item group-toggle"
           type="button"
-          (click)="toggleGroup(item)"
+          (click)="toggleGroup(item, $event.detail > 0)"
           [attr.aria-expanded]="isGroupOpen(item)"
+          [attr.aria-label]="item.label"
+          [attr.title]="compact() ? item.label : null"
         >
           <ng-container [ngTemplateOutlet]="navIcon" [ngTemplateOutletContext]="{ $implicit: item.icon }" />
           <span class="label">{{ item.label }}</span>
           <svg lucideChevronDown class="chevron" [class.open]="isGroupOpen(item)" aria-hidden="true"></svg>
         </button>
-        @if (isGroupOpen(item)) {
+        <div
+          class="group-reveal"
+          [class.open]="isGroupOpen(item)"
+          [class.with-motion]="animatedGroups().has(item.label)"
+          [attr.inert]="isGroupOpen(item) ? null : ''"
+          [attr.aria-hidden]="!isGroupOpen(item)"
+        >
           <div class="nav-group">
             <ng-container
               [ngTemplateOutlet]="navList"
               [ngTemplateOutletContext]="{ $implicit: item.children, level: level + 1 }"
             />
           </div>
-        }
+        </div>
       } @else if (item.route) {
         <a
           class="nav-item"
           [class.subitem]="level > 0"
           [routerLink]="item.route"
-          routerLinkActive="active"
+          routerLinkActive
+          #linkActive="routerLinkActive"
+          [class.active]="item.active || linkActive.isActive"
+          [attr.aria-current]="item.active || linkActive.isActive ? 'page' : null"
           [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
           [attr.aria-label]="item.label"
+          [attr.title]="compact() ? item.label : null"
           (click)="onLinkClick()"
         >
           <ng-container [ngTemplateOutlet]="navIcon" [ngTemplateOutletContext]="{ $implicit: item.icon }" />
@@ -87,7 +99,7 @@
     }
   </ng-template>
 
-  <div class="rail">
+  <div class="rail" [class.compact]="compact()" [class.with-motion]="animateCollapse()">
     <div class="brand-sidebar">
       <img
         class="brand-logo"
@@ -97,10 +109,28 @@
         [alt]="strings.brand.name"
       />
     </div>
-    <nav class="nav" [attr.aria-label]="navAriaLabel()">
+    @if (collapsible()) {
+      <button
+        type="button"
+        class="collapse-toggle"
+        [attr.aria-expanded]="!compact()"
+        aria-controls="sidebar-desktop-navigation"
+        [attr.aria-label]="compact() ? strings.shell.expandSidebar : strings.shell.collapseSidebar"
+        [attr.title]="compact() ? strings.shell.expandSidebar : strings.shell.collapseSidebar"
+        (click)="collapseToggled.emit($event.detail > 0)"
+      >
+        @if (compact()) {
+          <svg lucidePanelLeftOpen aria-hidden="true"></svg>
+        } @else {
+          <svg lucidePanelLeftClose aria-hidden="true"></svg>
+        }
+        <span class="label">{{ strings.shell.collapseSidebar }}</span>
+      </button>
+    }
+    <nav id="sidebar-desktop-navigation" class="nav" [attr.aria-label]="navAriaLabel()">
       <ng-container [ngTemplateOutlet]="navList" [ngTemplateOutletContext]="{ $implicit: nav(), level: 0 }" />
     </nav>
-    <div class="sidebar-decor" aria-hidden="true"></div>
+    <div class="sidebar-decor" data-testid="sidebar-decor" aria-hidden="true"></div>
   </div>
 
   @if (drawerOpen()) {

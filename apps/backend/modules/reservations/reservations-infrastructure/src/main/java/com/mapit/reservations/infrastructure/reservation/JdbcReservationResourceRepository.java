@@ -12,6 +12,7 @@ import com.mapit.reservations.domain.reservation.ReservationResource;
 import com.mapit.reservations.domain.reservation.ReservationResourceRepository;
 import com.mapit.shared.tenant.TenantId;
 import com.mapit.shared.tenant.TenantScope;
+import com.mapit.shared.vertical.Vertical;
 
 /** Consulta las tablas de spaces mediante una proyección propia del contexto reservations. */
 @Repository
@@ -48,7 +49,7 @@ public class JdbcReservationResourceRepository implements ReservationResourceRep
     String placeholders = String.join(", ", java.util.Collections.nCopies(elementIds.size(), "?"));
     String sql =
         """
-        select se.id, f.establishment_id, se.type, se.state
+        select se.id, f.establishment_id, se.type, se.state, se.capacity, e.type as vertical, e.timezone
         from space_element se
         join sector s
           on s.id = se.sector_id and s.tenant_id = se.tenant_id and s.deleted_at is null
@@ -69,7 +70,10 @@ public class JdbcReservationResourceRepository implements ReservationResourceRep
                 result.getObject("id", UUID.class),
                 result.getObject("establishment_id", UUID.class),
                 ReservationResource.Kind.valueOf(result.getString("type")),
-                ReservationResource.OperationalState.valueOf(result.getString("state"))),
+                ReservationResource.OperationalState.valueOf(result.getString("state")),
+                result.getObject("capacity", Integer.class),
+                Vertical.of(result.getString("vertical")),
+                result.getString("timezone")),
         arguments.toArray());
   }
 

@@ -651,6 +651,7 @@ const STRINGS_ES = {
     checkoutSteps: ['Pago del anticipo', 'Confirmación', 'Reserva finalizada'],
     important: 'Importante',
     simulationMethod: 'Simulación de pago',
+    testQr: 'QR de prueba',
     copyReference: 'Copiar referencia de reserva',
     referenceCopied: 'Referencia copiada',
     copyError: 'No pudimos copiar la referencia. Podés seleccionarla y copiarla.',
@@ -789,6 +790,7 @@ const STRINGS_ES = {
     skipToContent: 'Ir al contenido',
     position: 'Posición en el sector',
     capacity: 'Capacidad informada',
+    unnamed: '{type} sin nombre',
   },
   availability: {
     chooseTitle: 'Elegí tu espacio',
@@ -825,6 +827,11 @@ const STRINGS_ES = {
     intervalRequired:
       'Elige una fecha y las horas de inicio y fin. La hora de fin debe ser posterior a la de inicio.',
     startTime: 'Hora de inicio',
+    arrivalTime: 'Hora de llegada',
+    arrivalChoices: 'Elegí la hora de llegada',
+    arrivalRequired: 'Elegí una fecha y una hora de llegada.',
+    arrivalInvalid: 'Elegí una llegada futura que permita completar la reserva ese mismo día.',
+    arrivalFor: 'Elegí un espacio libre para el {date} a las {start}.',
     endTime: 'Hora de fin',
     floor: 'Piso',
     sector: 'Sector',
@@ -990,9 +997,39 @@ const CATALOGS = {
   es: STRINGS_ES,
   en: PUBLIC_STRINGS_EN,
   'ja-JP': PUBLIC_STRINGS_JA,
-} satisfies Record<'es' | 'en' | 'ja-JP', DeepPartial<LocalizedShape<typeof STRINGS_ES>>>;
+} satisfies Record<'es' | 'en' | 'ja-JP', DeepPartial<LocalizedShape<typeof STRINGS_ES>>> &
+  Record<
+    'en' | 'ja-JP',
+    Pick<
+      LocalizedShape<typeof STRINGS_ES>,
+      | 'reservas'
+      | 'publicCatalog'
+      | 'venueIdentity'
+      | 'availability'
+      | 'booking'
+      | 'payment'
+      | 'qrSimulation'
+      | 'publicSpace'
+    >
+  >;
 
 export const STRINGS = createLocalizedCatalog<typeof STRINGS_ES>(CATALOGS, 'es');
 export const localizeString = createLocalizedTextResolver(CATALOGS, 'es');
+
+export function localizeSpaceName(space: {
+  readonly name: string;
+  readonly label?: string | null;
+  readonly type?: string | null;
+}): string {
+  const type = space.type as keyof typeof STRINGS_ES.availability.types;
+  if (
+    space.label?.trim() ||
+    !Object.hasOwn(STRINGS_ES.availability.types, type) ||
+    space.name !==
+      STRINGS_ES.publicSpace.unnamed.replace('{type}', STRINGS_ES.availability.types[type])
+  )
+    return space.name;
+  return STRINGS.publicSpace.unnamed.replace('{type}', STRINGS.availability.types[type]);
+}
 
 export type PublicStrings = typeof STRINGS_ES;

@@ -8,7 +8,7 @@ const ESTABLISHMENT_ID = '10000000-0000-0000-0000-000000000001';
 const DATE = '2030-12-24';
 const ACCESS_TOKEN = 'A'.repeat(43);
 const API_SCOPE = '/api/v1/public/tenants/demo/establishments/la-bahia';
-const BOOKING_URL = `/reservar/demo/la-bahia/${ELEMENT_ID}?date=${DATE}&startTime=19:00&endTime=21:00`;
+const BOOKING_URL = `/reservar/demo/la-bahia/${ELEMENT_ID}?date=${DATE}&startTime=19:00`;
 const venue = {
   id: ESTABLISHMENT_ID,
   name: 'La Bahía',
@@ -21,7 +21,7 @@ const venue = {
 };
 const interval = {
   startsAt: `${DATE}T23:00:00Z`,
-  endsAt: '2030-12-25T01:00:00Z',
+  endsAt: '2030-12-25T00:30:00Z',
 };
 
 // Regresión de UI con respuestas controladas. El flujo persistido se prueba en payment-live.
@@ -33,7 +33,7 @@ const map = {
   timezone: venue.timezone,
   date: DATE,
   startTime: '19:00',
-  endTime: '21:00',
+  endTime: '20:30',
   ...interval,
   mode: 'INTERVAL',
   floors: [
@@ -82,7 +82,7 @@ test.describe('Reserva pública', () => {
       const params = new URL(route.request().url()).searchParams;
       expect(params.get('date')).toBe(DATE);
       expect(params.get('startTime')).toBe('19:00');
-      expect(params.get('endTime')).toBe('21:00');
+      expect(params.has('endTime')).toBe(false);
       expect(route.request().headers()['authorization']).toBeUndefined();
       return route.fulfill({ json: map });
     });
@@ -150,7 +150,7 @@ test.describe('Reserva pública', () => {
             spaceElementIds: [ELEMENT_ID],
             date: DATE,
             startTime: '19:00',
-            endTime: '21:00',
+            endTime: '20:30',
             ...interval,
             timezone: 'America/La_Paz',
             status: 'CREATED',
@@ -176,7 +176,8 @@ test.describe('Reserva pública', () => {
     await page.getByLabel('Número de celular').fill('70000000');
     await expect(page.getByTestId('booking-descriptor')).toContainText('Empresa de prueba');
     await expect(page.getByTestId('booking-descriptor')).toContainText('Av. Principal 123');
-    await expect(page.getByTestId('booking-descriptor')).toContainText('2 horas');
+    await expect(page.getByTestId('booking-descriptor')).toContainText('Hora de llegada');
+    await expect(page.getByTestId('booking-descriptor')).not.toContainText('20:30');
     const dimensions = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       content: document.documentElement.scrollWidth,
@@ -205,15 +206,15 @@ test.describe('Reserva pública', () => {
     await expect(page.getByText(RESERVATION_ID)).toBeVisible();
     await expect(page.getByTestId('checkout-summary')).toContainText('Mesa Terraza');
     await expect(page.getByTestId('checkout-summary')).toContainText('Planta baja · Terraza');
-    await expect(page.getByText(/19:00.*21:00/)).toBeVisible();
+    await expect(page.getByTestId('checkout-summary')).toContainText('19:00');
+    await expect(page.getByTestId('checkout-summary')).not.toContainText('20:30');
     await page.reload();
-    await expect(page.getByText(RESERVATION_ID, { exact: true })).toBeVisible();
+    await expect(page.getByText(RESERVATION_ID, { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('checkout-summary')).toContainText('Mesa Terraza');
     await expect(page).not.toHaveURL(/login/);
     expect(payload).toMatchObject({
       date: DATE,
       startTime: '19:00',
-      endTime: '21:00',
       spaceElementIds: [ELEMENT_ID],
       customer: {
         fullName: 'Ana Pérez',
@@ -221,6 +222,7 @@ test.describe('Reserva pública', () => {
         phone: '+591 70000000',
       },
     });
+    expect(payload).not.toHaveProperty('endTime');
   });
 
   test('muestra un conflicto de disponibilidad sin perder el formulario', async ({ page }) => {

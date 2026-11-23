@@ -31,7 +31,7 @@ public class UpdateSectorUseCase {
 
     Sector sector =
         repository
-            .findAliveById(tenantId, SectorId.of(command.id()))
+            .findAliveByIdForUpdate(tenantId, SectorId.of(command.id()))
             .orElseThrow(() -> new SectorNotFoundException(command.id()));
 
     // Igual que en create: slug vacío se autogenera a partir del nombre.

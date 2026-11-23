@@ -1,9 +1,18 @@
-<div class="staff-shell">
+<div
+  class="staff-shell"
+  [class.map-workspace]="compactMapNavigation()"
+  [class.sidebar-collapsed]="sidebarCollapsed()"
+  [class.sidebar-motion]="sidebarMotion()"
+>
   <mapit-sidebar
     [nav]="visibleNavItems()"
     [navLabel]="strings.staffShell.brandArea"
     [navAriaLabel]="strings.staffShell.navLandmarkLabel"
     [drawerOpen]="menuOpen()"
+    [compact]="sidebarCollapsed()"
+    [collapsible]="true"
+    [animateCollapse]="sidebarMotion()"
+    (collapseToggled)="toggleSidebar($event)"
     [closeLabel]="strings.shell.closeMenu"
     (drawerClose)="closeMenu()"
   />
@@ -24,13 +33,31 @@
 
       @if (session.user(); as user) {
         <div class="user-block">
-          <button class="notification-btn" type="button" [attr.aria-label]="strings.shell.notifications">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            <span class="notification-dot"></span>
-          </button>
+          @if (mapMonitoringEnabled()) {
+            @let count = incidents().length;
+            <a
+              class="notification-btn"
+              routerLink="/map"
+              [queryParams]="{ panel: 'operations' }"
+              [attr.aria-label]="strings.shell.notifications + ' (' + count + ')'"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              @if (count > 0) {
+                <span class="notification-dot" aria-hidden="true"></span>
+              }
+            </a>
+          }
           <span class="avatar" aria-hidden="true">{{ initials() }}</span>
           <span class="user-meta">
             <span class="user-name">{{ user.fullName }}</span>
@@ -46,7 +73,7 @@
     </header>
 
     <main class="content">
-      @if (canOpenFirstEstablishmentSetup() || (establishmentContext.active() && !selectorRequested())) {
+      @if (canOpenEstablishmentManagement() || (establishmentContext.active() && !selectorRequested())) {
         <router-outlet />
       } @else if (needsFirstEstablishment() || (!selectorRequested() && !initialEstablishmentsLoaded())) {
         <div class="establishment-pending" role="status" aria-live="polite">
@@ -59,12 +86,15 @@
 
 @if (
   !needsFirstEstablishment() &&
+  !canOpenEstablishmentManagement() &&
   (selectorRequested() || (initialEstablishmentsLoaded() && !establishmentContext.active()))
 ) {
   <mapit-establishment-selector
     [establishments]="establishmentContext.establishments()"
     [status]="establishmentContext.status()"
     [canDismiss]="canDismissSelector()"
+    [canCreate]="session.user()?.role === 'ADMIN'"
+    (createRequested)="createEstablishment()"
     (confirmed)="confirmEstablishment($event)"
     (dismissed)="dismissSelector()"
     (retry)="retryEstablishments()"

@@ -1,12 +1,30 @@
 import { Logger } from '@mapit/logging';
 import { computed, effect, inject, Injectable, signal, type Signal } from '@angular/core';
 
-import { FEATURE_FLAG_CONFIG } from './feature-flag.config';
+import { FEATURE_FLAG_CONFIG, type FeatureFlagContext } from './feature-flag.config';
 import { FLAGS_POR_DEFECTO, type FeatureFlagKey } from './feature-flag.catalog';
 import { VERTICAL_FLAGS } from './vertical-flags';
 
 interface RespuestaProxy {
   readonly toggles: readonly { readonly name: string; readonly enabled: boolean }[];
+}
+
+function esRespuestaProxy(value: unknown): value is RespuestaProxy {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'toggles' in value &&
+    Array.isArray(value.toggles) &&
+    value.toggles.every(
+      (toggle: unknown) =>
+        typeof toggle === 'object' &&
+        toggle !== null &&
+        'name' in toggle &&
+        typeof toggle.name === 'string' &&
+        'enabled' in toggle &&
+        typeof toggle.enabled === 'boolean',
+    )
+  );
 }
 
 /**
@@ -38,14 +56,27 @@ export class FeatureFlagService {
   constructor() {
     // Sin proxy configurado se conservan los valores del catálogo, sin sondeo.
     if (!this.config.proxyUrl) return;
-    void this.refrescar();
-
     // Sondeo periódico: es así como una flag apagada en la UI de Unleash llega
     // al navegador sin que el usuario recargue. El intervalo es un compromiso
     // entre latencia de propagación y tráfico.
     effect((onCleanup) => {
-      const id = setInterval(() => void this.refrescar(), this.config.intervaloRefrescoMs);
-      onCleanup(() => clearInterval(id));
+      const context = this.config.context?.();
+      const scope = new AbortController();
+      let pending = false;
+      this.estado.set({ ...FLAGS_POR_DEFECTO });
+      this.sincronizado.set(false);
+      const refresh = async () => {
+        if (pending) return;
+        pending = true;
+        await this.refrescar(context, scope.signal);
+        pending = false;
+      };
+      void refresh();
+      const id = setInterval(() => void refresh(), this.config.intervaloRefrescoMs);
+      onCleanup(() => {
+        clearInterval(id);
+        scope.abort();
+      });
     });
   }
 
@@ -85,28 +116,54 @@ export class FeatureFlagService {
     return this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false;
   }
 
-  private async refrescar(): Promise<void> {
+  private async refrescar(
+    context: FeatureFlagContext | undefined,
+    scope: AbortSignal,
+  ): Promise<void> {
+    const request = new AbortController();
+    const abort = () => request.abort();
+    scope.addEventListener('abort', abort, { once: true });
+    const timeout = setTimeout(abort, 10_000);
     try {
-      const respuesta = await fetch(this.config.proxyUrl, {
+      const url = new URL(this.config.proxyUrl, globalThis.location.origin);
+      if (context?.userId) url.searchParams.set('userId', context.userId);
+      for (const [key, value] of Object.entries(context?.properties ?? {})) {
+        url.searchParams.set(`properties[${key}]`, value);
+      }
+      const respuesta = await fetch(url.toString(), {
         headers: { Authorization: this.config.clientKey },
+        signal: request.signal,
+        credentials: 'omit',
+        cache: 'no-store',
       });
       if (!respuesta.ok) throw new Error(`El proxy respondió ${respuesta.status}`);
 
-      const cuerpo = (await respuesta.json()) as RespuestaProxy;
-      const mapa: Record<string, boolean> = { ...FLAGS_POR_DEFECTO };
-      for (const toggle of cuerpo.toggles) mapa[toggle.name] = toggle.enabled;
+      const cuerpo: unknown = await respuesta.json();
+      if (scope.aborted || request.signal.aborted) return;
+      if (!esRespuestaProxy(cuerpo)) throw new Error('Respuesta de flags inválida');
+      // GET /proxy devuelve solo flags ON: una ausencia en una respuesta válida significa OFF.
+      const mapa: Record<string, boolean> = Object.fromEntries(
+        Object.keys(FLAGS_POR_DEFECTO).map((key) => [key, false]),
+      );
+      const seen = new Set<string>();
+      for (const toggle of cuerpo.toggles) {
+        if (seen.has(toggle.name)) throw new Error('Flag duplicada');
+        seen.add(toggle.name);
+        if (Object.hasOwn(FLAGS_POR_DEFECTO, toggle.name)) mapa[toggle.name] = toggle.enabled;
+      }
 
       this.estado.set(mapa);
       this.sincronizado.set(true);
       if (this.degraded) this.logger.log('INFO', 'flags.recovered');
       this.degraded = false;
     } catch {
-      // FALLA ABIERTO hacia los valores por defecto, deliberadamente.
-      // Que el servidor de flags esté caído no puede tumbar la aplicación:
-      // sería convertir una herramienta de mitigación de incidentes en la
-      // causa de uno. Ver plan §9.
+      if (scope.aborted) return;
+      // Conserva la última evaluación válida; antes de sincronizar, los defaults del catálogo.
       if (!this.degraded) this.logger.log('WARN', 'flags.degraded');
       this.degraded = true;
+    } finally {
+      clearTimeout(timeout);
+      scope.removeEventListener('abort', abort);
     }
   }
 }

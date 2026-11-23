@@ -28,6 +28,7 @@ import com.mapit.shared.realtime.RealtimeEvent;
 import com.mapit.shared.realtime.RealtimeEventPublisher;
 import com.mapit.shared.realtime.SpaceElementState;
 import com.mapit.shared.security.ActorContext;
+import com.mapit.shared.security.EstablishmentAuthorizationPort;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 
@@ -55,6 +56,25 @@ class UpdateSpaceElementStateTest {
     publisher = new RecordingPublisher();
     TenantContext tenants = () -> Optional.of(TENANT);
     ActorContext actors = () -> Optional.of(ACTOR);
+    EstablishmentAuthorizationPort authorization =
+        new EstablishmentAuthorizationPort() {
+          @Override
+          public boolean canManagePayments(TenantId tenant, UUID actor, UUID establishment) {
+            return false;
+          }
+
+          @Override
+          public boolean canCheckIn(TenantId tenant, UUID actor, UUID establishment) {
+            return false;
+          }
+
+          @Override
+          public boolean canReadOperations(TenantId tenant, UUID actor, UUID establishment) {
+            return TENANT.equals(tenant)
+                && ACTOR.equals(actor)
+                && ESTABLISHMENT.equals(establishment);
+          }
+        };
     useCase =
         new UpdateSpaceElementState(
             repository,
@@ -63,7 +83,42 @@ class UpdateSpaceElementStateTest {
             publisher,
             tenants,
             actors,
+            authorization,
             Clock.fixed(NOW, ZoneOffset.UTC));
+  }
+
+  @Test
+  void no_cambia_un_elemento_de_otro_establecimiento_del_tenant() {
+    UUID otherEstablishment = UUID.randomUUID();
+    repository.element =
+        new OperationalSpaceElement(
+            ELEMENT, TENANT, otherEstablishment, SECTOR, SpaceElementState.AVAILABLE, BEFORE);
+
+    assertThatThrownBy(
+            () ->
+                useCase.execute(
+                    new UpdateSpaceElementStateCommand(
+                        SECTOR, ELEMENT, SpaceElementState.OCCUPIED)))
+        .isInstanceOf(OperationalSpaceElementNotFoundException.class);
+    assertThat(repository.saves).isZero();
+    assertThat(auditEvents.events).isEmpty();
+    assertThat(publisher.events).isEmpty();
+  }
+
+  @Test
+  void una_accion_obsoleta_no_libera_una_mesa_que_volvio_a_ocuparse() {
+    repository.element =
+        new OperationalSpaceElement(
+            ELEMENT, TENANT, ESTABLISHMENT, SECTOR, SpaceElementState.OCCUPIED, BEFORE);
+
+    assertThatThrownBy(
+            () ->
+                useCase.execute(
+                    new UpdateSpaceElementStateCommand(
+                        SECTOR, ELEMENT, SpaceElementState.AVAILABLE, SpaceElementState.CLEANING)))
+        .isInstanceOf(InvalidSpaceElementStateTransitionException.class);
+    assertThat(repository.saves).isZero();
+    assertThat(publisher.events).isEmpty();
   }
 
   @Test

@@ -94,6 +94,7 @@ class PublicReservationIntegrationTest {
     jdbc.update("delete from floor where tenant_id in (?, ?)", TENANT, TENANT_B);
     jdbc.update("delete from establishment where tenant_id in (?, ?)", TENANT, TENANT_B);
     jdbc.update("delete from app_user where tenant_id in (?, ?)", TENANT, TENANT_B);
+    jdbc.update("delete from realtime_event_outbox where tenant_id in (?, ?)", TENANT, TENANT_B);
     jdbc.update("delete from tenant where id in (?, ?)", TENANT, TENANT_B);
 
     tenant(TENANT);
@@ -152,6 +153,25 @@ class PublicReservationIntegrationTest {
     assertThat((UUID) reservation.get("person_id")).isEqualTo(person.get("id"));
     assertThat(reservation.get("created_by")).isNull();
     assertThat(reservation.get("status")).isEqualTo("CREATED");
+  }
+
+  @Test
+  void restaurantReservationAcceptsArrivalOnlyAndRejectsAnOverlap() {
+    var arrival = Map.of(
+        "date", "2026-10-25",
+        "startTime", "21:30",
+        "spaceElementIds", List.of(ELEMENT),
+        "customer", Map.of("fullName", "Ana Pérez", "email", "ana@example.com"));
+    var result = client().post().uri(path()).contentType(MediaType.APPLICATION_JSON).body(arrival)
+        .exchange().expectStatus().isCreated().expectBody(CreateReservationResponse.class)
+        .returnResult().getResponseBody();
+    assertThat(result).isNotNull();
+    assertThat(result.startTime()).isEqualTo("21:30");
+    assertThat(result.endTime()).isEqualTo("23:00");
+    assertThat(result.startsAt()).isEqualTo(Instant.parse("2026-10-26T01:30:00Z"));
+    assertThat(result.endsAt()).isEqualTo(Instant.parse("2026-10-26T03:00:00Z"));
+    client().post().uri(path()).contentType(MediaType.APPLICATION_JSON).body(arrival)
+        .exchange().expectStatus().isEqualTo(409);
   }
 
   @Test

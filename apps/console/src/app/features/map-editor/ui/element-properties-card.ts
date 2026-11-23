@@ -7,27 +7,28 @@ import {
   linkedSignal,
 } from '@angular/core';
 import type { SpaceElement } from '@mapit/map-engine';
+import { ElementTypeIconComponent } from '@mapit/ui-kit';
 import { LucideRefreshCw } from '@lucide/angular';
 
 import { MapEditorStore } from '../model/map-editor-store';
 import { STRINGS } from '../../../core/strings';
 
-/**
- * Tarjeta flotante de propiedades del elemento seleccionado (HU-4.01 v2,
- * spec: apps/console/design/design-components.md). Solo binding y eventos;
- * toda escritura va por los comandos del store (drag/rotate/resize/delete).
- */
+type GeometryField = 'x' | 'y' | 'width' | 'height' | 'rotation';
+
 @Component({
   selector: 'mapit-element-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideRefreshCw],
+  imports: [LucideRefreshCw, ElementTypeIconComponent],
   template: `
     <aside class="props-card" aria-label="{{ strings.properties }}">
       <header class="props-header">
         <span class="props-avatar" [attr.data-type]="element().type" aria-hidden="true">
-          {{ element().type.slice(0, 1) }}
+          <mapit-element-type-icon [type]="element().type" [size]="34" />
         </span>
-        <span class="props-title">{{ element().label }}</span>
+        <div>
+          <span class="props-title">{{ element().label }}</span>
+          <small>{{ typeLabels[element().type] }}</small>
+        </div>
       </header>
 
       @if (store.canEditMetadata()) {
@@ -38,24 +39,32 @@ import { STRINGS } from '../../../core/strings';
             <input
               data-testid="element-metadata-label"
               type="text"
+              name="elementName"
+              autocomplete="off"
               maxlength="120"
               [disabled]="store.busy() || store.loading()"
               [value]="metadataDraft().label"
               (input)="setLabel($event)"
+              (blur)="applyMetadataDraft()"
             />
           </label>
-          <label
-            >{{ strings.metadataCapacity }}
-            <input
-              data-testid="element-metadata-capacity"
-              type="number"
-              min="1"
-              step="1"
-              [disabled]="store.busy() || store.loading()"
-              [value]="metadataDraft().capacity"
-              (input)="setCapacity($event)"
-            />
-          </label>
+          @if (element().reservable) {
+            <label
+              >{{ strings.metadataCapacity }}
+              <input
+                data-testid="element-metadata-capacity"
+                name="elementCapacity"
+                autocomplete="off"
+                type="number"
+                min="1"
+                step="1"
+                [disabled]="store.busy() || store.loading()"
+                [value]="metadataDraft().capacity"
+                (input)="setCapacity($event)"
+                (blur)="applyMetadataDraft()"
+              />
+            </label>
+          }
           @if (store.metadataError()) {
             <p role="alert" data-testid="element-metadata-error">{{ store.metadataError() }}</p>
           }
@@ -66,19 +75,13 @@ import { STRINGS } from '../../../core/strings';
               [disabled]="store.busy() || store.loading()"
               (click)="store.clearElementMetadata(element().id)"
             >
-              {{ strings.metadataClear }}
+              {{ element().reservable ? strings.metadataClear : strings.metadataClearName }}
             </button>
             <button
               data-testid="element-metadata-save"
               type="button"
-              [disabled]="store.busy() || store.loading()"
-              (click)="
-                store.saveElementMetadata(
-                  element().id,
-                  metadataDraft().label,
-                  metadataDraft().capacity
-                )
-              "
+              [disabled]="store.busy() || store.loading() || !metadataDirty()"
+              (click)="applyMetadataDraft()"
             >
               {{ strings.metadataSave }}
             </button>
@@ -93,18 +96,23 @@ import { STRINGS } from '../../../core/strings';
             <span>X:</span>
             <input
               type="number"
-              [disabled]="store.busy() || store.loading()"
-              [value]="currentX()"
-              (change)="onUpdatePosition(valueAsNumber($event), currentY())"
+              [disabled]="!store.canEditMetadata() || store.busy() || store.loading()"
+              data-testid="map-element-x"
+              [value]="geometryValue('x')"
+              (input)="setGeometry('x', $event)"
+              (change)="applyGeometryDraft()"
+              (blur)="applyGeometryDraft()"
             />
           </label>
           <label class="chip chip-y">
             <span>Y:</span>
             <input
               type="number"
-              [disabled]="store.busy() || store.loading()"
-              [value]="currentY()"
-              (change)="onUpdatePosition(currentX(), valueAsNumber($event))"
+              [disabled]="!store.canEditMetadata() || store.busy() || store.loading()"
+              [value]="geometryValue('y')"
+              (input)="setGeometry('y', $event)"
+              (change)="applyGeometryDraft()"
+              (blur)="applyGeometryDraft()"
             />
           </label>
         </div>
@@ -114,23 +122,27 @@ import { STRINGS } from '../../../core/strings';
         <h4>{{ strings.size }}</h4>
         <div class="chips">
           <label class="chip">
-            <span>W:</span>
+            <span>{{ strings.sectorWidth }}</span>
             <input
               type="number"
               min="20"
-              [disabled]="store.busy() || store.loading()"
-              [value]="roundedSize().width"
-              (change)="onUpdateSize(valueAsNumber($event), roundedSize().height)"
+              [disabled]="!store.canEditMetadata() || store.busy() || store.loading()"
+              [value]="geometryValue('width')"
+              (input)="setGeometry('width', $event)"
+              (change)="applyGeometryDraft()"
+              (blur)="applyGeometryDraft()"
             />
           </label>
           <label class="chip">
-            <span>H:</span>
+            <span>{{ strings.sectorHeight }}</span>
             <input
               type="number"
               min="20"
-              [disabled]="store.busy() || store.loading()"
-              [value]="roundedSize().height"
-              (change)="onUpdateSize(roundedSize().width, valueAsNumber($event))"
+              [disabled]="!store.canEditMetadata() || store.busy() || store.loading()"
+              [value]="geometryValue('height')"
+              (input)="setGeometry('height', $event)"
+              (change)="applyGeometryDraft()"
+              (blur)="applyGeometryDraft()"
             />
           </label>
         </div>
@@ -143,113 +155,106 @@ import { STRINGS } from '../../../core/strings';
             <input
               type="number"
               step="15"
-              [disabled]="store.busy() || store.loading()"
-              [value]="Math.round(element().rotation)"
-              (change)="onUpdateRotation(valueAsNumber($event))"
+              [attr.aria-label]="strings.rotation"
+              [disabled]="!store.canEditMetadata() || store.busy() || store.loading()"
+              [value]="geometryValue('rotation')"
+              (input)="setGeometry('rotation', $event)"
+              (change)="applyGeometryDraft()"
+              (blur)="applyGeometryDraft()"
             />
             <span>°</span>
           </label>
           <button
             class="btn-rotate"
             type="button"
-            [disabled]="store.busy() || store.loading()"
+            [disabled]="!store.canEditMetadata() || store.busy() || store.loading()"
             aria-label="{{ strings.rotation }}"
-            (click)="onUpdateRotation(0)"
+            (click)="resetRotation()"
           >
             <svg lucideRefreshCw class="rotate-icon" aria-hidden="true"></svg>
           </button>
         </div>
       </div>
 
-      <div class="props-section props-meta">
-        <span class="state-badge" [attr.data-state]="element().state">{{ element().state }}</span>
-        <span>{{ element().capacity ?? strings.capacityUnknown }}</span>
-      </div>
-
-      <button
-        class="btn-delete"
-        type="button"
-        [disabled]="store.busy() || store.loading()"
-        (click)="onDelete()"
-      >
-        {{ floorStrings.deleteElement }}
-      </button>
+      @if (store.canEditMetadata()) {
+        <button
+          class="btn-delete"
+          type="button"
+          [disabled]="store.busy() || store.loading()"
+          (click)="onDelete()"
+        >
+          {{ floorStrings.deleteElement }}
+        </button>
+      }
     </aside>
   `,
   styles: `
     :host {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      z-index: 5;
+      display: block;
+      min-width: 0;
     }
-
     .props-card {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      width: 250px;
-      padding: 14px;
-      background: var(--mapit-color-surface);
-      border: 1px solid var(--mapit-color-border);
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+      display: grid;
+      gap: 1rem;
+      color: var(--mapit-color-text);
     }
-
     .props-header {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 0.75rem;
+      padding-block-end: 0.875rem;
+      border-bottom: 1px solid var(--mapit-color-border);
     }
-
+    .props-header > div {
+      min-width: 0;
+    }
+    .props-header small {
+      display: block;
+      margin-top: 0.125rem;
+      color: var(--mapit-color-text-variant);
+      font: var(--mapit-text-metadata);
+    }
     .props-avatar {
-      width: 34px;
-      height: 34px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 3rem;
+      height: 3rem;
       border-radius: 50%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
       background: var(--mapit-editor-selection-soft);
       color: var(--mapit-editor-selection);
-      font: var(--mapit-text-body-bold);
     }
-
     .props-title {
-      font: var(--mapit-text-body-bold);
-      color: var(--mapit-editor-panel-text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      font: 750 1rem / 1.3 var(--mapit-font-display);
+      overflow-wrap: anywhere;
     }
-
     .props-section h4 {
-      margin: 0 0 6px;
-      font: var(--mapit-text-metadata);
-      color: var(--mapit-editor-panel-muted);
+      margin: 0 0 0.5rem;
+      font: var(--mapit-text-body-bold);
     }
-
     .metadata-editor {
       display: grid;
-      gap: 8px;
+      gap: 0.75rem;
     }
     .metadata-editor label {
       display: grid;
-      gap: 4px;
+      gap: 0.25rem;
+      color: var(--mapit-color-text-variant);
       font: var(--mapit-text-metadata);
-      color: var(--mapit-editor-panel-muted);
+    }
+    .metadata-editor h4 {
+      display: none;
     }
     .metadata-editor input {
-      min-height: 40px;
+      box-sizing: border-box;
       width: 100%;
-      padding: 8px;
+      min-height: 2.5rem;
+      padding: 0.5rem 0.625rem;
       border: 1px solid var(--mapit-color-border-input);
-      border-radius: var(--mapit-radius-input);
-      font: var(--mapit-text-body);
-      color: var(--mapit-editor-panel-text);
-    }
-    .metadata-editor input:focus-visible {
-      outline: 2px solid var(--mapit-editor-selection);
-      outline-offset: 2px;
+      border-radius: 0.5rem;
+      background: var(--mapit-color-surface);
+      color: var(--mapit-color-text);
+      font: var(--mapit-text-body-bold);
     }
     .metadata-editor p {
       margin: 0;
@@ -258,137 +263,116 @@ import { STRINGS } from '../../../core/strings';
     .metadata-actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 0.5rem;
     }
-    .metadata-actions button {
-      min-height: 40px;
-      padding: 6px 8px;
-      border: 1px solid var(--mapit-color-border);
-      border-radius: var(--mapit-radius-input);
+    button {
+      min-height: 2.5rem;
+      padding: 0.375rem 0.625rem;
+      border: 1px solid var(--mapit-color-border-input);
+      border-radius: 0.5rem;
       background: var(--mapit-color-surface);
-      color: var(--mapit-color-primary);
+      color: var(--mapit-color-primary-hover);
+      font: var(--mapit-text-metadata);
+      font-weight: 650;
       cursor: pointer;
+      touch-action: manipulation;
     }
-    .metadata-actions button:focus-visible {
-      outline: 2px solid var(--mapit-color-primary);
-      outline-offset: 2px;
-    }
-
-    .chips {
-      display: flex;
-      gap: 8px;
-    }
-
-    .chip {
-      flex: 1;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      background: var(--mapit-editor-chip-bg);
-      border: 1px solid var(--mapit-color-border);
-      border-radius: 8px;
-      font: var(--mapit-text-body-bold);
-      color: var(--mapit-editor-panel-text);
-    }
-
-    .chip span {
-      font-weight: 700;
-    }
-
-    .chip-x span {
-      color: var(--mapit-editor-selection);
-    }
-
-    .chip-y span {
-      color: var(--mapit-editor-selection-y-text);
-    }
-
-    .chip input {
-      width: 100%;
-      border: none;
-      background: transparent;
-      font: inherit;
-      color: inherit;
-      outline: none;
-    }
-
-    .chip:focus-within {
-      border-color: var(--mapit-editor-selection);
-      box-shadow: 0 0 0 2px rgb(37 99 235 / 0.2);
-    }
-
-    .btn-rotate {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      border: 1px solid var(--mapit-color-border);
-      background: var(--mapit-color-surface);
-      color: var(--mapit-editor-selection);
-      font-size: 16px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: background var(--mapit-duration-fast) var(--mapit-ease-out);
-    }
-
-    .btn-rotate:hover {
+    button:not(:disabled):hover {
       background: var(--mapit-editor-selection-soft);
     }
-
-    .btn-rotate:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px rgb(37 99 235 / 0.2);
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
     }
-
-    .rotate-icon {
-      width: 16px;
-      height: 16px;
+    .metadata-actions button {
+      flex: 1;
     }
-
-    .props-meta {
+    .metadata-actions button:last-child {
+      background: var(--mapit-editor-selection-soft);
+      border-color: var(--mapit-editor-selection);
+    }
+    :is(input, button):focus-visible {
+      outline: 2px solid var(--mapit-editor-selection);
+      outline-offset: 2px;
+    }
+    .chips {
+      display: flex;
+      gap: 0.625rem;
+    }
+    .chip {
+      flex: 1;
+      min-width: 0;
       display: flex;
       align-items: center;
-      gap: 10px;
-      border-top: 1px solid var(--mapit-color-border);
-      padding-top: 10px;
+      gap: 0.375rem;
+      padding: 0.5rem;
+      border: 1px solid var(--mapit-color-border-input);
+      border-radius: 0.5rem;
+      background: var(--mapit-color-surface);
+      font: var(--mapit-text-body-bold);
+    }
+    .chip span {
+      color: var(--mapit-color-text-variant);
       font: var(--mapit-text-metadata);
-      color: var(--mapit-editor-panel-muted);
     }
-
-    .btn-delete {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.375rem 0.75rem;
-      border: 1px solid var(--mapit-color-error-border);
-      border-radius: var(--mapit-radius-input);
+    .chip input {
+      width: 100%;
+      min-width: 0;
+      min-height: 1.375rem;
+      border: 0;
       background: transparent;
-      color: var(--mapit-color-error);
+      color: inherit;
       font: inherit;
-      font-size: 0.8125rem;
-      cursor: pointer;
     }
-
-    .btn-delete:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px var(--mapit-color-focus-ring);
+    .chip:focus-within {
+      outline: 2px solid var(--mapit-editor-selection);
+      outline-offset: 1px;
+    }
+    .chip input:focus-visible {
+      outline: 0;
+    }
+    .btn-rotate {
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 2.625rem;
+      padding: 0.5rem;
+    }
+    .rotate-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+    .btn-delete {
+      color: var(--mapit-color-error);
+      margin-top: 0.25rem;
     }
   `,
 })
 export class ElementPropertiesCardComponent {
+  protected readonly typeLabels = STRINGS.spaces.elements.types;
   readonly element = input.required<SpaceElement>();
 
   protected readonly store = inject(MapEditorStore);
   protected readonly strings = STRINGS.spaces.editor;
   protected readonly floorStrings = STRINGS.spaces.floorEditor;
-  protected readonly Math = Math;
-  protected readonly metadataDraft = linkedSignal(() => ({
-    label: this.store.selectedMetadata()?.label ?? '',
-    capacity: this.store.selectedMetadata()?.capacity?.toString() ?? '',
-  }));
-  readonly dirty = computed(() => {
+  private readonly savedMetadata = computed(
+    () => ({
+      id: this.element().id,
+      label: this.store.selectedMetadata()?.label ?? '',
+      capacity: this.store.selectedMetadata()?.capacity?.toString() ?? '',
+    }),
+    {
+      equal: (previous, next) =>
+        previous.id === next.id &&
+        previous.label === next.label &&
+        previous.capacity === next.capacity,
+    },
+  );
+  protected readonly metadataDraft = linkedSignal(() => {
+    const { label, capacity } = this.savedMetadata();
+    return { label, capacity };
+  });
+  protected readonly metadataDirty = computed(() => {
     if (!this.store.canEditMetadata()) return false;
     const saved = this.store.selectedMetadata();
     const draft = this.metadataDraft();
@@ -396,6 +380,44 @@ export class ElementPropertiesCardComponent {
       draft.label !== (saved?.label ?? '') || draft.capacity !== (saved?.capacity?.toString() ?? '')
     );
   });
+
+  private readonly elementId = computed(() => this.element().id);
+  private readonly geometryDraft = linkedSignal<string, Partial<Record<GeometryField, string>>>({
+    source: this.elementId,
+    computation: () => ({}),
+  });
+  private readonly geometry = computed(() => {
+    const el = this.element();
+    return {
+      ...(this.store.selectedElementPosition() ?? el.position),
+      ...el.size,
+      rotation: el.rotation,
+    };
+  });
+  readonly geometryDirty = computed(() =>
+    Object.entries(this.geometryDraft()).some(
+      ([field, value]) => !value || Number(value) !== this.geometry()[field as GeometryField],
+    ),
+  );
+  readonly dirty = computed(() => this.metadataDirty() || this.geometryDirty());
+
+  applyMetadataDraft(): boolean {
+    if (!this.metadataDirty()) return true;
+    if (this.store.busy() || this.store.loading()) return false;
+    const draft = this.metadataDraft();
+    this.store.saveElementMetadata(
+      this.element().id,
+      draft.label,
+      this.element().reservable ? draft.capacity : '',
+    );
+    return !this.store.metadataError();
+  }
+
+  discardDraft(): void {
+    const { label, capacity } = this.savedMetadata();
+    this.metadataDraft.set({ label, capacity });
+    this.geometryDraft.set({});
+  }
 
   protected setLabel(event: Event): void {
     this.metadataDraft.update((draft) => ({
@@ -410,51 +432,47 @@ export class ElementPropertiesCardComponent {
     }));
   }
 
-  protected readonly currentX = computed(() =>
-    Math.round(this.store.selectedElementPosition()?.x ?? this.element().position.x),
-  );
-  protected readonly currentY = computed(() =>
-    Math.round(this.store.selectedElementPosition()?.y ?? this.element().position.y),
-  );
-  protected readonly roundedSize = computed(() => ({
-    width: Math.round(this.element().size.width),
-    height: Math.round(this.element().size.height),
-  }));
-
-  protected valueAsNumber(event: Event): number {
-    return (event.target as HTMLInputElement).valueAsNumber;
+  protected geometryValue(field: GeometryField): string | number {
+    return this.geometryDraft()[field] ?? this.geometry()[field];
   }
 
-  protected onUpdatePosition(x: number, y: number): void {
-    if (!this.store.busy() && !this.store.loading() && Number.isFinite(x) && Number.isFinite(y)) {
-      this.store.dragElement(this.element().id, x, y);
+  protected setGeometry(field: GeometryField, event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.geometryDraft.update((draft) => ({ ...draft, [field]: value }));
+  }
+
+  applyGeometryDraft(): boolean {
+    if (this.geometryDirty()) {
+      if (this.store.busy() || this.store.loading()) return false;
+      const draft = this.geometryDraft();
+      const geometry = { ...this.geometry() };
+      for (const field of Object.keys(draft) as GeometryField[]) {
+        const value = draft[field];
+        if (!value || !Number.isFinite(Number(value))) return false;
+        geometry[field] = Number(value);
+      }
+      const { x, y, width, height, rotation } = geometry;
+      this.store.resizeElement(
+        this.element().id,
+        x,
+        y,
+        width,
+        height,
+        ((rotation % 360) + 360) % 360,
+      );
     }
+    this.geometryDraft.set({});
+    return true;
   }
 
-  protected onUpdateSize(width: number, height: number): void {
-    if (
-      this.store.busy() ||
-      this.store.loading() ||
-      !Number.isFinite(width) ||
-      !Number.isFinite(height)
-    )
-      return;
-    const el = this.element();
-    this.store.resizeElement(el.id, el.position.x, el.position.y, width, height);
-  }
-
-  protected onUpdateRotation(rotation: number): void {
-    if (!this.store.busy() && !this.store.loading() && Number.isFinite(rotation)) {
-      this.store.rotateElement(this.element().id, rotation);
-    }
+  protected resetRotation(): void {
+    this.geometryDraft.update((draft) => ({ ...draft, rotation: '0' }));
+    this.applyGeometryDraft();
   }
 
   /** Destructivo: pide confirmación (guía web). */
   protected onDelete(): void {
     if (this.store.busy() || this.store.loading()) return;
-    const el = this.element();
-    if (window.confirm(this.strings.deleteConfirm.replace('{label}', el.label))) {
-      this.store.deleteElement(el.id);
-    }
+    this.store.confirmDeleteElement(this.element().id);
   }
 }

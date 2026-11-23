@@ -80,7 +80,7 @@ public class DuplicateSectorUseCase {
 
     Floor targetFloor =
         floors
-            .findAliveById(tenantId, floorId)
+            .findAliveByIdForUpdate(tenantId, floorId)
             .orElseThrow(() -> new FloorNotFoundException(floorId));
 
     Sector source =
@@ -97,6 +97,14 @@ public class DuplicateSectorUseCase {
       throw new IllegalArgumentException(
           "Solo se pueden duplicar sectores dentro del mismo establecimiento");
     }
+    if ((command.x() == null) != (command.y() == null)) {
+      throw new IllegalArgumentException("La copia requiere ambas coordenadas");
+    }
+    Placement placement = command.x() == null
+        ? Placement.origin() : Placement.of(command.x(), command.y(), 0);
+    if (!placement.fitsIn(source.geometry(), targetFloor.canvasWidth(), targetFloor.canvasHeight())) {
+      throw new LayoutOutOfBoundsException("La copia no cabe en la planta destino");
+    }
 
     EstablishmentType vertical = verticalDelEstablecimiento(tenantId, targetFloor);
 
@@ -111,7 +119,7 @@ public class DuplicateSectorUseCase {
         source.maxCapacity(),
         slug,
         source.geometry(),
-        Placement.origin(),
+        placement,
         com.mapit.spaces.domain.AuditTrail.created(now, null)));
 
     List<SpaceElement> clones = elements.findAliveBySectorId(tenantId, source.id().value())

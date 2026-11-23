@@ -12,15 +12,16 @@ import {
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { LucideArrowLeft, LucideQrCode } from '@lucide/angular';
-import { formatDecimalMoney, SimulatePaymentRequest, type PublicCheckout } from '@mapit/api-client';
+import { SimulatePaymentRequest, type PublicCheckout } from '@mapit/api-client';
 import { firstValueFrom } from 'rxjs';
 
-import { STRINGS } from '../../../core/strings';
+import { localizeSpaceName, STRINGS } from '../../../core/strings';
 import { ReservationAccess } from '../../../core/reservation-access';
 import { PublicPaymentApi } from '../data/public-payment-api';
 import { parseAttempt } from '../data/payment-qr';
 import {
   formatPaymentExpiry,
+  formatPaymentMoney,
   formatReservationDate,
   formatReservationTime,
 } from '../data/payment-format';
@@ -42,6 +43,7 @@ const TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 })
 export class SimulationPage {
   readonly token = input.required<string>();
+  protected readonly spaceName = localizeSpaceName;
   protected readonly strings = STRINGS.qrSimulation;
   protected readonly paymentStrings = STRINGS.payment;
   protected readonly outcomes = SimulatePaymentRequest.OutcomeEnum;
@@ -65,7 +67,7 @@ export class SimulationPage {
   });
   protected readonly amount = computed(() => {
     const payment = this.checkout()?.payment;
-    return payment ? formatDecimalMoney(payment.amount, payment.currency) : '';
+    return payment ? formatPaymentMoney(payment.amount, payment.currency) : '';
   });
   protected readonly date = computed(() =>
     this.checkout() ? formatReservationDate(this.checkout()!.reservation) : '',

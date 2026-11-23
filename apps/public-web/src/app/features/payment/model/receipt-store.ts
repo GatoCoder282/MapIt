@@ -1,10 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, Injector, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { formatDecimalMoney, type PaymentReceipt } from '@mapit/api-client';
+import { type PaymentReceipt } from '@mapit/api-client';
 import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { ReservationAccess } from '../../../core/reservation-access';
-import { formatReservationDate, formatReservationTime } from '../data/payment-format';
+import {
+  formatPaymentMoney,
+  formatReservationDate,
+  formatReservationTime,
+} from '../data/payment-format';
 import { PaymentPreviewApi, PaymentPreviewError } from '../data/payment-preview-api';
 import { projectReceipt } from '../data/payment-projection';
 import { PublicPaymentApi } from '../data/public-payment-api';
@@ -29,16 +33,16 @@ export class ReceiptStore {
     this.receipt() ? formatReservationTime(this.receipt()!.reservation) : '',
   );
   readonly paid = computed(() =>
-    this.receipt() ? formatDecimalMoney(this.receipt()!.paidAmount, this.receipt()!.currency) : '',
+    this.receipt() ? formatPaymentMoney(this.receipt()!.paidAmount, this.receipt()!.currency) : '',
   );
   readonly total = computed(() =>
     this.receipt()?.totalAmount != null
-      ? formatDecimalMoney(this.receipt()!.totalAmount!, this.receipt()!.currency)
+      ? formatPaymentMoney(this.receipt()!.totalAmount!, this.receipt()!.currency)
       : '',
   );
   readonly balance = computed(() =>
     this.receipt()?.balanceAmount != null
-      ? formatDecimalMoney(this.receipt()!.balanceAmount!, this.receipt()!.currency)
+      ? formatPaymentMoney(this.receipt()!.balanceAmount!, this.receipt()!.currency)
       : '',
   );
   readonly checkoutPath = computed(() => {

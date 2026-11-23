@@ -17,7 +17,9 @@ public class FindPublicAvailabilityMap {
   @Transactional(readOnly = true)
   public PublicAvailabilityMap execute(String tenant, String establishment, LocalDate date,
       @Nullable LocalTime start, @Nullable LocalTime end) {
-    if (date == null || (start == null) != (end == null)) throw new IllegalArgumentException("Se requieren ambos horarios o ninguno");
+    if (date == null || (start == null && end != null)) {
+      throw new IllegalArgumentException("Se requiere la hora de inicio al indicar la hora de fin");
+    }
     return repository.find(tenant, establishment, date, start, end).orElseThrow(PublicAvailabilityNotFoundException::new);
   }
 }

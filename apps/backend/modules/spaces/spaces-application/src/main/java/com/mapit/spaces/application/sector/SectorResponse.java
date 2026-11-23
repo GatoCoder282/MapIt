@@ -2,6 +2,7 @@ package com.mapit.spaces.application.sector;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.Map;
 
 import com.mapit.spaces.domain.sector.Sector;
 
@@ -24,7 +25,8 @@ public record SectorResponse(
     double width,
     double height,
     Instant createdAt,
-    Instant updatedAt) {
+    Instant updatedAt,
+    Map<String, Object> appearance) {
 
   public static SectorResponse fromDomain(Sector sector) {
     return new SectorResponse(
@@ -38,6 +40,7 @@ public record SectorResponse(
         sector.geometry().width(),
         sector.geometry().height(),
         sector.audit().createdAt(),
-        sector.audit().updatedAt());
+        sector.audit().updatedAt(),
+        sector.appearance());
   }
 }

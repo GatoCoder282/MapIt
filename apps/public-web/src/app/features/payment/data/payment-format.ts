@@ -1,5 +1,14 @@
-import type { PreviewPayment, PreviewReservation, ReservationCheckout } from '@mapit/api-client';
+import {
+  formatDecimalMoney,
+  type PreviewPayment,
+  type PreviewReservation,
+  type ReservationCheckout,
+} from '@mapit/api-client';
 import { currentLocaleTag } from '@mapit/i18n';
+
+export function formatPaymentMoney(value: string, currency: string): string {
+  return formatDecimalMoney(value, currency, currentLocaleTag());
+}
 
 export function formatPaymentExpiry(expiresAt: string, timeZone: string): string {
   return new Intl.DateTimeFormat(currentLocaleTag(), {
@@ -33,6 +42,7 @@ export function formatReservationDate(
 
 export function formatReservationTime(
   reservation: PreviewReservation | ReservationCheckout,
+  arrivalOnly = false,
 ): string {
   const formatter = new Intl.DateTimeFormat(currentLocaleTag(), {
     hour: '2-digit',
@@ -40,5 +50,8 @@ export function formatReservationTime(
     hourCycle: 'h23',
     timeZone: 'timezone' in reservation ? reservation.timezone : reservation.timeZone,
   });
-  return formatter.formatRange(new Date(reservation.startsAt), new Date(reservation.endsAt));
+  const start = new Date(reservation.startsAt);
+  return arrivalOnly
+    ? formatter.format(start)
+    : formatter.formatRange(start, new Date(reservation.endsAt));
 }

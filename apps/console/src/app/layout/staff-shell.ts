@@ -7,17 +7,19 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { distinctUntilChanged, filter, map } from 'rxjs';
 
 import { AuthSession } from '@mapit/auth';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import { LanguageSelector } from '@mapit/i18n';
 import { Sidebar, type SidebarNavItem } from './sidebar/sidebar';
 import { EstablishmentSelector } from './establishment-selector';
 
 import { STRINGS } from '../core/strings';
 import { EstablishmentContext } from '../core/establishment-context';
+import { OperationalMapData } from '../core/operational-map-data';
 
 /**
  * Chrome de la consola de staff del tenant: sidebar full-height con las
@@ -27,7 +29,7 @@ import { EstablishmentContext } from '../core/establishment-context';
  */
 @Component({
   selector: 'mapit-staff-shell',
-  imports: [RouterOutlet, Sidebar, EstablishmentSelector, LanguageSelector],
+  imports: [RouterLink, RouterOutlet, Sidebar, EstablishmentSelector, LanguageSelector],
   templateUrl: './staff-shell.html',
   styleUrl: './staff-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,14 +39,26 @@ export class StaffShell {
   protected readonly session = inject(AuthSession);
   protected readonly establishmentContext = inject(EstablishmentContext);
   protected readonly menuOpen = signal(false);
+  protected readonly sidebarCollapsed = signal(false);
+  protected readonly sidebarMotion = signal(false);
   protected readonly initialEstablishmentsLoaded = signal(false);
   protected readonly selectorRequested = signal(false);
   private readonly previousEstablishmentId = signal<string | null>(null);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly flags = inject(FeatureFlagService);
+  protected readonly mapMonitoringEnabled = this.flags.isEnabled('operations.space-monitor');
+  protected readonly incidents = inject(OperationalMapData).incidents;
   private readonly firstEstablishmentUrl = this.router.createUrlTree(['/spaces/setup'], {
     queryParams: { manage: '1' },
   });
+  protected readonly compactMapNavigation = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map((event) => this.isMapWorkspace(event.urlAfterRedirects)),
+    ),
+    { initialValue: this.isMapWorkspace(this.router.url) },
+  );
   private readonly onEstablishmentSetup = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
@@ -63,8 +77,8 @@ export class StaffShell {
       !this.establishmentContext.active() &&
       this.establishmentContext.establishments().length === 0,
   );
-  protected readonly canOpenFirstEstablishmentSetup = computed(
-    () => this.needsFirstEstablishment() && this.onEstablishmentSetup(),
+  protected readonly canOpenEstablishmentManagement = computed(
+    () => this.session.user()?.role === 'ADMIN' && this.onEstablishmentSetup(),
   );
 
   protected readonly canDismissSelector = computed(() => {
@@ -127,18 +141,44 @@ export class StaffShell {
       });
   }
 
+  private isMapWorkspace(url: string): boolean {
+    const path = url.split(/[?#]/)[0] ?? '';
+    return (
+      path === '/spaces/editor' ||
+      path.startsWith('/spaces/editor/') ||
+      /^\/spaces\/floors\/[^/]+\/editor$/.test(path)
+    );
+  }
+
   private isEstablishmentSetup(): boolean {
     return this.router.isActive(this.firstEstablishmentUrl, {
       paths: 'exact',
-      queryParams: 'exact',
+      queryParams: 'subset',
       fragment: 'ignored',
       matrixParams: 'ignored',
     });
   }
 
+  private readonly mapNav = computed<readonly SidebarNavItem[]>(() => {
+    const canEdit =
+      ['ADMIN', 'MANAGER'].includes(this.session.user()?.role ?? '') &&
+      this.flags.isEnabled('map-editor.enabled')();
+    const route = this.mapMonitoringEnabled() ? '/map' : canEdit ? '/spaces/editor' : null;
+    return route
+      ? [
+          {
+            label: STRINGS.staffShell.nav.map,
+            route,
+            icon: 'map',
+            active: this.compactMapNavigation(),
+          },
+        ]
+      : [];
+  });
+
   protected readonly navItems = computed<readonly SidebarNavItem[]>(() => [
     { label: STRINGS.staffShell.nav.home, route: '/home', icon: 'home', exact: true },
-    { label: STRINGS.staffShell.nav.map, route: '/spaces/setup', icon: 'map' },
+    ...this.mapNav(),
     { label: STRINGS.staffShell.nav.businesses, route: '/establishments', icon: 'businesses' },
     { label: STRINGS.staffShell.nav.users, route: '/users', icon: 'users' },
     { label: STRINGS.staffShell.nav.reports, route: '/reports', icon: 'reports' },
@@ -152,11 +192,6 @@ export class StaffShell {
       expandedByDefault: true,
       children: [
         { label: STRINGS.staffShell.nav.templates, route: '/spaces/templates', icon: 'templates' },
-        {
-          label: STRINGS.staffShell.nav.reservations,
-          route: '/reservations/new',
-          icon: 'reservations',
-        },
         ...(this.session.user()?.role === 'ADMIN'
           ? [
               {
@@ -198,6 +233,11 @@ export class StaffShell {
     this.menuOpen.update((open) => !open);
   }
 
+  protected toggleSidebar(animate: boolean): void {
+    this.sidebarMotion.set(animate);
+    this.sidebarCollapsed.update((collapsed) => !collapsed);
+  }
+
   protected closeMenu(): void {
     this.menuOpen.set(false);
   }
@@ -209,6 +249,14 @@ export class StaffShell {
 
   protected retryEstablishments(): void {
     void this.establishmentContext.load();
+  }
+
+  protected createEstablishment(): void {
+    if (this.session.user()?.role !== 'ADMIN' || this.establishmentContext.status() !== 'ready')
+      return;
+    void this.router.navigate(['/spaces/setup'], {
+      queryParams: { manage: '1', create: '1' },
+    });
   }
 
   protected dismissSelector(): void {

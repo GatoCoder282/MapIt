@@ -14,6 +14,8 @@ import {
   LucideLayers,
   LucideLayoutDashboard,
   LucideMap,
+  LucidePanelLeftClose,
+  LucidePanelLeftOpen,
   LucideSettings,
   LucideStore,
   LucideUser,
@@ -27,6 +29,7 @@ export interface SidebarNavItem {
   route?: string;
   icon: string;
   exact?: boolean;
+  active?: boolean;
   dividerBefore?: boolean;
   expandedByDefault?: boolean;
   children?: readonly SidebarNavItem[];
@@ -53,6 +56,8 @@ export interface SidebarNavItem {
     LucideComponent,
     LucideCalendarPlus,
     LucideMap,
+    LucidePanelLeftClose,
+    LucidePanelLeftOpen,
     LucideStore,
     LucideUsers,
     LucideChartColumn,
@@ -73,6 +78,10 @@ export class Sidebar {
    * nombre: un landmark sin nombre no se puede alcanzar por rol.
    */
   readonly navAriaLabel = input.required<string>();
+  readonly compact = input(false);
+  readonly collapsible = input(false);
+  readonly animateCollapse = input(false);
+  readonly collapseToggled = output<boolean>();
   readonly drawerOpen = input<boolean>(false);
   readonly drawerClose = output<void>();
   readonly closeLabel = input.required<string>();
@@ -86,6 +95,7 @@ export class Sidebar {
     { initialValue: this.router.url },
   );
   protected readonly openGroups = signal<ReadonlyMap<string, boolean>>(new Map());
+  protected readonly animatedGroups = signal<ReadonlySet<string>>(new Set());
 
   protected isGroupOpen(item: SidebarNavItem): boolean {
     return (
@@ -94,7 +104,13 @@ export class Sidebar {
     );
   }
 
-  protected toggleGroup(item: SidebarNavItem): void {
+  protected toggleGroup(item: SidebarNavItem, animate = false): void {
+    this.animatedGroups.update((groups) => {
+      const next = new Set(groups);
+      if (animate) next.add(item.label);
+      else next.delete(item.label);
+      return next;
+    });
     const expanded = this.isGroupOpen(item);
     this.openGroups.update((open) => {
       const next = new Map(open);

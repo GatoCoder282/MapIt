@@ -4,6 +4,11 @@ import { join } from 'node:path';
 
 // Synthetic layout/selection coverage; real inventory and payment live in payment-live.
 test('exige fecha y ambas horas antes de consultar el plano público', async ({ page }) => {
+  await page.route('**/public/tenants/demo/establishments/la-bahia', (route) =>
+    route.fulfill({
+      json: { tenantSlug: 'demo', establishmentSlug: 'la-bahia', type: 'EVENT_HALL' },
+    }),
+  );
   const mapRequests: string[] = [];
   const authorization: string[] = [];
   page.on('request', (request) => {
@@ -44,11 +49,17 @@ test('elige fecha y horario, selecciona en el mapa y continúa sin sesión de st
             tenantSlug: 'availability-design',
             tenantName: 'MapIt',
             establishmentSlug: 'venue',
+            type: 'RESTAURANT',
             name: 'Pollos choco Zona Sud',
             timezone: 'America/La_Paz',
             address: 'Zona Sud',
           },
         });
+        return;
+      }
+      expect(url.searchParams.has('endTime')).toBe(false);
+      if (url.searchParams.get('startTime') === '23:30') {
+        await route.fulfill({ status: 400, json: { detail: 'Fecha o intervalo inválido' } });
         return;
       }
       await route.fulfill({
@@ -60,9 +71,9 @@ test('elige fecha y horario, selecciona en el mapa y continúa sin sesión de st
           timezone: 'America/La_Paz',
           date: url.searchParams.get('date'),
           startTime: url.searchParams.get('startTime'),
-          endTime: url.searchParams.get('endTime'),
+          endTime: '11:30',
           startsAt: '2026-11-08T14:00:00Z',
-          endsAt: '2026-11-08T15:00:00Z',
+          endsAt: '2026-11-08T15:30:00Z',
           mode: 'INTERVAL',
           floors: [
             {
@@ -107,14 +118,19 @@ test('elige fecha y horario, selecciona en el mapa y continúa sin sesión de st
   await page.goto(
     '/disponibilidad/availability-design/venue?date=2026-11-08&startTime=10:00&endTime=11:00',
   );
+  await page.getByLabel('Hora de llegada', { exact: true }).fill('23:30');
+  await page.getByLabel('Personas', { exact: true }).fill('4');
+  await page.getByRole('button', { name: 'Buscar espacios', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('completar la reserva ese mismo día');
   await page.getByRole('button', { name: 'Mes siguiente', exact: true }).click();
   await page.getByRole('button', { name: 'Mes anterior', exact: true }).click();
   await page.getByRole('button', { name: '8 de noviembre de 2026', exact: true }).click();
   await page
-    .getByRole('group', { name: 'Elegí la hora de inicio' })
+    .getByRole('group', { name: 'Elegí la hora de llegada' })
     .getByRole('button', { name: '10:00', exact: true })
     .click();
-  await expect(page.getByLabel('Hora de fin', { exact: true })).toHaveValue('11:00');
+  await expect(page.getByLabel('Hora de llegada', { exact: true })).toHaveValue('10:00');
+  await expect(page.getByLabel('Hora de fin', { exact: true })).toHaveCount(0);
   await page.getByLabel('Personas', { exact: true }).fill('4');
   await expect(page.getByText('Hacé tu reserva', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Buscar espacios', exact: true }).click();
@@ -137,8 +153,8 @@ test('elige fecha y horario, selecciona en el mapa y continúa sin sesión de st
   await expect(page.getByTestId('availability-continue')).toHaveCount(0);
   await page.getByRole('link', { name: 'Cambiar fecha u horario', exact: true }).click();
   await expect(page.getByLabel('Personas', { exact: true })).toHaveValue('4');
-  await expect(page.getByLabel('Hora de inicio', { exact: true })).toHaveValue('10:00');
-  await expect(page.getByLabel('Hora de fin', { exact: true })).toHaveValue('11:00');
+  await expect(page.getByLabel('Hora de llegada', { exact: true })).toHaveValue('10:00');
+  await expect(page.getByLabel('Hora de fin', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Buscar espacios', exact: true }).click();
   await expect(page.getByTestId('availability-choose')).toBeVisible();
   const firstStepOutput = join(process.cwd(), 'screenshots', 'availability-form');
@@ -165,7 +181,7 @@ test('elige fecha y horario, selecciona en el mapa y continúa sin sesión de st
   const continuation = page.getByTestId('availability-continue');
   await expect(continuation).toHaveAttribute(
     'href',
-    '/reservar/availability-design/venue/table-3?date=2026-11-08&startTime=10:00&endTime=11:00',
+    '/reservar/availability-design/venue/table-3?date=2026-11-08&startTime=10:00',
   );
   await page.getByTestId('space-table-4').click();
   await expect.poll(() => new URL(page.url()).searchParams.get('elementId')).toBe('table-4');

@@ -1,12 +1,23 @@
 import { Injectable, inject } from '@angular/core';
 import { PublicAvailabilityService } from '@mapit/api-client';
-import type { PublicAvailability, PublicAvailabilityMap } from '@mapit/api-client';
+import type {
+  PublicAvailability,
+  PublicAvailabilityMap,
+  PublicEstablishmentSummary,
+} from '@mapit/api-client';
 import type { Observable } from 'rxjs';
 
 /** Adaptador de consulta pública sobre el cliente generado de OpenAPI. */
 @Injectable({ providedIn: 'root' })
 export class AvailabilityApi {
   private readonly client = inject(PublicAvailabilityService);
+
+  establishment(
+    tenantSlug: string,
+    establishmentSlug: string,
+  ): Observable<PublicEstablishmentSummary> {
+    return this.client.getPublicEstablishment({ tenantSlug, establishmentSlug });
+  }
 
   map(
     tenantSlug: string,
@@ -20,7 +31,7 @@ export class AvailabilityApi {
       establishmentSlug,
       date,
       startTime,
-      endTime,
+      ...(endTime ? { endTime } : {}),
     });
   }
 

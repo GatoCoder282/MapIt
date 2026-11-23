@@ -75,7 +75,7 @@ public class PublicReservationController {
                 establishmentSlug,
                 request.date(),
                 LocalTime.parse(request.startTime(), TIME_FORMAT),
-                LocalTime.parse(request.endTime(), TIME_FORMAT),
+                request.endTime() == null ? null : LocalTime.parse(request.endTime(), TIME_FORMAT),
                 request.spaceElementIds(),
                 new CreatePublicReservation.Customer(
                     request.customer().fullName(),
@@ -136,7 +136,7 @@ public class PublicReservationController {
   public record PublicReservationCreateRequest(
       @NotNull @DateTimeFormat(iso = ISO.DATE) LocalDate date,
       @NotNull @Pattern(regexp = TIME_REGEX) String startTime,
-      @NotNull @Pattern(regexp = TIME_REGEX) String endTime,
+      @Nullable @Pattern(regexp = TIME_REGEX) String endTime,
       @NotEmpty @Size(max = MAX_ELEMENTS_PER_RESERVATION) List<@NotNull UUID> spaceElementIds,
       @Valid @NotNull PublicCustomerRequest customer) {}
 

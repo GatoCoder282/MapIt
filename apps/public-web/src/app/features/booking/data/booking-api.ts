@@ -40,7 +40,7 @@ export class BookingApi {
       establishmentSlug,
       date,
       startTime,
-      endTime,
+      ...(endTime ? { endTime } : {}),
     });
   }
   checkout(scope: ReservationAccessScope): Observable<PublicCheckout> {

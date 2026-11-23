@@ -7,16 +7,43 @@ import { AvailabilityStore } from './availability-store';
 
 describe('AvailabilityStore — public interval selection', () => {
   let store: AvailabilityStore;
-  let api: { map: ReturnType<typeof vi.fn> };
-  beforeEach(() => {
-    api = { map: vi.fn(() => of(publicMapFixture())) };
+  let api: { map: ReturnType<typeof vi.fn>; establishment: ReturnType<typeof vi.fn> };
+  beforeEach(async () => {
+    api = {
+      map: vi.fn(() => of(publicMapFixture())),
+      establishment: vi.fn((tenantSlug: string, establishmentSlug: string) =>
+        of({ tenantSlug, establishmentSlug, type: 'HOTEL' }),
+      ),
+    };
     TestBed.configureTestingModule({
       providers: [AvailabilityStore, { provide: AvailabilityApi, useValue: api }],
     });
     store = TestBed.inject(AvailabilityStore);
     store.configure('tenant-a', 'venue-a', '2030-12-24', '19:00', '21:00');
+    await store.loadVenue();
   });
   afterEach(() => TestBed.resetTestingModule());
+
+  it('requests a restaurant interval with arrival only and displays just the start', async () => {
+    api.establishment.mockReturnValue(
+      of({ tenantSlug: 'tenant-a', establishmentSlug: 'restaurant', type: 'RESTAURANT' }),
+    );
+    api.map.mockReturnValue(
+      of({
+        ...publicMapFixture(),
+        establishmentSlug: 'restaurant',
+        startTime: '21:30',
+        endTime: '23:00',
+        startsAt: '2030-12-25T01:30:00Z',
+        endsAt: '2030-12-25T03:00:00Z',
+      }),
+    );
+    store.configure('tenant-a', 'restaurant', '2030-12-24', '21:30');
+    await store.search();
+    expect(api.map).toHaveBeenCalledWith('tenant-a', 'restaurant', '2030-12-24', '21:30', '');
+    expect(store.schedule()).toBe('21:30');
+    expect(store.status()).toBe('loaded');
+  });
 
   it('requires the interval before requesting or selecting; no hidden hours', async () => {
     store.setStartTime('');

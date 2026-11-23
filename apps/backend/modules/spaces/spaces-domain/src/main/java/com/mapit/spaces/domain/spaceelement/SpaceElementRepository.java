@@ -21,6 +21,10 @@ public interface SpaceElementRepository {
   /** Elementos vivos de un sector del tenant, del más reciente al más antiguo. */
   List<SpaceElement> findAliveBySectorId(TenantId tenantId, UUID sectorId);
 
+  default List<SpaceElement> findAliveBySectorIdForUpdate(TenantId tenantId, UUID sectorId) {
+    return findAliveBySectorId(tenantId, sectorId);
+  }
+
   /**
    * Busca un elemento vivo por id, restringido al sector y tenant dados.
    *
@@ -31,6 +35,11 @@ public interface SpaceElementRepository {
 
   /** Inserta o actualiza. La baja lógica también pasa por aquí. */
   SpaceElement save(SpaceElement element);
+
+  /** Inserta una identidad nueva; una colisión nunca debe actualizar la fila existente. */
+  default void insert(SpaceElement element) {
+    save(element);
+  }
 
   /** Guardado por lotes (HU-4.01): una sola transacción, todo o nada. */
   default List<SpaceElement> saveAll(List<SpaceElement> elements) {

@@ -51,3 +51,14 @@
 ## Notas de ejecución
 
 _Se completan al cerrar cada subtarea._
+
+### Editor y monitoreo de la Console
+
+La ruta de monitoreo usa el establecimiento activo, filtra el plano por piso y sector y recarga el snapshot al recibir eventos STOMP y al cambiar la conexión. Staff consume el plano de planta, cuyo DTO contiene geometría y estados, con un nombre derivado del tipo e ID cuando el backend no devuelve la etiqueta.
+
+### Mapa operativo
+
+- `/map` reúne Mesa, Operaciones y Reserva rápida. El enlace anterior conserva piso, sector y fragmento al redirigir. El editor sigue separado por permiso.
+- El plano ocupa todo el ancho con las opciones cerradas. Opciones y el clic en una mesa dividen el contenedor en dos columnas, con el mapa a la izquierda ocupando el 60 % y las tres vistas a la derecha. En móvil se apilan sin superposición. Se eliminó la lista duplicada de mesas. La ficha al pasar el cursor muestra estado, reserva y aforo reales junto al elemento; el clic abre Mesa. Flechas e Intro permiten la misma consulta con teclado. La división y la ficha usan transiciones breves con soporte de movimiento reducido.
+- La campana y Operaciones consultan las mismas incidencias. El reloj del cliente vuelve a evaluar los umbrales mientras la consola está abierta. Los cambios de estado y reserva invalidan los datos por STOMP; la reconexión y el sondeo recuperan el snapshot HTTP. No se envían avisos con la consola cerrada.
+- Reserva rápida recorre los pisos y sectores del establecimiento activo. El formulario interno reutiliza el resultado de búsqueda; el backend vuelve a comprobar mesa, aforo y solapamientos bajo el bloqueo de recursos.

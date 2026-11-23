@@ -52,6 +52,26 @@ describe('EstablishmentSelector', () => {
     expect(confirmed).toHaveBeenCalledWith('venue-1');
   }, 15000);
 
+  it('offers creation only when allowed and emits it independently of the selected venue', () => {
+    const fixture = TestBed.createComponent(EstablishmentSelector);
+    fixture.componentRef.setInput('establishments', [establishment]);
+    fixture.componentRef.setInput('status', 'ready');
+    const create = vi.fn();
+    fixture.componentInstance.createRequested.subscribe(create);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.create-button')).toBeNull();
+    fixture.componentRef.setInput('canCreate', true);
+    fixture.detectChanges();
+    const button = host.querySelector<HTMLButtonElement>('.create-button')!;
+    expect(button.textContent).toContain('Nuevo establecimiento');
+    button.click();
+    expect(create).toHaveBeenCalledOnce();
+    fixture.componentRef.setInput('status', 'loading');
+    fixture.detectChanges();
+    expect(button.disabled).toBe(true);
+  });
+
   it('keeps the mandatory dialog open on native cancel', () => {
     const fixture = TestBed.createComponent(EstablishmentSelector);
     fixture.componentRef.setInput('establishments', [establishment]);

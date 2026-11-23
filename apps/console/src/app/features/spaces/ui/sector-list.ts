@@ -12,8 +12,8 @@ import {
 import { FeatureFlagService } from '@mapit/feature-flags';
 import { RouterLink } from '@angular/router';
 import type { Sector } from '@mapit/api-client';
-import { SpacesStore } from '../model/spaces-store';
-import { SectorFormComponent } from './sector-form';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
+import { SectorFormComponent } from '../../../core/establishment-structure/sector-form';
 
 /** Lista de sectores dentro de un piso (CU-05 · MAP-70). */
 @Component({
@@ -21,7 +21,7 @@ import { SectorFormComponent } from './sector-form';
   imports: [SectorFormComponent, CdkDropList, CdkDrag, CdkDragHandle, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (flags.isEnabled('spaces.sectors')()) {
+    @if (sectorsEnabled()) {
       <div class="sectors-container">
         <!-- Vertical connector from parent floor icon -->
         <div class="parent-connector"></div>
@@ -127,27 +127,31 @@ import { SectorFormComponent } from './sector-form';
                 <div class="sector-name">{{ sector.name }}</div>
 
                 <div class="sector-actions">
-                  <a
-                    class="action-btn elements"
-                    [routerLink]="['/spaces/editor', sector.id]"
-                    [queryParams]="{ sectorName: sector.name, floorId: floorId() }"
-                    [attr.aria-label]="store.strings_.sectors.list.editorButton + ' ' + sector.name"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
+                  @if (flags.isEnabled('map-editor.enabled')()) {
+                    <a
+                      class="action-btn elements"
+                      [routerLink]="['/spaces/editor', sector.id]"
+                      [queryParams]="{ sectorName: sector.name, floorId: floorId() }"
+                      [attr.aria-label]="
+                        store.strings_.sectors.list.editorButton + ' ' + sector.name
+                      "
                     >
-                      <rect x="3" y="3" width="7" height="7" rx="1" />
-                      <rect x="14" y="3" width="7" height="7" rx="1" />
-                      <rect x="3" y="14" width="7" height="7" rx="1" />
-                      <rect x="14" y="14" width="7" height="7" rx="1" />
-                    </svg>
-                  </a>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        aria-hidden="true"
+                      >
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                      </svg>
+                    </a>
+                  }
                   <button
                     class="action-btn edit"
                     type="button"
@@ -453,6 +457,7 @@ export class SectorListComponent {
 
   protected readonly store = inject(SpacesStore);
   protected readonly flags = inject(FeatureFlagService);
+  protected readonly sectorsEnabled = this.flags.isEnabled('spaces.sectors');
   protected readonly showForm = signal(false);
   private readonly sectorForm = viewChild(SectorFormComponent);
   readonly dirty = computed(() => this.showForm() && (this.sectorForm()?.dirty() ?? false));
@@ -461,9 +466,9 @@ export class SectorListComponent {
   protected readonly loading = computed(() => this.store.sectorsLoading(this.floorId()));
 
   constructor() {
-    // Carga inicial: sin esto, los sectores existentes solo aparecían al abrir
-    // el formulario, y la lista daba la impresión de no renderizar nada.
-    effect(() => this.store.loadSectorsByFloor(this.floorId()));
+    effect(() => {
+      if (this.sectorsEnabled()) this.store.loadSectorsByFloor(this.floorId());
+    });
   }
 
   protected onSectorDropped(event: CdkDragDrop<unknown>): void {

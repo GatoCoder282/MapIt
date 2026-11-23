@@ -1,5 +1,5 @@
 {
-  "//": "Flags iniciales de MapIt. Cargar con: pnpm new:flag --bootstrap",
+  "//": "Flags iniciales de MapIt. Cargar con: pnpm db:seed:flags",
   "//convención": "<dominio>.<feature> — ver plan §9",
   "features": [
     {
@@ -39,6 +39,25 @@
       "name": "spaces.sectors",
       "description": "Gestión de sectores dentro de pisos (CU-05 · MAP-70). Kill switch visible en la consola de staff.",
       "type": "release",
+      "enabled": true
+    },
+    {
+      "name": "map-editor.enabled",
+      "description": "Acceso al editor visual de mapas de pisos y sectores (CU-06 · MAP-196).",
+      "type": "release",
+      "enabled": true,
+      "expiresAt": "2027-02-17"
+    },
+    {
+      "name": "operations.space-monitor",
+      "description": "Acceso al monitor espacial en la consola. Inicio conserva la gestión de reservas.",
+      "type": "kill-switch",
+      "enabled": true
+    },
+    {
+      "name": "check-in.camera",
+      "description": "Escaneo con cámara en recepción. Al apagarlo queda disponible el ingreso manual del código.",
+      "type": "kill-switch",
       "enabled": true
     },
     {

@@ -8,8 +8,8 @@ import { BehaviorSubject, of } from 'rxjs';
 
 import { EstablishmentContext } from '../../../core/establishment-context';
 import { STRINGS } from '../../../core/strings';
-import { SpacesApiService } from '../data/spaces-api';
-import { SpacesStore } from '../model/spaces-store';
+import { SpacesApiService } from '../../../core/establishment-structure/spaces-api';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
 import { WizardEstablishmentComponent } from './wizard-establishment';
 
 const ACTIVE: AccessibleEstablishment = {
@@ -140,5 +140,26 @@ describe('WizardEstablishmentComponent: setup y gestión', () => {
       queryParams: { selectEstablishment: '1' },
       replaceUrl: true,
     });
+  });
+
+  it('abre directamente el formulario nuevo desde Negocios y muestra el listado al terminar', async () => {
+    const { active, status } = setup({ manage: '1', create: '1' });
+    active.set(ACTIVE);
+    status.set('ready');
+    await TestBed.compileComponents();
+    const fixture = TestBed.createComponent(WizardEstablishmentComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(page.querySelector('form.form')).not.toBeNull();
+    const name = page.querySelector<HTMLInputElement>('input[name="name"]')!;
+    name.value = 'Sucursal nueva';
+    name.dispatchEvent(new Event('input'));
+    page.querySelector<HTMLButtonElement>('button[role="radio"]')!.click();
+    page.querySelector<HTMLFormElement>('form.form')!.dispatchEvent(new Event('submit'));
+    fixture.detectChanges();
+    expect(page.querySelector('form.form')).toBeNull();
+    expect(page.textContent).toContain(ACTIVE.name);
+    fixture.destroy();
   });
 });

@@ -43,19 +43,23 @@ public class SpaceElementSupport {
    *         distingue entre ambos casos para no filtrar existencia ajena.
    */
   public EstablishmentType verticalDelSector(TenantId tenantId, SectorId sectorId) {
-    var sector = sectorVivo(tenantId, sectorId);
+    return verticalDelSector(tenantId, sectorVivo(tenantId, sectorId));
+  }
+
+  public EstablishmentType verticalDelSector(
+      TenantId tenantId, com.mapit.spaces.domain.sector.Sector sector) {
     var floor =
         floorRepository
             .findAliveById(tenantId, sector.floorId())
             .orElseThrow(
                 () ->
-                     new SectorNotFoundException(sectorId.value()));
+                     new SectorNotFoundException(sector.id().value()));
     var establishment =
         establishmentRepository
             .findAliveById(tenantId, floor.establishmentId())
             .orElseThrow(
                 () ->
-                     new SectorNotFoundException(sectorId.value()));
+                     new SectorNotFoundException(sector.id().value()));
     return establishment.type();
   }
 
@@ -63,6 +67,12 @@ public class SpaceElementSupport {
   public com.mapit.spaces.domain.sector.Sector sectorVivo(TenantId tenantId, SectorId sectorId) {
     return sectorRepository
         .findAliveById(tenantId, sectorId)
+        .orElseThrow(() -> new SectorNotFoundException(sectorId.value()));
+  }
+
+  public com.mapit.spaces.domain.sector.Sector lockSector(TenantId tenantId, SectorId sectorId) {
+    return sectorRepository
+        .findAliveByIdForUpdate(tenantId, sectorId)
         .orElseThrow(() -> new SectorNotFoundException(sectorId.value()));
   }
 

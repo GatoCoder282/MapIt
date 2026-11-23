@@ -98,6 +98,13 @@ interface TopicState {
   subscription: StompSubscription | undefined;
 }
 
+interface ReservationCreatedEvent {
+  readonly eventId: string;
+  readonly eventType: 'reservation.created.v1';
+  readonly schemaVersion: 1;
+  readonly establishmentId: string;
+}
+
 const TOPIC_PREFIX = '/topic/establishments/';
 
 /**
@@ -117,6 +124,7 @@ export class RealtimeClient {
   private readonly errores = new Subject<unknown>();
   private readonly eventos = new Subject<RealtimeEventEnvelope>();
   private readonly paymentEventos = new Subject<ReservationPaymentEvent>();
+  private readonly reservationChanges = new Subject<ReservationCreatedEvent>();
   private readonly topics = new Map<string, TopicState>();
   private client: StompClientLike | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -174,6 +182,20 @@ export class RealtimeClient {
     return new Observable((subscriber) => {
       const room = this.subscribeEstablishment(establishmentId).subscribe();
       const events = this.paymentEventos
+        .pipe(filter((event) => event.establishmentId === establishmentId))
+        .subscribe(subscriber);
+      return () => {
+        room.unsubscribe();
+        events.unsubscribe();
+      };
+    });
+  }
+
+  /** Reservation invalidations share the establishment subscription and carry no customer data. */
+  subscribeEstablishmentReservations(establishmentId: string): Observable<ReservationCreatedEvent> {
+    return new Observable((subscriber) => {
+      const room = this.subscribeEstablishment(establishmentId).subscribe();
+      const events = this.reservationChanges
         .pipe(filter((event) => event.establishmentId === establishmentId))
         .subscribe(subscriber);
       return () => {
@@ -305,6 +327,7 @@ export class RealtimeClient {
       const parsed: unknown = JSON.parse(message.body);
       if (isRealtimeEventEnvelope(parsed)) this.eventos.next(parsed);
       else if (isReservationPaymentEvent(parsed)) this.paymentEventos.next(parsed);
+      else if (isReservationCreatedEvent(parsed)) this.reservationChanges.next(parsed);
       else {
         this.logInvalidMessage();
         this.errores.next(new Error('Envelope STOMP inválido'));
@@ -397,6 +420,17 @@ function isState(value: unknown): value is SpaceElementState {
     value === 'RESERVED' ||
     value === 'CLEANING' ||
     value === 'OUT_OF_SERVICE'
+  );
+}
+
+function isReservationCreatedEvent(value: unknown): value is ReservationCreatedEvent {
+  if (typeof value !== 'object' || value === null) return false;
+  const event = value as Partial<ReservationCreatedEvent>;
+  return (
+    event.eventType === 'reservation.created.v1' &&
+    event.schemaVersion === 1 &&
+    typeof event.eventId === 'string' &&
+    typeof event.establishmentId === 'string'
   );
 }
 

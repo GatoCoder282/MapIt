@@ -10,8 +10,19 @@ import com.mapit.shared.tenant.TenantId;
  */
 public interface ReservationAvailabilityRepository {
 
+    int QUICK_PREPARATION_MINUTES = 15;
+
     Set<UUID> findConflictingElementIds(
             TenantId tenantId, Set<UUID> elementIds, ReservationTimeRange timeRange);
+
+    default Set<UUID> findConflictingElementIds(
+            TenantId tenantId, Set<UUID> elementIds, ReservationTimeRange timeRange,
+            int preparationMinutes) {
+        long bufferSeconds = preparationMinutes * 60L;
+        return findConflictingElementIds(tenantId, elementIds, ReservationTimeRange.of(
+                timeRange.startsAt().minusSeconds(bufferSeconds),
+                timeRange.endsAt().plusSeconds(bufferSeconds)));
+    }
 
     /**
      * True si el elemento tiene al menos una reserva en CREATED/CONFIRMED/ACTIVE

@@ -10,4 +10,9 @@ import org.jspecify.annotations.Nullable;
  * si faltan se derivan del origen garantizando unicidad en la planta destino.
  */
 public record DuplicateSectorCommand(
-    UUID sourceSectorId, @Nullable String name, @Nullable String slug) {}
+    UUID sourceSectorId, @Nullable String name, @Nullable String slug,
+    @Nullable Double x, @Nullable Double y) {
+  public DuplicateSectorCommand(UUID sourceSectorId, @Nullable String name, @Nullable String slug) {
+    this(sourceSectorId, name, slug, null, null);
+  }
+}
