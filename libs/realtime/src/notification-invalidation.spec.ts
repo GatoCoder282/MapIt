@@ -284,3 +284,17 @@ it('a delayed kill-switch shutdown cannot reset a newer connection after recover
   expect(received).toHaveBeenCalledOnce();
   expect(client.connectionState()).toBe('connected');
 });
+
+it('reconnects when the real STOMP lifecycle keeps active true after a network close', () => {
+  const client = TestBed.inject(RealtimeClient);
+  TestBed.tick();
+  const received = vi.fn();
+  client.subscribeNotificationInvalidations(A).subscribe(received);
+  const closed = clients[0]!;
+  expect(closed.active).toBe(true);
+  closed.onWebSocketClose({});
+  vi.advanceTimersByTime(10);
+  expect(clients).toHaveLength(2);
+  clients[1]!.callbacks.get(DEST)!({ body: JSON.stringify(notice) } as IMessage);
+  expect(received).toHaveBeenCalledOnce();
+});

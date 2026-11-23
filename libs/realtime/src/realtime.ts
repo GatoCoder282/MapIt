@@ -341,6 +341,10 @@ export class RealtimeClient {
       if (client !== this.client) return;
       this.disposeTopicSubscriptions();
       if (this.stopping) return;
+      // STOMP sigue active tras un cierre de red aunque reconnectDelay sea 0.
+      // Soltar ese cliente permite que nuestro backoff cree el siguiente socket.
+      this.client = null;
+      void client.deactivate().catch(() => this.logTransportFailure());
       if (!this.config.enabled()) {
         this.estado.set('disabled');
         return;
