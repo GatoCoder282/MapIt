@@ -72,6 +72,7 @@ class CreatePublicReservationTest {
             auditEvents,
             tenantContext,
             actorContext,
+            CreateReservationTest.AUTHORIZED,
             clock);
     useCase =
         new CreatePublicReservation(
