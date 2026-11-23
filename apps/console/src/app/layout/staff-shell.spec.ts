@@ -229,6 +229,8 @@ describe('StaffShell navigation', () => {
     await TestBed.configureTestingModule({
       imports: [StaffShell],
       providers: [
+        provideHttpClient(),
+        provideFeatureFlags({ proxyUrl: '' }),
         provideRouter([]),
         { provide: AuthSession, useValue: { user, logout: vi.fn() } },
         { provide: EstablishmentContext, useValue: context },
@@ -260,6 +262,8 @@ describe('StaffShell navigation', () => {
     await TestBed.configureTestingModule({
       imports: [StaffShell],
       providers: [
+        provideHttpClient(),
+        provideFeatureFlags({ proxyUrl: '' }),
         provideRouter([{ path: 'spaces/setup', children: [] }]),
         { provide: AuthSession, useValue: { user, logout: vi.fn() } },
         { provide: EstablishmentContext, useValue: context },

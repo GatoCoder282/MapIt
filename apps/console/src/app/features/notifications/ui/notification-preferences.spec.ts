@@ -34,9 +34,10 @@ it('shows only optional accessible controls, saves through HTTP and clears on lo
   fixture.detectChanges();
   const inputs = element.querySelectorAll<HTMLInputElement>('input');
   expect(inputs).toHaveLength(2);
-  expect(inputs[0]!.closest('label')).not.toBeNull();
-  inputs[0].checked = false;
-  inputs[0].dispatchEvent(new Event('change'));
+  const reservationInput = inputs.item(0);
+  expect(reservationInput.closest('label')).not.toBeNull();
+  reservationInput.checked = false;
+  reservationInput.dispatchEvent(new Event('change'));
   fixture.detectChanges();
   element.querySelector<HTMLButtonElement>('button')!.click();
   fixture.detectChanges();
