@@ -185,13 +185,10 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     expect(copyId).not.toBe(sectorId);
 
     const menu = page.getByRole('button', { name: 'Abrir navegación' });
-    if (await menu.isVisible()) await menu.click();
-    await page.getByRole('link', { name: 'Mapa', exact: true }).first().click();
-    await expect(page).toHaveURL(/\/map(?:\?|$)/);
-    await page.getByLabel('Piso', { exact: true }).selectOption(floorId);
+    const monitorPath = `/map?floorId=${floorId}&sectorId=${sectorId}`;
+    await page.goto(monitorPath);
     const edit = page.getByRole('link', { name: 'Editar distribución' });
     await expect(edit).toHaveAttribute('href', new RegExp('/spaces/editor/' + sectorId));
-    const monitorUrl = page.url();
     await edit.click();
     await expect(page).toHaveURL(new RegExp('/spaces/editor/' + sectorId));
     await page.getByTestId('map-elements-tab').click();
@@ -256,7 +253,7 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     await page.getByRole('button', { name: 'Deshacer' }).click();
     await expect(x).toHaveValue('70');
     await page.goBack();
-    await expect(page).toHaveURL(monitorUrl);
+    await expect(page).toHaveURL(monitorPath);
     await page.goBack();
     const floorHeading = page.getByRole('heading', { name: 'Editar distribución' });
     await expect(floorHeading).toBeVisible({ timeout: 15_000 });

@@ -41,7 +41,7 @@ test('gestiona y conserva las plantas del plano', async ({ page, request, baseUR
   const tree = page.getByRole('complementary', { name: 'Estructura del espacio' });
   await expect(tree).toBeVisible();
   await expect(tree).not.toContainText('Sede Home');
-  const floorIds = new Map<string, string>();
+  const floorPath = `/establishments/${company.venueId}/floors`;
   for (const floorName of ['Principal', 'Superior']) {
     await tree.getByRole('button', { name: 'Agregar piso', exact: true }).click();
     await tree.getByRole('textbox', { name: 'Nombre' }).fill(floorName);
@@ -49,22 +49,25 @@ test('gestiona y conserva las plantas del plano', async ({ page, request, baseUR
       page.waitForResponse(
         (response) =>
           response.request().method() === 'POST' &&
-          new URL(response.url()).pathname.endsWith(`/establishments/${company.venueId}/floors`),
+          new URL(response.url()).pathname.endsWith(floorPath),
       ),
       tree.getByRole('button', { name: 'Crear planta', exact: true }).click(),
     ]);
     expect(created.status()).toBe(201);
-    const { id } = (await created.json()) as { id: string };
-    floorIds.set(floorName, id);
     await expect(tree.getByRole('button', { name: floorName, exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
   }
+  const headers = { Authorization: 'Bearer ' + session.accessToken };
+  const persistedFloors = await request.get(API + floorPath, { headers });
+  expect(persistedFloors.ok()).toBe(true);
+  const floorList = (await persistedFloors.json()) as Array<{ id: string; name: string }>;
+  const floorIds = new Map(floorList.map(({ name, id }) => [name, id]));
+  expect([...floorIds.keys()]).toEqual(expect.arrayContaining(['Principal', 'Superior']));
   await tree.getByRole('button', { name: 'Principal', exact: true }).click();
   const floorId = floorIds.get('Principal')!;
   await expect.poll(() => new URL(page.url()).searchParams.get('floorId')).toBe(floorId);
-  const headers = { Authorization: 'Bearer ' + session.accessToken };
   const legacySector = await request.post(API + '/floors/' + floorId + '/sectors', {
     headers,
     data: { name: 'Salón anterior', slug: 'salon-anterior', maxCapacity: 20 },

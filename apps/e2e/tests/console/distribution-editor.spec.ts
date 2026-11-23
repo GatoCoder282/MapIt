@@ -83,8 +83,6 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
           ...config,
           apiBaseUrl: API,
           wsUrl: ws.toString(),
-          unleashProxyUrl: '',
-          unleashClientKey: '',
         },
       });
     });
@@ -465,8 +463,12 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
     });
   }
   await selectTable();
-  await x.fill('180');
-  await x.blur();
+  await expect(page.getByTestId('element-metadata-label')).toHaveValue('Mesa Ventana');
+  await expect(x).toHaveValue('160');
+  await x.press('ControlOrMeta+a');
+  await x.pressSequentially('180');
+  await expect(x).toHaveValue('180');
+  await x.press('Tab');
   await expect(x).toHaveValue('180');
   await expect(save).toBeVisible();
   const beforeConcurrent = await persistedTable();

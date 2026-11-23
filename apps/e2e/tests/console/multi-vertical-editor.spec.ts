@@ -85,13 +85,15 @@ for (const scenario of cases) {
       },
       { session, company, origin: new URL(baseURL!).origin },
     );
-    await page.route('**/assets/config.json', async (route) => {
-      const response = await route.fetch();
-      const config = (await response.json()) as Record<string, unknown>;
-      const ws = new URL('/ws', API);
-      ws.protocol = ws.protocol === 'https:' ? 'wss:' : 'ws:';
-      await route.fulfill({
-        response,
+    const runtimeConfig = await request.get(new URL('/assets/config.json', baseURL).href, {
+      maxRetries: 2,
+    });
+    expect(runtimeConfig.ok()).toBe(true);
+    const config = (await runtimeConfig.json()) as Record<string, unknown>;
+    const ws = new URL('/ws', API);
+    ws.protocol = ws.protocol === 'https:' ? 'wss:' : 'ws:';
+    await page.route('**/assets/config.json', (route) =>
+      route.fulfill({
         json: {
           ...config,
           apiBaseUrl: API,
@@ -99,8 +101,8 @@ for (const scenario of cases) {
           unleashProxyUrl: '',
           unleashClientKey: '',
         },
-      });
-    });
+      }),
+    );
     const errors: string[] = [];
     page.on('pageerror', (error) => {
       errors.push(error.message);
@@ -136,23 +138,23 @@ for (const scenario of cases) {
     await expect(page.getByTestId('element-metadata-capacity')).toHaveValue(scenario.capacity);
     await page.getByTestId('map-element-x').fill('80');
     await page.getByTestId('map-element-x').blur();
-    const savedResponse = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'PUT' &&
-        new URL(response.url()).pathname.endsWith(`/sectors/${sectorId}/layout`),
-    );
-    await page.getByTestId('map-save').click();
-    const saved = await savedResponse;
-    const savedBody = await saved.text();
+    const [saved] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PUT' &&
+          new URL(response.url()).pathname.endsWith(`/sectors/${sectorId}/layout`),
+      ),
+      page.getByTestId('map-save').click(),
+    ]);
     await testInfo.attach('layout-save.json', {
       body: JSON.stringify(
-        { status: saved.status(), requestId: saved.headers()['x-request-id'], body: savedBody },
+        { status: saved.status(), requestId: saved.headers()['x-request-id'] },
         null,
         2,
       ),
       contentType: 'application/json',
     });
-    expect(saved.status(), savedBody).toBe(200);
+    expect(saved.status()).toBe(200);
     await expect(page.getByTestId('map-save')).toHaveCount(0);
     const persisted = await request.get(API + `/floors/${floorId}/layout`, { headers });
     expect(persisted.status(), await persisted.text()).toBe(200);
