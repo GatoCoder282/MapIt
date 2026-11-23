@@ -5,6 +5,7 @@
       "**": false,
       "feat/**": true,
       "HU-2.04.B-—-Editor-de-mapas": true,
+      "HU-2.04.A-—-Monitoreo": true,
       "main": true
     }
   }

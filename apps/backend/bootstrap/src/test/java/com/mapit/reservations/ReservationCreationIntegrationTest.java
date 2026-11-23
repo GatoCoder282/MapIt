@@ -117,6 +117,7 @@ class ReservationCreationIntegrationTest {
     jdbc.update("delete from floor where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from establishment where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from app_user where tenant_id in (?, ?)", TENANT_A, TENANT_B);
+    jdbc.update("delete from realtime_event_outbox where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from tenant where id in (?, ?)", TENANT_A, TENANT_B);
 
     tenant(TENANT_A, "Reservas A");
@@ -154,6 +155,92 @@ class ReservationCreationIntegrationTest {
   }
 
   @Test
+  void staffNotesPersistAndRemainIsolatedWithoutEnteringEvents() {
+    var note = "Ventana\nSin globos";
+    var response = http().post()
+        .uri("/api/v1/establishments/{id}/reservations", ESTABLISHMENT_A)
+        .header("Authorization", bearer(token(ADMIN_A, TENANT_A, UserRole.ADMIN)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("personId", PERSON_A, "spaceElementIds", List.of(ELEMENT_A),
+            "startsAt", "2026-10-10T14:00:00Z", "endsAt", "2026-10-10T16:00:00Z",
+            "notes", "  " + note + "  "))
+        .exchange().expectStatus().isCreated().expectBody()
+        .jsonPath("$.notes").isEqualTo(note).returnResult();
+    assertThat(response.getResponseBody()).isNotEmpty();
+    assertThat(jdbc.queryForObject("select notes from reservation where tenant_id = ?",
+        String.class, TENANT_A)).isEqualTo(note);
+    http().get().uri("/api/v1/reservations?establishmentId=" + ESTABLISHMENT_A)
+        .header("Authorization", bearer(token(ADMIN_A, TENANT_A, UserRole.ADMIN)))
+        .exchange().expectStatus().isOk().expectBody().jsonPath("$[0].notes").isEqualTo(note);
+    http().get().uri("/api/v1/reservations")
+        .header("Authorization", bearer(token(STAFF_B, TENANT_B, UserRole.STAFF)))
+        .exchange().expectStatus().isForbidden();
+    var otherAdmin = UUID.randomUUID();
+    user(otherAdmin, TENANT_B, "admin-b@reservation-flow.test", UserRole.ADMIN);
+    http().get().uri("/api/v1/reservations")
+        .header("Authorization", bearer(token(otherAdmin, TENANT_B, UserRole.ADMIN)))
+        .exchange().expectStatus().isOk().expectBody().jsonPath("$").isEmpty();
+    assertThat(jdbc.queryForObject(
+        "select count(*) from realtime_event_outbox where tenant_id = ? and payload::text like ?",
+        Integer.class, TENANT_A, "%Sin globos%")).isZero();
+    assertThat(jdbc.queryForObject(
+        "select count(*) from audit_log where tenant_id = ? and details::text like ?",
+        Integer.class, TENANT_A, "%Sin globos%")).isZero();
+  }
+
+  @Test
+  void rejectsOversizedStaffNotesWithoutCreatingReservation() {
+    http().post().uri("/api/v1/establishments/{id}/reservations", ESTABLISHMENT_A)
+        .header("Authorization", bearer(token(ADMIN_A, TENANT_A, UserRole.ADMIN)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("personId", PERSON_A, "spaceElementIds", List.of(ELEMENT_A),
+            "startsAt", "2026-10-10T14:00:00Z", "endsAt", "2026-10-10T16:00:00Z",
+            "notes", "a".repeat(1001)))
+        .exchange().expectStatus().isBadRequest();
+    assertThat(reservationCount(TENANT_A)).isZero();
+  }
+
+  @Test
+  void rejectsStageAsAReservationResource() {
+    jdbc.update("update space_element set type = 'STAGE' where id = ?", ELEMENT_A);
+    create(ESTABLISHMENT_A, PERSON_A, List.of(ELEMENT_A),
+        "2026-10-10T14:00:00Z", "2026-10-10T16:00:00Z",
+        token(ADMIN_A, TENANT_A, UserRole.ADMIN))
+        .expectStatus().isBadRequest();
+    assertThat(jdbc.queryForObject("select count(*) from reservation where tenant_id = ?",
+        Integer.class, TENANT_A)).isZero();
+  }
+
+  @Test
+  void appliesNightclubWindowUsingPersistedEstablishmentType() {
+    jdbc.update("update establishment set type = 'NIGHTCLUB' where id = ?", ESTABLISHMENT_A);
+    create(ESTABLISHMENT_A, PERSON_A, List.of(ELEMENT_A),
+        "2026-10-11T02:00:00Z", "2026-10-11T10:00:00Z",
+        token(ADMIN_A, TENANT_A, UserRole.ADMIN))
+        .expectStatus().isCreated();
+    create(ESTABLISHMENT_A, PERSON_A, List.of(ELEMENT_A_SECOND),
+        "2026-10-12T02:00:00Z", "2026-10-12T15:00:00Z",
+        token(ADMIN_A, TENANT_A, UserRole.ADMIN))
+        .expectStatus().isBadRequest();
+  }
+
+  @Test
+  void hotelRequiresLocalNightsAndRejectsConflictingStay() {
+    jdbc.update("update establishment set type = 'HOTEL' where id = ?", ESTABLISHMENT_A);
+    jdbc.update("update space_element set type = 'ROOM' where id = ?", ELEMENT_A);
+    var token = token(ADMIN_A, TENANT_A, UserRole.ADMIN);
+    create(ESTABLISHMENT_A, PERSON_A, List.of(ELEMENT_A),
+        "2026-10-10T19:00:00Z", "2026-10-10T23:00:00Z", token)
+        .expectStatus().isBadRequest();
+    create(ESTABLISHMENT_A, PERSON_A, List.of(ELEMENT_A),
+        "2026-10-10T19:00:00Z", "2026-10-12T16:00:00Z", token)
+        .expectStatus().isCreated();
+    create(ESTABLISHMENT_A, PERSON_A, List.of(ELEMENT_A),
+        "2026-10-11T19:00:00Z", "2026-10-13T16:00:00Z", token)
+        .expectStatus().isEqualTo(409);
+  }
+
+  @Test
   void creationPersistsOneReservationWithAllAssociations() {
     ReservationView created =
         create(
@@ -184,6 +271,34 @@ class ReservationCreationIntegrationTest {
         .containsEntry("event_type", "RESERVATION_CREATED")
         .containsEntry("status", "CREATED")
         .containsEntry("establishment_id", ESTABLISHMENT_A.toString());
+  }
+
+  @Test
+  void quickReservationProtectsPreparationTimeFromOrdinaryReservations() {
+    jdbc.update("update space_element set capacity = 4 where tenant_id = ? and id = ?",
+        TENANT_A, ELEMENT_A);
+    String admin = token(ADMIN_A, TENANT_A, UserRole.ADMIN);
+    Instant start = Instant.now().plusSeconds(3600);
+    Instant end = start.plusSeconds(5400);
+
+    http().post()
+        .uri("/api/v1/establishments/{id}/reservations", ESTABLISHMENT_A)
+        .header("Authorization", bearer(admin))
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("personId", PERSON_A, "spaceElementIds", List.of(ELEMENT_A),
+            "startsAt", start.toString(), "endsAt", end.toString(), "partySize", 4))
+        .exchange()
+        .expectStatus().isCreated()
+        .expectBody().jsonPath("$.partySize").isEqualTo(4);
+
+    create(ESTABLISHMENT_A, PERSON_A, List.of(ELEMENT_A), end.toString(),
+        end.plusSeconds(3600).toString(), admin)
+        .expectStatus().isEqualTo(409);
+
+    assertThat(jdbc.queryForObject("""
+        select count(*) from realtime_event_outbox
+        where tenant_id = ? and event_type = 'reservation.created.v1'
+        """, Long.class, TENANT_A)).isEqualTo(1);
   }
 
   @Test

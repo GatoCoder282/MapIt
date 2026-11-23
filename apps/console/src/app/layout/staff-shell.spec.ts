@@ -2,12 +2,20 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { AuthSession } from '@mapit/auth';
+import { FeatureFlagService, type FeatureFlagKey } from '@mapit/feature-flags';
 import type { AccessibleEstablishment } from '@mapit/api-client';
 import { BehaviorSubject } from 'rxjs';
 
 import { routes } from '../app.routes';
 import { EstablishmentContext } from '../core/establishment-context';
+import { OperationalMapData, type OperationalIncident } from '../core/operational-map-data';
 import { StaffShell } from './staff-shell';
+
+const incidents = signal<readonly Partial<OperationalIncident>[]>([]);
+beforeEach(() => {
+  incidents.set([]);
+  TestBed.overrideProvider(OperationalMapData, { useValue: { incidents } });
+});
 
 const ESTABLISHMENTS: AccessibleEstablishment[] = [
   {
@@ -88,7 +96,18 @@ async function mountShell(options?: {
 }
 
 describe('StaffShell navigation', () => {
+  const editorEnabled = signal(true);
+  const monitorEnabled = signal(true);
+
   beforeEach(() => {
+    editorEnabled.set(true);
+    monitorEnabled.set(true);
+    TestBed.overrideProvider(FeatureFlagService, {
+      useValue: {
+        isEnabled: (flag: FeatureFlagKey) =>
+          flag === 'map-editor.enabled' ? editorEnabled : monitorEnabled,
+      },
+    });
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
       configurable: true,
       value(this: HTMLDialogElement) {
@@ -101,6 +120,69 @@ describe('StaffShell navigation', () => {
         this.removeAttribute('open');
       },
     });
+  });
+
+  it('prioriza Mapa operativo y ofrece edición solo si el rol y las flags lo permiten', async () => {
+    const { fixture, host, user } = await mountShell({ role: 'ADMIN' });
+    const hasLink = (url: string) => !!host.querySelector(`nav a[href="${url}"]`);
+
+    expect(hasLink('/map')).toBe(true);
+    expect(hasLink('/users')).toBe(true);
+    expect(hasLink('/payments')).toBe(true);
+    expect(hasLink('/reservations')).toBe(true);
+    expect(hasLink('/reservations/new')).toBe(false);
+    expect(hasLink('/spaces/editor')).toBe(false);
+    editorEnabled.set(false);
+    fixture.detectChanges();
+    expect(hasLink('/spaces/editor')).toBe(false);
+    expect(hasLink('/map')).toBe(true);
+    monitorEnabled.set(false);
+    fixture.detectChanges();
+    expect(hasLink('/map')).toBe(false);
+    expect(hasLink('/home')).toBe(true);
+    editorEnabled.set(true);
+    fixture.detectChanges();
+    expect(hasLink('/spaces/editor')).toBe(true);
+    user.update((value) => ({ ...value, role: 'STAFF' }));
+    fixture.detectChanges();
+    expect(hasLink('/spaces/editor')).toBe(false);
+    expect(hasLink('/users')).toBe(false);
+    expect(hasLink('/payments')).toBe(false);
+    expect(hasLink('/reservations')).toBe(true);
+    monitorEnabled.set(true);
+    fixture.detectChanges();
+    expect(hasLink('/map')).toBe(true);
+  }, 15000);
+
+  it('la campana indica incidencias reales y abre Operaciones dentro del mapa', async () => {
+    const { fixture, host } = await mountShell();
+    const bell = host.querySelector('.notification-btn');
+    expect(bell?.getAttribute('href')).toBe('/map?panel=operations');
+    expect(bell?.querySelector('.notification-dot')).toBeNull();
+
+    incidents.set([{ id: 'reservation:table' }]);
+    fixture.detectChanges();
+    expect(bell?.getAttribute('aria-label')).toContain('(1)');
+    expect(bell?.querySelector('.notification-dot')).not.toBeNull();
+  });
+
+  it('permite contraer y expandir la navegación manteniendo nombres accesibles', async () => {
+    const { fixture, host } = await mountShell();
+    const shell = host.querySelector('.staff-shell')!;
+    const toggle = host.querySelector<HTMLButtonElement>('.collapse-toggle')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    toggle.click();
+    fixture.detectChanges();
+    expect(shell.classList.contains('sidebar-collapsed')).toBe(true);
+    expect(toggle.getAttribute('aria-label')).toBe('Expandir menú');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    const map = host.querySelector<HTMLAnchorElement>('nav a[href="/map"]')!;
+    expect(map.getAttribute('aria-label')).toBe('Mapa');
+    expect(map.title).toBe('Mapa');
+    toggle.click();
+    fixture.detectChanges();
+    expect(shell.classList.contains('sidebar-collapsed')).toBe(false);
+    expect(map.hasAttribute('title')).toBe(false);
   });
 
   it('shows payment, check-in and audit links only for authorized roles', async () => {

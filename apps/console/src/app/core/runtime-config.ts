@@ -29,6 +29,11 @@ export interface RuntimeConfig {
   readonly paymentPreviewEnabled?: boolean;
   readonly paymentPublicOrigin?: string;
   readonly logLevel?: LogLevel;
+  readonly mapIncidentThresholds?: {
+    readonly critical: number;
+    readonly urgent: number;
+    readonly preventive: number;
+  };
 }
 
 const CONFIG_POR_DEFECTO: RuntimeConfig = {

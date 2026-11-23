@@ -99,6 +99,7 @@ export class MapEditorPageComponent implements OnDestroy {
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
   private readonly flags = inject(FeatureFlagService);
+  protected readonly monitorEnabled = this.flags.isEnabled('operations.space-monitor');
   private readonly floorsEnabled = this.flags.isEnabled('spaces.floors');
   private readonly fromStructure = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('fromStructure') === '1')),
@@ -143,7 +144,6 @@ export class MapEditorPageComponent implements OnDestroy {
       : null;
   });
   protected readonly strings = STRINGS.spaces.editor;
-  protected readonly stateLabels = STRINGS.spaces.elements.states;
   protected readonly typeLabels = STRINGS.spaces.elements.types;
   protected readonly panel = signal<'structure' | 'elements'>('structure');
   protected readonly copied = signal(false);

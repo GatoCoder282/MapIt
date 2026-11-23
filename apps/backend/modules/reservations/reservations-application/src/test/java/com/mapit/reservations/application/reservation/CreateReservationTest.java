@@ -33,10 +33,23 @@ import com.mapit.shared.audit.AuditEventRecorder;
 import com.mapit.shared.audit.AuditEventType;
 import com.mapit.shared.audit.AuditResourceType;
 import com.mapit.shared.security.ActorContext;
+import com.mapit.shared.security.EstablishmentAuthorizationPort;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 
 class CreateReservationTest {
+
+  static final EstablishmentAuthorizationPort AUTHORIZED = new EstablishmentAuthorizationPort() {
+    @Override public boolean canManagePayments(TenantId tenant, UUID actor, UUID establishment) {
+      return false;
+    }
+    @Override public boolean canCheckIn(TenantId tenant, UUID actor, UUID establishment) {
+      return false;
+    }
+    @Override public boolean canReadOperations(TenantId tenant, UUID actor, UUID establishment) {
+      return ESTABLISHMENT.equals(establishment);
+    }
+  };
 
   private static final TenantId TENANT = TenantId.of("tenant-a");
   private static final UUID ACTOR = UUID.fromString("10000000-0000-0000-0000-000000000001");
@@ -88,7 +101,19 @@ class CreateReservationTest {
             auditEvents,
             tenantContext,
             actorContext,
+            AUTHORIZED,
             Clock.fixed(NOW, ZoneOffset.UTC));
+  }
+
+  @Test
+  void persisteNotasSinIncluirlasEnLaAuditoria() {
+    var command = new CreateReservation.Command(ESTABLISHMENT, PERSON,
+        List.of(ELEMENT_A), STARTS_AT, ENDS_AT, null, "  Nota privada  ");
+    var created = useCase.execute(command);
+    assertThat(created.notes()).isEqualTo("Nota privada");
+    assertThat(reservations.saved).isSameAs(created);
+    assertThat(auditEvents.events).singleElement().satisfies(event ->
+        assertThat(event.details()).doesNotContainKey("notes"));
   }
 
   @Test
@@ -116,6 +141,29 @@ class CreateReservationTest {
               java.util.Map.of(
                   "status", "CREATED", "establishmentId", ESTABLISHMENT.toString()));
     });
+  }
+
+  @Test
+  void validaCapacidadYMargenConElElementoBloqueadoAntesDeConfirmar() {
+    resources.found = List.of(new ReservationResource(ELEMENT_A, ESTABLISHMENT,
+        ReservationResource.Kind.TABLE, ReservationResource.OperationalState.AVAILABLE, 4));
+    var command = new CreateReservation.Command(
+        ESTABLISHMENT, PERSON, List.of(ELEMENT_A), STARTS_AT, ENDS_AT, 4);
+
+    assertThat(useCase.execute(command).partySize()).isEqualTo(4);
+    assertThat(concurrencyGuard.lockedIds).containsExactly(ELEMENT_A);
+    assertThat(availability.checkedRange).isEqualTo(
+        ReservationTimeRange.of(STARTS_AT.minusSeconds(900), ENDS_AT.plusSeconds(900)));
+
+    var tooLarge = new CreateReservation.Command(
+        ESTABLISHMENT, PERSON, List.of(ELEMENT_A), STARTS_AT, ENDS_AT, 5);
+    assertThatThrownBy(() -> useCase.execute(tooLarge))
+        .isInstanceOf(ReservationResourceUnavailableException.class);
+
+    var unauthorized = new CreateReservation.Command(
+        OTHER_ESTABLISHMENT, PERSON, List.of(ELEMENT_A), STARTS_AT, ENDS_AT, 4);
+    assertThatThrownBy(() -> useCase.execute(unauthorized))
+        .isInstanceOf(ReservationReferenceNotFoundException.class);
   }
 
   @Test
@@ -147,6 +195,29 @@ class CreateReservationTest {
     assertThatThrownBy(() -> useCase.execute(validCommand()))
         .isInstanceOf(ReservationReferenceNotFoundException.class)
         .hasMessageContaining("Elemento espacial no encontrado");
+    assertThat(reservations.saved).isNull();
+  }
+
+  @Test
+  void noPermiteReservarUnEscenario() {
+    resources.found = List.of(
+        resource(ELEMENT_A, ESTABLISHMENT, ReservationResource.Kind.STAGE),
+        resource(ELEMENT_B, ESTABLISHMENT, ReservationResource.Kind.TABLE));
+
+    assertThatThrownBy(() -> useCase.execute(validCommand()))
+        .isInstanceOf(InvalidReservationResourceException.class);
+    assertThat(reservations.saved).isNull();
+  }
+
+  @Test
+  void aplicaLaVentanaDeLaVerticalAntesDePersistir() {
+    resources.found = List.of(new ReservationResource(ELEMENT_A, ESTABLISHMENT,
+        ReservationResource.Kind.TABLE, ReservationResource.OperationalState.AVAILABLE, 4,
+        com.mapit.shared.vertical.Vertical.RESTAURANT, "America/La_Paz"));
+    var command = new CreateReservation.Command(ESTABLISHMENT, PERSON, List.of(ELEMENT_A),
+        STARTS_AT, STARTS_AT.plusSeconds(7 * 3600));
+
+    assertThatThrownBy(() -> useCase.execute(command)).isInstanceOf(IllegalArgumentException.class);
     assertThat(reservations.saved).isNull();
   }
 
@@ -326,10 +397,12 @@ class CreateReservationTest {
 
   private static final class FakeAvailability implements ReservationAvailabilityRepository {
     private Set<UUID> conflicts = Set.of();
+    private @Nullable ReservationTimeRange checkedRange;
 
     @Override
     public Set<UUID> findConflictingElementIds(
         TenantId tenantId, Set<UUID> elementIds, ReservationTimeRange timeRange) {
+      checkedRange = timeRange;
       return conflicts;
     }
   }

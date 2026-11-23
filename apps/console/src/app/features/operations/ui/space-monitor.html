@@ -1,0 +1,588 @@
+<header class="monitor-heading">
+  <div class="heading-copy">
+    <nav class="breadcrumb" [attr.aria-label]="strings.breadcrumb">
+      <a routerLink="/home"><svg lucideHouse aria-hidden="true"></svg>{{ homeLabel }}</a>
+      <svg lucideChevronRight aria-hidden="true"></svg>
+      <span aria-current="page">{{ workspace.map }}</span>
+    </nav>
+    <h1>{{ workspace.map }}</h1>
+    <div class="venue-status">
+      @if (store.establishment(); as venue) {
+        <p><svg lucideStore aria-hidden="true"></svg>{{ venue.name }}</p>
+      }
+      <span class="connection" [attr.data-connection]="store.connection()" role="status">
+        {{ connectionLabel() }}
+      </span>
+    </div>
+  </div>
+
+  <div class="filters">
+    <label>
+      {{ strings.floor }}
+      <select
+        #floor
+        [value]="store.floorId()"
+        [disabled]="!store.floors().length"
+        (change)="store.selectFloor(floor.value)"
+      >
+        @for (item of store.floors(); track item.id) {
+          <option [value]="item.id">{{ item.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      {{ strings.sector }}
+      <select
+        #sector
+        [value]="store.sector()?.id"
+        [disabled]="!store.sectors().length"
+        (change)="store.selectSector(sector.value)"
+      >
+        @for (item of store.sectors(); track item.id) {
+          <option [value]="item.id">{{ item.name }}</option>
+        }
+      </select>
+    </label>
+    @if (canOpenEditor()) {
+      <a
+        class="button edit-link"
+        [routerLink]="store.sector() ? ['/spaces/editor', store.sector()?.id] : ['/spaces/editor']"
+        [queryParams]="{ floorId: store.floorId() }"
+      >
+        <svg lucidePencil aria-hidden="true"></svg>{{ strings.edit }}
+      </a>
+    }
+  </div>
+</header>
+
+<ng-template #stateIcon let-state>
+  @switch (state) {
+    @case ('AVAILABLE') {
+      <svg lucideArmchair aria-hidden="true"></svg>
+    }
+    @case ('OCCUPIED') {
+      <svg lucideUsers aria-hidden="true"></svg>
+    }
+    @case ('RESERVED') {
+      <svg lucideCalendarCheck aria-hidden="true"></svg>
+    }
+    @case ('CLEANING') {
+      <svg lucideSparkles aria-hidden="true"></svg>
+    }
+    @case ('OUT_OF_SERVICE') {
+      <svg lucideCircleSlash aria-hidden="true"></svg>
+    }
+  }
+</ng-template>
+
+<dl class="state-summary" [attr.aria-label]="strings.legend">
+  @for (state of states; track state) {
+    <div class="state-count" [attr.data-state]="state">
+      <dt>
+        <span class="state-icon"
+          ><ng-container [ngTemplateOutlet]="stateIcon" [ngTemplateOutletContext]="{ $implicit: state }"
+        /></span>
+        {{ strings.counts[state] }}
+      </dt>
+      <dd [attr.data-testid]="'monitor-count-' + state">
+        {{ store.loading() || store.error() ? '—' : (store.counts()[state] | localNumber: locale()) }}
+      </dd>
+    </div>
+  }
+</dl>
+
+<div #monitor class="monitor" [class.options-open]="panelOpen()" [class.with-motion]="panelMotion()">
+  <section class="monitor-plan" [attr.aria-label]="workspace.plan">
+    <div class="canvas" data-testid="monitor-canvas" [attr.aria-busy]="store.loading()">
+      <div
+        #host
+        class="host"
+        role="group"
+        tabindex="0"
+        [attr.aria-label]="workspace.plan"
+        aria-describedby="map-inspection-instructions"
+        [class.inspecting]="previewElement()"
+        (pointermove)="inspectPointer($event, host)"
+        (pointerleave)="schedulePreviewExit()"
+        (keydown)="inspectKey($event)"
+        (blur)="clearPreview()"
+      ></div>
+      <span id="map-inspection-instructions" class="visually-hidden">{{ strings.inspectHint }}</span>
+      @if (store.loading()) {
+        <p class="notice" role="status">{{ workspace.loading }}</p>
+      } @else if (store.error()) {
+        <div class="notice" role="alert">
+          {{ editor.errors.loadFailed }}
+          <button type="button" (click)="store.retry()">{{ strings.retry }}</button>
+        </div>
+      } @else if (!store.layout().elements.length) {
+        <p class="notice">
+          {{ store.sector() ? strings.noElements : store.floors().length ? workspace.noSectors : workspace.noFloors }}
+        </p>
+      }
+      @if (store.sector() && !store.loading() && !store.error()) {
+        <div class="map-actions" role="group" [attr.aria-label]="workspace.tools">
+          <button
+            type="button"
+            [attr.title]="workspace.zoomIn"
+            [attr.aria-label]="workspace.zoomIn"
+            (click)="clearPreview(); port.zoomBy?.(1.2)"
+          >
+            <svg lucidePlus aria-hidden="true"></svg>
+          </button>
+          <button
+            type="button"
+            [attr.title]="workspace.zoomOut"
+            [attr.aria-label]="workspace.zoomOut"
+            (click)="clearPreview(); port.zoomBy?.(1 / 1.2)"
+          >
+            <svg lucideMinus aria-hidden="true"></svg>
+          </button>
+          <button
+            type="button"
+            [attr.title]="workspace.fit"
+            [attr.aria-label]="workspace.fit"
+            (click)="clearPreview(); port.fitToViewport?.()"
+          >
+            <svg lucideMaximize aria-hidden="true"></svg>
+          </button>
+          <button
+            type="button"
+            [attr.title]="workspace.pan"
+            [attr.aria-label]="workspace.pan"
+            [attr.aria-pressed]="panning()"
+            (click)="clearPreview(); panning.set(!panning())"
+          >
+            <svg lucideHand aria-hidden="true"></svg>
+          </button>
+        </div>
+      }
+      @if (preview(); as position) {
+        @if (previewElement(); as element) {
+          @let detail = previewReservation();
+          <div
+            class="element-preview"
+            [class.preview-left]="position.left"
+            [style.left.px]="position.x"
+            [style.top.px]="position.y"
+            [attr.data-state]="element.state"
+            data-testid="monitor-preview"
+            role="status"
+            (pointerenter)="keepPreview()"
+            (pointerleave)="schedulePreviewExit()"
+          >
+            <div class="preview-heading">
+              <strong>{{ element.label }}</strong>
+              <span class="state-chip">{{ strings.states[element.state] }}</span>
+            </div>
+            <dl>
+              @if (detail?.customerName; as name) {
+                <div>
+                  <svg lucideUserRound aria-hidden="true"></svg>
+                  <dt>{{ strings.reservedBy }}</dt>
+                  <dd>{{ name }}</dd>
+                </div>
+              }
+              @if (detail) {
+                <div>
+                  <svg lucideCalendarCheck aria-hidden="true"></svg>
+                  <dt>{{ strings.dateTime }}</dt>
+                  <dd>
+                    {{ detail.reservation.startsAt | localDate: locale() : 'short' : store.establishment()?.timezone }}
+                  </dd>
+                </div>
+              }
+              <div>
+                <svg lucideArmchair aria-hidden="true"></svg>
+                <dt>{{ editor.capacity }}</dt>
+                <dd>
+                  {{ element.capacity === null ? editor.capacityUnknown : (element.capacity | localNumber: locale()) }}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        }
+      }
+      <button
+        #panelToggle
+        type="button"
+        class="panel-toggle"
+        [attr.aria-expanded]="panelOpen()"
+        aria-controls="map-options-panel"
+        (click)="panelOpen() ? closePanel($event.detail > 0) : openPanel($event.detail > 0)"
+      >
+        <svg lucidePanelRight aria-hidden="true"></svg>{{ strings.options }}
+        @if (store.incidents().length) {
+          <span class="incident-count" aria-hidden="true">{{ store.incidents().length | localNumber: locale() }}</span>
+        }
+      </button>
+    </div>
+  </section>
+
+  <div class="side-slot" [class.is-open]="panelOpen()" [attr.inert]="panelOpen() ? null : ''">
+    <aside
+      id="map-options-panel"
+      class="monitor-side"
+      [attr.aria-label]="strings.panelLabel"
+      [attr.inert]="panelOpen() ? null : ''"
+      [class.is-open]="panelOpen()"
+      [class.with-motion]="panelMotion()"
+      [class.quick-open]="panel() === 'quick' && showQuickBooking()"
+    >
+      <header class="drawer-heading">
+        <strong>{{ strings.panelLabel }}</strong>
+        <button type="button" [attr.aria-label]="strings.closeOptions" (click)="closePanel($event.detail > 0)">
+          <svg lucideX aria-hidden="true"></svg>
+        </button>
+      </header>
+      <div #tabList class="panel-tabs" role="tablist" [attr.aria-label]="strings.panelLabel">
+        @for (tab of panels; track tab) {
+          <button
+            type="button"
+            role="tab"
+            [id]="'map-tab-' + tab"
+            [attr.aria-controls]="'map-panel-' + tab"
+            [attr.aria-selected]="panel() === tab"
+            [attr.tabindex]="panel() === tab ? 0 : -1"
+            (click)="selectPanel(tab)"
+            (keydown)="navigatePanels($event, tabList)"
+          >
+            @switch (tab) {
+              @case ('table') {
+                <svg lucideArmchair aria-hidden="true"></svg>
+              }
+              @case ('operations') {
+                <svg lucideZap aria-hidden="true"></svg>
+              }
+              @case ('quick') {
+                <svg lucideCalendarCheck aria-hidden="true"></svg>
+              }
+            }
+            {{ strings.panels[tab] }}
+            @if (tab === 'operations' && store.incidents().length) {
+              <span class="incident-count" aria-hidden="true">{{
+                store.incidents().length | localNumber: locale()
+              }}</span>
+            }
+          </button>
+        }
+      </div>
+
+      @for (tab of panels; track tab) {
+        <section
+          class="panel-content"
+          role="tabpanel"
+          [id]="'map-panel-' + tab"
+          [attr.aria-labelledby]="'map-tab-' + tab"
+          [hidden]="panel() !== tab"
+          [attr.tabindex]="panel() === tab ? 0 : null"
+        >
+          @if (panel() === tab) {
+            @switch (tab) {
+              @case ('table') {
+                @if (store.selected(); as element) {
+                  @let detail = store.selectedReservation();
+                  @let timeZone = store.establishment()?.timezone ?? undefined;
+                  <header class="panel-heading">
+                    <h2>{{ element.label }}</h2>
+                    <span class="state-chip" [attr.data-state]="element.state">{{
+                      strings.states[element.state]
+                    }}</span>
+                  </header>
+
+                  <dl class="table-facts">
+                    @if (detail) {
+                      @if (detail.customerName) {
+                        <div class="fact">
+                          <dt><svg lucideUserRound aria-hidden="true"></svg>{{ strings.reservedBy }}</dt>
+                          <dd>{{ detail.customerName }}</dd>
+                        </div>
+                      }
+                      <div class="fact">
+                        <dt><svg lucideCalendarCheck aria-hidden="true"></svg>{{ strings.dateTime }}</dt>
+                        <dd>
+                          <time [attr.datetime]="detail.reservation.startsAt">{{
+                            detail.reservation.startsAt | localDate: locale() : 'short' : timeZone
+                          }}</time>
+                        </dd>
+                      </div>
+                      @if (detail.reservation.partySize !== null && detail.reservation.partySize !== undefined) {
+                        <div class="fact">
+                          <dt><svg lucideUsers aria-hidden="true"></svg>{{ strings.partySize }}</dt>
+                          <dd>{{ detail.reservation.partySize | localNumber: locale() }}</dd>
+                        </div>
+                      }
+                    }
+                    <div class="fact">
+                      <dt><svg lucideArmchair aria-hidden="true"></svg>{{ editor.capacity }}</dt>
+                      <dd>
+                        {{
+                          element.capacity === null
+                            ? editor.capacityUnknown
+                            : (element.capacity | localNumber: locale())
+                        }}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div class="action-row">
+                    @if (
+                      canCheckIn() &&
+                      detail?.reservation.status === 'CONFIRMED' &&
+                      (element.state === 'AVAILABLE' || element.state === 'RESERVED')
+                    ) {
+                      <a class="button primary" routerLink="/check-in">{{ strings.registerArrival }}</a>
+                    }
+                    @if (detail) {
+                      <button
+                        type="button"
+                        aria-controls="map-reservation-details"
+                        [attr.aria-expanded]="reservationExpanded()"
+                        (click)="reservationExpanded.set(!reservationExpanded())"
+                      >
+                        <svg lucideCalendarCheck aria-hidden="true"></svg>{{ strings.viewReservation }}
+                      </button>
+                    }
+                    @if (canBook() && element.state === 'AVAILABLE' && quickReservation.scope()) {
+                      <button type="button" class="primary" (click)="activatePanel('quick', tabList)">
+                        {{ strings.createReservation }}
+                      </button>
+                    }
+                    @if (store.canUpdateState()) {
+                      @switch (element.state) {
+                        @case ('OCCUPIED') {
+                          <button
+                            type="button"
+                            class="primary"
+                            [disabled]="store.stateUpdating()"
+                            (click)="store.updateSelectedState('CLEANING')"
+                          >
+                            {{ strings.finishService }}
+                          </button>
+                        }
+                        @case ('CLEANING') {
+                          <button
+                            type="button"
+                            class="primary"
+                            [disabled]="store.stateUpdating()"
+                            (click)="store.updateSelectedState('AVAILABLE')"
+                          >
+                            {{ strings.markReady }}
+                          </button>
+                        }
+                        @case ('OUT_OF_SERVICE') {
+                          <button
+                            type="button"
+                            class="primary"
+                            [disabled]="store.stateUpdating()"
+                            (click)="store.updateSelectedState('AVAILABLE')"
+                          >
+                            {{ strings.enable }}
+                          </button>
+                        }
+                      }
+                    }
+                  </div>
+                  @if (detail) {
+                    <dl class="reservation-details" id="map-reservation-details" [hidden]="!reservationExpanded()">
+                      <div>
+                        <dt>{{ reservationForm.reservationCode }}</dt>
+                        <dd>{{ detail.reservation.id }}</dd>
+                      </div>
+                      <div>
+                        <dt>{{ editor.state }}</dt>
+                        <dd>{{ checkIn.reservationStates[detail.reservation.status] }}</dd>
+                      </div>
+                      <div>
+                        <dt>{{ reservationForm.endsAtLabel }}</dt>
+                        <dd>
+                          <time [attr.datetime]="detail.reservation.endsAt">{{
+                            detail.reservation.endsAt | localDate: locale() : 'short' : timeZone
+                          }}</time>
+                        </dd>
+                      </div>
+                    </dl>
+                  }
+                  @if (store.stateError()) {
+                    <p class="panel-error" role="alert">{{ strings.stateError }}</p>
+                  }
+                } @else {
+                  <header class="panel-heading">
+                    <h2>{{ strings.panels.table }}</h2>
+                  </header>
+                  <p class="panel-hint">{{ strings.selectElement }}</p>
+                }
+              }
+              @case ('operations') {
+                <header class="panel-heading">
+                  <h2>{{ strings.panels.operations }}</h2>
+                  @if (store.incidentsStatus() === 'ready' && store.incidents().length) {
+                    <span class="incident-total"
+                      >{{ store.incidents().length | localNumber: locale() }}
+                      {{ store.incidents().length === 1 ? strings.incidentSingular : strings.incidents }}</span
+                    >
+                  }
+                </header>
+                @if (store.incidentsStatus() === 'loading') {
+                  <p class="panel-hint" role="status">{{ strings.loadingOperations }}</p>
+                } @else if (store.incidentsStatus() === 'error') {
+                  <p class="panel-error" role="alert">{{ strings.operationsError }}</p>
+                } @else {
+                  @if (store.stateError()) {
+                    <p class="panel-error" role="alert">{{ strings.stateError }}</p>
+                  }
+                  <ul class="panel-list">
+                    @for (incident of store.incidents(); track incident.id) {
+                      <li class="panel-entry">
+                        <header class="entry-heading">
+                          <h3>{{ incident.element.label }}</h3>
+                          <span class="priority" [attr.data-priority]="incident.priority">{{
+                            strings.priorities[incident.priority]
+                          }}</span>
+                        </header>
+                        <p class="location">{{ incident.floorName }} · {{ incident.sectorName }}</p>
+                        <p>
+                          <strong>{{
+                            incident.conflict ? strings.reservationConflict : strings.upcomingReservation
+                          }}</strong>
+                          @if (incident.customerName) {
+                            · {{ incident.customerName }}
+                          }
+                        </p>
+                        <p class="entry-meta">
+                          @if (incident.minutes > 0) {
+                            {{ strings.arrivalIn }} {{ incident.minutes | localNumber: locale() }} {{ strings.minutes }}
+                          } @else {
+                            {{ strings.arrivalDue }}
+                          }
+                          · {{ strings.states[incident.element.state] }}
+                        </p>
+                        <div class="action-row">
+                          @if (incident.conflict) {
+                            <button type="button" class="primary" (click)="openAlternatives(incident, tabList)">
+                              {{ strings.findAlternative }}
+                            </button>
+                            @if (store.canUpdateState() && incident.element.state === 'CLEANING') {
+                              <button
+                                type="button"
+                                [disabled]="store.stateUpdating()"
+                                (click)="store.updateIncidentState(incident)"
+                              >
+                                {{ strings.markReady }}
+                              </button>
+                            }
+                          }
+                          <button type="button" (click)="locateTable(incident, tabList)">
+                            {{ strings.viewTable }}
+                          </button>
+                        </div>
+                      </li>
+                    } @empty {
+                      <li class="panel-hint">{{ strings.noIncidents }}</li>
+                    }
+                  </ul>
+                }
+              }
+              @case ('quick') {
+                @if (showQuickBooking()) {
+                  <mapit-quick-reservation (cancelled)="cancelQuickReservation()" />
+                } @else {
+                  <header class="panel-heading">
+                    <h2>{{ strings.panels.quick }}</h2>
+                  </header>
+                  <p class="panel-hint">{{ strings.quickScope }}</p>
+                  <p class="quick-terms">
+                    {{ strings.duration }} {{ store.quickMinutes | localNumber: locale() }} {{ strings.minutes }} ·
+                    {{ strings.preparation }} {{ store.preparationMinutes | localNumber: locale() }}
+                    {{ strings.minutes }}
+                  </p>
+                  <form class="quick-form" (submit)="$event.preventDefault(); resultsLimit.set(4); store.searchQuick()">
+                    <label>
+                      {{ strings.date }}
+                      <input
+                        #date
+                        type="date"
+                        required
+                        [value]="store.quickDate()"
+                        (input)="store.quickDate.set(date.value)"
+                      />
+                    </label>
+                    <label>
+                      {{ strings.time }}
+                      <input
+                        #time
+                        type="time"
+                        required
+                        [value]="store.quickTime()"
+                        (input)="store.quickTime.set(time.value)"
+                      />
+                    </label>
+                    <label>
+                      {{ strings.partySize }}
+                      <input
+                        #people
+                        type="number"
+                        min="1"
+                        step="1"
+                        required
+                        [value]="store.quickPeople() || ''"
+                        (input)="store.quickPeople.set(people.valueAsNumber)"
+                      />
+                    </label>
+                    <button type="submit" class="primary" [disabled]="store.quickStatus() === 'loading'">
+                      {{ strings.search }}
+                    </button>
+                  </form>
+                  @switch (store.quickStatus()) {
+                    @case ('loading') {
+                      <p class="panel-hint" role="status">{{ strings.searching }}</p>
+                    }
+                    @case ('error') {
+                      <p class="panel-error" role="alert">{{ strings.searchError }}</p>
+                    }
+                    @case ('invalid') {
+                      <p class="panel-error" role="alert">{{ strings.searchInvalid }}</p>
+                    }
+                    @case ('ready') {
+                      <ul class="panel-list">
+                        @for (result of store.quickResults().slice(0, resultsLimit()); track result.element.id) {
+                          <li class="panel-entry">
+                            <header class="entry-heading">
+                              <h3>{{ result.element.label }}</h3>
+                              <span class="state-chip" data-state="AVAILABLE">{{ strings.states.AVAILABLE }}</span>
+                            </header>
+                            <p class="location">{{ result.floorName }} · {{ result.sectorName }}</p>
+                            <p class="entry-meta">
+                              {{ editor.capacity }} · {{ result.element.capacity | localNumber: locale() }}
+                            </p>
+                            <div class="action-row">
+                              @if (canBook()) {
+                                <a class="button primary" routerLink="/map" [queryParams]="result.query">{{
+                                  strings.book
+                                }}</a>
+                              }
+                              <button type="button" (click)="locateTable(result, tabList)">
+                                {{ strings.viewTable }}
+                              </button>
+                            </div>
+                          </li>
+                        } @empty {
+                          <li class="panel-hint">{{ strings.noResults }}</li>
+                        }
+                      </ul>
+                      @if (store.quickResults().length > resultsLimit()) {
+                        <button type="button" (click)="resultsLimit.update(extendResults)">
+                          {{ strings.moreResults }}
+                        </button>
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        </section>
+      }
+    </aside>
+  </div>
+</div>

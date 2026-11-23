@@ -4,6 +4,7 @@ import {
   type ElementState,
   type MapLayout,
   type Point,
+  type Size,
   type SpaceElement,
   type SpaceElementId,
 } from './map-layout.model';
@@ -54,7 +55,9 @@ export interface MapEnginePort {
   setGridVisible?(visible: boolean): void;
   setLayoutFinish?(enabled: boolean): void;
   furniturePreview?(element: SpaceElement): string | null;
+  setOperationalDisplay?(enabled: boolean): void;
   viewportToModel?(point: Point): Point;
+  elementAtViewport?(point: Point): { id: SpaceElementId; bounds: Point & Size } | null;
 
   /** Libera recursos. Obligatorio: el canvas retiene memoria si no se llama. */
   destroy(): void;

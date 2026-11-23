@@ -397,6 +397,8 @@ Table person {
 }
 
 Table reservation {
+  notes varchar(1000) [note: 'Notas internas opcionales del personal.']
+  party_size integer [note: 'Opcional. Mayor que cero si se indicó al reservar.']
   confirmed_payment_id uuid
   checked_in_at timestamptz
   checked_in_by uuid

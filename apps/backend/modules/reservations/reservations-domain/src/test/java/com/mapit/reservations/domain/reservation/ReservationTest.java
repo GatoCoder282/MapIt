@@ -37,6 +37,18 @@ class ReservationTest {
   }
 
   @Test
+  void normalizaNotasOpcionalesYLimitaSuLongitud() {
+    var reservation = create(List.of(ELEMENT_A));
+    assertThat(reservation.notes()).isNull();
+    assertThat(reservation.withNotes("  Mesa cerca de la ventana\nSin globos  ").notes())
+        .isEqualTo("Mesa cerca de la ventana\nSin globos");
+    assertThat(reservation.withNotes("  ").notes()).isNull();
+    assertThat(reservation.withNotes("a".repeat(1000)).notes()).hasSize(1000);
+    assertThatThrownBy(() -> reservation.withNotes("a".repeat(1001)))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   void crea_una_reserva_interna_en_estado_created() {
     Reservation reservation = create(List.of(ELEMENT_A, ELEMENT_B));
 

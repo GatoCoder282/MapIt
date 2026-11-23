@@ -8,6 +8,7 @@ import java.util.UUID;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import org.jspecify.annotations.Nullable;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,6 +30,7 @@ import com.mapit.reservations.application.reservation.InvalidReservationResource
 import com.mapit.reservations.application.reservation.ListReservations;
 import com.mapit.reservations.application.reservation.ReservationOverlapException;
 import com.mapit.reservations.application.reservation.ReservationReferenceNotFoundException;
+import com.mapit.reservations.application.reservation.ReservationResourceUnavailableException;
 import com.mapit.reservations.domain.reservation.Reservation;
 import com.mapit.reservations.domain.reservation.ReservationStatus;
 import com.mapit.reservations.infrastructure.ReservationsProblemTypes;
@@ -55,7 +58,14 @@ public class ReservationController {
   }
 
   @GetMapping("/reservations")
-  public List<ReservationResponse> findAll() {
+  public List<ReservationResponse> findAll(
+      @RequestParam(required = false) @Nullable UUID establishmentId,
+      @RequestParam(required = false) @Nullable Instant endsAfter) {
+    if (establishmentId != null) {
+      return listReservations.execute(establishmentId, endsAfter).stream()
+          .map(row -> ReservationResponse.fromDomain(row.reservation(), row.customerName()))
+          .toList();
+    }
     return listReservations.execute().stream().map(ReservationResponse::fromDomain).toList();
   }
 
@@ -71,7 +81,9 @@ public class ReservationController {
                 request.personId(),
                 request.spaceElementIds(),
                 request.startsAt(),
-                request.endsAt()));
+                request.endsAt(),
+                request.partySize(),
+                request.notes()));
     return ReservationResponse.fromDomain(reservation);
   }
 
@@ -103,11 +115,23 @@ public class ReservationController {
     return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
   }
 
+  @ExceptionHandler(ReservationResourceUnavailableException.class)
+  ResponseEntity<ProblemDetail> handleUnavailable(ReservationResourceUnavailableException exception) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problem.setTitle("Elementos no disponibles");
+    problem.setType(URI.create(ReservationsProblemTypes.RESERVATION_UNAVAILABLE));
+    problem.setProperty("unavailableElementIds", exception.unavailableElementIds());
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+  }
+
   public record ReservationCreateRequest(
       @NotNull UUID personId,
       @NotEmpty @Size(max = MAX_ELEMENTS_PER_RESERVATION) List<@NotNull UUID> spaceElementIds,
       @NotNull Instant startsAt,
-      @NotNull Instant endsAt) {}
+      @NotNull Instant endsAt,
+      @Nullable @Positive Integer partySize,
+      @Nullable @Size(max = 1000) String notes) {}
 
   public record ReservationResponse(
       UUID id,
@@ -118,9 +142,16 @@ public class ReservationController {
       Instant endsAt,
       ReservationStatus status,
       Instant createdAt,
-      @Nullable UUID createdBy) {
+      @Nullable UUID createdBy,
+      @Nullable String customerName,
+      @Nullable Integer partySize,
+      @Nullable String notes) {
 
     static ReservationResponse fromDomain(Reservation reservation) {
+      return fromDomain(reservation, null);
+    }
+
+    static ReservationResponse fromDomain(Reservation reservation, @Nullable String customerName) {
       return new ReservationResponse(
           reservation.id().value(),
           reservation.establishmentId(),
@@ -130,7 +161,10 @@ public class ReservationController {
           reservation.timeRange().endsAt(),
           reservation.status(),
           reservation.createdAt(),
-          reservation.createdBy());
+          reservation.createdBy(),
+          customerName,
+          reservation.partySize(),
+          reservation.notes());
     }
   }
 }

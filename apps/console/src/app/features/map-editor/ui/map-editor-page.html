@@ -2,6 +2,12 @@
   <header class="editor-header">
     <div>
       <nav class="breadcrumbs" [attr.aria-label]="strings.workspace.structure">
+        @if (monitorEnabled()) {
+          <a routerLink="/map" [queryParams]="{ floorId: store.selectedFloorId(), sectorId: store.sectorId() }">{{
+            strings.workspace.map
+          }}</a>
+          <span aria-hidden="true">›</span>
+        }
         @if (floorName(); as floor) {
           @if (store.canEditMetadata()) {
             <span>{{ floor }}</span>
@@ -43,6 +49,16 @@
         </button>
       }
 
+      @if (monitorEnabled()) {
+        <a
+          class="button"
+          data-testid="map-go-monitor"
+          routerLink="/map"
+          [queryParams]="{ floorId: store.selectedFloorId(), sectorId: store.sectorId() }"
+        >
+          {{ strings.workspace.goMonitor }}
+        </a>
+      }
       @if (store.canEditMetadata()) {
         <span
           class="save-status"
@@ -287,7 +303,9 @@
                 ><strong>{{ selected.label }}</strong> <small>{{ typeLabels[selected.type] }}</small></span
               >
               @if (selected.reservable) {
-                <span class="style-state" [attr.data-state]="selected.state">{{ stateLabels[selected.state] }}</span>
+                <span class="style-state" [attr.data-state]="selected.state">{{
+                  strings.monitor.states[selected.state]
+                }}</span>
               }
             </span>
           } @else {

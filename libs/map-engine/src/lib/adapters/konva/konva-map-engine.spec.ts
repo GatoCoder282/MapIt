@@ -127,6 +127,39 @@ describe('KonvaMapEngine', () => {
     expect(table.draggable()).toBe(true);
   });
 
+  it('renders a separate shape and glyph for each operational state', () => {
+    const { availability: _availability, ...operational } = element;
+    engine.mount(host, { ...layout, elements: [operational] });
+    engine.setOperationalDisplay(true);
+    expect(node().findOne('.operational-art')).toBeDefined();
+    expect(node().findOne('.state-marker')?.getAttr('state')).toBe('AVAILABLE');
+    expect(node().findOne('.operational-label')?.getAttr('label')).toBe(operational.label);
+    engine.load({ ...layout, elements: [{ ...operational, state: 'CLEANING' }] });
+    expect(node().findOne('.state-marker')?.getAttr('state')).toBe('CLEANING');
+    expect(node().findOne('.operational-label')?.getAttr('state')).toBe('CLEANING');
+    engine.setOperationalDisplay(false);
+    expect(node().findOne('.state-marker')).toBeUndefined();
+    expect(node().findOne('.operational-label')).toBeUndefined();
+    expect(node().findOne('.operational-art')).toBeUndefined();
+  });
+
+  it('reports viewport bounds for inspection without changing selection or geometry', () => {
+    engine.mount(host, layout);
+    engine.fitToViewport();
+    engine.zoomBy(1.4);
+    const shape = node().findOne<Konva.Rect>('.shape')!;
+    const hit = vi.spyOn(layer(), 'getIntersection').mockReturnValue(shape);
+    expect(engine.elementAtViewport({ x: 70, y: 80 })).toEqual({
+      id: element.id,
+      bounds: node().getClientRect({ skipShadow: true }),
+    });
+    expect(hit).toHaveBeenCalledWith({ x: 70, y: 80 });
+    expect(engine.selectedElement()).toBeNull();
+    expect(engine.exportLayout()).toEqual(layout);
+    engine.setPanning(true);
+    expect(engine.elementAtViewport({ x: 70, y: 80 })).toBeNull();
+  });
+
   it('draws the editor finish and refreshes the capacity badge on the same element', () => {
     engine.mount(host, layout);
     engine.setLayoutFinish(true);
@@ -162,7 +195,7 @@ describe('KonvaMapEngine', () => {
     expect(engine.exportLayout().elements[0]).toMatchObject({ capacity: 4, state: 'AVAILABLE' });
   });
 
-  it('renders the stored zone border, fill and label position while selected', () => {
+  it('renders the stored zone border, fill and label position while selected and in monitoring', () => {
     const zone: SpaceElement = {
       ...element,
       type: 'SECTOR_ZONE',
@@ -187,6 +220,7 @@ describe('KonvaMapEngine', () => {
     expect(shape.dash()).toEqual([7, 5]);
     expect(node().findOne('.label')?.getAttr('y')).toBe(8);
     engine.setSelectedElement(null);
+    engine.setOperationalDisplay(true);
     expect(shape.stroke()).toBe('#388556');
     expect(engine.exportLayout().elements[0]?.position).toEqual(zone.position);
   });

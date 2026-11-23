@@ -11,6 +11,16 @@
   min-height: 100dvh;
 }
 
+.sidebar-collapsed {
+  --mapit-sidebar-width: 6rem;
+}
+
+@media (min-width: 861px) and (prefers-reduced-motion: no-preference) {
+  .staff-shell.sidebar-motion {
+    transition: grid-template-columns var(--mapit-duration) var(--mapit-ease-out);
+  }
+}
+
 .shell-main {
   display: grid;
   grid-template-rows: var(--mapit-topbar-height) 1fr;
@@ -171,4 +181,32 @@
   .content {
     padding: var(--mapit-space-4);
   }
+}
+
+.map-workspace .content {
+  padding-inline: clamp(0.75rem, 1.5vw, 1.25rem);
+  padding-bottom: 1rem;
+}
+
+.map-workspace .content:has(> mapit-map-editor-page) {
+  background:
+    radial-gradient(
+      ellipse at top right,
+      color-mix(in srgb, var(--mapit-editor-selection) 25%, transparent),
+      transparent 65%
+    ),
+    linear-gradient(140deg, var(--mapit-color-canvas), var(--mapit-editor-selection-soft));
+}
+
+.map-workspace .shell-main {
+  background: color-mix(in srgb, var(--mapit-editor-selection) 4%, var(--mapit-color-surface));
+}
+.map-workspace .topbar {
+  background: transparent;
+  box-shadow: none;
+  border-bottom-color: color-mix(
+    in srgb,
+    var(--mapit-editor-selection) 9%,
+    var(--mapit-color-border)
+  );
 }

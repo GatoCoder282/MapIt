@@ -85,6 +85,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/ui/home').then((m) => m.Home),
       },
       {
+        path: 'map',
+        canActivate: [featureFlagGuard('operations.space-monitor', '/home')],
+        canDeactivate: [operationalExitGuard],
+        loadComponent: () =>
+          import('./features/operations/ui/space-monitor').then((m) => m.SpaceMonitor),
+      },
+      {
         path: 'users',
         canActivate: [roleGuard('ADMIN')],
         loadComponent: () =>
