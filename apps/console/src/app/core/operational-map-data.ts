@@ -1,10 +1,24 @@
 import { computed, effect, inject, Injectable } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ReservationsService, SpacesService, type Reservation } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
 import { FeatureFlagService } from '@mapit/feature-flags';
 import { type SpaceElement } from '@mapit/map-engine';
 import { RealtimeClient } from '@mapit/realtime';
-import { auditTime, catchError, forkJoin, map, merge, of, Subject, switchMap, timer } from 'rxjs';
+import {
+  auditTime,
+  catchError,
+  EMPTY,
+  expand,
+  forkJoin,
+  map,
+  merge,
+  of,
+  reduce,
+  Subject,
+  switchMap,
+  timer,
+} from 'rxjs';
 import { EstablishmentContext } from './establishment-context';
 import { RuntimeConfigStore } from './runtime-config';
 import { mapApiElementToLayoutElement } from './spatial-layout';
@@ -14,6 +28,11 @@ const PREPARATION_MINUTES = 15;
 export const QUICK_RESERVATION_MINUTES = 90;
 export const RESERVATION_PREPARATION_MINUTES = PREPARATION_MINUTES;
 const priorityOrder = ['critical', 'urgent', 'preventive'] as const;
+
+type MonitorReservation = Pick<
+  Reservation,
+  'id' | 'startsAt' | 'endsAt' | 'status' | 'customerName' | 'partySize'
+> & { spaceElementIds: Iterable<string> };
 
 export interface LocatedElement {
   element: SpaceElement;
@@ -25,7 +44,7 @@ export interface LocatedElement {
 
 export interface OperationalIncident extends LocatedElement {
   id: string;
-  reservation: Reservation;
+  reservation: MonitorReservation;
   customerName: string | null;
   priority: (typeof priorityOrder)[number];
   minutes: number;
@@ -52,17 +71,17 @@ function thresholds(value: Partial<IncidentThresholds> | undefined): IncidentThr
     : DEFAULT_THRESHOLDS;
 }
 
-function isUpcoming(reservation: Reservation): boolean {
+function isUpcoming(reservation: MonitorReservation): boolean {
   return reservation.status === 'CREATED' || reservation.status === 'CONFIRMED';
 }
 
-export function isBlockingReservation(reservation: Reservation): boolean {
+export function isBlockingReservation(reservation: MonitorReservation): boolean {
   return isUpcoming(reservation) || reservation.status === 'ACTIVE';
 }
 
 export function reservationIncidents(
   elements: readonly LocatedElement[],
-  reservations: readonly Reservation[],
+  reservations: readonly MonitorReservation[],
   now: number,
   window: IncidentThresholds,
 ): OperationalIncident[] {
@@ -110,7 +129,7 @@ export function reservationIncidents(
 
 export function availableQuickElements(
   elements: readonly LocatedElement[],
-  reservations: readonly Reservation[],
+  reservations: readonly MonitorReservation[],
   startsAt: string,
   endsAt: string,
   people: number,
@@ -154,6 +173,7 @@ export class OperationalMapData {
   private readonly spaces = inject(SpacesService);
   private readonly bookings = inject(ReservationsService);
   private readonly realtime = inject(RealtimeClient);
+  private readonly session = inject(AuthSession);
   private readonly context = inject(EstablishmentContext);
   private readonly runtime = inject(RuntimeConfigStore, { optional: true });
   private readonly enabled = inject(FeatureFlagService).isEnabled('operations.space-monitor');
@@ -200,17 +220,12 @@ export class OperationalMapData {
                   ),
                 ),
               ),
-              reservations: this.bookings.listReservations({
-                establishmentId,
-                endsAfter: new Date(Date.now() - PREPARATION_MINUTES * MINUTE).toISOString(),
-              }),
+              reservations: this.loadReservations(establishmentId),
             }).pipe(
               map(({ elements, reservations }) => ({
                 establishmentId,
                 elements,
-                reservations: reservations.filter(
-                  (item) => item.establishmentId === establishmentId,
-                ),
+                reservations,
                 failed: false,
               })),
               catchError(() =>
@@ -231,6 +246,30 @@ export class OperationalMapData {
   );
   readonly elements = computed(() => this.snapshot()?.elements ?? []);
   readonly reservations = computed(() => this.snapshot()?.reservations ?? []);
+
+  private loadReservations(establishmentId: string) {
+    const cutoff = Date.now() - PREPARATION_MINUTES * MINUTE;
+    if (this.session.user()?.role !== 'STAFF') {
+      return this.bookings
+        .listReservations({ establishmentId, endsAfter: new Date(cutoff).toISOString() })
+        .pipe(map((items) => items.filter((item) => item.establishmentId === establishmentId)));
+    }
+
+    const limit = 100;
+    const page = (offset: number) =>
+      this.bookings.listEstablishmentReservations({ establishmentId, limit, offset });
+    return page(0).pipe(
+      expand((result) => {
+        const next = result.offset + result.items.length;
+        return result.items.length > 0 && next < result.total ? page(next) : EMPTY;
+      }),
+      reduce(
+        (items, result) =>
+          items.concat(result.items.filter((item) => Date.parse(item.endsAt) > cutoff)),
+        [] as MonitorReservation[],
+      ),
+    );
+  }
   readonly incidents = computed(() =>
     reservationIncidents(
       this.elements(),

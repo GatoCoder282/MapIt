@@ -1,7 +1,15 @@
-import type { Reservation } from '@mapit/api-client';
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { ReservationsService, SpacesService, type Reservation } from '@mapit/api-client';
+import { AuthSession } from '@mapit/auth';
+import { FeatureFlagService } from '@mapit/feature-flags';
+import { RealtimeClient } from '@mapit/realtime';
+import { NEVER, of } from 'rxjs';
+import { EstablishmentContext } from './establishment-context';
 import {
   availableQuickElements,
   reservationIncidents,
+  OperationalMapData,
   type LocatedElement,
 } from './operational-map-data';
 
@@ -50,6 +58,57 @@ function reservation(elementId: string, starts: number, ends: number): Reservati
 }
 
 describe('operational reservation data', () => {
+  it('loads only scoped reservation pages when the signed-in role is STAFF', () => {
+    const items = [
+      {
+        ...reservation('past', -120, -30),
+        endsAt: new Date(Date.now() - 3_600_000).toISOString(),
+        spaceElementIds: ['past'],
+      },
+      {
+        ...reservation('next', 5, 90),
+        endsAt: new Date(Date.now() + 3_600_000).toISOString(),
+        spaceElementIds: ['next'],
+      },
+    ];
+    const scoped = vi.fn(({ offset }: { offset: number }) =>
+      of({ items: items.slice(offset, offset + 1), total: items.length, limit: 1, offset }),
+    );
+    const general = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: SpacesService, useValue: { listFloorsByEstablishment: () => of([]) } },
+        {
+          provide: ReservationsService,
+          useValue: { listReservations: general, listEstablishmentReservations: scoped },
+        },
+        { provide: AuthSession, useValue: { user: () => ({ role: 'STAFF' }) } },
+        { provide: FeatureFlagService, useValue: { isEnabled: () => signal(true) } },
+        {
+          provide: EstablishmentContext,
+          useValue: { status: () => 'ready', active: () => ({ id: 'restaurant' }) },
+        },
+        {
+          provide: RealtimeClient,
+          useValue: {
+            connect: vi.fn(),
+            connectionState: signal('connected'),
+            subscribeEstablishment: () => NEVER,
+            subscribeEstablishmentPayments: () => NEVER,
+            subscribeEstablishmentReservations: () => NEVER,
+          },
+        },
+      ],
+    });
+    const data = TestBed.inject(OperationalMapData);
+    TestBed.tick();
+
+    expect(general).not.toHaveBeenCalled();
+    expect(scoped.mock.calls.map(([request]) => request.offset)).toEqual([0, 1]);
+    expect(data.status()).toBe('ready');
+    expect(data.reservations().map(({ id }) => id)).toEqual(['next']);
+  });
+
   it('reclassifies a conflict when time passes and resolves it when the table is ready', () => {
     const bookings = [reservation('one', 42, 132)];
     const occupied = [table('one', 'OCCUPIED'), table('two', 'CLEANING')];
