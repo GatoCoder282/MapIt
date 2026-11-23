@@ -131,6 +131,7 @@ test.describe('Consola — selección obligatoria de establecimiento', () => {
   test('contrae el sidebar, conserva su estado al navegar y respeta el menú móvil', async ({
     page,
   }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
     await prepare(page, testInfo.project.use.baseURL);
     await rememberSelection(page, ESTABLISHMENT_A);
     await goToConsole(page, '/reports');

@@ -465,6 +465,12 @@ test('mocked populated operational views and keyboard flows', async ({ page }, t
           },
         ],
       });
+    if (
+      request.method() === 'GET' &&
+      (path === `/api/v1/establishments/${venue}/floors` ||
+        (path === '/api/v1/reservations' && url.searchParams.get('establishmentId') === venue))
+    )
+      return route.fulfill({ json: [] });
     if (request.method() === 'GET' && path === '/api/v1/audit-logs') {
       const matching = events.filter(
         (event) =>

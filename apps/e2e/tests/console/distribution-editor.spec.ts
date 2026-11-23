@@ -102,8 +102,14 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   const editorPath = `/spaces/editor/${sector}?floorId=${floor}`;
   const save = page.getByTestId('map-save');
   const monitor = page.getByTestId('map-go-monitor');
+  const openMonitor = async () => {
+    await expect(monitor).toHaveAttribute('href', new RegExp(`/map.*sectorId=${sector}`));
+    await monitor.click();
+  };
   const openSectorEditorFromMap = async () => {
-    await page.getByRole('link', { name: 'Editar distribución' }).click();
+    const edit = page.getByRole('link', { name: 'Editar distribución' });
+    await expect(edit).toHaveAttribute('href', new RegExp(`/spaces/editor/${sector}`));
+    await edit.click();
   };
   const dialog = page.getByRole('dialog', { name: '¿Quieres guardar los cambios?' });
   const selectTable = async () => {
@@ -176,7 +182,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
       throw error;
     });
   await expect(save).toHaveCount(0);
-  await monitor.click();
+  await openMonitor();
   await expect(page).toHaveURL(new RegExp(`/map.*sectorId=${sector}`));
   await expect(dialog).toHaveCount(0);
   await openSectorEditorFromMap();
@@ -206,7 +212,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   expect((await persistedTable()).x).toBe(120);
   expect((await persistedTable()).state).toBe('OCCUPIED');
   expect((await persistedTable()).capacity).toBe(6);
-  await monitor.click();
+  await openMonitor();
   await expect(page.getByTestId('monitor-count-OCCUPIED')).toHaveText('1');
   const originalMonitor = await monitorPixels();
   await openSectorEditorFromMap();
@@ -289,9 +295,6 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   expect(persistedStyle?.elements[table]?.showName).toBe(false);
   await clearLocalStyles();
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Salón principal', exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
   await selectTable();
   await page.getByTestId('map-style-tab').click();
   await expect(
@@ -304,7 +307,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
       path: join(screenshotDir, 'editor-estilo-guardado.png'),
       animations: 'disabled',
     });
-  await monitor.click();
+  await openMonitor();
   await expect(page.getByTestId('monitor-count-OCCUPIED')).toHaveText('1');
   expect((await monitorPixels()) !== originalMonitor).toBe(true);
   if (screenshotDir)
@@ -345,7 +348,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   await expect(x).toHaveValue('130');
   await x.fill('140');
   await x.blur();
-  await monitor.click();
+  await openMonitor();
   await expect(dialog).toBeVisible();
   if (screenshotDir) {
     await page.screenshot({
@@ -356,7 +359,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(x).toHaveValue('140');
-  await monitor.click();
+  await openMonitor();
   await dialog.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/map.*sectorId=${sector}`));
   expect((await persistedTable()).x).toBe(120);
@@ -374,7 +377,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   await expect(x).toHaveValue('120');
   await x.fill('160');
   await x.blur();
-  await monitor.click();
+  await openMonitor();
   let failSave = true;
   await page.route('**/sectors/' + sector + '/layout', (route) =>
     failSave && route.request().method() === 'PUT'
@@ -416,14 +419,18 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
       .getByRole('group', { name: 'Forma', exact: true })
       .getByRole('button', { name: 'Cuadrada', exact: true }),
   ).toHaveCount(0);
-  await page.getByRole('button', { name: 'Maceta baja', exact: true }).click();
+  const planter = page
+    .getByRole('group', { name: 'Tipo de planta' })
+    .getByRole('button', { name: 'Maceta baja', exact: true });
+  await planter.click();
+  await expect(planter).toHaveAttribute('aria-pressed', 'true');
   await save.click();
   await expect(save).toHaveCount(0);
+  expect(Object.values((await serverAppearance())?.elements ?? {})).toContainEqual(
+    expect.objectContaining({ variant: 'planter' }),
+  );
   await clearLocalStyles();
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Salón principal', exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
   await selectTable();
   await page.getByTestId('map-style-tab').click();
   await page.locator('mapit-layout-style summary').click();
@@ -436,10 +443,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   await page.getByTestId('map-elements-tab').click();
   await page.getByTestId('map-element-row').filter({ hasText: 'Planta junto a ventana' }).click();
   await page.getByTestId('map-style-tab').click();
-  await expect(page.getByRole('button', { name: 'Maceta baja', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(planter).toHaveAttribute('aria-pressed', 'true');
   await page.getByTestId('map-properties-tab').click();
   await expect(page.getByTestId('element-metadata-capacity')).toHaveCount(0);
   await expect(page.getByTestId('element-metadata-label')).toHaveValue('Planta junto a ventana');
@@ -462,9 +466,9 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   }
   await selectTable();
   await x.fill('180');
-  await expect(save).toBeVisible();
   await x.blur();
   await expect(x).toHaveValue('180');
+  await expect(save).toBeVisible();
   const beforeConcurrent = await persistedTable();
   const concurrentUpdate = await request.put(API + elementPath + '/' + table, {
     headers,
@@ -513,7 +517,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   await selectTable();
   await expect(x).toHaveValue('170');
   await expect(save).toHaveCount(0);
-  await monitor.click();
+  await openMonitor();
   await expect(page).toHaveURL(new RegExp(`/map.*sectorId=${sector}`));
   const currentReservations = await request.get(API + '/reservations', {
     headers,
@@ -537,7 +541,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   await expect(page.getByText('Sede sin distribución', { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId('map-save')).toHaveCount(0);
   await expect(
-    page.getByRole('link', { name: 'Estructura del establecimiento', exact: true }),
+    page.getByRole('link', { name: 'Estructura del espacio', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Vista previa', exact: true }).click();
   const prerequisite = page.getByRole('dialog', { name: 'Crea un piso para empezar' });
@@ -549,7 +553,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
     });
   }
   await expect(
-    prerequisite.getByRole('link', { name: 'Estructura del establecimiento', exact: true }),
+    prerequisite.getByRole('link', { name: 'Estructura del espacio', exact: true }),
   ).toBeVisible();
   await prerequisite.getByRole('button', { name: 'Cerrar', exact: true }).click();
   expect(errors).toEqual([]);

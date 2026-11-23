@@ -137,9 +137,12 @@ test('elige fecha y horario, selecciona en el mapa y continúa sin sesión de st
   await expect(
     page.getByRole('heading', { name: '5 espacios disponibles', exact: true }),
   ).toBeVisible();
-  await page.getByLabel('Personas', { exact: true }).fill('21');
+  await expect.poll(() => new URL(page.url()).searchParams.get('people')).toBe('4');
+  const people = page.getByLabel('Personas', { exact: true });
+  await expect(people).toHaveValue('4');
+  await people.fill('21');
   await expect(page.getByTestId('availability-choose')).toBeDisabled();
-  await page.getByLabel('Personas', { exact: true }).fill('4');
+  await people.fill('4');
   await expect(page.getByTestId('space-table-6')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Vista del espacio', exact: true })).toHaveCount(
     0,

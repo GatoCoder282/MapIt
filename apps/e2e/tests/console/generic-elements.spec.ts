@@ -69,7 +69,11 @@ test('configura modelos genéricos y copia su apariencia dentro del mismo sector
   await page.screenshot({ path: testInfo.outputPath('sidebar-elementos-mobile.png') });
   await page.setViewportSize({ width: 1600, height: 1000 });
   await library.getByRole('button', { name: 'Ovalada', exact: true }).click();
-  await library.getByRole('spinbutton', { name: /Capacidad/ }).fill('6');
+  const capacity = library.getByRole('spinbutton', { name: /Capacidad/ });
+  await capacity.fill('');
+  await expect(capacity).toHaveValue('');
+  await capacity.fill('6');
+  await expect(capacity).toHaveValue('6');
   await library
     .getByRole('textbox', { name: 'Nombre (opcional)', exact: true })
     .fill('Mesa ventana');

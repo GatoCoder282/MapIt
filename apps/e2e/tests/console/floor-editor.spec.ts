@@ -187,8 +187,12 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     const menu = page.getByRole('button', { name: 'Abrir navegación' });
     if (await menu.isVisible()) await menu.click();
     await page.getByRole('link', { name: 'Mapa', exact: true }).first().click();
-    await expect(page).toHaveURL(/\/map$/);
-    await page.getByRole('link', { name: 'Editar distribución' }).click();
+    await expect(page).toHaveURL(/\/map(?:\?|$)/);
+    await page.getByLabel('Piso', { exact: true }).selectOption(floorId);
+    const edit = page.getByRole('link', { name: 'Editar distribución' });
+    await expect(edit).toHaveAttribute('href', new RegExp('/spaces/editor/' + sectorId));
+    const monitorUrl = page.url();
+    await edit.click();
     await expect(page).toHaveURL(new RegExp('/spaces/editor/' + sectorId));
     await page.getByTestId('map-elements-tab').click();
     await expect(page.getByTestId('map-element-row').first()).toBeVisible({
@@ -229,6 +233,7 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     await x.fill('90');
     await x.blur();
     await expect(page.getByTestId('map-save')).toBeEnabled();
+    if (await menu.isVisible()) await menu.click();
     await page.getByRole('link', { name: 'Inicio', exact: true }).first().click();
     await page
       .getByRole('dialog', { name: '¿Quieres guardar los cambios?' })
@@ -251,7 +256,7 @@ test.describe('Consola — editor de plantas (HU-4.01)', () => {
     await page.getByRole('button', { name: 'Deshacer' }).click();
     await expect(x).toHaveValue('70');
     await page.goBack();
-    await expect(page).toHaveURL(/\/map$/);
+    await expect(page).toHaveURL(monitorUrl);
     await page.goBack();
     const floorHeading = page.getByRole('heading', { name: 'Editar distribución' });
     await expect(floorHeading).toBeVisible({ timeout: 15_000 });

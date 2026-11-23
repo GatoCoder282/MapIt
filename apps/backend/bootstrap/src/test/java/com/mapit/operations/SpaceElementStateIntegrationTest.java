@@ -97,6 +97,7 @@ class SpaceElementStateIntegrationTest {
     jdbc.execute("truncate table audit_log");
     jdbc.update(
         "delete from realtime_event_outbox where tenant_id in (?, ?)", TENANT_A, TENANT_B);
+    jdbc.update("delete from establishment_staff_access where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from space_element where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from app_user where tenant_id in (?, ?)", TENANT_A, TENANT_B);
     jdbc.update("delete from sector where tenant_id in (?, ?)", TENANT_A, TENANT_B);
@@ -120,6 +121,19 @@ class SpaceElementStateIntegrationTest {
 
   @Test
   void admin_y_staff_cambian_estado_y_la_auditoria_conserva_actor_y_secuencia() {
+    patch(SECTOR_A, ELEMENT_A, "RESERVED", token(STAFF_A, UserRole.STAFF))
+        .expectStatus()
+        .isNotFound();
+    jdbc.update(
+        """
+        insert into establishment_staff_access
+          (tenant_id, establishment_id, user_id, can_check_in, updated_at, updated_by)
+        values (?, ?, ?, true, now(), ?)
+        """,
+        TENANT_A,
+        ESTABLISHMENT_A,
+        STAFF_A,
+        ADMIN_A);
     StateView reserved = patch(SECTOR_A, ELEMENT_A, "RESERVED", token(ADMIN_A, UserRole.ADMIN))
         .expectStatus()
         .isOk()
