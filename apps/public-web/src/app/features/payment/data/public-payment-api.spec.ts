@@ -17,8 +17,10 @@ describe('PublicPaymentApi', () => {
   let api: PublicPaymentApi;
   let http: HttpTestingController;
   const websocket = signal(true);
+  const environment = signal('test');
   beforeEach(() => {
     websocket.set(true);
+    environment.set('test');
     sessionStorage.clear();
     TestBed.configureTestingModule({
       providers: [
@@ -30,7 +32,7 @@ describe('PublicPaymentApi', () => {
           provide: PublicRuntimeConfig,
           useValue: {
             config: () => ({
-              environment: 'test',
+              environment: environment(),
               paymentPreviewEnabled: false,
               wsUrl: 'ws://localhost/ws',
             }),
@@ -44,6 +46,13 @@ describe('PublicPaymentApi', () => {
   afterEach(() => {
     http.verify();
     vi.restoreAllMocks();
+  });
+  it('permite la simulación mock en staging (QA) y nunca en producción', () => {
+    const cases = { production: false, unknown: false, '': false, staging: true, test: true };
+    for (const [value, allowed] of Object.entries(cases)) {
+      environment.set(value);
+      expect(api.simulationAllowed(), value).toBe(allowed);
+    }
   });
   it('no usa UUID como credencial ni consulta sin capability', () => {
     expect(() => api.checkout(scope)).toThrow();

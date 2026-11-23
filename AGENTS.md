@@ -45,14 +45,18 @@ Para migraciones, flags o tickets Jira: skills `new-migration`, `new-feature-fla
 - Esquema solo por Flyway: `pnpm db:new "…"`, `pnpm db:migrate`. Nunca edites una migración mergeada ni cambies `ddl-auto: validate` a `update`. Actualiza `docs/db/mapit.dbml` en el mismo commit y añade prueba de aislamiento si creas tablas.
 - No imports entre features Angular; usa `core/` para estado compartido de una app y `libs/` entre apps (API pública en `src/index.ts`, sin imports profundos). Textos visibles en `STRINGS` y sus catálogos por idioma; convenciones MVVM/Angular en los `AGENTS.md` de cada app.
 - ESLint se configura en la raíz y `packages/config-eslint/`, no por app. Logs del navegador por `@mapit/logging`; solo su adaptador usa `console`. Estilos compartidos: `@use 'ui-kit/styles/tokens'` (include path `libs`).
-- Las restricciones de imports se mantienen juntas en `packages/config-eslint/boundaries.js`: redefinir `no-restricted-imports` en otro bloque reemplaza las anteriores, no fusiona.
-- Flags: `pnpm new:flag clave tipo` mantiene enum Java, catálogo TS y bootstrap Unleash; el argumento CLI es `kill_switch` (el script lo convierte a `kill-switch` para Unleash). Revisa su activación en Unleash. El navegador usa `unleash-proxy` (`:3063`), nunca el servidor/admin directamente.
+- Las restricciones de imports se mantienen juntas en `packages/config-eslint/boundaries.js`: redefinir `no-restricted-imports` en otro bloque reemplaza las anteriores, no las fusiona.
+- Flags: `pnpm new:flag clave tipo` mantiene enum Java, catálogo TS y bootstrap Unleash; el argumento CLI es `kill_switch` (el script lo convierte a `kill-switch` para Unleash). Revisa su activación en Unleash. El navegador usa `unleash-proxy` (`:3063`) en local y la Frontend API con token _frontend_ al desplegar (ADR-0013), nunca la API admin ni la de cliente.
 
-## Previews de QA en Vercel
+## Despliegue y QA
 
-- Las ramas de tickets siguen `feat/<usuario>/<ticket>-<slug>`; también existen ramas históricas `feat/<ticket>-<slug>`. Usa el prefijo `feat/` para que ambas queden cubiertas por `feat/**`.
+Entornos, variables y slot de QA: [`docs/deployment/README.md`](docs/deployment/README.md) (ADR-0012).
+
+- Las ramas de tickets siguen `feat/<usuario>/<ticket>-<slug>` en ASCII; también existen ramas históricas `feat/<ticket>-<slug>`. Usa el prefijo `feat/` para que ambas queden cubiertas por `feat/**`.
 - Mantén en `vercel.json` `"**": false`, `"feat/**": true` y `"main": true`. Si una rama de ticket usa otro prefijo, añade una regla `git.deploymentEnabled` que permita ese patrón antes de subirla.
-- Después del push, comprueba que Vercel haya creado el preview, espera el estado `success` y comparte la URL para QA. Si falla, revisa el deployment y reporta el error antes de dar el ambiente por listo.
+- Todo preview `feat/**` usa el backend y la BD de QA. Para probar tu rama con su backend, toma el slot QA: etiqueta `qa` en el PR o `gh workflow run qa-deploy.yml -f branch=<rama>`, rebaseada sobre `main`. Comparte con QA los alias que comenta el workflow, no la URL del preview.
+- **Nunca actives las PR Previews de Render en MapIt-production**: corren con la BD de producción y aplican migraciones de ramas sin mergear.
+- Si el preview o el workflow fallan, revisa el deployment y reporta el error antes de dar el ambiente por listo.
 
 ## Verificación y entrega
 

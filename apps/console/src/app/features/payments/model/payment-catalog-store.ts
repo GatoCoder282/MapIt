@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import {
   PaymentsService,
+  mockPaymentsAllowed,
   type MerchantPaymentMethod,
   type PaymentMethodWrite,
 } from '@mapit/api-client';
@@ -119,9 +120,7 @@ export class PaymentCatalogStore {
     try {
       const methods = await firstValueFrom(this.api.listPaymentMethods(scope));
       if (!this.current(scope) || version !== this.listVersion) return;
-      const mockAllowed = ['development', 'dev', 'test'].includes(
-        this.runtime.config().environment,
-      );
+      const mockAllowed = mockPaymentsAllowed(this.runtime.config().environment);
       this.listState.set({
         methods: methods.filter(
           (method) =>

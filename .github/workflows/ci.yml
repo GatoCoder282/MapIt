@@ -1,7 +1,8 @@
 name: CI
 
 # Los PR se validan antes del merge; main se valida para habilitar el deploy.
-# Vercel limita las ramas en vercel.json y Render espera los checks de main.
+# Vercel limita las ramas en vercel.json y Render (producción) espera los checks de main.
+# El slot QA compartido se despliega aparte con qa-deploy.yml (docs/deployment/README.md).
 on:
   push:
     branches: [main]
@@ -39,6 +40,8 @@ jobs:
       - run: pnpm fe:lint
       - run: pnpm fe:typecheck
       - run: pnpm fe:test
+      - name: Tests de scripts (config de despliegue y migraciones)
+        run: node --test tools/scripts/*.test.mjs
       - run: pnpm fe:build
 
   backend:
