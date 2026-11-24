@@ -1,0 +1,105 @@
+<main class="application-page">
+  <section class="application-card" aria-labelledby="application-title">
+    <a routerLink="/negocios" class="back">← {{ copy.back }}</a>
+    <h1 id="application-title">{{ copy.title }}</h1>
+    @if (!store.enabled()) {
+      <p role="status">{{ copy.unavailable }}</p>
+    } @else if (store.success()) {
+      <p role="status" class="success">{{ copy.success }}</p>
+    } @else {
+      <p>{{ copy.intro }}</p>
+      <form (submit)="submit($event)" novalidate>
+        <label
+          >{{ copy.businessName }}
+          <input
+            #businessName
+            required
+            minlength="2"
+            maxlength="120"
+            autocomplete="organization"
+            [value]="store.businessName()"
+            (input)="store.businessName.set(businessName.value)"
+            [disabled]="store.pending()"
+          />
+        </label>
+        <label
+          >{{ copy.vertical }}
+          <select
+            #vertical
+            required
+            [value]="store.vertical()"
+            (change)="store.vertical.set($any(vertical.value))"
+            [disabled]="store.pending()"
+          >
+            <option value="">{{ copy.verticalPlaceholder }}</option>
+            <option value="RESTAURANT">{{ copy.restaurant }}</option>
+            <option value="NIGHTCLUB">{{ copy.nightclub }}</option>
+            <option value="EVENT_HALL">{{ copy.eventHall }}</option>
+            <option value="HOTEL">{{ copy.hotel }}</option>
+          </select>
+        </label>
+        <label
+          >{{ copy.location }}
+          <input
+            #location
+            required
+            minlength="2"
+            maxlength="200"
+            autocomplete="address-level2"
+            [value]="store.location()"
+            (input)="store.location.set(location.value)"
+            [disabled]="store.pending()"
+          />
+        </label>
+        <label
+          >{{ copy.contactName }}
+          <input
+            #contactName
+            required
+            minlength="2"
+            maxlength="120"
+            autocomplete="name"
+            [value]="store.contactName()"
+            (input)="store.contactName.set(contactName.value)"
+            [disabled]="store.pending()"
+          />
+        </label>
+        <label
+          >{{ copy.contactEmail }}
+          <input
+            #contactEmail
+            required
+            type="email"
+            maxlength="254"
+            autocomplete="email"
+            [value]="store.contactEmail()"
+            (input)="store.contactEmail.set(contactEmail.value)"
+            [disabled]="store.pending()"
+          />
+        </label>
+        <label
+          >{{ copy.contactPhone }}
+          <input
+            #contactPhone
+            type="tel"
+            minlength="6"
+            maxlength="32"
+            autocomplete="tel"
+            [value]="store.contactPhone()"
+            (input)="store.contactPhone.set(contactPhone.value)"
+            [disabled]="store.pending()"
+          />
+        </label>
+        @if (store.submitted() && store.invalid()) {
+          <p role="alert">{{ copy.invalid }}</p>
+        }
+        @if (store.error()) {
+          <p role="alert">{{ store.error() }}</p>
+        }
+        <button type="submit" [disabled]="store.pending()">
+          {{ store.pending() ? copy.submitting : copy.submit }}
+        </button>
+      </form>
+    }
+  </section>
+</main>

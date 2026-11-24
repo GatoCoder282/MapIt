@@ -1,0 +1,76 @@
+.requests {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem;
+  color: #20243b;
+}
+form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+label {
+  display: grid;
+  gap: 0.35rem;
+}
+input,
+textarea,
+select {
+  min-height: 2.75rem;
+  padding: 0.6rem;
+  border: 1px solid #a9b1cd;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+textarea {
+  min-width: min(100%, 28rem);
+  min-height: 6rem;
+}
+button,
+a {
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+button {
+  border: 0;
+  background: #2635dd;
+  color: white;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+a {
+  color: #2635dd;
+}
+:is(button, a, input, select):focus-visible {
+  outline: 3px solid #2635dd;
+  outline-offset: 2px;
+}
+.request-list {
+  padding: 0;
+  list-style: none;
+}
+.request-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #d8dced;
+}
+.request-list li div {
+  display: grid;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}

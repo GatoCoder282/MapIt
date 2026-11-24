@@ -5,5 +5,6 @@ public enum AuditResourceType {
   RESERVATION,
   SPACE_ELEMENT,
   USER_INVITATION,
-  USER
+  USER,
+  BUSINESS_APPLICATION
 }
