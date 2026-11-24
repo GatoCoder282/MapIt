@@ -256,9 +256,25 @@ jobs:
           vercel() { npx --yes "vercel@$VERCEL_CLI_VERSION" "$@" --token "$VERCEL_TOKEN" --scope "$VERCEL_SCOPE"; }
           vercel alias set "$CONSOLE_URL" "$QA_CONSOLE_ALIAS"
           vercel alias set "$WEB_URL" "$QA_WEB_ALIAS"
+          # Un alias recién asignado puede responder 404 unos segundos mientras Vercel lo propaga.
           for alias in "$QA_CONSOLE_ALIAS" "$QA_WEB_ALIAS"; do
-            api=$(curl -fsS "https://$alias/assets/config.json" | jq -r .apiBaseUrl) \
-              || { echo "::error::https://$alias no es público: desactiva Vercel Authentication"; exit 1; }
+            code=000
+            for _ in $(seq 1 12); do
+              code=$(curl -sS -o config.json -w '%{http_code}' "https://$alias/assets/config.json" || echo 000)
+              if [ "$code" = 401 ] || [ "$code" = 403 ]; then
+                echo "::error::https://$alias pide login (HTTP $code): desactiva Vercel Authentication"
+                exit 1
+              fi
+              if [ "$code" = 200 ]; then
+                break
+              fi
+              sleep 5
+            done
+            if [ "$code" != 200 ]; then
+              echo "::error::https://$alias/assets/config.json no respondió 200 en 1 min (último HTTP $code)"
+              exit 1
+            fi
+            api=$(jq -r .apiBaseUrl config.json)
             [ "$api" = "$QA_BACKEND_URL/api/v1" ] \
               || { echo "::error::$alias apunta a $api; revisa API_BASE_URL del entorno Preview en Vercel"; exit 1; }
           done
