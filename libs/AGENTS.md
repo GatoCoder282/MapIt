@@ -10,7 +10,7 @@ apps, vive aquí. Si solo lo necesita una, va en su carpeta `features/`.
 | `ui-kit`        | design system: tokens y componentes base      | **puramente presentacional**: no conoce el api-client ni el dominio |
 | `api-client`    | cliente generado del contrato + interceptores | `src/lib/generated/` **no se edita**                                |
 | `auth`          | JWT, guards, sesión (CU-23, CU-24)            | solo la usa `console`                                               |
-| `feature-flags` | toggles vía unleash-proxy                     | claves tipadas: una errata no compila                               |
+| `feature-flags` | toggles vía unleash-proxy o Frontend API      | claves tipadas: una errata no compila                               |
 | `realtime`      | WebSocket/STOMP (CU-09)                       | debe respetar el kill switch `realtime.websocket`                   |
 | `map-engine`    | **puerto** del motor de mapa + adaptadores    | ver abajo                                                           |
 

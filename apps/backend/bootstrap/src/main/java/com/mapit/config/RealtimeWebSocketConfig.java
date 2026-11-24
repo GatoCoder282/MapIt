@@ -26,7 +26,8 @@ public class RealtimeWebSocketConfig implements WebSocketMessageBrokerConfigurer
       RealtimeStompInterceptor interceptor,
       @Value("${mapit.cors.allowed-origins}") List<String> allowedOrigins) {
     this.interceptor = interceptor;
-    this.allowedOrigins = allowedOrigins;
+    // Misma normalización que el CORS REST (SecurityConfig): patrones recortados y sin "*".
+    this.allowedOrigins = CorsOriginPatterns.from(allowedOrigins);
   }
 
   @Override

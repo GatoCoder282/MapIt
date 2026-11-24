@@ -22,10 +22,12 @@ public final class UnleashFeatureFlagAdapter implements FeatureFlagPort {
 
   private final Unleash unleash;
   private final UnleashLoggingSubscriber transport;
+  private final MyAccountFlagAvailability myAccountAvailability;
 
-  public UnleashFeatureFlagAdapter(Unleash unleash, UnleashLoggingSubscriber transport) {
+  public UnleashFeatureFlagAdapter(Unleash unleash, UnleashLoggingSubscriber transport, MyAccountFlagAvailability myAccountAvailability) {
     this.unleash = unleash;
     this.transport = transport;
+    this.myAccountAvailability = myAccountAvailability;
   }
 
   @Override
@@ -35,7 +37,7 @@ public final class UnleashFeatureFlagAdapter implements FeatureFlagPort {
 
   @Override
   public boolean isEnabled(FeatureFlag flag, boolean valorPorDefecto) {
-    if (flag == FeatureFlag.MAPIT_S6_NOTIFICATION_CENTER) return false;
+    if (flag == FeatureFlag.MAPIT_S6_NOTIFICATION_CENTER || flag == FeatureFlag.MAPIT_S6_MY_ACCOUNT) return false;
     return unleash.isEnabled(flag.clave(), valorPorDefecto);
   }
 
@@ -44,7 +46,15 @@ public final class UnleashFeatureFlagAdapter implements FeatureFlagPort {
     if (flag == FeatureFlag.MAPIT_S6_NOTIFICATION_CENTER) return false;
     UnleashContext context =
         UnleashContext.builder().addProperty(TENANT_PROPERTY, tenantId.value()).build();
-    return unleash.isEnabled(flag.clave(), context, flag.valorPorDefecto());
+    if (flag != FeatureFlag.MAPIT_S6_MY_ACCOUNT) {
+      return unleash.isEnabled(flag.clave(), context, flag.valorPorDefecto());
+    }
+    if (!myAccountAvailability.isFresh()) return false;
+    try {
+      return unleash.isEnabled(flag.clave(), context, false) && myAccountAvailability.isFresh();
+    } catch (RuntimeException unavailable) {
+      return false;
+    }
   }
 
   @Override

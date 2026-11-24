@@ -38,6 +38,8 @@ export const FLAGS_POR_DEFECTO = {
 
   /** Centro de notificaciones (MAP-299): OFF sin contexto/evaluación confiable. */
   'mapit.s6.notification-center': false,
+  /** Mi cuenta (HU-1.06 / MAP-285): OFF hasta completar API y autorización. */
+  'mapit.s6.my-account': false,
 } as const satisfies Record<string, boolean>;
 
 export type FeatureFlagKey = keyof typeof FLAGS_POR_DEFECTO;

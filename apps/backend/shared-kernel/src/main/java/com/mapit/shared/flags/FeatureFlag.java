@@ -37,7 +37,10 @@ public enum FeatureFlag {
   VERTICAL_EVENT_HALL("vertical.event-hall", Tipo.PERMISSION, true),
 
   /** Centro de notificaciones (MAP-299). OFF seguro; nunca condiciona hechos de negocio. */
-  MAPIT_S6_NOTIFICATION_CENTER("mapit.s6.notification-center", Tipo.KILL_SWITCH, false);
+  MAPIT_S6_NOTIFICATION_CENTER("mapit.s6.notification-center", Tipo.KILL_SWITCH, false),
+
+  /** Mi cuenta (HU-1.06 / MAP-285): release OFF; nunca sustituye autorización. */
+  MAPIT_S6_MY_ACCOUNT("mapit.s6.my-account", Tipo.RELEASE, false);
 
   /**
    * Tipos canónicos de toggle. El tipo determina cuánto debe vivir la flag:

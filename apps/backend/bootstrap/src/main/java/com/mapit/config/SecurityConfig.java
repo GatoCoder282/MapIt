@@ -175,11 +175,21 @@ public class SecurityConfig {
                 .build();
     }
 
+    /**
+     * CORS de la API REST y del handshake {@code /ws}.
+     *
+     * <p>Se usan <em>patrones</em> de origen (no orígenes literales) para admitir los previews
+     * de Vercel, cuyo host cambia en cada despliegue o rama
+     * ({@code https://mi-app-*-mi-equipo.vercel.app}); el patrón debe incluir el sufijo del
+     * equipo, porque cualquiera puede publicar bajo {@code *.vercel.app}. Un origen sin
+     * {@code *} sigue coincidiendo solo consigo mismo: en producción lista orígenes exactos.
+     * El comodín total {@code *} se rechaza al arrancar (ver {@link CorsOriginPatterns}).
+     */
     @Bean
     CorsConfigurationSource corsConfigurationSource(
             @Value("${mapit.cors.allowed-origins}") List<String> origenesPermitidos) {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(origenesPermitidos);
+        config.setAllowedOriginPatterns(CorsOriginPatterns.from(origenesPermitidos));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("X-Request-ID"));

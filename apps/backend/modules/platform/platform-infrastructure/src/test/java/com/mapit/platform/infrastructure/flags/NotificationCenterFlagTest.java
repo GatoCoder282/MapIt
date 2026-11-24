@@ -34,7 +34,7 @@ class NotificationCenterFlagTest {
     private final Unleash unleash = mock(Unleash.class);
     private final Clock clock = mock(Clock.class);
     private final UnleashLoggingSubscriber transport = new UnleashLoggingSubscriber(clock);
-    private final UnleashFeatureFlagAdapter adapter = new UnleashFeatureFlagAdapter(unleash, transport);
+    private final UnleashFeatureFlagAdapter adapter = new UnleashFeatureFlagAdapter(unleash, transport, new MyAccountFlagAvailability());
 
     private void healthy() {
         when(clock.instant()).thenReturn(NOW);

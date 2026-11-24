@@ -1,9 +1,12 @@
 import { InjectionToken, type EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 
 export interface FeatureFlagConfig {
-  /** URL del unleash-proxy. NUNCA la del servidor de Unleash. */
+  /**
+   * URL del unleash-proxy (local) o de la Frontend API `/api/frontend` (desplegado).
+   * NUNCA la API admin ni la de cliente del servidor de Unleash.
+   */
   readonly proxyUrl: string;
-  /** Clave pública del proxy. Es visible en el navegador por diseño. */
+  /** Clave pública del proxy o token _frontend_ de Unleash. Visible en el navegador por diseño. */
   readonly clientKey: string;
   /** Cada cuánto se vuelven a pedir las flags, en milisegundos. */
   readonly intervaloRefrescoMs: number;

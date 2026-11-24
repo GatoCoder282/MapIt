@@ -118,6 +118,18 @@ class JjwtTokenServiceTest {
         return new JjwtTokenService(SECRET, issuer, minutes, clockAt(instant));
     }
 
+    @Test
+    void lockedDatabaseTimeUsesWholeSecondsAndNeverIssuesFutureOrExpiredTokens() {
+        var service = serviceAt(NOW.plusMillis(900), "mapit", 15);
+        var token = service.issue(USER, NOW.plusMillis(850));
+        assertThat(service.verify(token.value())).get().extracting("issuedAt").isEqualTo(NOW);
+        assertThat(token.expiresAt()).isEqualTo(NOW.plusSeconds(900));
+        assertThatThrownBy(() -> service.issue(USER, NOW.plusSeconds(1)))
+                .isInstanceOf(com.mapit.identity.domain.TokenIssuanceNotReady.class);
+        assertThatThrownBy(() -> service.issue(USER, NOW.minusSeconds(901)))
+                .isInstanceOf(com.mapit.identity.domain.TokenIssuanceNotReady.class);
+    }
+
     private static Clock clockAt(Instant instant) {
         return Clock.fixed(instant, ZoneOffset.UTC);
     }

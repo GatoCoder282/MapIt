@@ -11,6 +11,7 @@
 | `db/mapit.dbml`                   | **modelo de datos** (fuente de verdad conceptual) | DBML                                   |
 | `diagrams/`                       | UML: casos de uso, secuencia, estados             | Mermaid o PlantUML — **aún no existe** |
 | `api/`                            | lo que OpenAPI no cubre (WebSocket/STOMP)         | Markdown / AsyncAPI                    |
+| `deployment/`                     | runbook de entornos, variables y slot QA          | Markdown                               |
 | `prompts/`                        | prompts guardados del equipo                      | Markdown                               |
 
 ## Reglas duras

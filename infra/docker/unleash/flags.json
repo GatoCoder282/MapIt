@@ -58,6 +58,13 @@
       "description": "Centro de notificaciones operativas (MAP-299). Kill switch OFF por defecto; controla acceso al centro, nunca autorización ni creación/persistencia de hechos de negocio.",
       "type": "kill-switch",
       "enabled": false
+    },
+    {
+      "name": "mapit.s6.my-account",
+      "description": "Mi cuenta (HU-1.06 / MAP-285). OFF hasta completar y probar API, autorización y dependencia MAP-238. No concede permisos. Retirar al estabilizar MAP-285; seguimiento MAP-291.",
+      "type": "release",
+      "enabled": false,
+      "expiresAt": "2027-02-21"
     }
   ]
 }

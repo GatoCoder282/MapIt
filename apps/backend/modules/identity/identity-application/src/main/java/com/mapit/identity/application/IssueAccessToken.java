@@ -1,5 +1,7 @@
 package com.mapit.identity.application;
 
+import java.time.Instant;
+
 import org.springframework.stereotype.Service;
 
 import com.mapit.identity.domain.AccessTokenIssuer;
@@ -17,5 +19,9 @@ public class IssueAccessToken {
 
     public IssuedAccessToken execute(AuthenticatedUser user) {
         return tokens.issue(user);
+    }
+
+    public IssuedAccessToken execute(AuthenticatedUser user, Instant observedAt) {
+        return tokens.issue(user, observedAt);
     }
 }

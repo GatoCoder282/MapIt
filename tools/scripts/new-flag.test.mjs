@@ -1,21 +1,34 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, isAbsolute } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { basename, dirname, join, resolve } from 'node:path';
+import { test } from 'node:test';
 import { ROOT } from './_lib.mjs';
 
-const files = {
-  java: 'apps/backend/shared-kernel/src/main/java/com/mapit/shared/flags/FeatureFlag.java',
-  ts: 'libs/feature-flags/src/lib/feature-flag.catalog.ts',
-  json: 'infra/docker/unleash/flags.json',
-};
+const javaPath = 'apps/backend/shared-kernel/src/main/java/com/mapit/shared/flags/FeatureFlag.java';
+const tsPath = 'libs/feature-flags/src/lib/feature-flag.catalog.ts';
+const jsonPath = 'infra/docker/unleash/flags.json';
+const catalogs = [javaPath, tsPath, jsonPath];
+
+test('Mi cuenta está registrada una sola vez y OFF en los tres catálogos (MAP-291)', () => {
+  const bootstrap = JSON.parse(readFileSync(join(ROOT, jsonPath), 'utf8'));
+  const entries = bootstrap.features.filter((flag) => flag.name === 'mapit.s6.my-account');
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].enabled, false);
+  assert.equal(entries[0].type, 'release');
+  assert.match(entries[0].expiresAt, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(
+    readFileSync(join(ROOT, javaPath), 'utf8'),
+    /MAPIT_S6_MY_ACCOUNT\("mapit\.s6\.my-account", Tipo\.RELEASE, false\)[;,]/,
+  );
+  assert.match(readFileSync(join(ROOT, tsPath), 'utf8'), /'mapit\.s6\.my-account': false/);
+});
 
 test('MAP-299 registra una única clave OFF idéntica en Java, TypeScript y bootstrap', () => {
-  const java = readFileSync(join(ROOT, files.java), 'utf8');
-  const ts = readFileSync(join(ROOT, files.ts), 'utf8');
-  const bootstrap = JSON.parse(readFileSync(join(ROOT, files.json), 'utf8'));
+  const java = readFileSync(join(ROOT, javaPath), 'utf8');
+  const ts = readFileSync(join(ROOT, tsPath), 'utf8');
+  const bootstrap = JSON.parse(readFileSync(join(ROOT, jsonPath), 'utf8'));
   assert.match(
     java,
     /MAPIT_S6_NOTIFICATION_CENTER\("mapit\.s6\.notification-center", Tipo.KILL_SWITCH, false\)/,
@@ -28,83 +41,109 @@ test('MAP-299 registra una única clave OFF idéntica en Java, TypeScript y boot
 });
 
 function fixture(t, newline = '\n') {
-  const root = mkdtempSync(join(tmpdir(), 'mapit-flag-test-'));
+  const root = mkdtempSync(join(tmpdir(), 'mapit-new-flag-'));
   t.after(() => {
-    const inside = relative(tmpdir(), root);
-    assert.ok(!inside.startsWith('..') && !isAbsolute(inside));
+    // Borrar únicamente el directorio temporal creado por esta prueba.
+    assert.equal(dirname(root), resolve(tmpdir()));
+    assert.ok(basename(root).startsWith('mapit-new-flag-'));
     rmSync(root, { recursive: true, force: true });
   });
-  for (const script of ['new-flag.mjs', '_lib.mjs']) {
-    const target = join(root, 'tools/scripts', script);
-    mkdirSync(dirname(target), { recursive: true });
-    copyFileSync(join(ROOT, 'tools/scripts', script), target);
+  for (const file of ['tools/scripts/new-flag.mjs', 'tools/scripts/_lib.mjs', ...catalogs]) {
+    mkdirSync(dirname(join(root, file)), { recursive: true });
+    if (catalogs.includes(file)) {
+      writeFileSync(
+        join(root, file),
+        readFileSync(join(ROOT, file), 'utf8').replace(/\r?\n/g, newline),
+      );
+    } else {
+      copyFileSync(join(ROOT, file), join(root, file));
+    }
   }
-  for (const file of Object.values(files)) {
-    const target = join(root, file);
-    mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, readFileSync(join(ROOT, file), 'utf8').replace(/\r?\n/g, newline));
-  }
-  const read = (type) => readFileSync(join(root, files[type]), 'utf8');
-  const run = (...args) =>
-    spawnSync(process.execPath, [join(root, 'tools/scripts/new-flag.mjs'), ...args], {
-      encoding: 'utf8',
-    });
-  return { read, run, root };
+  return {
+    root,
+    read: (file) => readFileSync(join(root, file), 'utf8'),
+    run: (...args) =>
+      spawnSync(process.execPath, [join(root, 'tools/scripts/new-flag.mjs'), ...args], {
+        encoding: 'utf8',
+        cwd: root,
+      }),
+  };
 }
 
 for (const newline of ['\n', '\r\n']) {
-  test(`inserta varios segmentos sin dañar enum, defaults ni bootstrap (${JSON.stringify(newline)})`, (t) => {
-    const f = fixture(t, newline);
-    const previous = JSON.parse(f.read('json')).features;
-    const result = f.run('fixture.s6.notification-center', 'kill_switch');
-    assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.match(
-      f.read('java'),
-      /FIXTURE_S6_NOTIFICATION_CENTER\("fixture\.s6\.notification-center", Tipo.KILL_SWITCH, false\);/,
+  test(`genera tres segmentos OFF, preserva entradas y es idempotente con ${JSON.stringify(newline)}`, (t) => {
+    const files = fixture(t, newline);
+    const originalJava = files.read(javaPath);
+    const originalTs = files.read(tsPath);
+    const originalBootstrap = JSON.parse(files.read(jsonPath));
+    const result = files.run('mapit.test.my-account', 'release');
+    assert.equal(result.status, 0, result.stderr);
+    const java = files.read(javaPath);
+    assert.ok(java.startsWith('package com.mapit.shared.flags;'));
+    assert.match(java, /MAPIT_TEST_MY_ACCOUNT\("mapit\.test\.my-account", Tipo\.RELEASE, false\);/);
+    // Quitar exclusivamente la entrada insertada reproduce el enum anterior.
+    const inserted =
+      `${newline}${newline}  /** TODO: describir para qué es esta flag y a qué CU pertenece. */${newline}` +
+      '  MAPIT_TEST_MY_ACCOUNT("mapit.test.my-account", Tipo.RELEASE, false);';
+    assert.equal(java.replace(`,${inserted}`, ';'), originalJava);
+    assert.equal(
+      files
+        .read(tsPath)
+        .replace(
+          `${newline}${newline}  /** TODO: describir para qué es esta flag y a qué CU pertenece. */${newline}  'mapit.test.my-account': false,`,
+          '',
+        ),
+      originalTs,
     );
-    assert.match(
-      f.read('java'),
-      /VERTICAL_EVENT_HALL\("vertical\.event-hall", Tipo.PERMISSION, true\),/,
-    );
-    assert.match(f.read('ts'), /'fixture.s6.notification-center': false/);
-    const current = JSON.parse(f.read('json')).features;
-    assert.deepEqual(current.slice(0, -1), previous);
-    assert.equal(current.at(-1).name, 'fixture.s6.notification-center');
-    assert.equal(current.at(-1).type, 'kill-switch');
-    assert.equal(current.at(-1).enabled, false);
-    const once = Object.fromEntries(Object.keys(files).map((key) => [key, f.read(key)]));
-    assert.equal(f.run('fixture.s6.notification-center', 'kill_switch').status, 0);
-    for (const key of Object.keys(files)) assert.equal(f.read(key), once[key]);
+    const bootstrap = JSON.parse(files.read(jsonPath));
+    assert.deepEqual(bootstrap.features.slice(0, -1), originalBootstrap.features);
+    assert.equal(bootstrap.features.at(-1).enabled, false);
+    assert.equal(bootstrap.features.at(-1).name, 'mapit.test.my-account');
+    assert.match(bootstrap.features.at(-1).expiresAt, /^\d{4}-\d{2}-\d{2}$/);
+    const generated = catalogs.map(files.read);
+    assert.equal(files.run('mapit.test.my-account', 'release').status, 0);
+    assert.deepEqual(catalogs.map(files.read), generated);
   });
 }
 
-test('conserva claves de dos segmentos y --on', (t) => {
-  const f = fixture(t);
-  assert.equal(f.run('fixture.legacy', 'release', '--on').status, 0);
-  assert.match(f.read('java'), /FIXTURE_LEGACY\("fixture\.legacy", Tipo.RELEASE, true\);/);
-  assert.equal(JSON.parse(f.read('json')).features.at(-1).enabled, true);
+test('conserva claves de dos segmentos, --on y conversión kill_switch', (t) => {
+  const files = fixture(t);
+  const result = files.run('test.legacy-flag', 'kill_switch', '--on');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    files.read(javaPath),
+    /TEST_LEGACY_FLAG\("test\.legacy-flag", Tipo\.KILL_SWITCH, true\);/,
+  );
+  assert.match(files.read(tsPath), /'test\.legacy-flag': true/);
+  assert.deepEqual(JSON.parse(files.read(jsonPath)).features.at(-1), {
+    name: 'test.legacy-flag',
+    description: 'TODO: describir para qué es esta flag y a qué CU pertenece.',
+    type: 'kill-switch',
+    enabled: true,
+  });
 });
 
-test('rechaza claves inválidas y tipos desconocidos sin modificar archivos', (t) => {
-  const f = fixture(t);
-  const before = Object.fromEntries(Object.keys(files).map((key) => [key, f.read(key)]));
-  for (const args of [
-    ['single'],
-    ['UPPER.flag'],
-    ['a..b'],
-    ['a.b.'],
-    ['a.1b'],
-    ['a.b', 'invalid'],
+test('rechaza segmentos inválidos antes de escribir catálogos', (t) => {
+  const files = fixture(t);
+  const original = catalogs.map(files.read);
+  for (const key of [
+    'mapit',
+    'mapit..account',
+    'Mapit.s6.account',
+    '.mapit.account',
+    'mapit.account.',
+    'mapit.6.account',
+    'mapit.s6.my_account',
   ]) {
-    assert.notEqual(f.run(...args).status, 0);
-    for (const key of Object.keys(files)) assert.equal(f.read(key), before[key]);
+    assert.notEqual(files.run(key, 'release').status, 0, key);
+    assert.deepEqual(catalogs.map(files.read), original, key);
   }
 });
 
-test('un catálogo Java irreconocible falla antes de modificar los tres registros', (t) => {
+test('catálogo Java irreconocible falla sin escrituras (MAP-299)', (t) => {
   const f = fixture(t);
-  writeFileSync(join(f.root, files.java), 'enum FeatureFlag { UNKNOWN; }\n');
-  const before = Object.fromEntries(Object.keys(files).map((key) => [key, f.read(key)]));
+  writeFileSync(join(f.root, javaPath), 'enum FeatureFlag { UNKNOWN; }\n');
+  const before = catalogs.map(f.read);
   assert.notEqual(f.run('fixture.valid').status, 0);
-  for (const key of Object.keys(files)) assert.equal(f.read(key), before[key]);
+  assert.deepEqual(catalogs.map(f.read), before);
 });

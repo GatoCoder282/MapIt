@@ -97,7 +97,8 @@ class NotificationPersistenceIntegrationTest {
     }
     @Test void flyway41PreservesRlsAndAllowsRealV40WhenProvided() {
         assertThat(owner.queryForObject("select count(*) from flyway_schema_history where version='41' and success",Integer.class)).isEqualTo(1);
-        if(System.getenv("MAPIT_TEST_COMPAT_MIGRATIONS")!=null) assertThat(owner.queryForObject("select count(*) from flyway_schema_history where version='40' and success",Integer.class)).isEqualTo(1);
+        assertThat(owner.queryForList("select version from flyway_schema_history where version in ('40','41','42','43') and success order by installed_rank",String.class))
+                .containsExactly("40","41","42","43");
         create(notice(40,A,E,R)); create(notice(41,B,E,R)); create(notice(42,C,F,RF));
         assertThat(owner.queryForObject("select count(*) from pg_class where relname in ('notification','notification_delivery_key') and relrowsecurity and relforcerowsecurity",Integer.class)).isEqualTo(2);
         tx.executeWithoutResult(s->{

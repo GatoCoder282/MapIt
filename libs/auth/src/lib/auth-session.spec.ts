@@ -121,4 +121,68 @@ describe('AuthSession', () => {
     expect((runGuard() as UrlTree).toString()).toBe('/login');
     expect(sessionStorage.getItem('mapit.auth.session')).toBeNull();
   });
+
+  it.each([false, true])(
+    'actualiza solo nombre y conserva token, expiración y almacenamiento (remember=%s)',
+    (remember) => {
+      const session = TestBed.inject(AuthSession);
+      const original = response();
+      session.start(original, remember);
+      const revision = session.revision();
+      expect(session.updateFullName('Nombre confirmado', revision)).toBe(true);
+      expect(session.token()).toBe(original.accessToken);
+      expect(session.revision()).toBe(revision);
+      expect(session.user()).toEqual({ ...original.user, fullName: 'Nombre confirmado' });
+      const chosen = remember ? localStorage : sessionStorage;
+      const other = remember ? sessionStorage : localStorage;
+      expect(JSON.parse(chosen.getItem('mapit.auth.session')!)).toEqual({
+        ...original,
+        user: { ...original.user, fullName: 'Nombre confirmado' },
+      });
+      expect(other.getItem('mapit.auth.session')).toBeNull();
+      vi.advanceTimersByTime(60_000);
+      expect(session.user()).toBeNull();
+    },
+  );
+
+  it('no aplica una respuesta de una sesión anterior aunque la identidad y JWT coincidan', () => {
+    const session = TestBed.inject(AuthSession);
+    const original = response();
+    session.start(original, false);
+    const revision = session.revision();
+    session.logout();
+    session.start(original, false);
+    expect(session.updateFullName('Respuesta antigua', revision)).toBe(false);
+    expect(session.user()?.fullName).toBe('Staff');
+  });
+
+  it('conserva el almacén de una sesión restaurada al actualizar nombre', () => {
+    localStorage.setItem('mapit.auth.session', JSON.stringify(response()));
+    const session = TestBed.inject(AuthSession);
+    expect(session.updateFullName('Restaurado', session.revision())).toBe(true);
+    expect(localStorage.getItem('mapit.auth.session')).toContain('Restaurado');
+    expect(sessionStorage.getItem('mapit.auth.session')).toBeNull();
+  });
+
+  it('rechaza nombre inválido y respuestas después del logout o expiración', () => {
+    const session = TestBed.inject(AuthSession);
+    session.start(response(), false);
+    for (const name of ['', ' ', ' nombre', 'nombre ', 'dos\nlineas', 'a'.repeat(121)]) {
+      expect(session.updateFullName(name, session.revision())).toBe(false);
+    }
+    vi.setSystemTime(Date.now() + 60_001);
+    expect(session.updateFullName('Tardío', session.revision())).toBe(false);
+    expect(session.user()).toBeNull();
+  });
+
+  it('mantiene el nombre confirmado en memoria y avisa si falla la persistencia local', () => {
+    const session = TestBed.inject(AuthSession);
+    session.start(response(), false);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    expect(session.updateFullName('Confirmado', session.revision())).toBe(true);
+    expect(session.user()?.fullName).toBe('Confirmado');
+    expect(session.warning()).toBeTruthy();
+  });
 });
