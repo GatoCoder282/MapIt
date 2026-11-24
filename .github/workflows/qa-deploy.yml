@@ -226,6 +226,11 @@ jobs:
                 echo "::error::El deploy $deploy terminó como $status"
                 exit 1 ;;
             esac
+            # Render free duerme el servicio tras 15 min sin tráfico, y si eso pasa a mitad
+            # de un deploy congela también la instancia nueva: el log se corta antes de Flyway
+            # y Render cancela el deploy por timeout del health check. Una petición por vuelta
+            # mantiene el servicio despierto mientras dura el deploy.
+            curl -s -o /dev/null --max-time 15 "$QA_BACKEND_URL/actuator/health" || true
             sleep 20
           done
           [ "$status" = live ] || { echo "::error::Render no llegó a live ($deploy: $status)"; exit 1; }
