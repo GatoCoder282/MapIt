@@ -6,7 +6,18 @@ import { tmpdir } from 'node:os';
 import ts from 'typescript';
 import { organizeGeneratedApi } from './organize-generated-api.mjs';
 
-test('el generador elimina imports inútiles/supresiones y conserva tipos, valores y efectos', (t) => {
+for (const caseSensitive of [false, true]) {
+  test(`el generador conserva semántica y checks estrictos (caseSensitive=${caseSensitive})`, (t) => {
+    assertOrganizedImports(t, caseSensitive);
+  });
+}
+
+function assertOrganizedImports(t, caseSensitive) {
+  const previousCaseSensitivity = ts.sys.useCaseSensitiveFileNames;
+  ts.sys.useCaseSensitiveFileNames = caseSensitive;
+  t.after(() => {
+    ts.sys.useCaseSensitiveFileNames = previousCaseSensitivity;
+  });
   const root = mkdtempSync(join(tmpdir(), 'mapit-generated-imports-'));
   t.after(() => {
     const inside = relative(tmpdir(), root);
@@ -64,4 +75,4 @@ export const client: Used = { id: String(USED_VALUE) };
   );
   organizeGeneratedApi(output, config);
   assert.equal(readFileSync(file, 'utf8'), source);
-});
+}

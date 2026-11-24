@@ -19,6 +19,8 @@ export function organizeGeneratedApi(directory, configPath) {
   );
   const host = {
     ...ts.sys,
+    // System expone un booleano; LanguageServiceHost requiere un método (también con TS 6).
+    useCaseSensitiveFileNames: () => ts.sys.useCaseSensitiveFileNames,
     getCompilationSettings: () => parsed.options,
     getScriptFileNames: () => files,
     getScriptVersion: () => '1',
