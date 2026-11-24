@@ -43,6 +43,8 @@ Contextos y sus casos de uso:
 5. **Unleash solo se toca desde su adaptador.** El resto del código usa `FeatureFlagPort`.
 6. **Migraciones:** `pnpm db:new "…"`. Nunca editar una ya mergeada.
    Toda tabla de negocio: `tenant_id NOT NULL` + índice `(tenant_id, id)` + RLS.
+   Antes de mergear, rebasea sobre `main`: si otra PR ya usó tu número de versión, renombra
+   las tuyas al siguiente libre (ver skill `new-migration`, regla 5).
 
 Todo esto lo verifica `bootstrap/src/test/java/com/mapit/architecture/ArchitectureTest.java`.
 
