@@ -55,13 +55,13 @@ C4Deployment
     Container(unleash, "MapIt-Unleash", "Unleash 6.10 OSS", "mapit-unleash.onrender.com · entorno production")
   }
 
+  Deployment_Node(smtp, "Correo", "SMTP externo") {
+    Container_Ext(brevo, "Brevo", "smtp-relay.brevo.com:2525", "Entrega a buzones reales")
+  }
+
   Deployment_Node(neon, "Neon · rama production", "PostgreSQL serverless") {
     ContainerDb(db, "neondb", "PostgreSQL + RLS", "Datos de producción · migraciones Flyway")
     ContainerDb(unleashdb, "unleash", "PostgreSQL", "Flags, estrategias y tokens")
-  }
-
-  Deployment_Node(smtp, "Correo", "SMTP externo") {
-    Container_Ext(brevo, "Brevo", "smtp-relay.brevo.com:2525", "Entrega a buzones reales")
   }
 
   Rel(console, api, "REST + WebSocket", "HTTPS/WSS")
@@ -72,7 +72,7 @@ C4Deployment
   Rel(unleash, unleashdb, "SQL", "TLS")
   Rel(api, brevo, "SMTP", "STARTTLS")
 
-  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="2")
 ```
 
 ## 3. Despliegue del slot de QA
@@ -91,8 +91,8 @@ C4Deployment
   }
 
   Deployment_Node(render, "Render detrás de Cloudflare", "Plan free · Oregon") {
-    Container(apiqa, "MapIt-QA", "Spring Boot 4 · perfil dev", "mapit-qa.onrender.com · pagos mock")
     Container(unleash, "MapIt-Unleash", "Compartido con producción", "entorno development")
+    Container(apiqa, "MapIt-QA", "Spring Boot 4 · perfil dev", "mapit-qa.onrender.com · pagos mock")
   }
 
   Deployment_Node(neon, "Neon · rama preview", "Copia de production") {
@@ -112,7 +112,7 @@ C4Deployment
   Rel(actions, dbqa, "Reset desde production", "API de Neon")
   Rel(apiqa, mailtrap, "SMTP", "STARTTLS")
 
-  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="2")
 ```
 
 ### Cómo leerlo
