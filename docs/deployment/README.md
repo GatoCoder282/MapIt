@@ -3,6 +3,7 @@
 Runbook de los entornos desplegados de MapIt. Las decisiones están en
 [ADR-0012](../architecture/adr/ADR-0012-entornos-desplegados-y-slot-qa.md) (entornos y slot QA) y
 [ADR-0013](../architecture/adr/ADR-0013-unleash-frontend-api-en-despliegues.md) (Unleash en el navegador).
+El diagrama C4 de la infraestructura está en [infraestructura-c4.md](infraestructura-c4.md).
 
 ## Entornos
 
@@ -73,7 +74,9 @@ Notas del slot:
 | `SERVER_TOMCAT_REMOTEIP_REMOTEIPHEADER`                                   | `CF-Connecting-IP`: Render está detrás de Cloudflare; sin esto la "IP" es la del borde de Cloudflare y cambia en cada petición |
 
 Ajustes: Health Check Path `/actuator/health/readiness`; PR Previews **Off**; Auto-Deploy
-"After CI checks pass".
+"After CI checks pass"; Build Filters → Included Paths `apps/backend/**`,
+`infra/docker/backend.Dockerfile` y `.dockerignore` (un merge de solo docs o frontend no redespliega
+el backend).
 
 ### Render · MapIt-QA
 
