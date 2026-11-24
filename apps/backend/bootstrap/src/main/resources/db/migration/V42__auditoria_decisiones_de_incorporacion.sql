@@ -1,5 +1,5 @@
 -- auditoria decisiones de incorporacion
--- Migración V41. Creada el 2026-11-21.
+-- Migración V42. Creada el 2026-11-21.
 --
 -- REGLAS (plan §12):
 --   1. Toda tabla de negocio lleva  tenant_id TEXT NOT NULL REFERENCES tenant(id)
