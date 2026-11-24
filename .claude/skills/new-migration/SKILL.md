@@ -44,6 +44,16 @@ Excepciones (globales, sin `tenant_id`): `tenant`, `element_template`.
 3. **Tabla nueva ⇒ test de aislamiento entre tenants.** Es la prueba de CU-02.
 4. Si añades un campo a una entidad JPA, la migración es obligatoria: `ddl-auto: validate`
    hará que la app **no arranque** si divergen. Esa es la red funcionando.
+5. **El número de versión se reserva al mergear, no al crear.** Varias PR abiertas pueden
+   elegir el mismo `V<n>`. Antes de mergear:
+   - Rebasea sobre `main`. Si `main` ya tiene tu número, renombra tus migraciones con
+     `git mv` al siguiente libre y actualiza las referencias (tests, DBML, `tasks.md`).
+   - Si tu migración redefine una restricción que lista valores (por ejemplo
+     `audit_log_event_type_valid`), parte de su **última** definición en `main` y suma los
+     tuyos. Si no, borras en silencio los que agregaron otras PR.
+   - Renombrar o cambiar una migración solo es seguro si **nunca** se aplicó en producción.
+     Producción aplica `main` al desplegar, y QA resetea su BD desde producción (ver
+     `docs/deployment/README.md`).
 
 ## Verificar
 
