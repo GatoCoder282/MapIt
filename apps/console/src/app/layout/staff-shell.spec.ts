@@ -7,6 +7,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { routes } from '../app.routes';
 import { EstablishmentContext } from '../core/establishment-context';
+import { MyAccountAccess } from '../core/my-account-access';
 import { StaffShell } from './staff-shell';
 
 const ESTABLISHMENTS: AccessibleEstablishment[] = [
@@ -34,9 +35,11 @@ async function mountShell(options?: {
   active?: ReturnType<typeof signal<AccessibleEstablishment | null>>;
   status?: ReturnType<typeof signal<'idle' | 'loading' | 'ready' | 'error'>>;
   query?: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
-  role?: 'ADMIN' | 'STAFF';
+  role?: 'ADMIN' | 'MANAGER' | 'STAFF';
   establishments?: readonly AccessibleEstablishment[];
   onSetup?: boolean;
+  personal?: boolean;
+  accountEnabled?: boolean;
 }) {
   const user = signal({
     id: 'staff-1',
@@ -69,7 +72,14 @@ async function mountShell(options?: {
     imports: [StaffShell],
     providers: [
       provideRouter([]),
-      { provide: ActivatedRoute, useValue: { queryParamMap: query.asObservable() } },
+      {
+        provide: ActivatedRoute,
+        useValue: {
+          queryParamMap: query.asObservable(),
+          snapshot: { firstChild: { data: { requiresEstablishment: !options?.personal } } },
+        },
+      },
+      { provide: MyAccountAccess, useValue: { enabled: signal(options?.accountEnabled ?? false) } },
       { provide: AuthSession, useValue: { user, logout: vi.fn() } },
       { provide: EstablishmentContext, useValue: context },
     ],
@@ -89,6 +99,9 @@ async function mountShell(options?: {
 
 describe('StaffShell navigation', () => {
   beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: MyAccountAccess, useValue: { enabled: signal(false) } }],
+    });
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
       configurable: true,
       value(this: HTMLDialogElement) {
@@ -102,6 +115,45 @@ describe('StaffShell navigation', () => {
       },
     });
   });
+
+  it('monta la ruta personal sin establecimiento ni selector, incluso ADMIN sin negocios', async () => {
+    const { host, navigateByUrl } = await mountShell({
+      personal: true,
+      accountEnabled: true,
+      role: 'ADMIN',
+      active: signal(null),
+      establishments: [],
+    });
+    expect(host.querySelector('router-outlet')).not.toBeNull();
+    expect(host.querySelector('mapit-establishment-selector')).toBeNull();
+    expect(host.querySelector('a[href="/my-account"]')).not.toBeNull();
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('oculta Mi cuenta con flag OFF y actualiza navegación si cambia', async () => {
+    const { fixture, host } = await mountShell();
+    // El fake del montaje es una signal mutable como el gate real.
+    const access = TestBed.inject(MyAccountAccess);
+    expect(host.querySelector('a[href="/my-account"]')).toBeNull();
+    const state = access.enabled as ReturnType<typeof signal<boolean>>;
+    state.set(true);
+    fixture.detectChanges();
+    expect(host.querySelector('a[href="/my-account"]')).not.toBeNull();
+    state.set(false);
+    fixture.detectChanges();
+    expect(host.querySelector('a[href="/my-account"]')).toBeNull();
+  });
+
+  it.each(['ADMIN', 'MANAGER', 'STAFF'] as const)(
+    'conserva Mi cuenta y los límites de navegación de MAP-238 para %s',
+    async (role) => {
+      const { host } = await mountShell({ role, accountEnabled: true });
+      expect(host.querySelector('a[href="/my-account"]')).not.toBeNull();
+      expect(host.querySelector('a[href="/users"]') !== null).toBe(role === 'ADMIN');
+      expect(host.querySelector('a[href="/spaces/setup"]') !== null).toBe(role !== 'STAFF');
+      expect(host.querySelector('a[href="/reservations"]')).not.toBeNull();
+    },
+  );
 
   it('shows payment, check-in and audit links only for authorized roles', async () => {
     const user = signal({

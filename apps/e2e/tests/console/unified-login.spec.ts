@@ -4,7 +4,12 @@ import { companyAdminFixture } from './company-admin-fixture';
 
 const API = process.env['API_BASE_URL'] ?? 'http://localhost:8080/api/v1';
 
-test.use({ trace: 'off', screenshot: 'off', video: 'off', reducedMotion: 'reduce' });
+test.use({
+  trace: 'off',
+  screenshot: 'off',
+  video: 'off',
+  contextOptions: { reducedMotion: 'reduce' },
+});
 
 test('entra directamente desde /login con el correo de la empresa', async ({ request, page }) => {
   const { email, password } = await companyAdminFixture(request);

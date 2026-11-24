@@ -36,17 +36,31 @@
             <span class="user-name">{{ user.fullName }}</span>
             <span class="user-role">{{ roleLabel() }}</span>
           </span>
-          <button class="user-menu-toggle" type="button" [attr.aria-label]="strings.shell.userMenu">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+          @if (myAccountAccess.enabled()) {
+            <a class="user-menu-toggle" routerLink="/my-account" [attr.aria-label]="strings.myAccount.title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+              >
+                <polyline points="9 6 15 12 9 18" />
+              </svg>
+            </a>
+          }
         </div>
       }
     </header>
 
     <main class="content">
-      @if (canOpenFirstEstablishmentSetup() || (establishmentContext.active() && !selectorRequested())) {
+      @if (
+        withoutEstablishment() ||
+        canOpenFirstEstablishmentSetup() ||
+        (establishmentContext.active() && !selectorRequested())
+      ) {
         <router-outlet />
       } @else if (needsFirstEstablishment() || (!selectorRequested() && !initialEstablishmentsLoaded())) {
         <div class="establishment-pending" role="status" aria-live="polite">
@@ -58,6 +72,7 @@
 </div>
 
 @if (
+  !withoutEstablishment() &&
   !needsFirstEstablishment() &&
   (selectorRequested() || (initialEstablishmentsLoaded() && !establishmentContext.active()))
 ) {

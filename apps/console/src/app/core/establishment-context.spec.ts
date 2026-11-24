@@ -28,6 +28,7 @@ const USER: SessionUser = {
 describe('EstablishmentContext', () => {
   let context: EstablishmentContext;
   let user: ReturnType<typeof signal<SessionUser | null>>;
+  const revision = signal(1);
   const list = vi.fn(() => of([A, B]));
 
   function createContext(): void {
@@ -36,7 +37,7 @@ describe('EstablishmentContext', () => {
       providers: [
         EstablishmentContext,
         { provide: EstablishmentsService, useValue: { listAccessibleEstablishments: list } },
-        { provide: AuthSession, useValue: { user: user.asReadonly() } },
+        { provide: AuthSession, useValue: { user: user.asReadonly(), revision } },
       ],
     });
     context = TestBed.inject(EstablishmentContext);
@@ -67,7 +68,7 @@ describe('EstablishmentContext', () => {
       providers: [
         EstablishmentContext,
         { provide: EstablishmentsService, useValue: { listAccessibleEstablishments: list } },
-        { provide: AuthSession, useValue: { user: user.asReadonly() } },
+        { provide: AuthSession, useValue: { user: user.asReadonly(), revision } },
       ],
     });
     context = TestBed.inject(EstablishmentContext);
@@ -203,6 +204,7 @@ describe('EstablishmentContext', () => {
     await vi.waitFor(() => expect(context.active()).toEqual(A));
 
     user.set({ ...USER });
+    revision.update((value) => value + 1);
     expect(context.active()).toBeNull();
     expect(context.confirm(A.id)).toBe(false);
     TestBed.flushEffects();
@@ -210,5 +212,17 @@ describe('EstablishmentContext', () => {
 
     expect(list.mock.calls.length).toBeGreaterThan(1);
     expect(context.active()).toBeNull();
+  });
+
+  it('conserva selección y peticiones vigentes si solo cambia el nombre visible', async () => {
+    await context.load();
+    expect(context.confirm(A.id)).toBe(true);
+    const calls = list.mock.calls.length;
+    user.set({ ...USER, fullName: 'Nombre confirmado' });
+    expect(context.active()).toEqual(A);
+    TestBed.tick();
+    expect(context.active()).toEqual(A);
+    expect(context.status()).toBe('ready');
+    expect(list).toHaveBeenCalledTimes(calls);
   });
 });

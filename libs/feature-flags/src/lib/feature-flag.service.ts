@@ -1,5 +1,13 @@
 import { Logger } from '@mapit/logging';
-import { computed, effect, inject, Injectable, signal, type Signal } from '@angular/core';
+import {
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  Injectable,
+  signal,
+  type Signal,
+} from '@angular/core';
 
 import { FEATURE_FLAG_CONFIG } from './feature-flag.config';
 import { FLAGS_POR_DEFECTO, type FeatureFlagKey } from './feature-flag.catalog';
@@ -27,6 +35,7 @@ export class FeatureFlagService {
   // debe arrastrar el token de sesión hacia el proxy de flags.
   private readonly config = inject(FEATURE_FLAG_CONFIG);
   private readonly logger = inject(Logger);
+  private readonly destroyRef = inject(DestroyRef);
   private degraded = false;
 
   /** Estado actual. Arranca con los valores por defecto del catálogo. */
@@ -84,6 +93,75 @@ export class FeatureFlagService {
   /** Lectura puntual, para lógica imperativa (guards, interceptores). */
   isEnabledNow(flag: FeatureFlagKey): boolean {
     return this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false;
+  }
+
+  /** Evaluación aislada por contexto. No hereda caché ni fallback de otras identidades. */
+  watchInContext(flag: FeatureFlagKey, properties: Readonly<Record<string, string>>) {
+    const enabled = signal(false);
+    const ready = signal(!this.config.proxyUrl);
+    let disposed = false;
+    let sequence = 0;
+    let controller: AbortController | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const settle = (request: number, value: boolean) => {
+      if (disposed || request !== sequence) return;
+      clearTimeout(timeout);
+      enabled.set(value);
+      ready.set(true);
+    };
+    const refresh = async () => {
+      controller?.abort();
+      clearTimeout(timeout);
+      const request = ++sequence;
+      controller = new AbortController();
+      timeout = setTimeout(
+        () => {
+          settle(request, false);
+          sequence++;
+          controller?.abort();
+        },
+        Math.min(5000, this.config.intervaloRefrescoMs),
+      );
+      try {
+        const url = new URL(this.config.proxyUrl, globalThis.location.origin);
+        for (const [key, value] of Object.entries(properties)) {
+          url.searchParams.set(`properties[${key}]`, value);
+        }
+        const response = await fetch(url.toString(), {
+          headers: { Authorization: this.config.clientKey },
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('flags.context.unavailable');
+        const body: unknown = await response.json();
+        const toggles = (body as Partial<RespuestaProxy> | null)?.toggles;
+        const toggle = Array.isArray(toggles)
+          ? (toggles as readonly { name?: unknown; enabled?: unknown }[]).find(
+              (item) => item?.name === flag,
+            )
+          : null;
+        settle(request, toggle?.enabled === true);
+      } catch {
+        settle(request, false);
+      }
+    };
+    const unregister = this.destroyRef.onDestroy(() => destroy());
+    const destroy = () => {
+      if (disposed) return;
+      disposed = true;
+      sequence++;
+      controller?.abort();
+      clearTimeout(timeout);
+      clearInterval(interval);
+      enabled.set(false);
+      ready.set(true);
+      unregister();
+    };
+    if (this.config.proxyUrl) {
+      void refresh();
+      interval = setInterval(() => void refresh(), this.config.intervaloRefrescoMs);
+    }
+    return { enabled: enabled.asReadonly(), ready: ready.asReadonly(), destroy };
   }
 
   private async refrescar(): Promise<void> {

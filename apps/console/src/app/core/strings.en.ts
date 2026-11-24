@@ -1,5 +1,53 @@
 /* Catálogo estático generado para en; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_EN = {
+  myAccount: {
+    contactPhone: 'Contact phone',
+    phoneHint:
+      'Optional. 1–32 characters: digits and separators + ( ) space . / -. Clear to remove.',
+    phoneInvalid: 'Enter a phone number with at least one digit and up to 32 allowed characters.',
+    preferredLanguage: 'Account language',
+    localLanguage: 'Use the local language',
+    password: {
+      reauthenticate:
+        'Changing your password ends all your sessions. You will need to sign in again.',
+      saving: 'Changing password…',
+      invalid:
+        'The change could not be validated. Check your current password and the new password rules.',
+      limited: 'Too many attempts. Wait before trying again.',
+      uncertain: 'The change could not be confirmed. Sign in again before retrying.',
+      title: 'Change password',
+      current: 'Current password',
+      next: 'New password',
+      confirm: 'Confirm new password',
+      byteLimit: 'Maximum 72 UTF-8 bytes; characters may use more than one byte',
+      mismatch: 'Confirmation must match the new password.',
+      reused: 'Choose a password different from your current one.',
+      currentInvalid: 'The current password must contain 1–72 valid UTF-8 bytes.',
+      clear: 'Clear fields',
+      submit: 'Change password',
+    },
+    title: 'My account',
+    intro: 'View your account and update your name, contact details and language.',
+    fullName: 'Display name',
+    nameHint: 'Between 1 and 120 characters, on a single line.',
+    nameInvalid: 'Enter a name between 1 and 120 characters on a single line.',
+    email: 'Account email',
+    emailHint: 'This email identifies your account and cannot be edited here.',
+    loading: 'Loading your profile…',
+    saving: 'Saving…',
+    save: 'Save changes',
+    reset: 'Discard changes',
+    retry: 'Reload profile',
+    saved: 'Your name has been updated.',
+    unavailable: 'My account is currently unavailable.',
+    languageHint:
+      'Your account preference is applied after Save is confirmed. Without a preference, the local language stays unchanged.',
+    errors: {
+      load: 'Your profile could not be loaded. Please try again.',
+      save: 'Your profile could not be saved. Your changes are still here; please try again.',
+      unavailable: 'Your profile is unavailable. Check your session or reload.',
+    },
+  },
   operational: {
     reservations: 'Establishment reservations',
     payments: 'Establishment payments',

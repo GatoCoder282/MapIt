@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,6 +19,7 @@ import com.mapit.identity.domain.AccessTokenVerifier;
 import com.mapit.identity.domain.AuthenticatedPrincipal;
 import com.mapit.identity.domain.AuthenticatedUser;
 import com.mapit.identity.domain.IssuedAccessToken;
+import com.mapit.identity.domain.TokenIssuanceNotReady;
 import com.mapit.identity.domain.UserRole;
 import com.mapit.shared.tenant.TenantId;
 
@@ -67,8 +69,15 @@ public class JjwtTokenService implements AccessTokenIssuer, AccessTokenVerifier 
 
     @Override
     public IssuedAccessToken issue(AuthenticatedUser user) {
-        Instant issuedAt = clock.instant();
+        return issue(user, clock.instant());
+    }
+
+    @Override
+    public IssuedAccessToken issue(AuthenticatedUser user, Instant observedAt) {
+        Instant issuedAt = observedAt.truncatedTo(ChronoUnit.SECONDS);
+        if (issuedAt.isAfter(clock.instant())) throw new TokenIssuanceNotReady();
         Instant expiresAt = issuedAt.plus(ttl);
+        if (!expiresAt.isAfter(clock.instant())) throw new TokenIssuanceNotReady();
         String token = Jwts.builder()
                 .subject(user.id().toString())
                 .issuer(issuer)

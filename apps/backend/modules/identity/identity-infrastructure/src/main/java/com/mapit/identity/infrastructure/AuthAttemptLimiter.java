@@ -16,12 +16,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mapit.identity.domain.AuthenticatedPrincipal;
+import com.mapit.identity.domain.OwnPasswordAttemptLimiter;
+import com.mapit.identity.domain.OwnPasswordRateLimited;
+
 /** Shared PostgreSQL buckets for requests that reach the password verifier. */
 @Component
-public class AuthAttemptLimiter {
+public class AuthAttemptLimiter implements OwnPasswordAttemptLimiter {
   private static final int WINDOW_SECONDS = 60;
   private static final int ATTEMPTS_PER_ADDRESS = 120;
   private static final int ATTEMPTS_PER_ACCOUNT_AND_ADDRESS = 20;
+  private static final int PASSWORD_CHANGE_WINDOW_SECONDS = 900;
+  private static final int PASSWORD_CHANGES_PER_ACCOUNT = 5;
+  private static final int PASSWORD_CHANGES_PER_ADDRESS = 20;
 
   private static final String COUNT = """
       insert into auth_attempt_limit (tenant_id, id, expires_at, attempts)
@@ -50,6 +57,21 @@ public class AuthAttemptLimiter {
     String account = email.strip().toLowerCase(Locale.ROOT);
     requireBudget("login:ip-email:" + remoteAddress + ":" + account,
         WINDOW_SECONDS, ATTEMPTS_PER_ACCOUNT_AND_ADDRESS);
+  }
+
+  /** Presupuesto propio del cambio de contraseña; se confirma incluso si falla su validación. */
+  @Override
+  @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = OwnPasswordRateLimited.class)
+  public void checkPasswordChange(AuthenticatedPrincipal actor, String remoteAddress) {
+    enterScope();
+    try {
+      requireBudget("password-change:ip:" + remoteAddress,
+          PASSWORD_CHANGE_WINDOW_SECONDS, PASSWORD_CHANGES_PER_ADDRESS);
+      requireBudget("password-change:account:" + actor.tenantId().value() + ":" + actor.id(),
+          PASSWORD_CHANGE_WINDOW_SECONDS, PASSWORD_CHANGES_PER_ACCOUNT);
+    } catch (AuthRateLimited limited) {
+      throw new OwnPasswordRateLimited(limited.retryAfter());
+    }
   }
 
   @Scheduled(fixedDelay = 600_000)

@@ -10,11 +10,13 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.transaction.TransactionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,27 +24,25 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.mapit.identity.application.AuthenticateUser;
 import com.mapit.identity.application.AuthenticateUserCommand;
-import com.mapit.identity.application.IssueAccessToken;
+import com.mapit.identity.application.OpenStaffSession;
 import com.mapit.identity.domain.AuthenticatedUser;
 import com.mapit.identity.domain.InvalidCredentialsException;
 import com.mapit.identity.domain.IssuedAccessToken;
+import com.mapit.identity.domain.TokenIssuanceNotReady;
 import com.mapit.identity.domain.UserRole;
 
 /** MAP-48: entrada HTTP para autenticar al staff y emitir su access token. */
 @RestController
 @RequestMapping("/api/v1/auth")
 public class LoginController {
-  private final AuthenticateUser authenticateUser;
-  private final IssueAccessToken issueAccessToken;
+  private final OpenStaffSession sessions;
   private final AuthAttemptLimiter limiter;
 
   public LoginController(
-      AuthenticateUser authenticateUser, IssueAccessToken issueAccessToken,
+      OpenStaffSession sessions,
       AuthAttemptLimiter limiter) {
-    this.authenticateUser = authenticateUser;
-    this.issueAccessToken = issueAccessToken;
+    this.sessions = sessions;
     this.limiter = limiter;
   }
 
@@ -50,8 +50,8 @@ public class LoginController {
   public ResponseEntity<LoginResponse> globalLogin(
       @Valid @RequestBody GlobalLoginRequest request, HttpServletRequest http) {
     limiter.check(http.getRemoteAddr(), request.email());
-    var user = authenticateUser.execute(new AuthenticateUserCommand(request.email(), request.password()));
-    var session = LoginResponse.from(user, issueAccessToken.execute(user));
+    var opened = sessions.execute(new AuthenticateUserCommand(request.email(), request.password()));
+    var session = LoginResponse.from(opened.user(), opened.token());
     return ResponseEntity.ok().cacheControl(CacheControl.noStore())
         .body(session);
   }
@@ -62,6 +62,13 @@ public class LoginController {
     public String toString() {
       return "GlobalLoginRequest[REDACTED]";
     }
+  }
+
+  @ExceptionHandler({TokenIssuanceNotReady.class, DataAccessException.class, TransactionException.class})
+  ResponseEntity<ProblemDetail> temporarilyUnavailable() {
+    var problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, "No se pudo abrir una sesión segura. Intente nuevamente.");
+    problem.setType(URI.create(LoginProblemTypes.BASE + "session-unavailable"));
+    return ResponseEntity.status(503).header("Retry-After", "1").cacheControl(CacheControl.noStore()).body(problem);
   }
 
   @ExceptionHandler(InvalidCredentialsException.class)

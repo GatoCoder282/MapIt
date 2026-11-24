@@ -21,6 +21,55 @@ const VERTICAL_LABELS = {
 } as const;
 
 const STRINGS_ES = {
+  myAccount: {
+    contactPhone: 'Teléfono de contacto',
+    phoneHint:
+      'Opcional. De 1 a 32 caracteres: dígitos y separadores + ( ) espacio . / -. Bórralo para eliminarlo.',
+    phoneInvalid:
+      'Introduce un teléfono con al menos un dígito y un máximo de 32 caracteres permitidos.',
+    preferredLanguage: 'Idioma de la cuenta',
+    localLanguage: 'Usar el idioma local',
+    password: {
+      reauthenticate:
+        'Al cambiar la contraseña se cerrarán todas tus sesiones. Deberás iniciar sesión otra vez.',
+      saving: 'Cambiando contraseña…',
+      invalid:
+        'No se pudo validar el cambio. Revisa la contraseña actual y las reglas de la nueva.',
+      limited: 'Demasiados intentos. Espera antes de volver a intentarlo.',
+      uncertain: 'No se pudo confirmar el cambio. Inicia sesión de nuevo antes de reintentar.',
+      title: 'Cambiar contraseña',
+      current: 'Contraseña actual',
+      next: 'Nueva contraseña',
+      confirm: 'Confirmar nueva contraseña',
+      byteLimit: 'Máximo 72 bytes UTF-8; los caracteres pueden ocupar varios bytes',
+      mismatch: 'La confirmación debe coincidir con la nueva contraseña.',
+      reused: 'Elige una contraseña distinta de la actual.',
+      currentInvalid: 'La contraseña actual debe tener entre 1 y 72 bytes UTF-8 válidos.',
+      clear: 'Limpiar campos',
+      submit: 'Cambiar contraseña',
+    },
+    title: 'Mi cuenta',
+    intro: 'Consulta tu cuenta y actualiza tu nombre, contacto e idioma.',
+    fullName: 'Nombre visible',
+    nameHint: 'Entre 1 y 120 caracteres, en una sola línea.',
+    nameInvalid: 'Escribe un nombre de entre 1 y 120 caracteres en una sola línea.',
+    email: 'Correo de identidad',
+    emailHint: 'Este correo identifica tu cuenta y no se puede editar aquí.',
+    loading: 'Cargando tu perfil…',
+    saving: 'Guardando…',
+    save: 'Guardar cambios',
+    reset: 'Descartar cambios',
+    retry: 'Volver a cargar',
+    saved: 'Tu nombre se ha actualizado.',
+    unavailable: 'Mi cuenta no está disponible en este momento.',
+    languageHint:
+      'La preferencia se guarda en tu cuenta y se aplica al confirmar Guardar. Sin preferencia se mantiene el idioma local.',
+    errors: {
+      load: 'No se pudo cargar tu perfil. Vuelve a intentarlo.',
+      save: 'No se pudo guardar el perfil. Tus cambios siguen aquí; vuelve a intentarlo.',
+      unavailable: 'Tu perfil no está disponible. Comprueba tu sesión o vuelve a cargar.',
+    },
+  },
   operational: {
     reservations: 'Reservas del establecimiento',
     payments: 'Cobros del establecimiento',

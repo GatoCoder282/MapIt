@@ -10,10 +10,10 @@ import { VERTICAL_FLAGS } from './vertical-flags';
  * solo lado en vez de usar `pnpm new:flag`.
  */
 describe('catálogo de feature flags', () => {
-  it('usa la convención <dominio>.<feature>', () => {
+  it('usa dos o más segmentos separados por puntos', () => {
     for (const clave of Object.keys(FLAGS_POR_DEFECTO)) {
       expect(clave, `"${clave}" no sigue la convención`).toMatch(
-        /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/,
+        /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/,
       );
     }
   });
@@ -24,6 +24,10 @@ describe('catálogo de feature flags', () => {
 
   it('deja los pagos QR apagados por defecto (CU-17 sin pasarela elegida)', () => {
     expect(FLAGS_POR_DEFECTO['payments.qr']).toBe(false);
+  });
+
+  it('mantiene Mi cuenta apagada hasta completar la implementación segura (MAP-291)', () => {
+    expect(FLAGS_POR_DEFECTO['mapit.s6.my-account']).toBe(false);
   });
 
   it('deja el tiempo real encendido: su kill switch debe fallar a favor', () => {

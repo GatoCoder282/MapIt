@@ -14,6 +14,7 @@ import { Sidebar } from './sidebar/sidebar';
 import { LucideBell, LucideLogOut } from '@lucide/angular';
 
 import { STRINGS } from '../core/strings';
+import { MyAccountAccess } from '../core/my-account-access';
 
 interface NavItem {
   label: string;
@@ -40,13 +41,16 @@ const ENFOCABLES_DRAWER = 'a[href], button:not([disabled]), [tabindex]:not([tabi
 export class AdminShell {
   protected readonly strings = STRINGS;
   protected readonly session = inject(AuthSession);
+  private readonly myAccountAccess = inject(MyAccountAccess);
   protected readonly menuOpen = signal(false);
 
   protected readonly navItems = computed<readonly NavItem[]>(() => [
     { label: STRINGS.shell.nav.dashboard, route: '/admin/dashboard', icon: 'dashboard' },
     { label: STRINGS.shell.nav.tenants, route: '/admin/tenants', icon: 'tenants' },
     { label: STRINGS.shell.nav.settings, route: '/admin/settings', icon: 'settings' },
-    { label: STRINGS.shell.nav.profile, route: '/admin/profile', icon: 'profile' },
+    ...(this.myAccountAccess.enabled()
+      ? [{ label: STRINGS.myAccount.title, route: '/admin/profile', icon: 'profile' }]
+      : []),
   ]);
 
   protected readonly roleLabel = computed(() => {

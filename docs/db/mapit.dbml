@@ -48,6 +48,8 @@ Table app_user {
   email         text        [not null, unique, note: 'Minúsculas, sin espacios externos, 1-254 caracteres']
   password_hash text        [not null, note: 'BCrypt (RNF09)']
   full_name     text        [not null]
+  contact_phone varchar(32) [note: 'Opcional; 1-32 caracteres, dígitos ASCII y separadores +() ./-; debe contener un dígito. No acredita identidad. V40']
+  preferred_language varchar(5) [note: 'Opcional; es | en | ja-JP; NULL conserva preferencia local. V40']
   role          text        [not null, note: 'SUPER_ADMIN | ADMIN | MANAGER | STAFF']
   active        boolean     [not null, default: true]
   staff_tokens_valid_after timestamptz [note: 'JWT staff con iat anterior o igual se rechazan; CA-05']
