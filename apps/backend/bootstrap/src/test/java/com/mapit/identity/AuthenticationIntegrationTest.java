@@ -3,6 +3,7 @@ package com.mapit.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.AfterAll;
@@ -91,6 +92,9 @@ class AuthenticationIntegrationTest {
     @BeforeEach
     void prepareAccounts() {
         admin.execute("grant select, insert on all tables in schema public to mapit_auth_test");
+        // FOR UPDATE OF app_user exige UPDATE sobre alguna columna, aunque el login no escriba.
+        // Limitarlo al nombre visible: no conceder UPDATE de credenciales, identidad o privilegios.
+        admin.execute("grant update (full_name) on app_user to mapit_auth_test");
         admin.update("delete from app_user where tenant_id in ('auth-a', 'auth-b')");
         admin.update("""
                 insert into tenant (id, name, slug, status, vertical) values
@@ -158,13 +162,29 @@ class AuthenticationIntegrationTest {
     @Test
     void rls_falla_cerrado_y_aisla_lectura_y_escritura() {
         assertThat(jdbc.queryForObject("select current_user", String.class)).isEqualTo("mapit_auth_test");
+        assertThat(jdbc.queryForObject("select rolsuper or rolbypassrls from pg_roles where rolname = current_user", Boolean.class))
+                .isFalse();
+        assertThat(jdbc.queryForObject("select relrowsecurity and relforcerowsecurity from pg_class where oid = 'app_user'::regclass", Boolean.class))
+                .isTrue();
+        assertThat(jdbc.queryForObject("select has_column_privilege(current_user, 'app_user', 'full_name', 'UPDATE')", Boolean.class))
+                .isTrue();
+        for (String column : List.of("id", "tenant_id", "email", "password_hash", "role", "active", "staff_tokens_valid_after")) {
+            assertThat(jdbc.queryForObject("select has_column_privilege(current_user, 'app_user', ?, 'UPDATE')", Boolean.class, column))
+                    .as("sin UPDATE de %s", column).isFalse();
+        }
         assertThat(jdbc.queryForObject("select count(*) from app_user", Long.class)).isZero();
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             setTenant("auth-a");
             assertThat(jdbc.queryForObject("select id from app_user", UUID.class)).isEqualTo(USER_A);
             assertThat(jdbc.queryForObject("select count(*) from app_user where tenant_id = 'auth-b'", Long.class))
                     .isZero();
+            assertThat(jdbc.update("update app_user set full_name = 'Intruso' where tenant_id = 'auth-b'"))
+                    .isZero();
+            assertThat(jdbc.update("update app_user set full_name = 'Operador actualizado' where id = ?", USER_A))
+                    .isEqualTo(1);
         });
+        assertThat(admin.queryForObject("select full_name from app_user where tenant_id = 'auth-b'", String.class))
+                .isEqualTo("Operador");
         assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             setTenant("auth-a");
             jdbc.update("""
@@ -187,8 +207,11 @@ class AuthenticationIntegrationTest {
     void autenticacion_preserva_el_contexto_de_una_transaccion_exterior() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             setTenant("auth-b");
+            jdbc.queryForObject("select set_config('app.login_email', 'outer@example.test', true)", String.class);
             assertThat(authenticate.execute(new AuthenticateUserCommand(" Staff@Example.Test ", "clave-a")).id()).isEqualTo(USER_A);
             assertThat(jdbc.queryForObject("select current_tenant_id()", String.class)).isEqualTo("auth-b");
+            assertThat(jdbc.queryForObject("select current_setting('app.login_email', true)", String.class))
+                    .isEqualTo("outer@example.test");
             assertThat(jdbc.queryForObject("select tenant_id from app_user", String.class)).isEqualTo("auth-b");
         });
     }

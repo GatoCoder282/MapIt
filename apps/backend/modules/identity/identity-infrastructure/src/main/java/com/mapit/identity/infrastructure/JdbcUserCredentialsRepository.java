@@ -46,6 +46,32 @@ public class JdbcUserCredentialsRepository implements UserCredentialsRepository 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
     public Optional<UserCredentials> findByEmail(String email) {
+        var previousScope = jdbc.queryForMap("""
+                select current_setting('app.tenant_id', true) as tenant,
+                       current_setting('app.login_email', true) as login_email
+                """);
+        RuntimeException failure = null;
+        try {
+            return findAndLockByEmail(email);
+        } catch (RuntimeException cause) {
+            failure = cause;
+            throw cause;
+        } finally {
+            try {
+                // Restaurar el ámbito prestado no libera el bloqueo: dura hasta el commit exterior.
+                jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class,
+                        Objects.toString(previousScope.get("tenant"), ""));
+                jdbc.queryForObject("select set_config('app.login_email', ?, true)", String.class,
+                        Objects.toString(previousScope.get("login_email"), ""));
+            } catch (RuntimeException restoreFailure) {
+                // PostgreSQL puede haber abortado la transacción; conservar el error original.
+                if (failure == null) throw restoreFailure;
+                failure.addSuppressed(restoreFailure);
+            }
+        }
+    }
+
+    private Optional<UserCredentials> findAndLockByEmail(String email) {
         // La política RLS permite leer exclusivamente el correo de esta transacción.
         jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, "");
         jdbc.queryForObject("select set_config('app.login_email', ?, true)", String.class, email);
