@@ -1,0 +1,71 @@
+<main class="requests">
+  <a routerLink="/admin/business-applications">{{ copy.back }}</a>
+  <h1>{{ copy.detail }}</h1>
+  @if (store.loading()) {
+    <p role="status">{{ copy.loading }}</p>
+  }
+  @if (store.error()) {
+    <p role="alert">{{ copy.notFound }}</p>
+  }
+  @if (store.selected(); as item) {
+    <dl>
+      <dt>{{ copy.business }}</dt>
+      <dd>{{ item.businessName }}</dd>
+      <dt>{{ copy.vertical }}</dt>
+      <dd>{{ item.vertical }}</dd>
+      <dt>{{ copy.location }}</dt>
+      <dd>{{ item.location }}</dd>
+      <dt>{{ copy.contact }}</dt>
+      <dd>{{ item.contactName }}</dd>
+      <dt>{{ copy.email }}</dt>
+      <dd>{{ item.contactEmail }}</dd>
+      @if (item.contactPhone) {
+        <dt>{{ copy.phone }}</dt>
+        <dd>{{ item.contactPhone }}</dd>
+      }
+      <dt>{{ copy.status }}</dt>
+      <dd>
+        {{ item.status === 'PENDING' ? copy.pending : item.status === 'APPROVED' ? copy.approved : copy.rejected }}
+      </dd>
+      <dt>{{ copy.verified }}</dt>
+      <dd>{{ item.contactVerifiedAt ? copy.yes : copy.no }}</dd>
+      @if (item.approvedTenantId) {
+        <dt>{{ copy.approvedTenant }}</dt>
+        <dd>{{ item.approvedTenantId }}</dd>
+      }
+      @if (item.rejectionReason) {
+        <dt>{{ copy.rejectionReason }}</dt>
+        <dd>{{ item.rejectionReason }}</dd>
+      }
+    </dl>
+    @if (item.status === 'PENDING') {
+      @if (item.contactVerifiedAt) {
+        <form (submit)="approve($event, item.id, slug.value)">
+          <label for="business-slug">{{ copy.slug }}</label>
+          <input
+            id="business-slug"
+            #slug
+            required
+            minlength="2"
+            maxlength="63"
+            pattern="[a-z0-9][a-z0-9-]{1,62}"
+            autocomplete="off"
+          />
+          <p>{{ copy.slugHint }}</p>
+          <button type="submit" [disabled]="store.deciding()">{{ copy.approve }}</button>
+        </form>
+      }
+      <form (submit)="reject($event, item.id, reason.value)">
+        <label for="rejection-reason">{{ copy.reason }}</label>
+        <textarea id="rejection-reason" #reason required maxlength="500"></textarea>
+        <button type="submit" [disabled]="store.deciding()">{{ copy.reject }}</button>
+      </form>
+    }
+    @if (store.deciding()) {
+      <p role="status">{{ copy.deciding }}</p>
+    }
+    @if (store.decisionError()) {
+      <p role="alert">{{ copy.decisionFailed }}</p>
+    }
+  }
+</main>

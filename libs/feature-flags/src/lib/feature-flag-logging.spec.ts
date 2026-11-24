@@ -33,3 +33,31 @@ it('registra degradación una vez y recuperación sin filtrar claves ni perder f
   expect(info).toHaveBeenCalledTimes(1);
   expect(JSON.stringify([...warn.mock.calls, ...info.mock.calls])).not.toContain('private-canary');
 });
+
+it('apaga las solicitudes públicas si el proxy cae después de estar encendidas', async () => {
+  vi.useFakeTimers();
+  vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  const online = {
+    ok: true,
+    json: () =>
+      Promise.resolve({ toggles: [{ name: 'mapit.s6.business-applications', enabled: true }] }),
+  };
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(online)
+    .mockRejectedValueOnce(new Error('offline'));
+  vi.stubGlobal('fetch', fetchMock);
+  TestBed.configureTestingModule({
+    providers: [provideFeatureFlags({ clientKey: 'test-key', intervaloRefrescoMs: 100 })],
+  });
+  const flags = TestBed.inject(FeatureFlagService);
+  TestBed.tick();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(flags.isEnabledNow('mapit.s6.business-applications')).toBe(true);
+  await vi.advanceTimersByTimeAsync(100);
+  expect(flags.isEnabledNow('mapit.s6.business-applications')).toBe(false);
+  fetchMock.mockResolvedValue(online);
+  await vi.advanceTimersByTimeAsync(100);
+  expect(flags.isEnabledNow('mapit.s6.business-applications')).toBe(true);
+});

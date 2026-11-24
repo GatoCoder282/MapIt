@@ -17,24 +17,24 @@ class NotificationMigrationDependency {
   FlywayMigrationStrategy notificationMigrationOrder() {
     return flyway -> {
       if (flyway.getConfiguration().isOutOfOrder()) {
-        throw new FlywayException("MAP-286 requiere V40-V43 en orden, sin outOfOrder.");
+        throw new FlywayException("MAP-286 requiere V40-V45 en orden, sin outOfOrder.");
       }
       var migrations = flyway.info().all();
       boolean pending = false;
-      for (String version : List.of("40", "41", "42", "43")) {
+      for (String version : List.of("40", "41", "42", "43", "44", "45")) {
         var migration =
             Arrays.stream(migrations)
                 .filter(info -> MigrationVersion.fromVersion(version).equals(info.getVersion()))
                 .findFirst()
                 .orElseThrow(
-                    () -> new FlywayException("MAP-286 requiere integrar V40 de MAP-285 y V41-V43."));
+                    () -> new FlywayException("MAP-286 requiere integrar V40 de MAP-285 y V43-V45."));
         var state = migration.getState();
         if (version.equals("40")
             && !"V40__agregar_contacto_e_idioma_al_perfil_personal.sql".equals(migration.getScript())) {
           throw new FlywayException("V40 debe corresponder a la dependencia MAP-285.");
         }
         if (state != MigrationState.PENDING && state != MigrationState.SUCCESS) {
-          throw new FlywayException("MAP-286 requiere V40-V43 resueltas y en orden.");
+          throw new FlywayException("MAP-286 requiere V40-V45 resueltas y en orden.");
         }
         if (state == MigrationState.PENDING) {
           pending = true;

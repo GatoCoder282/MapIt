@@ -66,5 +66,11 @@ export default defineConfig({
       // El cliente final reserva desde el móvil.
       use: { ...devices['Pixel 7'], baseURL: PUBLIC_URL },
     },
+    {
+      name: 'business-onboarding',
+      testMatch: /business-onboarding\/.*\.spec\.ts/,
+      dependencies: ['console', 'console-tablet', 'public-web', 'public-web-mobile'],
+      use: { ...devices['Desktop Chrome'], baseURL: PUBLIC_URL },
+    },
   ],
 });

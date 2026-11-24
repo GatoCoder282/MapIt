@@ -30,9 +30,9 @@ export function sql(query: string): string {
 export async function fixture(request: APIRequestContext) {
   expect(
     sql(
-      "select string_agg(version,',' order by installed_rank) from flyway_schema_history where version in ('40','41','42','43') and success",
+      "select string_agg(version,',' order by installed_rank) from flyway_schema_history where version in ('40','41','42','43','44','45') and success",
     ),
-  ).toBe('40,41,42,43');
+  ).toBe('40,41,42,43,44,45');
   const tenant = 'qa-' + randomUUID(),
     foreign = 'qa-' + randomUUID(),
     user = randomUUID(),

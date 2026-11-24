@@ -95,10 +95,10 @@ class NotificationPersistenceIntegrationTest {
         owner.update("delete from establishment_staff_access where user_id=?",B);
         grant(E);
     }
-    @Test void flyway41PreservesRlsAndAllowsRealV40WhenProvided() {
-        assertThat(owner.queryForObject("select count(*) from flyway_schema_history where version='41' and success",Integer.class)).isEqualTo(1);
-        assertThat(owner.queryForList("select version from flyway_schema_history where version in ('40','41','42','43') and success order by installed_rank",String.class))
-                .containsExactly("40","41","42","43");
+    @Test void flyway43PreservesRlsAndFollowsIntegratedMain() {
+        assertThat(owner.queryForObject("select count(*) from flyway_schema_history where version='43' and success",Integer.class)).isEqualTo(1);
+        assertThat(owner.queryForList("select version from flyway_schema_history where version in ('40','41','42','43','44','45') and success order by installed_rank",String.class))
+                .containsExactly("40","41","42","43","44","45");
         create(notice(40,A,E,R)); create(notice(41,B,E,R)); create(notice(42,C,F,RF));
         assertThat(owner.queryForObject("select count(*) from pg_class where relname in ('notification','notification_delivery_key') and relrowsecurity and relforcerowsecurity",Integer.class)).isEqualTo(2);
         tx.executeWithoutResult(s->{

@@ -38,12 +38,14 @@ public final class UnleashFeatureFlagAdapter implements FeatureFlagPort {
   @Override
   public boolean isEnabled(FeatureFlag flag, boolean valorPorDefecto) {
     if (flag == FeatureFlag.MAPIT_S6_NOTIFICATION_CENTER || flag == FeatureFlag.MAPIT_S6_MY_ACCOUNT) return false;
+    if (flag == FeatureFlag.BUSINESS_APPLICATIONS && myAccountAvailability.unavailable()) return false;
     return unleash.isEnabled(flag.clave(), valorPorDefecto);
   }
 
   @Override
   public boolean isEnabledFor(FeatureFlag flag, TenantId tenantId) {
     if (flag == FeatureFlag.MAPIT_S6_NOTIFICATION_CENTER) return false;
+    if (flag == FeatureFlag.BUSINESS_APPLICATIONS && myAccountAvailability.unavailable()) return false;
     UnleashContext context =
         UnleashContext.builder().addProperty(TENANT_PROPERTY, tenantId.value()).build();
     if (flag != FeatureFlag.MAPIT_S6_MY_ACCOUNT) {

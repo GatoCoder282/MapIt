@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-/** QA opt-in de MAP-286 contra stack real con V40 temporal verificada. */
+/** QA opt-in de MAP-286 contra stack real con cadena V40–V45 verificada. */
 export default defineConfig({
   testDir: './tests/console',
   testMatch: 'notification-center-live.spec.ts',

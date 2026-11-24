@@ -72,6 +72,8 @@ tags:
     description: Reserva anónima desde el portal público (HU-6.02)
   - name: customer-history
     description: Acceso temporal y consulta del historial propio en el portal público (HU-6.04)
+  - name: business-applications
+    description: Solicitudes públicas de incorporación de negocios (HU-1.05)
 
 paths:
   /me/notifications/preferences:
@@ -383,6 +385,194 @@ paths:
           $ref: "#/components/responses/NotificationServiceUnavailable"
         "500":
           $ref: "#/components/responses/NotificationServerError"
+
+  /public/business-applications:
+    post:
+      tags: [business-applications]
+      summary: Solicitar incorporación de un negocio
+      description: |
+        Recibe datos mínimos y responde de forma neutra incluso si ya existe una
+        solicitud pendiente. No crea tenant ni usuario. Solo funciona con la flag
+        `mapit.s6.business-applications` encendida. El límite se aplica antes
+        de consultar duplicados; el tenant técnico lo fija el servidor.
+      operationId: submitBusinessApplication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessApplicationCreateRequest"
+      responses:
+        "202":
+          description: Respuesta neutra; si se aceptó, se enviará verificación por correo
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /public/business-applications/verify-contact:
+    post:
+      tags: [business-applications]
+      summary: Verificar correo de una solicitud de incorporación
+      description: |
+        Consume un token opaco de un solo uso. La respuesta es neutra ante
+        token inválido o caducado y no revela la existencia de la solicitud.
+        Permanece disponible si la flag pública se apaga después del envío.
+      operationId: verifyBusinessApplicationContact
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessApplicationVerificationRequest"
+      responses:
+        "202":
+          description: Verificación procesada de forma neutra
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /business-applications:
+    get:
+      tags: [business-applications]
+      summary: Listar solicitudes de incorporación para Super Admin
+      description: Requiere rol SUPER_ADMIN. Nunca expone hashes de verificación.
+      operationId: listBusinessApplications
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/BusinessApplicationStatus"
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 120
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Página de solicitudes de plataforma
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessApplicationPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /business-applications/{id}:
+    get:
+      tags: [business-applications]
+      summary: Revisar una solicitud de incorporación
+      operationId: getBusinessApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Solicitud de plataforma
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessApplicationDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /business-applications/{id}/approve:
+    post:
+      tags: [business-applications]
+      summary: Aprobar solicitud e invitar al primer administrador
+      operationId: approveBusinessApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessApplicationApprovalRequest"
+      responses:
+        "200":
+          description: Solicitud aprobada o repetición idempotente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessApplicationDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /business-applications/{id}/reject:
+    post:
+      tags: [business-applications]
+      summary: Rechazar solicitud con motivo auditable
+      operationId: rejectBusinessApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessApplicationRejectionRequest"
+      responses:
+        "200":
+          description: Solicitud rechazada o repetición idempotente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessApplicationDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /public/tenants/{tenantSlug}/establishments/{establishmentSlug}:
     {
@@ -6551,6 +6741,113 @@ components:
       type: string
       description: Vertical de negocio inicial del tenant.
       enum: [RESTAURANT, NIGHTCLUB, EVENT_HALL, HOTEL]
+
+    BusinessApplicationCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [businessName, vertical, location, contactName, contactEmail]
+      properties:
+        businessName:
+          type: string
+          minLength: 2
+          maxLength: 120
+        vertical:
+          $ref: "#/components/schemas/BusinessVertical"
+        location:
+          type: string
+          minLength: 2
+          maxLength: 200
+        contactName:
+          type: string
+          minLength: 2
+          maxLength: 120
+        contactEmail:
+          type: string
+          format: email
+          maxLength: 254
+        contactPhone:
+          type: string
+          minLength: 6
+          maxLength: 32
+
+    BusinessApplicationVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 200
+          writeOnly: true
+
+    BusinessApplicationStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED]
+
+    BusinessApplicationApprovalRequest:
+      type: object
+      required: [slug]
+      properties:
+        slug:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]{1,62}$"
+          minLength: 2
+          maxLength: 63
+
+    BusinessApplicationRejectionRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+
+    BusinessApplicationDetail:
+      type: object
+      required:
+        [
+          id,
+          businessName,
+          vertical,
+          location,
+          contactName,
+          contactEmail,
+          status,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        businessName: { type: string }
+        vertical:
+          $ref: "#/components/schemas/BusinessVertical"
+        location: { type: string }
+        contactName: { type: string }
+        contactEmail: { type: string, format: email }
+        contactPhone: { type: string }
+        status:
+          $ref: "#/components/schemas/BusinessApplicationStatus"
+        contactVerifiedAt: { type: string, format: date-time }
+        decidedAt: { type: string, format: date-time }
+        rejectionReason: { type: string }
+        approvedTenantId: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    BusinessApplicationPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessApplicationDetail"
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
 
     Tenant:
       type: object

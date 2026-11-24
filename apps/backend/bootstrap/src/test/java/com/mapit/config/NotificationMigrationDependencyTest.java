@@ -66,7 +66,7 @@ class NotificationMigrationDependencyTest {
 
   @Test
   void refusesAppliedNotificationsBeforePendingV40() {
-    configure(migration(40, MigrationState.PENDING), migration(41, MigrationState.SUCCESS));
+    configure(IntStream.rangeClosed(40, 45).mapToObj(version -> migration(version, version == 40 ? MigrationState.PENDING : MigrationState.SUCCESS)).toArray(MigrationInfo[]::new));
     assertThatThrownBy(() -> new NotificationMigrationDependency().notificationMigrationOrder().migrate(flyway))
         .isInstanceOf(FlywayException.class);
     verify(flyway, never()).migrate();
@@ -84,7 +84,7 @@ class NotificationMigrationDependencyTest {
   @ParameterizedTest
   @EnumSource(value = MigrationState.class, names = {"PENDING", "SUCCESS"})
   void runsNormalMigrationForResolvedOrderedChain(MigrationState state) {
-    configure(IntStream.rangeClosed(40, 43).mapToObj(version -> migration(version, state)).toArray(MigrationInfo[]::new));
+    configure(IntStream.rangeClosed(40, 45).mapToObj(version -> migration(version, state)).toArray(MigrationInfo[]::new));
     new NotificationMigrationDependency().notificationMigrationOrder().migrate(flyway);
     verify(flyway).migrate();
   }
@@ -92,7 +92,8 @@ class NotificationMigrationDependencyTest {
   @Test
   void allowsV40AlreadyAppliedWithNotificationsPending() {
     configure(migration(40, MigrationState.SUCCESS), migration(41, MigrationState.PENDING),
-        migration(42, MigrationState.PENDING), migration(43, MigrationState.PENDING));
+        migration(42, MigrationState.PENDING), migration(43, MigrationState.PENDING),
+        migration(44, MigrationState.PENDING), migration(45, MigrationState.PENDING));
     new NotificationMigrationDependency().notificationMigrationOrder().migrate(flyway);
     verify(flyway).migrate();
   }

@@ -11,7 +11,7 @@ import {
 
 test.skip(
   !process.env['MAP286_QA_CONTAINER'],
-  'Requiere stack QA temporal verificado con V40 antes de V41–V43',
+  'Requiere stack QA temporal verificado con V40–V42 antes de V43–V45',
 );
 
 test('centro real: emisión, dos sesiones, lectura, reconexión, preferencias, rollback y check-in', async ({

@@ -1,0 +1,78 @@
+.application-page {
+  min-height: 100vh;
+  padding: clamp(1.5rem, 5vw, 5rem);
+  background: #f4f6ff;
+  color: #20243b;
+}
+.application-card {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 16px 50px #25317914;
+}
+.back {
+  color: #2635dd;
+}
+h1 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+input,
+select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem;
+  border: 1px solid #a9b1cd;
+  border-radius: 8px;
+  font: inherit;
+}
+input:focus-visible,
+select:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #2635dd;
+  outline-offset: 2px;
+}
+form p,
+form button {
+  grid-column: 1 / -1;
+}
+form p[role='alert'] {
+  color: #a51d32;
+}
+button {
+  min-height: 3.25rem;
+  border: 0;
+  border-radius: 8px;
+  background: #2635dd;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.success {
+  padding: 1rem;
+  border-radius: 8px;
+  background: #e9f7ef;
+}
+@media (max-width: 600px) {
+  form {
+    grid-template-columns: 1fr;
+  }
+}

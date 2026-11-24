@@ -109,9 +109,14 @@
     <mp-business-steps />
 
     <mp-business-join>
-      <button class="join-button join-banner-button" type="button" (click)="joinDialog.showModal()">
-        {{ copy.joinBannerButton }}<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h13m-5-5 5 5-5 5" /></svg>
-      </button>
+      @if (businessApplicationsEnabled()) {
+        <a class="join-button join-banner-button" routerLink="/incorporacion">{{ copy.joinBannerButton }}</a>
+      } @else {
+        <button class="join-button join-banner-button" type="button" (click)="joinDialog.showModal()">
+          {{ copy.joinBannerButton
+          }}<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h13m-5-5 5 5-5 5" /></svg>
+        </button>
+      }
     </mp-business-join>
     <dialog #joinDialog aria-labelledby="join-dialog-title">
       <h2 id="join-dialog-title">{{ copy.join }}</h2>

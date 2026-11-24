@@ -43,13 +43,13 @@ dependencies {
     testImplementation(libs.spring.boot.testcontainers)
 }
 
-// MAP-286 no puede aplicar V41 antes de integrar la migración V40 de MAP-285.
+// MAP-286 no puede aplicar V43 antes de integrar la migración V40 de MAP-285.
 // Protege también el CLI de Gradle, que no utiliza el wiring Spring de arranque.
 tasks.named("flywayMigrate") {
     doFirst {
         check(file("src/main/resources/db/migration/V40__agregar_contacto_e_idioma_al_perfil_personal.sql").isFile &&
             fileTree("src/main/resources/db/migration") { include("V40__*.sql") }.files.size == 1) {
-            "MAP-286 requiere integrar V40 de MAP-285 antes de migrar V41-V43."
+            "MAP-286 requiere integrar V40 de MAP-285 antes de migrar V43-V45."
         }
     }
 }

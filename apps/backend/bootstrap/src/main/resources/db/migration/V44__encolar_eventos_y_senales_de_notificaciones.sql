@@ -1,4 +1,4 @@
--- V40 pertenece a MAP-285: desplegar V40 antes de V41/V42. Sin dependencia de columnas de perfil.
+-- V40 pertenece a MAP-285: desplegar V40–V42 antes de V43/V44. Sin dependencia de columnas de perfil.
 CREATE TABLE notification_event_outbox (
  id uuid PRIMARY KEY,
  tenant_id text NOT NULL REFERENCES tenant(id),

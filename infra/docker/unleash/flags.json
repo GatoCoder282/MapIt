@@ -65,6 +65,12 @@
       "type": "release",
       "enabled": false,
       "expiresAt": "2027-02-21"
+    },
+    {
+      "name": "mapit.s6.business-applications",
+      "description": "HU-1.05: habilita nuevas solicitudes públicas de incorporación con revisión humana; las ya creadas permanecen disponibles para la plataforma.",
+      "type": "permission",
+      "enabled": false
     }
   ]
 }

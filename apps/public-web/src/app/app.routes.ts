@@ -10,6 +10,20 @@ import { Router, type Routes } from '@angular/router';
  */
 export const routes: Routes = [
   {
+    path: 'incorporacion',
+    loadComponent: () =>
+      import('./features/business-application/ui/business-application-page').then(
+        (m) => m.BusinessApplicationPage,
+      ),
+  },
+  {
+    path: 'incorporacion/verificar',
+    loadComponent: () =>
+      import('./features/business-application/ui/business-contact-verification').then(
+        (m) => m.BusinessContactVerification,
+      ),
+  },
+  {
     path: 'pago/:tenantSlug/:establishmentSlug/:reservationId',
     loadComponent: () => import('./features/payment/ui/payment-page').then((m) => m.PaymentPage),
   },

@@ -1,4 +1,4 @@
--- MAP-292: V40 pertenece a MAP-285. Desplegar en orden V39 -> V40 -> V41.
+-- MAP-292: V40 pertenece a MAP-285. Desplegar en orden V40 -> V41/V42 (HU-1.05) -> V43.
 -- Sin dependencia de columnas de perfil ni modificación de outOfOrder/migraciones previas.
 CREATE TABLE notification_delivery_key (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

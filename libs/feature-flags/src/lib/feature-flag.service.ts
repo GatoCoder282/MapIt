@@ -283,10 +283,12 @@ export class FeatureFlagService {
       if (this.degraded) this.logger.log('INFO', 'flags.recovered');
       this.degraded = false;
     } catch {
-      // FALLA ABIERTO hacia los valores por defecto, deliberadamente.
-      // Que el servidor de flags esté caído no puede tumbar la aplicación:
-      // sería convertir una herramienta de mitigación de incidentes en la
-      // causa de uno. Ver plan §9.
+      // Las demás flags conservan su último valor para mantener la aplicación
+      // operativa durante una caída temporal del proxy. Ver plan §9.
+      // La incorporación de negocios exige falla cerrada incluso si el último
+      // valor recibido fue ON: una solicitud nueva no debe quedar habilitada
+      // por una respuesta antigua del proxy.
+      this.estado.update((current) => ({ ...current, 'mapit.s6.business-applications': false }));
       if (!this.degraded) this.logger.log('WARN', 'flags.degraded');
       this.degraded = true;
     }

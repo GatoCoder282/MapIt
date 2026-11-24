@@ -211,3 +211,7 @@ NotificationSessionContext combina la evaluación contextual del proxy con una c
 ### Base integrada — 2026-11-24
 
 main bb5f90d (#74) se integra con merge normal a359f00. V40 productiva, original e inalterada, satisface el guard y precede a V41–V43; el arranque QA usa las cuatro migraciones del artefacto, PostgreSQL 17 temporal y runtime mapit_app sin bypass. No se emplean los antiguos fixtures/callbacks de compatibilidad. Se preservan las dos políticas de flags y sus clientes contextuales, sin mezclar sesiones. Los fixtures de rutas/shell deben registrar las dependencias reales incorporadas por ambas historias. Las evidencias finales se registran en tasks.md; logging:smoke queda para CI por elección del usuario, sin reconstruir imágenes Docker en C:.
+
+### Numeración vigente tras integrar main — 2026-11-24
+
+main 016e75d incorpora HU-1.05 en V41/V42. Las migraciones todavía no integradas de MAP-286 se renumeran a V43 (bandeja), V44 (outbox/señales) y V45 (preferencias). La cadena vigente es V40→V41→V42→V43→V44→V45; referencias anteriores describen ejecuciones históricas. V40–V42 y auditoría de main permanecen intactas. No aplicar la renumeración sobre una BD QA con las antiguas versiones de MAP-286: usar una base temporal nueva o la restauración autorizada desde producción del flujo QA; aquí no se modifica ni borra esa base.

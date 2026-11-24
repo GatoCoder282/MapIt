@@ -34,6 +34,10 @@ final class MyAccountFlagAvailability implements UnleashSubscriber {
     return current.available() && age >= 0 && age < MAX_AGE_NANOS;
   }
 
+  boolean unavailable() {
+    return logging.unavailable();
+  }
+
   @Override
   public synchronized void togglesFetched(ClientFeaturesResponse response) {
     logging.togglesFetched(response);

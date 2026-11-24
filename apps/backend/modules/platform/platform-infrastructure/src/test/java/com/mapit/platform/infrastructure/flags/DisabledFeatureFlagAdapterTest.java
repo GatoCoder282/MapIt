@@ -32,6 +32,7 @@ class DisabledFeatureFlagAdapterTest {
     assertThat(adapter.isEnabled(FeatureFlag.REALTIME_WEBSOCKET)).isTrue();
     assertThat(adapter.isEnabled(FeatureFlag.PAYMENTS_QR)).isFalse();
     assertThat(adapter.isEnabled(FeatureFlag.PAYMENTS_QR, true)).isTrue();
+    assertThat(adapter.isEnabled(FeatureFlag.BUSINESS_APPLICATIONS)).isFalse();
   }
 
   @Test

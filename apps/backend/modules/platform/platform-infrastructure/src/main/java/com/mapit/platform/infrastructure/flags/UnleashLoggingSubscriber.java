@@ -35,6 +35,10 @@ final class UnleashLoggingSubscriber implements UnleashSubscriber {
     return success != null && !now.isBefore(success) && now.isBefore(success.plus(Duration.ofSeconds(30)));
   }
 
+  boolean unavailable() {
+    return degraded.get();
+  }
+
   @Override
   public void onError(UnleashException exception) {
     failed();
@@ -57,7 +61,7 @@ final class UnleashLoggingSubscriber implements UnleashSubscriber {
     lastSuccess.set(null);
     if (!degraded.getAndSet(true)) {
       LOG.atWarn().addKeyValue("event", "integration.failed").addKeyValue("integration", "unleash")
-          .log("Feature flag transport unavailable; cached values or defaults remain active");
+          .log("Feature flag transport unavailable; sensitive toggles use safe defaults");
     }
   }
 }
