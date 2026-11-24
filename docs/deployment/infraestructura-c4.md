@@ -91,12 +91,15 @@ C4Deployment
   }
 
   Deployment_Node(render, "Render detrás de Cloudflare", "Plan free · Oregon") {
-    Container(unleash, "MapIt-Unleash", "Compartido con producción", "entorno development")
     Container(apiqa, "MapIt-QA", "Spring Boot 4 · perfil dev", "mapit-qa.onrender.com · pagos mock")
   }
 
   Deployment_Node(neon, "Neon · rama preview", "Copia de production") {
     ContainerDb(dbqa, "neondb", "PostgreSQL + RLS", "Se restaura desde production al tomar el slot")
+  }
+
+  Deployment_Node(renderu, "Render · compartido con producción", "Plan free · Oregon") {
+    Container(unleash, "MapIt-Unleash", "Unleash 6.10 OSS", "mapit-unleash.onrender.com · entorno development")
   }
 
   Deployment_Node(smtp, "Correo", "SMTP externo") {
