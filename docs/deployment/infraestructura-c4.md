@@ -1,9 +1,10 @@
 # Infraestructura de MapIt — modelo C4
 
-Dos vistas del [modelo C4](https://c4model.com):
+Tres vistas del [modelo C4](https://c4model.com):
 
 1. **Contexto** (nivel 1): quién usa MapIt y con qué sistemas externos habla.
-2. **Despliegue**: dónde corre cada pieza en producción y en el slot de QA.
+2. **Despliegue de producción**: dónde corre cada pieza que usan los clientes.
+3. **Despliegue del slot de QA**: cómo una rama `feat/**` llega a QA.
 
 GitHub dibuja los diagramas al abrir este archivo. Para editarlos, pega el bloque en
 <https://mermaid.live>. Los valores de las variables de entorno están en el [runbook](README.md).
@@ -21,88 +22,106 @@ C4Context
 
   System(mapit, "MapIt", "Plataforma multi-tenant de reservas de espacios")
 
-  System_Ext(correo, "Correo transaccional", "Brevo en producción · Mailtrap Sandbox en QA")
-  System_Ext(github, "GitHub", "Código, CI y workflow QA deploy")
-  System_Ext(pasarela, "Pasarela de pago QR", "Hoy en modo mock (PAYMENT_PROVIDER=mock)")
+  Enterprise_Boundary(ext, "Servicios externos") {
+    System_Ext(correo, "Correo transaccional", "Brevo en producción · Mailtrap Sandbox en QA")
+    System_Ext(pasarela, "Pasarela de pago QR", "Hoy en modo mock (PAYMENT_PROVIDER=mock)")
+    System_Ext(github, "GitHub", "Código, CI y workflow QA deploy")
+  }
 
   Rel(cliente, mapit, "Reserva, paga y consulta", "HTTPS")
   Rel(staff, mapit, "Opera mapas, reservas y cobros", "HTTPS + WSS")
   Rel(superadmin, mapit, "Aprueba negocios", "HTTPS")
   Rel(equipo, github, "PR y etiqueta qa")
-  Rel(github, mapit, "Despliega el slot de QA", "APIs de Render, Neon y Vercel")
-  Rel(mapit, correo, "Verificaciones, invitaciones y enlaces mágicos", "SMTP 2525")
+  Rel(mapit, correo, "Verificaciones e invitaciones", "SMTP 2525")
   Rel(mapit, pasarela, "Cobros QR")
+  Rel(github, mapit, "Despliega el slot de QA")
 
   UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="1")
 ```
 
-## 2. Despliegue (producción y slot de QA)
+## 2. Despliegue de producción
 
 ```mermaid
 C4Deployment
-  title MapIt · Infraestructura desplegada
+  title MapIt · Producción (rama main)
 
-  Deployment_Node(vercel, "Vercel", "Plan Hobby · frontends estáticos") {
-    Deployment_Node(vprod, "Production", "rama main") {
-      Container(console, "console", "Angular 22", "map-it-n7y1.vercel.app")
-      Container(web, "public-web", "Angular 22", "map-it-wuy2.vercel.app")
-    }
-    Deployment_Node(vqa, "Preview", "ramas feat/**") {
-      Container(consoleqa, "console QA", "alias fijo", "mapit-qa-console.vercel.app")
-      Container(webqa, "public-web QA", "alias fijo", "mapit-qa-web.vercel.app")
-    }
+  Deployment_Node(vercel, "Vercel", "Plan Hobby · build en cada push a main") {
+    Container(console, "console", "Angular 22", "map-it-n7y1.vercel.app")
+    Container(web, "public-web", "Angular 22", "map-it-wuy2.vercel.app")
   }
 
-  Deployment_Node(render, "Render detrás de Cloudflare", "Plan free · Oregon · duerme tras 15 min sin tráfico") {
-    Container(api, "MapIt-production", "Spring Boot 4 · Java 25", "mapit-qmr4.onrender.com · auto-deploy tras CI, solo si cambia apps/backend")
-    Container(apiqa, "MapIt-QA", "Spring Boot 4 · perfil dev", "mapit-qa.onrender.com · la rama la fija el workflow")
-    Container(unleash, "MapIt-Unleash", "Unleash 6.10 OSS", "mapit-unleash.onrender.com · entornos production y development")
+  Deployment_Node(render, "Render detrás de Cloudflare", "Plan free · Oregon") {
+    Container(api, "MapIt-production", "Spring Boot 4 · Java 25", "mapit-qmr4.onrender.com · auto-deploy tras CI si cambia apps/backend")
+    Container(unleash, "MapIt-Unleash", "Unleash 6.10 OSS", "mapit-unleash.onrender.com · entorno production")
   }
 
-  Deployment_Node(neon, "Neon", "PostgreSQL serverless") {
-    Deployment_Node(nprod, "Rama production") {
-      ContainerDb(db, "neondb", "PostgreSQL + RLS", "Datos de producción · Flyway")
-      ContainerDb(unleashdb, "unleash", "PostgreSQL", "Flags, estrategias y tokens")
-    }
-    Deployment_Node(nqa, "Rama preview") {
-      ContainerDb(dbqa, "neondb (copia)", "PostgreSQL + RLS", "Se restaura desde production al tomar el slot")
-    }
+  Deployment_Node(neon, "Neon · rama production", "PostgreSQL serverless") {
+    ContainerDb(db, "neondb", "PostgreSQL + RLS", "Datos de producción · migraciones Flyway")
+    ContainerDb(unleashdb, "unleash", "PostgreSQL", "Flags, estrategias y tokens")
   }
 
-  Deployment_Node(gh, "GitHub", "GatoCoder282/MapIt") {
-    Container(actions, "GitHub Actions", "ci.yml · qa-deploy.yml", "CI de cada PR · mueve el slot de QA")
+  Deployment_Node(smtp, "Correo", "SMTP externo") {
+    Container_Ext(brevo, "Brevo", "smtp-relay.brevo.com:2525", "Entrega a buzones reales")
   }
-
-  System_Ext(brevo, "Brevo", "SMTP de producción")
-  System_Ext(mailtrap, "Mailtrap Sandbox", "SMTP de QA; no entrega a buzones reales")
 
   Rel(console, api, "REST + WebSocket", "HTTPS/WSS")
   Rel(web, api, "REST", "HTTPS")
+  Rel(web, unleash, "Frontend API", "token client production")
+  Rel(api, unleash, "Client API", "token backend production")
+  Rel(api, db, "JDBC", "TLS")
+  Rel(unleash, unleashdb, "SQL", "TLS")
+  Rel(api, brevo, "SMTP", "STARTTLS")
+
+  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+```
+
+## 3. Despliegue del slot de QA
+
+```mermaid
+C4Deployment
+  title MapIt · Slot de QA (una rama feat/** a la vez)
+
+  Deployment_Node(gh, "GitHub", "GatoCoder282/MapIt") {
+    Container(actions, "QA deploy", "GitHub Actions · qa-deploy.yml", "Etiqueta qa o workflow_dispatch")
+  }
+
+  Deployment_Node(vercel, "Vercel · Preview", "Un preview por commit de cada rama") {
+    Container(consoleqa, "console QA", "Alias fijo", "mapit-qa-console.vercel.app")
+    Container(webqa, "public-web QA", "Alias fijo", "mapit-qa-web.vercel.app")
+  }
+
+  Deployment_Node(render, "Render detrás de Cloudflare", "Plan free · Oregon") {
+    Container(apiqa, "MapIt-QA", "Spring Boot 4 · perfil dev", "mapit-qa.onrender.com · pagos mock")
+    Container(unleash, "MapIt-Unleash", "Compartido con producción", "entorno development")
+  }
+
+  Deployment_Node(neon, "Neon · rama preview", "Copia de production") {
+    ContainerDb(dbqa, "neondb", "PostgreSQL + RLS", "Se restaura desde production al tomar el slot")
+  }
+
+  Deployment_Node(smtp, "Correo", "SMTP externo") {
+    Container_Ext(mailtrap, "Mailtrap Sandbox", "sandbox.smtp.mailtrap.io:2525", "Captura todo; no entrega a buzones reales")
+  }
+
+  Rel(actions, consoleqa, "Asigna los alias", "Vercel CLI")
+  Rel(actions, apiqa, "Fija la rama y despliega el commit", "API de Render")
   Rel(consoleqa, apiqa, "REST + WebSocket", "HTTPS/WSS")
   Rel(webqa, apiqa, "REST", "HTTPS")
-  Rel(console, unleash, "Frontend API", "token client production")
-  Rel(consoleqa, unleash, "Frontend API", "token client development")
-  Rel(api, unleash, "Client API", "token backend production")
   Rel(apiqa, unleash, "Client API", "token backend development")
-  Rel(api, db, "JDBC · Flyway", "TLS")
-  Rel(apiqa, dbqa, "JDBC · Flyway", "TLS")
-  Rel(unleash, unleashdb, "SQL", "TLS")
-  Rel(api, brevo, "SMTP", "2525 STARTTLS")
-  Rel(apiqa, mailtrap, "SMTP", "2525 STARTTLS")
+  Rel(apiqa, dbqa, "JDBC", "TLS")
   Rel(actions, dbqa, "Reset desde production", "API de Neon")
-  Rel(actions, apiqa, "Rama y deploy del commit", "API de Render")
-  Rel(actions, consoleqa, "Asigna los alias", "Vercel CLI")
+  Rel(apiqa, mailtrap, "SMTP", "STARTTLS")
 
-  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="2")
+  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
 ```
 
 ### Cómo leerlo
 
-- **Producción y QA comparten Unleash**, pero cada uno usa su entorno (`production` o
-  `development`) y sus propios tokens. Los dos frontends leen los flags desde el navegador; en el
-  diagrama solo se dibujan las flechas de console para no saturarlo.
-- **La base de QA es una copia de producción** (rama `preview` de Neon). El workflow `QA deploy` la
-  restaura cada vez que una rama toma el slot.
+- **Producción y QA comparten el servidor de Unleash**, pero cada uno usa su entorno
+  (`production` o `development`) y sus propios tokens. Console y public-web leen los flags desde el
+  navegador; en los diagramas se dibuja una sola flecha de frontend para no saturarlos.
+- **La base de QA es una copia de producción** (rama `preview` de Neon). `QA deploy` la restaura
+  cada vez que una rama toma el slot; un push nuevo a la misma rama redespliega sin restaurarla.
 - **Cloudflare** está delante de Render. Por eso el backend lee la IP del cliente de
   `CF-Connecting-IP` (ver [runbook](README.md)).
 - **Plan free de Render:** los servicios se duermen tras 15 min sin tráfico y tardan unos 4 min en
