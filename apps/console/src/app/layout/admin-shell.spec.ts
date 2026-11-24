@@ -19,6 +19,7 @@ it('keeps the notification entry hidden for SUPER_ADMIN when OFF without establi
       {
         provide: AuthSession,
         useValue: {
+          revision: signal(1),
           user: signal({
             id: '00000000-0000-0000-0000-000000000001',
             tenantId: 'platform',
