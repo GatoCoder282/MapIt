@@ -75,8 +75,10 @@ export const routes: Routes = [
       },
       {
         path: 'settings',
-        data: { title: STRINGS.shell.nav.settings },
-        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+        loadComponent: () =>
+          import('./features/administration/platform-settings/ui/platform-settings').then(
+            (m) => m.PlatformSettings,
+          ),
       },
       {
         path: 'profile',
