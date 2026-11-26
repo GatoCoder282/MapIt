@@ -1,0 +1,108 @@
+@use 'ui-kit/styles/tokens';
+
+.platform-settings {
+  display: grid;
+  gap: var(--mapit-space-6);
+  max-width: 60rem;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0 0 0.5rem;
+}
+.hint,
+small {
+  display: block;
+  color: var(--mapit-color-text-muted);
+}
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rows > li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--mapit-color-border);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  overflow-wrap: anywhere;
+}
+.row > div {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.value {
+  font-weight: 700;
+}
+.editor,
+.confirm {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+label {
+  display: grid;
+  gap: 0.35rem;
+}
+input {
+  min-height: 2.75rem;
+  padding: 0.5rem;
+  border: 1px solid var(--mapit-color-border);
+  border-radius: 0.5rem;
+  font: inherit;
+}
+button {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--mapit-color-primary);
+  border-radius: 0.5rem;
+  background: var(--mapit-color-primary);
+  color: var(--mapit-color-surface);
+  font: inherit;
+  cursor: pointer;
+}
+button.secondary {
+  background: transparent;
+  color: var(--mapit-color-primary);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+:is(button, input):focus-visible {
+  outline: 3px solid var(--mapit-color-focus-ring);
+  outline-offset: 2px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+dl {
+  margin: 0;
+}
+dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--mapit-color-border);
+}
+dd {
+  margin: 0;
+  font-weight: 600;
+}
+.notice {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--mapit-color-primary);
+}
+.notice--error {
+  border-color: var(--mapit-color-error, #ba1a1a);
+}

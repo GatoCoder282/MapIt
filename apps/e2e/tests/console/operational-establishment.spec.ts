@@ -139,6 +139,14 @@ async function prepare(
       });
     }
 
+    // HU-7.07: /admin/settings consulta la configuración global. Apagada responde 404, que es
+    // el estado por defecto y no pide ningún dato de establecimiento.
+    if (
+      request.method() === 'GET' &&
+      /^\/api\/v1\/platform\/settings(\/changes)?$/.test(pathname)
+    ) {
+      return route.fulfill({ status: 404, json: { status: 404 } });
+    }
     unexpectedRequests.push(`${request.method()} ${pathname}`);
     return route.fulfill({
       status: 501,

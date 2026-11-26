@@ -71,6 +71,13 @@
       "description": "HU-1.05: habilita nuevas solicitudes públicas de incorporación con revisión humana; las ya creadas permanecen disponibles para la plataforma.",
       "type": "permission",
       "enabled": false
+    },
+    {
+      "name": "mapit.s6.platform-settings",
+      "description": "HU-7.07 (MAP-300): configuración de plataforma para Super Admin. OFF por defecto: rigen los valores del despliegue. No concede permisos.",
+      "type": "release",
+      "enabled": false,
+      "expiresAt": "2027-02-26"
     }
   ]
 }
