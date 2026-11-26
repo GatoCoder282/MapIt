@@ -1381,6 +1381,8 @@ export const STRINGS_EN = {
         grid: 'Grid',
         loading: 'Loading the plan…',
         noFloors: 'No floors configured.',
+        floorSetupHint:
+          'Create or select a floor in the Structure panel on the left to get started.',
         noSectors: 'This floor has no sectors.',
         duplicate: 'Duplicate',
       },

@@ -22,7 +22,6 @@ import { NotificationCenter } from '../features/notifications/ui/notification-ce
 
 import { STRINGS } from '../core/strings';
 import { EstablishmentContext } from '../core/establishment-context';
-import { OperationalMapData } from '../core/operational-map-data';
 import { MyAccountAccess } from '../core/my-account-access';
 
 /**
@@ -60,7 +59,6 @@ export class StaffShell {
   private readonly router = inject(Router);
   private readonly flags = inject(FeatureFlagService);
   protected readonly mapMonitoringEnabled = this.flags.isEnabled('operations.space-monitor');
-  protected readonly incidents = inject(OperationalMapData).incidents;
   private readonly firstEstablishmentUrl = this.router.createUrlTree(['/spaces/setup'], {
     queryParams: { manage: '1' },
   });

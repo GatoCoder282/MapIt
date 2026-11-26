@@ -1821,6 +1821,8 @@ const STRINGS_ES = {
         grid: 'Cuadrícula',
         loading: 'Cargando el plano…',
         noFloors: 'No hay pisos configurados.',
+        floorSetupHint:
+          'Crea o selecciona un piso desde el panel de Estructura de la izquierda para comenzar.',
         noSectors: 'Este piso no tiene sectores.',
         duplicate: 'Duplicar',
       },

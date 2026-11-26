@@ -10,15 +10,11 @@ import { BehaviorSubject } from 'rxjs';
 
 import { routes } from '../app.routes';
 import { EstablishmentContext } from '../core/establishment-context';
-import { OperationalMapData, type OperationalIncident } from '../core/operational-map-data';
 import { MyAccountAccess } from '../core/my-account-access';
 import { NotificationSessionContext } from '../core/notification-session-context';
 import { StaffShell } from './staff-shell';
 
-const incidents = signal<readonly Partial<OperationalIncident>[]>([]);
 beforeEach(() => {
-  incidents.set([]);
-  TestBed.overrideProvider(OperationalMapData, { useValue: { incidents } });
   TestBed.configureTestingModule({
     providers: [
       { provide: MyAccountAccess, useValue: { enabled: signal(false) } },
@@ -177,18 +173,6 @@ describe('StaffShell navigation', () => {
     fixture.detectChanges();
     expect(hasLink('/map')).toBe(true);
   }, 15000);
-
-  it('la campana indica incidencias reales y abre Operaciones dentro del mapa', async () => {
-    const { fixture, host } = await mountShell();
-    const bell = host.querySelector('.notification-btn');
-    expect(bell?.getAttribute('href')).toBe('/map?panel=operations');
-    expect(bell?.querySelector('.notification-dot')).toBeNull();
-
-    incidents.set([{ id: 'reservation:table' }]);
-    fixture.detectChanges();
-    expect(bell?.getAttribute('aria-label')).toContain('(1)');
-    expect(bell?.querySelector('.notification-dot')).not.toBeNull();
-  });
 
   it('permite contraer y expandir la navegación manteniendo nombres accesibles', async () => {
     const { fixture, host } = await mountShell();

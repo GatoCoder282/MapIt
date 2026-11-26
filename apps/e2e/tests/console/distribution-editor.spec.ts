@@ -542,9 +542,16 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   await page.goto('/spaces/editor');
   await expect(page.getByText('Sede sin distribución', { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId('map-save')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Estructura del espacio', exact: true })).toHaveCount(
+    0,
+  );
   await expect(
-    page.getByRole('link', { name: 'Estructura del espacio', exact: true }),
-  ).toBeVisible();
+    page.getByRole('region', { name: 'Plano del sector' }).getByRole('status'),
+  ).toHaveText(
+    'Crea o selecciona un piso desde el panel de Estructura de la izquierda para comenzar.',
+  );
+  await expect(page.getByTestId('map-canvas')).toBeHidden();
+  await expect(page.getByRole('group', { name: 'Herramientas del plano' })).toBeHidden();
   await page.getByRole('button', { name: 'Vista previa', exact: true }).click();
   const prerequisite = page.getByRole('dialog', { name: 'Crea un piso para empezar' });
   await expect(prerequisite).toBeVisible();

@@ -1375,6 +1375,7 @@ export const STRINGS_JA = {
         grid: 'グリッド',
         loading: 'マップを読み込み中…',
         noFloors: 'フロアがありません。',
+        floorSetupHint: '左側の構成パネルでフロアを作成または選択してください。',
         noSectors: 'このフロアに区画はありません。',
         duplicate: '複製',
       },

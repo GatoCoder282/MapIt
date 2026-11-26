@@ -54,44 +54,6 @@
   cursor: pointer;
 }
 
-.notification-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border: 1px solid var(--mapit-color-border);
-  border-radius: var(--mapit-radius);
-  background: var(--mapit-color-surface);
-  color: var(--mapit-color-text-variant);
-  cursor: pointer;
-  transition:
-    background var(--mapit-duration-fast) var(--mapit-ease-out),
-    color var(--mapit-duration-fast) var(--mapit-ease-out);
-
-  svg {
-    width: 1.1rem;
-    height: 1.1rem;
-  }
-
-  &:hover {
-    background: var(--mapit-color-surface-low);
-    color: var(--mapit-color-text);
-  }
-}
-
-.notification-dot {
-  position: absolute;
-  top: 0.3rem;
-  right: 0.3rem;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--mapit-color-primary);
-  border: 2px solid var(--mapit-color-surface);
-}
-
 .user-menu-toggle {
   display: inline-flex;
   align-items: center;

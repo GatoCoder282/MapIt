@@ -13,6 +13,21 @@
 
 ## Notas de ejecución
 
+- Ajuste visual solicitado para HU-2.04: sin piso seleccionado, el editor muestra una guía
+  hacia el panel de Estructura izquierdo y oculta el lienzo, las herramientas y las propiedades.
+  La guía destaca con superficie clara, contorno azul y tipografía Manrope de MapIt,
+  sin ilustraciones ni controles adicionales.
+  Se elimina el botón redundante de estructura y la campana antigua que enlazaba al monitor;
+  se conserva el centro de notificaciones con su panel y evaluación por sesión.
+  Verificación: `pnpm check` completo en verde (929 pruebas frontend y build backend),
+  ocho E2E del editor aprobados en escritorio/tablet y revisión visual del estado vacío,
+  apertura de notificaciones y creación del primer piso. El E2E de distribución ahora exige
+  la guía y el lienzo oculto, en lugar del botón eliminado. Capturas y logs locales en
+  `.tmp/hu204-merge/ui-*` (sin versionar); las respuestas de notificaciones se simularon
+  solo en la revisión visual, y sus seis pruebas de componente pasaron en `pnpm check`.
+  Tras destacar la guía se repitieron el build de console y los dos E2E de distribución,
+  ambos en verde. Se comprobó también el estado vacío a 390 px, sin recortes ni overflow,
+  conservando los presupuestos de CSS existentes.
 - Arquitectura existente reutilizable: siete tipos, appearance validada por UUID, MapEnginePort, historial y flujo de guardado por lotes.
 - No hay entidad de evento comercial ni número único de habitación. Se documentan como dependencias de dominio, no se simulan.
 - El 500 observado en layout no tiene todavía causa demostrada por stacktrace. No se presupone backend obsoleto.

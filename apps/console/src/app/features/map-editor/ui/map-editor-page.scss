@@ -437,6 +437,41 @@ summary {
   padding: 0.125rem;
 }
 
+.map-area.without-floor {
+  grid-template-rows: minmax(0, 1fr);
+  height: 12rem;
+  background: none;
+  box-shadow: none;
+
+  .toolbar {
+    display: none;
+  }
+
+  .canvas-container,
+  .canvas-message {
+    background: none;
+  }
+
+  .floor-guide {
+    inset: 1rem;
+    max-width: 36rem;
+    height: fit-content;
+    margin: auto;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid $blue;
+    border-radius: 0.875rem;
+    background: $surface;
+    color: var(--mapit-color-primary-hover);
+    font: 750 1.125rem / 1.5 var(--mapit-font-display);
+    text-align: left;
+    text-wrap: balance;
+  }
+
+  .canvas-host {
+    visibility: hidden;
+  }
+}
+
 .tool-group {
   gap: 0.125rem;
   padding: 0.125rem;
