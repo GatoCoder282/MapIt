@@ -13,6 +13,12 @@
 
 ## Notas de ejecución
 
+- Referencia visual de inicio: panel de estructura vacío destacado, ilustración de plano
+  generada para MapIt y tres pasos para crear piso, organizar zonas y diseñar. Se conserva
+  el botón real de creación y la navegación global; el hero ocupa el ancho libre del editor.
+  El panel destacado solo aparece sin pisos, carga, errores ni formularios abiertos.
+  «Empieza aquí» queda anclado encima del botón real «Agregar piso», con un indicador
+  descendente también visible en móvil; no depende de coordenadas del hero.
 - Ajuste visual solicitado para HU-2.04: sin piso seleccionado, el editor muestra una guía
   hacia el panel de Estructura izquierdo y oculta el lienzo, las herramientas y las propiedades.
   La guía destaca con superficie clara, acentos azules y tipografía Manrope de MapIt,

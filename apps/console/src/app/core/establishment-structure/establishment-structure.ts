@@ -49,7 +49,18 @@ export interface FloorZoneEntry {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
   template: `
-    <div class="workspace" [class.embedded]="embedded()">
+    <div
+      class="workspace"
+      [class.embedded]="embedded()"
+      [class.onboarding]="
+        embedded() &&
+        establishment() &&
+        !store.loading() &&
+        !store.error() &&
+        !store.floors().length &&
+        !floorForm()
+      "
+    >
       <aside [attr.aria-label]="strings.editor.workspace.structure">
         <header>
           <span class="icon-tile"><svg lucideLayers aria-hidden="true"></svg></span>
@@ -86,7 +97,15 @@ export interface FloorZoneEntry {
         @if (store.loading()) {
           <p class="feedback" role="status">{{ strings.floors.loading }}</p>
         } @else if (establishment() && !store.floors().length) {
-          <p class="feedback">{{ strings.floors.empty }}</p>
+          @if (embedded() && !store.error() && !floorForm()) {
+            <div class="first-floor-empty">
+              <span class="empty-layers" aria-hidden="true"><svg lucideLayers></svg></span>
+              <h3>{{ strings.editor.workspace.firstFloorEmptyTitle }}</h3>
+              <p>{{ strings.editor.workspace.firstFloorEmptyHelp }}</p>
+            </div>
+          } @else {
+            <p class="feedback">{{ strings.floors.empty }}</p>
+          }
         }
         <ul class="tree">
           @for (
@@ -281,6 +300,10 @@ export interface FloorZoneEntry {
             (formClosed)="closeForms()"
           />
         } @else if (establishment()) {
+          <div class="start-hint" aria-hidden="true">
+            <span>{{ strings.editor.workspace.floorSetupStart }}</span>
+            <svg lucideChevronRight></svg>
+          </div>
           <button type="button" class="add add-floor" [disabled]="locked()" (click)="editFloor()">
             <svg lucidePlus aria-hidden="true"></svg>{{ strings.wizard.addFloor }}
           </button>
@@ -599,9 +622,100 @@ export interface FloorZoneEntry {
     .feedback {
       padding-block: 0.5rem;
     }
+    .onboarding aside {
+      max-height: none;
+      padding: 1.5rem;
+      overflow: visible;
+      border-color: var(--mapit-editor-selection);
+      background: linear-gradient(
+        145deg,
+        var(--mapit-color-surface),
+        color-mix(in srgb, var(--mapit-editor-selection-soft) 35%, var(--mapit-color-surface))
+      );
+      box-shadow: 0 6px 22px color-mix(in srgb, var(--mapit-editor-selection) 15%, transparent);
+    }
+    .onboarding header {
+      margin: -1.5rem -1.5rem 1.25rem;
+      padding: 1.5rem;
+    }
+    .onboarding header h2 {
+      font: 800 1.25rem / 1.3 var(--mapit-font-display);
+    }
+    .onboarding header p {
+      font-size: 0.9375rem;
+    }
+    .onboarding .tree {
+      display: none;
+    }
+    .first-floor-empty {
+      display: grid;
+      justify-items: center;
+      gap: 0.625rem;
+      padding: 1.75rem 0.5rem 0.75rem;
+      text-align: center;
+    }
+    .empty-layers {
+      display: grid;
+      place-items: center;
+      width: 5.5rem;
+      height: 5.5rem;
+      margin-bottom: 0.5rem;
+      border-radius: 1.25rem;
+      background: var(--mapit-editor-selection-soft);
+      color: var(--mapit-editor-selection);
+    }
+    .empty-layers svg {
+      width: 3.5rem;
+      height: 3.5rem;
+    }
+    .first-floor-empty h3 {
+      margin: 0;
+      font: 800 1.0625rem / 1.4 var(--mapit-font-display);
+    }
+    .first-floor-empty p {
+      max-width: 28ch;
+      margin: 0;
+      color: var(--mapit-color-text-variant);
+      font-size: 0.9375rem;
+    }
+    .start-hint {
+      display: none;
+    }
+    .onboarding .start-hint {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      color: var(--mapit-color-primary-hover);
+      font-weight: 750;
+    }
+    .start-hint span {
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      background: var(--mapit-editor-selection-soft);
+    }
+    .start-hint svg {
+      width: 1.5rem;
+      height: 1.5rem;
+      transform: rotate(90deg);
+    }
+    .onboarding .add-floor {
+      min-height: 3.25rem;
+      margin-top: 0.25rem;
+      border-color: var(--mapit-editor-selection);
+      background: var(--mapit-editor-selection);
+      color: var(--mapit-color-on-primary);
+      font-size: 1rem;
+    }
+    .onboarding .add-floor:hover:not(:disabled) {
+      background: var(--mapit-color-primary-hover);
+    }
     @media (max-width: 48rem) {
       .embedded aside {
         max-height: 29rem;
+      }
+      .onboarding aside {
+        max-height: none;
       }
     }
     @media (max-width: 64rem) {

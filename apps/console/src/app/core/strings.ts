@@ -1823,7 +1823,16 @@ const STRINGS_ES = {
         noFloors: 'No hay pisos configurados.',
         floorSetupHint:
           'Crea o selecciona un piso desde el panel de Estructura de la izquierda para comenzar.',
-        floorSetupTitle: 'Comienza por un piso',
+        floorSetupTitle: 'Comienza creando tu primer piso',
+        floorSetupStart: 'Empieza aquí',
+        floorSetupFloor: 'Agrega un piso',
+        floorSetupZones: 'Organiza zonas',
+        floorSetupZonesHelp: 'Define las zonas de tu espacio: comedor, terraza o bar.',
+        floorSetupDesign: 'Empieza a diseñar el plano',
+        floorSetupDesignHelp: 'Ubica y distribuye los elementos en el plano.',
+        firstFloorEmptyTitle: 'Aún no hay plantas registradas',
+        firstFloorEmptyHelp:
+          'Crea la primera planta (piso) para comenzar a diseñar tu distribución.',
         floorSetupCreate: 'Pulsa «Agregar piso» y asígnale un nombre.',
         floorSetupSelect: 'Selecciona el piso para abrir su plano.',
         noSectors: 'Este piso no tiene sectores.',

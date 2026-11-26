@@ -438,8 +438,9 @@ summary {
 }
 
 .map-area.without-floor {
+  grid-column: 2 / -1;
   grid-template-rows: minmax(0, 1fr);
-  height: 26rem;
+  height: auto;
   background: none;
   box-shadow: none;
 
@@ -452,8 +453,18 @@ summary {
     background: none;
   }
 
+  .canvas-container {
+    overflow: visible;
+  }
+
   .canvas-host {
-    visibility: hidden;
+    display: none;
+  }
+}
+
+@media (max-width: 48rem) {
+  .map-area.without-floor {
+    grid-column: 1 / -1;
   }
 }
 
