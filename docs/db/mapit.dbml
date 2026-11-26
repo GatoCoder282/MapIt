@@ -11,7 +11,7 @@
 //  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
 //  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5),
 //  `realtime_event_outbox` (V11, MAP-103/HUT-01), `audit_log` (V20, MAP-222),
-//  `business_application` (V41, MAP-261), `platform_setting` (V43, MAP-303)
+//  `business_application` (V41, MAP-261), `platform_setting` (V46, MAP-303)
 //  y el rol de runtime `mapit_app`
 //  (V9, MAP-175: NOSUPERUSER + NOBYPASSRLS;
 //  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
@@ -378,7 +378,7 @@ Table platform_setting {
   updated_at  timestamptz [not null]
   updated_by  uuid        [not null, note: 'SUPER_ADMIN del tenant platform']
   Note: '''
-    HU-7.07 (V43). Global, como `tenant`: sin tenant_id ni RLS porque no guarda datos de negocio
+    HU-7.07 (V46). Global, como `tenant`: sin tenant_id ni RLS porque no guarda datos de negocio
     y se lee dentro de transacciones de cualquier tenant. Los cambios se auditan en `audit_log`.
   '''
 }
