@@ -15,8 +15,11 @@
 
 - Ajuste visual solicitado para HU-2.04: sin piso seleccionado, el editor muestra una guía
   hacia el panel de Estructura izquierdo y oculta el lienzo, las herramientas y las propiedades.
-  La guía destaca con superficie clara, contorno azul y tipografía Manrope de MapIt,
+  La guía destaca con superficie clara, acentos azules y tipografía Manrope de MapIt,
   sin ilustraciones ni controles adicionales.
+  La versión final añade un título, dos pasos numerados y una flecha hacia el panel:
+  izquierda en escritorio y arriba cuando la estructura se apila en móvil. La guía queda
+  en un componente de presentación propio para mantener acotado el CSS del editor.
   Se elimina el botón redundante de estructura y la campana antigua que enlazaba al monitor;
   se conserva el centro de notificaciones con su panel y evaluación por sesión.
   Verificación: `pnpm check` completo en verde (929 pruebas frontend y build backend),

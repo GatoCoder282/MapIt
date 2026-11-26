@@ -41,6 +41,7 @@ import {
 import { ElementLibraryComponent } from './element-library';
 import { ElementPropertiesCardComponent } from './element-properties-card';
 import { LayoutStyleComponent } from './layout-style';
+import { FloorSetupGuide } from './floor-setup-guide';
 import { withElementFinish, type LayoutStyle } from '../../../core/spatial-layout';
 import { MapEditorStore } from '../model/map-editor-store';
 import { localizeString, STRINGS } from '../../../core/strings';
@@ -62,6 +63,7 @@ type EditorGuide = 'floor' | 'metadata' | 'geometry';
     ElementLibraryComponent,
     ElementPropertiesCardComponent,
     LayoutStyleComponent,
+    FloorSetupGuide,
     ElementTypeIconComponent,
     LucideCheck,
     LucideCopy,

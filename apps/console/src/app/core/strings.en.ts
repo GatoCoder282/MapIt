@@ -1383,6 +1383,9 @@ export const STRINGS_EN = {
         noFloors: 'No floors configured.',
         floorSetupHint:
           'Create or select a floor in the Structure panel on the left to get started.',
+        floorSetupTitle: 'Start with a floor',
+        floorSetupCreate: 'Choose “Add floor” and give it a name.',
+        floorSetupSelect: 'Select the floor to open its plan.',
         noSectors: 'This floor has no sectors.',
         duplicate: 'Duplicate',
       },

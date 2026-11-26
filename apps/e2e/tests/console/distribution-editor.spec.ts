@@ -547,7 +547,7 @@ test('editar la distribución, proteger las salidas y recuperar el plano guardad
   );
   await expect(
     page.getByRole('region', { name: 'Plano del sector' }).getByRole('status'),
-  ).toHaveText(
+  ).toContainText(
     'Crea o selecciona un piso desde el panel de Estructura de la izquierda para comenzar.',
   );
   await expect(page.getByTestId('map-canvas')).toBeHidden();

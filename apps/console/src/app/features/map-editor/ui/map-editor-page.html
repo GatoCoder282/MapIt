@@ -271,7 +271,7 @@
         @if (store.loading()) {
           <p class="canvas-message" role="status">{{ strings.workspace.loading }}</p>
         } @else if (!selectedFloor() && !store.error()) {
-          <p class="canvas-message floor-guide" role="status">{{ strings.workspace.floorSetupHint }}</p>
+          <mapit-floor-setup-guide />
         } @else if (!preview() && !zoneId() && !store.elements().length && !store.error() && panel() !== 'elements') {
           <div class="canvas-message canvas-empty">
             <p>{{ strings.workspace.emptyPlan }}</p>

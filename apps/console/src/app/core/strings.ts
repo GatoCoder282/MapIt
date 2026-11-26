@@ -1823,6 +1823,9 @@ const STRINGS_ES = {
         noFloors: 'No hay pisos configurados.',
         floorSetupHint:
           'Crea o selecciona un piso desde el panel de Estructura de la izquierda para comenzar.',
+        floorSetupTitle: 'Comienza por un piso',
+        floorSetupCreate: 'Pulsa «Agregar piso» y asígnale un nombre.',
+        floorSetupSelect: 'Selecciona el piso para abrir su plano.',
         noSectors: 'Este piso no tiene sectores.',
         duplicate: 'Duplicar',
       },
