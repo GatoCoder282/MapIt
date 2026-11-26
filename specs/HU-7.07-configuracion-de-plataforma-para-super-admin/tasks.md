@@ -11,7 +11,7 @@
 ## MAP-303 — API autorizada y auditoría
 
 - [x] Contrato OpenAPI y cliente generado.
-- [x] Migración V43 y DBML.
+- [x] Migración V46 (renumerada tras integrar main) y DBML.
 - [x] Dominio, caso de uso, adaptadores y regla de seguridad SUPER_ADMIN.
 - [x] `CustomerHistoryPolicy` aplica el valor guardado.
 
@@ -34,9 +34,17 @@
 - Solo dos parámetros son editables porque son los únicos que rigen sin reiniciar y sin tocar
   política de seguridad. Añadir otro exige entrada en `PlatformSetting`, CHECK nuevo y textos.
 - El filtro JWT exige que el usuario exista: los IT dan de alta un usuario por rol.
-- **Colisión pendiente:** el PR #75 (HU-7.06) usa V43 a V45. Quien mergee segundo debe renombrar
-  su migración (skill `new-migration`, regla 5). Si #75 redefine las restricciones de `audit_log`,
-  hay que partir de su definición más reciente.
+- **Colisión resuelta (26/11/2026):** tras integrar #75 y #84, main contenía dos V43 y Flyway
+  bloqueaba el arranque. La migración de plataforma se renumeró a V46 sin cambiar su SQL;
+  V43–V45 de notificaciones se conservan. No redefinen restricciones de `audit_log`.
+  Se añadió una prueba de unicidad de versiones y se reprodujo y corrigió el fallo del
+  historial canónico en los tests de scripts. No se modificó ningún historial de BD.
+- Verificación de la corrección (26/11/2026): 27 tests de scripts, 827 frontend, los dos
+  tests de `TenantApiIntegrationTest` y 23 IT de notificaciones/configuración, sin fallos.
+  `pnpm check` pasó lint, tipos, tests, builds, contrato y backend/ArchUnit; formato se
+  revalidó aparte tras normalizar una caché local ignorada (`.impeccable/hook.cache.json`).
+  Un entorno que ya aplicó la V43 de plataforma desde una rama necesita revisar su historial
+  antes de desplegar; esta corrección no ejecuta repair ni modifica bases desplegadas.
 - Verificación (25/11/2026): `pnpm check` en verde; `pnpm be:it` 250 tests, 0 fallos;
   `pnpm be:test` 613 unitarios, 0 fallos y 1 omitido preexistente (`SmtpAdminRecoveryMailTest`);
   `ng test console` 494; E2E `platform-settings` (flag ON y OFF), `tenants-admin` y `smoke` en verde.

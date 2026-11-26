@@ -30,6 +30,11 @@ const legacy = () =>
     };
   });
 
+test('cada migración Flyway tiene una versión única', () => {
+  const versions = migrations.map((migration) => migration.version);
+  assert.equal(new Set(versions).size, versions.length, 'Hay versiones Flyway duplicadas');
+});
+
 test('checksum Flyway independiente de BOM y terminadores de línea', () => {
   assert.equal(
     flywayChecksum('SELECT 1;\nSELECT 2;\n'),
