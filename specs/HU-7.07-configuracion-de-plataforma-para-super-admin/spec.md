@@ -43,18 +43,18 @@ global: los parámetros se leen de variables de entorno al arrancar.
 
 ## Criterios de aceptación
 
-- [ ] **CA-1:** sin JWT los endpoints responden 401; con ADMIN o STAFF, 403.
-- [ ] **CA-2:** con la flag apagada responden 404 `platform-settings-disabled` y el historial de
+- [x] **CA-1:** sin JWT los endpoints responden 401; con ADMIN o STAFF, 403.
+- [x] **CA-2:** con la flag apagada responden 404 `platform-settings-disabled` y el historial de
       clientes usa los valores del despliegue.
-- [ ] **CA-3:** un SUPER_ADMIN consulta parámetros con valor efectivo, valor por defecto y rango,
+- [x] **CA-3:** un SUPER_ADMIN consulta parámetros con valor efectivo, valor por defecto y rango,
       además de valores de solo lectura, estado de servicios y flags, sin ningún secreto.
-- [ ] **CA-4:** una clave desconocida, un valor fuera de rango o un motivo corto responden 404 o
+- [x] **CA-4:** una clave desconocida, un valor fuera de rango o un motivo corto responden 404 o
       400 sin escribir nada.
-- [ ] **CA-5:** un cambio válido persiste, rige en el siguiente enlace de historial emitido y
+- [x] **CA-5:** un cambio válido persiste, rige en el siguiente enlace de historial emitido y
       aparece en el historial de cambios.
-- [ ] **CA-6:** restaurar el valor por defecto también queda auditado.
-- [ ] **CA-7:** de dos cambios sobre el mismo valor cargado, el segundo recibe 409.
-- [ ] **CA-8:** la Console distingue editable de solo lectura, pide motivo y confirmación, informa
+- [x] **CA-6:** restaurar el valor por defecto también queda auditado.
+- [x] **CA-7:** de dos cambios sobre el mismo valor cargado, el segundo recibe 409.
+- [x] **CA-8:** la Console distingue editable de solo lectura, pide motivo y confirmación, informa
       carga, error, conflicto y sección no habilitada, en es, en y ja, y en pantallas angostas.
 
 ## Fuera de alcance
