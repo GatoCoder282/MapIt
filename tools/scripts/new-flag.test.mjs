@@ -25,6 +25,21 @@ test('Mi cuenta está registrada una sola vez y OFF en los tres catálogos (MAP-
   assert.match(readFileSync(join(ROOT, tsPath), 'utf8'), /'mapit\.s6\.my-account': false/);
 });
 
+test('MAP-299 registra una única clave OFF idéntica en Java, TypeScript y bootstrap', () => {
+  const java = readFileSync(join(ROOT, javaPath), 'utf8');
+  const ts = readFileSync(join(ROOT, tsPath), 'utf8');
+  const bootstrap = JSON.parse(readFileSync(join(ROOT, jsonPath), 'utf8'));
+  assert.match(
+    java,
+    /MAPIT_S6_NOTIFICATION_CENTER\("mapit\.s6\.notification-center", Tipo.KILL_SWITCH, false\)/,
+  );
+  assert.match(ts, /'mapit\.s6\.notification-center': false/);
+  const entries = bootstrap.features.filter((flag) => flag.name === 'mapit.s6.notification-center');
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].enabled, false);
+  assert.equal(entries[0].type, 'kill-switch');
+});
+
 function fixture(t, newline = '\n') {
   const root = mkdtempSync(join(tmpdir(), 'mapit-new-flag-'));
   t.after(() => {
@@ -45,6 +60,7 @@ function fixture(t, newline = '\n') {
     }
   }
   return {
+    root,
     read: (file) => readFileSync(join(root, file), 'utf8'),
     run: (...args) =>
       spawnSync(process.execPath, [join(root, 'tools/scripts/new-flag.mjs'), ...args], {
@@ -122,4 +138,12 @@ test('rechaza segmentos inválidos antes de escribir catálogos', (t) => {
     assert.notEqual(files.run(key, 'release').status, 0, key);
     assert.deepEqual(catalogs.map(files.read), original, key);
   }
+});
+
+test('catálogo Java irreconocible falla sin escrituras (MAP-299)', (t) => {
+  const f = fixture(t);
+  writeFileSync(join(f.root, javaPath), 'enum FeatureFlag { UNKNOWN; }\n');
+  const before = catalogs.map(f.read);
+  assert.notEqual(f.run('fixture.valid').status, 0);
+  assert.deepEqual(catalogs.map(f.read), before);
 });

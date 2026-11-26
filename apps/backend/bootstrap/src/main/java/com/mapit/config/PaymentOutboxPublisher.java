@@ -21,8 +21,9 @@ public class PaymentOutboxPublisher implements PaymentEventPublisherPort {
   private final JdbcTemplate jdbc;
   private final ObjectMapper json;
   private final Clock clock;
-  public PaymentOutboxPublisher(JdbcTemplate jdbc, ObjectMapper json, Clock clock) {
-    this.jdbc = jdbc; this.json = json; this.clock = clock;
+  private final com.mapit.shared.notification.ReservationNotificationEvents notifications;
+  public PaymentOutboxPublisher(JdbcTemplate jdbc, ObjectMapper json, Clock clock, com.mapit.shared.notification.ReservationNotificationEvents notifications) {
+    this.jdbc = jdbc; this.json = json; this.clock = clock; this.notifications = notifications;
   }
   @Override
   @Transactional(propagation = Propagation.MANDATORY)
@@ -48,5 +49,6 @@ public class PaymentOutboxPublisher implements PaymentEventPublisherPort {
           establishment_id,aggregate_version,payload,reservation_id)
         values(?,?,?,1,?,?,1,?::jsonb,?)
         """, eventId, tenantId.value(), eventType, Timestamp.from(now), establishmentId, payload, reservationId);
+    if ("reservation.checked_in".equals(eventType)) notifications.record(eventId,tenantId,"RESERVATION_CHECKED_IN",now,establishmentId,reservationId);
   }
 }

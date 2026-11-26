@@ -16,8 +16,13 @@ import io.getunleash.util.UnleashConfig;
 public class UnleashFeatureFlagConfiguration {
 
   @Bean
-  MyAccountFlagAvailability myAccountFlagAvailability() {
-    return new MyAccountFlagAvailability();
+  UnleashLoggingSubscriber unleashTransport() {
+    return new UnleashLoggingSubscriber();
+  }
+
+  @Bean
+  MyAccountFlagAvailability myAccountFlagAvailability(UnleashLoggingSubscriber transport) {
+    return new MyAccountFlagAvailability(System::nanoTime, transport);
   }
 
   @Bean(destroyMethod = "shutdown")

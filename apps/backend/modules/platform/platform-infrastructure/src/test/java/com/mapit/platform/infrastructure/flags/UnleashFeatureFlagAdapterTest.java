@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import com.mapit.shared.flags.FeatureFlag;
 import com.mapit.shared.tenant.TenantId;
@@ -18,14 +19,27 @@ import io.getunleash.event.ClientFeaturesResponse;
 
 class UnleashFeatureFlagAdapterTest {
   @Test
+  void resuelve_la_inyeccion_compartida_sin_constructores_ambiguos() {
+    var transport = new UnleashLoggingSubscriber();
+    var availability = new MyAccountFlagAvailability(System::nanoTime, transport);
+    new ApplicationContextRunner()
+        .withUserConfiguration(UnleashFeatureFlagAdapter.class)
+        .withBean(Unleash.class, () -> mock(Unleash.class))
+        .withBean(UnleashLoggingSubscriber.class, () -> transport)
+        .withBean(MyAccountFlagAvailability.class, () -> availability)
+        .run(context -> assertThat(context).hasSingleBean(UnleashFeatureFlagAdapter.class));
+  }
+
+  @Test
   void solicitudes_caen_a_off_tras_perder_unleash_y_vuelven_al_recuperarse() {
     Unleash unleash = mock(Unleash.class);
     when(unleash.isEnabled(FeatureFlag.BUSINESS_APPLICATIONS.clave(), false)).thenReturn(true);
     when(unleash.isEnabled(org.mockito.ArgumentMatchers.eq(FeatureFlag.BUSINESS_APPLICATIONS.clave()),
         org.mockito.ArgumentMatchers.any(UnleashContext.class), org.mockito.ArgumentMatchers.eq(false)))
         .thenReturn(true);
-    var availability = new MyAccountFlagAvailability();
-    var adapter = new UnleashFeatureFlagAdapter(unleash, availability);
+    var transport = new UnleashLoggingSubscriber();
+    var availability = new MyAccountFlagAvailability(System::nanoTime, transport);
+    var adapter = new UnleashFeatureFlagAdapter(unleash, transport, availability);
     TenantId tenant = TenantId.of("platform");
 
     assertThat(adapter.isEnabled(FeatureFlag.BUSINESS_APPLICATIONS)).isTrue();

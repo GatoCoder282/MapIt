@@ -1,4 +1,6 @@
 import { signal } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { provideFeatureFlags } from '@mapit/feature-flags';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { AuthSession } from '@mapit/auth';
@@ -71,6 +73,8 @@ async function mountShell(options?: {
   await TestBed.configureTestingModule({
     imports: [StaffShell],
     providers: [
+      provideHttpClient(),
+      provideFeatureFlags({ proxyUrl: '' }),
       provideRouter([]),
       {
         provide: ActivatedRoute,
@@ -174,6 +178,8 @@ describe('StaffShell navigation', () => {
     await TestBed.configureTestingModule({
       imports: [StaffShell],
       providers: [
+        provideHttpClient(),
+        provideFeatureFlags({ proxyUrl: '' }),
         provideRouter([]),
         { provide: AuthSession, useValue: { user, logout: vi.fn() } },
         {
@@ -236,6 +242,8 @@ describe('StaffShell navigation', () => {
     await TestBed.configureTestingModule({
       imports: [StaffShell],
       providers: [
+        provideHttpClient(),
+        provideFeatureFlags({ proxyUrl: '' }),
         provideRouter([]),
         { provide: AuthSession, useValue: { user, logout: vi.fn() } },
         { provide: EstablishmentContext, useValue: context },
@@ -273,6 +281,8 @@ describe('StaffShell navigation', () => {
     await TestBed.configureTestingModule({
       imports: [StaffShell],
       providers: [
+        provideHttpClient(),
+        provideFeatureFlags({ proxyUrl: '' }),
         provideRouter([]),
         { provide: AuthSession, useValue: { user, logout: vi.fn() } },
         { provide: EstablishmentContext, useValue: context },
@@ -304,6 +314,8 @@ describe('StaffShell navigation', () => {
     await TestBed.configureTestingModule({
       imports: [StaffShell],
       providers: [
+        provideHttpClient(),
+        provideFeatureFlags({ proxyUrl: '' }),
         provideRouter([{ path: 'spaces/setup', children: [] }]),
         { provide: AuthSession, useValue: { user, logout: vi.fn() } },
         { provide: EstablishmentContext, useValue: context },

@@ -36,6 +36,8 @@ export const FLAGS_POR_DEFECTO = {
   /** Vertical Salón de eventos: butacas numeradas (CU-21). Encendida por defecto (HU-7.01/7.02 D3). */
   'vertical.event-hall': true,
 
+  /** Centro de notificaciones (MAP-299): OFF sin contexto/evaluación confiable. */
+  'mapit.s6.notification-center': false,
   /** Mi cuenta (HU-1.06 / MAP-285): OFF hasta completar API y autorización. */
   'mapit.s6.my-account': false,
   /** Incorporación de negocios con revisión humana (HU-1.05). */

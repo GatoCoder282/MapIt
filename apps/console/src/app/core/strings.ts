@@ -21,6 +21,39 @@ const VERTICAL_LABELS = {
 } as const;
 
 const STRINGS_ES = {
+  notifications: {
+    preferences: 'Preferencias',
+    preferencesHint:
+      'Solo afecta a nuevos avisos. Estas preferencias no silencian alertas críticas.',
+    preferencesReservations: 'Reservas',
+    preferencesOperations: 'Operaciones',
+    preferencesLoading: 'Cargando preferencias…',
+    preferencesError: 'No se pudieron guardar o cargar las preferencias. Reintenta.',
+    preferencesSaved: 'Preferencias guardadas.',
+    savePreferences: 'Guardar preferencias',
+    title: 'Notificaciones',
+    bellCount: 'Notificaciones: {count} sin leer',
+    close: 'Cerrar',
+    refresh: 'Actualizar',
+    markAll: 'Marcar todas como leídas',
+    markRead: 'Marcar como leída',
+    loading: 'Cargando notificaciones…',
+    loadMore: 'Cargar más',
+    empty: 'No tienes notificaciones.',
+    error: 'No se pudieron cargar las notificaciones.',
+    retry: 'Reintentar',
+    actionError: 'No se pudo confirmar el cambio. Actualiza la lista antes de reintentar.',
+    readSuccess: 'Notificación marcada como leída.',
+    allSuccess: 'Solicitud confirmada. Actualizando la lista…',
+    countLoading: 'Consultando notificaciones sin leer…',
+    countUnavailable: 'Contador no disponible. Intenta actualizar.',
+    read: 'Leída',
+    unread: 'Sin leer',
+    details: 'Ver referencias',
+    reservation: 'Reserva',
+    establishment: 'Establecimiento',
+    types: { RESERVATION_CREATED: 'Nueva reserva', RESERVATION_CHECKED_IN: 'Llegada registrada' },
+  },
   myAccount: {
     contactPhone: 'Teléfono de contacto',
     phoneHint:

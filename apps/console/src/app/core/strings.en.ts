@@ -1,5 +1,38 @@
 /* Catálogo estático generado para en; se carga localmente sin servicios de traducción en runtime. */
 export const STRINGS_EN = {
+  notifications: {
+    preferences: 'Preferences',
+    preferencesHint:
+      'Applies to new notifications only. These preferences do not silence critical alerts.',
+    preferencesReservations: 'Reservations',
+    preferencesOperations: 'Operations',
+    preferencesLoading: 'Loading preferences…',
+    preferencesError: 'Could not load or save preferences. Please retry.',
+    preferencesSaved: 'Preferences saved.',
+    savePreferences: 'Save preferences',
+    title: 'Notifications',
+    bellCount: 'Notifications: {count} unread',
+    close: 'Close',
+    refresh: 'Refresh',
+    markAll: 'Mark all as read',
+    markRead: 'Mark as read',
+    loading: 'Loading notifications…',
+    loadMore: 'Load more',
+    empty: 'You have no notifications.',
+    error: 'Notifications could not be loaded.',
+    retry: 'Try again',
+    actionError: 'The change could not be confirmed. Refresh the list before trying again.',
+    readSuccess: 'Notification marked as read.',
+    allSuccess: 'Request confirmed. Refreshing the list…',
+    countLoading: 'Checking unread notifications…',
+    countUnavailable: 'Unread count unavailable. Try refreshing.',
+    read: 'Read',
+    unread: 'Unread',
+    details: 'View references',
+    reservation: 'Reservation',
+    establishment: 'Establishment',
+    types: { RESERVATION_CREATED: 'New reservation', RESERVATION_CHECKED_IN: 'Arrival recorded' },
+  },
   myAccount: {
     contactPhone: 'Contact phone',
     phoneHint:

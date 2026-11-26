@@ -81,12 +81,15 @@ class PublicReservationIntegrationTest {
     registry.add("spring.flyway.password", POSTGRES::getPassword);
     registry.add("spring.flyway.placeholders.mapitAppDbPassword", () -> "test_app_password");
     registry.add("mapit.unleash.enabled", () -> "false");
+    registry.add("mapit.notifications.delivery-interval-ms", () -> "3600000");
   }
 
   @BeforeEach
   void fixtures() {
     jdbc.update(
         "delete from reservation_space_element where tenant_id in (?, ?)", TENANT, TENANT_B);
+    jdbc.update("delete from notification_event_candidate where tenant_id in (?, ?)", TENANT, TENANT_B);
+    jdbc.update("delete from notification_event_outbox where tenant_id in (?, ?)", TENANT, TENANT_B);
     jdbc.update("delete from reservation where tenant_id in (?, ?)", TENANT, TENANT_B);
     jdbc.update("delete from person where tenant_id in (?, ?)", TENANT, TENANT_B);
     jdbc.update("delete from space_element where tenant_id in (?, ?)", TENANT, TENANT_B);
@@ -152,6 +155,7 @@ class PublicReservationIntegrationTest {
     assertThat((UUID) reservation.get("person_id")).isEqualTo(person.get("id"));
     assertThat(reservation.get("created_by")).isNull();
     assertThat(reservation.get("status")).isEqualTo("CREATED");
+    assertThat(jdbc.queryForObject("select count(*) from notification_event_outbox where tenant_id=? and reservation_id=? and event_type='RESERVATION_CREATED'",Integer.class,TENANT,result.id())).isEqualTo(1);
   }
 
   @Test
