@@ -36,11 +36,16 @@ public enum FeatureFlag {
   /** Vertical Salón de eventos: butacas numeradas (CU-21). Por defecto encendida, como hotel. */
   VERTICAL_EVENT_HALL("vertical.event-hall", Tipo.PERMISSION, true),
 
+  /** Centro de notificaciones (MAP-299). OFF seguro; nunca condiciona hechos de negocio. */
+  MAPIT_S6_NOTIFICATION_CENTER("mapit.s6.notification-center", Tipo.KILL_SWITCH, false),
+
   /** Mi cuenta (HU-1.06 / MAP-285): release OFF; nunca sustituye autorización. */
   MAPIT_S6_MY_ACCOUNT("mapit.s6.my-account", Tipo.RELEASE, false),
   /** Solicitudes públicas de incorporación (HU-1.05). Falla cerrada si Unleash no responde. */
   BUSINESS_APPLICATIONS("mapit.s6.business-applications", Tipo.PERMISSION, false),
 
+  /** Configuración de plataforma para Super Admin (HU-7.07). OFF: rigen los del despliegue. */
+  MAPIT_S6_PLATFORM_SETTINGS("mapit.s6.platform-settings", Tipo.RELEASE, false),
   /** Observabilidad agregada de empresas para Super Admin (HU-7.08). */
   MAPIT_S6_TENANT_OBSERVABILITY("mapit.s6.tenant-observability", Tipo.RELEASE, false);
 

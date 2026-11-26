@@ -18,6 +18,10 @@ describe('catálogo de feature flags', () => {
     }
   });
 
+  it('deja el centro de notificaciones OFF por defecto', () => {
+    expect(FLAGS_POR_DEFECTO['mapit.s6.notification-center']).toBe(false);
+  });
+
   it('mantiene la incorporación apagada cuando Unleash no responde', () => {
     expect(FLAGS_POR_DEFECTO['mapit.s6.business-applications']).toBe(false);
   });

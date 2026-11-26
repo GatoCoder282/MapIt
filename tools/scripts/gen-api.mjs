@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { ROOT, capture, log, c, die } from './_lib.mjs';
+import { organizeGeneratedApi } from './organize-generated-api.mjs';
 
 const CONTRATO = join(ROOT, 'packages', 'api-contract', 'openapi.yaml');
 const DESTINO_TS = join(ROOT, 'libs', 'api-client', 'src', 'lib', 'generated');
@@ -143,6 +144,8 @@ if (!r.ok) {
   );
 }
 
+const organized = organizeGeneratedApi(DESTINO_TS, join(ROOT, 'libs/api-client/tsconfig.lib.json'));
+log.ok(`imports TypeScript organizados en ${organized} archivos generados`);
 writeFileSync(HUELLA, huellaActual + '\n', 'utf8');
 log.ok(`cliente generado en libs/api-client/src/lib/generated`);
 log.info(c.gray('Recuerda: ese código NO se commitea; se regenera en cada install y en CI.'));

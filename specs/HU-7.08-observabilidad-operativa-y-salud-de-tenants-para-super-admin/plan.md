@@ -15,14 +15,13 @@ dato salga del caso de uso, de modo que el controlador nunca ve un valor que deb
 | Domain Service     | `SmallCountSuppression`                    | La regla de privacidad es pura y se prueba sin base                     | Repetirla en cada consulta SQL                                           |
 | Ports and Adapters | `ApiHealthProbe` implementado en bootstrap | El dominio no conoce Micrometer                                         | Exponer `/actuator/metrics` al navegador: filtra rutas y detalle interno |
 
-## Datos (migración V44)
+## Datos (migración V47)
 
 `platform_access_log(id, tenant_id='platform', actor_id, occurred_at, view, subject_tenant_id)`
 con RLS y permisos de solo `SELECT` e `INSERT` para `mapit_app`. Tabla propia porque son accesos
 de lectura, no eventos de negocio, y así no se redefinen las restricciones de `audit_log`.
 
-**Número de versión:** V43 está tomado por los PR #84 y #75; se usa V44 suponiendo que #84 entra
-antes. Se ajusta al mergear.
+**Número de versión:** V47, siguiente libre tras las V43 a V45 del #75 y la V46 de HU-7.07.
 
 ## Contrato
 

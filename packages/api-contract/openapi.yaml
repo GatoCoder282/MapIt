@@ -48,6 +48,8 @@ tags:
     description: Registro de empresas de la plataforma
   - name: feature-flags
     description: Feature toggles evaluados para el contexto actual
+  - name: notifications
+    description: Bandeja y preferencias propias con JDBC/RLS, identidad vigente y gate contextual.
   - name: demo-items
     description: CRUD de demostración para validar la integración Angular + Spring Boot
   - name: establishments
@@ -70,6 +72,7 @@ tags:
     description: Reserva anónima desde el portal público (HU-6.02)
   - name: customer-history
     description: Acceso temporal y consulta del historial propio en el portal público (HU-6.04)
+  - { name: platform-settings, description: Configuración global del Super Admin (HU-7.07) }
   - {
       name: platform-observability,
       description: Salud y uso agregado para el Super Admin (HU-7.08),
@@ -78,6 +81,316 @@ tags:
     description: Solicitudes públicas de incorporación de negocios (HU-1.05)
 
 paths:
+  /me/notifications/preferences:
+    get:
+      tags: [notifications]
+      operationId: getMyNotificationPreferences
+      summary: Consultar preferencias optativas propias
+      x-implementation-status: implemented
+      description: |
+        Identidad/tenant del principal vigente. Sin selectores ni cuerpo. Default true para
+        RESERVATIONS y OPERATIONS; solo categorías optativas existentes. No habilita ni silencia
+        canales críticos de seguridad. Gate contextual OFF o fallo responde 404 tras autorización.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Preferencias propias efectivas.
+          headers:
+            X-Request-ID: { $ref: "#/components/headers/RequestId" }
+            Cache-Control: { $ref: "#/components/headers/NoStore" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        "400": { $ref: "#/components/responses/NotificationBadRequest" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+        "500": { $ref: "#/components/responses/NotificationServerError" }
+        "503": { $ref: "#/components/responses/NotificationServiceUnavailable" }
+    patch:
+      tags: [notifications]
+      operationId: updateMyNotificationPreferences
+      summary: Actualizar preferencias optativas propias
+      x-implementation-status: implemented
+      description: |
+        PATCH atómico; campo ausente conserva valor. Cuerpo vacío, null, tipos distintos
+        de boolean y campos/categorías desconocidos (incluida seguridad) se rechazan con 400.
+        Solo afecta avisos futuros; no borra históricos ni modifica hechos de negocio.
+        Identidad/tenant del principal vigente; sin query ni selectores. Gate OFF/fallo 404.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationPreferencesPatch" }
+      responses:
+        "200":
+          description: Preferencias propias persistidas.
+          headers:
+            X-Request-ID: { $ref: "#/components/headers/RequestId" }
+            Cache-Control: { $ref: "#/components/headers/NoStore" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        "400": { $ref: "#/components/responses/NotificationBadRequest" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+        "500": { $ref: "#/components/responses/NotificationServerError" }
+        "503": { $ref: "#/components/responses/NotificationServiceUnavailable" }
+
+  /me/notifications:
+    get:
+      tags: [notifications]
+      operationId: listMyNotifications
+      summary: Listar notificaciones propias por cursor
+      x-implementation-status: implemented
+      description: |
+        Implementado con ListMyNotifications, JDBC/RLS y permisos vigentes de MAP-238.
+
+        Identidad y tenant proceden exclusivamente del principal autenticado validado.
+        Revalida cuenta/tenant y permisos por tipo y establecimiento antes de consultar.
+        No admite tenantId, userId, destinatario, establecimiento, filtros adicionales,
+        orden arbitrario ni cuerpo; parámetros desconocidos o cuerpo responden 400.
+
+        Orden estable: createdAt DESC, id DESC, con UUID en orden canónico unsigned.
+        La continuación usa comparación estricta de esa tupla; no usa offset. Un aviso
+        nuevo anterior a la posición del cursor se obtiene al refrescar la primera página.
+        El límite predeterminado es 20; máximo 100. El cursor opaco se valida y vincula
+        a tenant, usuario y concesiones vigentes; no expone el NotificationScope interno.
+        Cursor alterado, inválido, caducado o de otro ámbito responde 400 sin revelar datos.
+        Cambios de permisos invalidan la continuación. nextCursor se omite al terminar.
+
+        Solo devuelve avisos propios actualmente autorizados. No hay total global ni
+        contador implícito en esta página: el contador tiene su propia operación y refleja
+        su propia lectura autorizada, que puede variar entre peticiones concurrentes.
+        Tras autenticar y autorizar, mapit.s6.notification-center OFF o evaluación no
+        confiable impiden acceso con 404. El flag nunca sustituye la autorización.
+        Todas las respuestas, incluidos errores, llevan Cache-Control: no-store.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: limit
+          in: query
+          description: Tamaño máximo de página; no amplía el ámbito autorizado.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          description: Continuación opaca emitida por el servidor; omitir para la primera página.
+          schema:
+            $ref: "#/components/schemas/NotificationCursor"
+      responses:
+        "200":
+          description: Página propia autorizada, incluida una página vacía.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPage"
+              examples:
+                lastPage:
+                  value:
+                    content:
+                      - id: "00000000-0000-0000-0000-000000000030"
+                        type: RESERVATION_CREATED
+                        category: RESERVATIONS
+                        establishmentId: "00000000-0000-0000-0000-000000000010"
+                        reservationId: "00000000-0000-0000-0000-000000000020"
+                        occurredAt: "2026-11-21T15:00:00Z"
+                        createdAt: "2026-11-21T15:00:01Z"
+                        readAt: null
+                    hasMore: false
+                empty:
+                  value: { content: [], hasMore: false }
+                continuation:
+                  value:
+                    content:
+                      - id: "00000000-0000-0000-0000-000000000031"
+                        type: RESERVATION_CHECKED_IN
+                        category: OPERATIONS
+                        establishmentId: "00000000-0000-0000-0000-000000000010"
+                        reservationId: "00000000-0000-0000-0000-000000000020"
+                        occurredAt: "2026-11-21T15:00:02Z"
+                        createdAt: "2026-11-21T15:00:03Z"
+                        readAt: "2026-11-21T15:00:04Z"
+                    hasMore: true
+                    nextCursor: "opaque-example-do-not-decode"
+        "400":
+          $ref: "#/components/responses/NotificationBadRequest"
+        "401":
+          $ref: "#/components/responses/NotificationUnauthorized"
+        "403":
+          $ref: "#/components/responses/NotificationForbidden"
+        "404":
+          $ref: "#/components/responses/NotificationNotFound"
+        "503":
+          $ref: "#/components/responses/NotificationServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/NotificationServerError"
+
+  /me/notifications/unread-count:
+    get:
+      tags: [notifications]
+      operationId: countMyUnreadNotifications
+      summary: Contar notificaciones propias no leídas
+      x-implementation-status: implemented
+      description: |
+        Implementado con CountMyUnreadNotifications, JDBC/RLS e identidad vigente de MAP-238.
+        Identidad/tenant desde el principal validado; cuenta solo avisos propios no leídos
+        con las mismas concesiones por tipo/establecimiento que el listado. Un ámbito
+        autorizado sin avisos devuelve cero; un fallo no se presenta como cero.
+        No admite filtros, tenantId, userId, establecimiento, parámetros desconocidos ni
+        cuerpo (400). La cifra corresponde a esta lectura; no es una instantánea compartida
+        con un listado solicitado por separado. Tras autenticar/autorizar, flag OFF o
+        evaluación no confiable responde 404. Todas las respuestas llevan no-store.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Contador propio autorizado.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationUnreadCount"
+              example: { unreadCount: 0 }
+        "400":
+          $ref: "#/components/responses/NotificationBadRequest"
+        "401":
+          $ref: "#/components/responses/NotificationUnauthorized"
+        "403":
+          $ref: "#/components/responses/NotificationForbidden"
+        "404":
+          $ref: "#/components/responses/NotificationNotFound"
+        "503":
+          $ref: "#/components/responses/NotificationServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/NotificationServerError"
+
+  /me/notifications/{notificationId}/read:
+    patch:
+      tags: [notifications]
+      operationId: markMyNotificationRead
+      summary: Marcar una notificación propia como leída
+      x-implementation-status: implemented
+      description: |
+        Implementado con MarkMyNotificationRead, JDBC/RLS e identidad vigente de MAP-238.
+        Identidad/tenant desde el principal validado; notificationId identifica solo el aviso.
+        No admite cuerpo, fechas, roles, tenantId, userId, establecimiento ni parámetros
+        desconocidos (400). El servidor obtiene la fecha desde su Clock.
+
+        Idempotente: la primera lectura fija readAt y las siguientes conservan ese instante.
+        El marcado aplica tenant, destinatario y permiso vigente al escribir. Aviso inexistente,
+        de otro usuario/tenant o no visible responde el mismo 404, sin revelar existencia.
+        Autenticación ausente/inválida responde 401 y falta de autorización de la funcionalidad
+        responde 403; tras esas comprobaciones, flag OFF o evaluación no confiable responde 404.
+        Todas las respuestas, incluidos errores, llevan Cache-Control: no-store.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: notificationId
+          in: path
+          required: true
+          description: UUID del aviso; nunca identifica el usuario destinatario.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Lectura confirmada, preservando la primera fecha si ya estaba leída.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationReadResult"
+              example:
+                id: "00000000-0000-0000-0000-000000000030"
+                readAt: "2026-11-21T15:00:04Z"
+        "400":
+          $ref: "#/components/responses/NotificationBadRequest"
+        "401":
+          $ref: "#/components/responses/NotificationUnauthorized"
+        "403":
+          $ref: "#/components/responses/NotificationForbidden"
+        "404":
+          $ref: "#/components/responses/NotificationNotFound"
+        "503":
+          $ref: "#/components/responses/NotificationServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/NotificationServerError"
+
+  /me/notifications/read-all:
+    patch:
+      tags: [notifications]
+      operationId: markAllMyNotificationsRead
+      summary: Marcar todas las notificaciones propias autorizadas como leídas
+      x-implementation-status: implemented
+      description: |
+        Implementado con MarkAllMyNotificationsRead, JDBC/RLS e identidad vigente de MAP-238.
+        No admite cuerpo, cursor, filtros, fechas, tenantId, userId, establecimiento ni
+        parámetros desconocidos (400). Identidad/tenant desde el principal validado.
+
+        El servidor toma un único corte de su Clock al iniciar la acción. Una escritura
+        atómica marca solo avisos propios autorizados, no leídos, visibles en su instantánea
+        y con createdAt <= corte. Conserva fechas de lectura previas. Una llegada posterior
+        al corte o no visible en esa instantánea sigue no leída, aunque su evento sea anterior.
+        No recorre páginas ni acepta una selección de destinatarios del cliente.
+
+        Devuelve la cantidad modificada. Repetir sin nuevas filas elegibles devuelve cero
+        y no altera lecturas previas; cada ejecución obtiene un corte nuevo, por lo que puede
+        incluir nuevas llegadas. La respuesta no expone un corte que el caso de uso no devuelve.
+        Tras autenticar/autorizar, flag OFF o evaluación no confiable responde 404.
+        Todas las respuestas, incluidos errores, llevan Cache-Control: no-store.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Cantidad de avisos propios que cambiaron de no leídos a leídos.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationMarkAllReadResult"
+              example: { updatedCount: 0 }
+        "400":
+          $ref: "#/components/responses/NotificationBadRequest"
+        "401":
+          $ref: "#/components/responses/NotificationUnauthorized"
+        "403":
+          $ref: "#/components/responses/NotificationForbidden"
+        "404":
+          $ref: "#/components/responses/NotificationNotFound"
+        "503":
+          $ref: "#/components/responses/NotificationServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/NotificationServerError"
+
   /public/business-applications:
     post:
       tags: [business-applications]
@@ -128,6 +441,76 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+
+  /platform/settings:
+    get:
+      tags: [platform-settings]
+      summary: Consultar la configuración de plataforma
+      description: |
+        Requiere rol SUPER_ADMIN y `mapit.s6.platform-settings`. Con la flag apagada responde 404
+        (`platform-settings-disabled`). Nunca expone secretos, tokens ni URLs internas.
+      operationId: getPlatformSettings
+      responses:
+        "200":
+          description: Parámetros editables, valores de solo lectura, servicios y flags
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettingsOverview" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /platform/settings/changes:
+    get:
+      tags: [platform-settings]
+      summary: Últimos cambios de configuración
+      operationId: listPlatformSettingChanges
+      responses:
+        "200":
+          description: Como máximo 50 cambios, del más reciente al más antiguo
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PlatformSettingChange" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /platform/settings/{key}:
+    put:
+      tags: [platform-settings]
+      summary: Cambiar o restaurar un parámetro global
+      operationId: changePlatformSetting
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformSettingChangeRequest" }
+      responses:
+        "200":
+          description: Valor efectivo tras el cambio
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSetting" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /platform/observability:
     get:
@@ -4927,6 +5310,138 @@ components:
         reservas. Puede caducar o revocarse mediante la operación de salida.
 
   schemas:
+    NotificationCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+      pattern: "^[A-Za-z0-9_-]+$"
+      description: |
+        Token URL-safe opaco emitido/autenticado por el servidor, ligado a tenant,
+        usuario y concesiones vigentes. No es el JSON/Base64 del ámbito interno ni
+        una credencial de acceso. No construirlo, decodificarlo ni reutilizarlo entre
+        identidades; sin principal y autorización no permite leer. El codec HTTP
+        seguro y su caducidad todavía están pendientes de implementación.
+      examples: ["opaque-example-do-not-decode"]
+
+    NotificationType:
+      type: string
+      enum: [RESERVATION_CREATED, RESERVATION_CHECKED_IN]
+      description: Tipos existentes en el dominio; no incluye eventos pendientes de MAP-257 ni cancelación sin productor real.
+
+    NotificationCategory:
+      type: string
+      enum: [RESERVATIONS, OPERATIONS]
+      description: Clasificación derivada del tipo existente; no define catálogo ni API de preferencias.
+
+    NotificationItem:
+      type: object
+      additionalProperties: false
+      required: [id, type, category, establishmentId, reservationId, occurredAt, createdAt, readAt]
+      description: |
+        Proyección mínima de Notification para el destinatario autenticado. No contiene
+        identidad del destinatario/tenant, datos del cliente, pagos, roles o texto libre.
+        RESERVATION_CREATED deriva categoría RESERVATIONS; RESERVATION_CHECKED_IN,
+        OPERATIONS. readAt null indica no leída; en otro caso conserva la primera lectura.
+        La creación no precede al hecho y la lectura no precede a la creación.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        category:
+          $ref: "#/components/schemas/NotificationCategory"
+        establishmentId:
+          type: string
+          format: uuid
+          readOnly: true
+        reservationId:
+          type: string
+          format: uuid
+          readOnly: true
+        occurredAt:
+          type: string
+          format: date-time
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        readAt:
+          type: [string, "null"]
+          format: date-time
+          readOnly: true
+
+    NotificationPreferences:
+      type: object
+      additionalProperties: false
+      required: [reservations, operations]
+      properties:
+        reservations: { type: boolean, default: true }
+        operations: { type: boolean, default: true }
+    NotificationPreferencesPatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        reservations: { type: boolean }
+        operations: { type: boolean }
+    NotificationPage:
+      type: object
+      additionalProperties: false
+      required: [content, hasMore]
+      description: |
+        Página autorizada en orden createdAt DESC, id DESC, con hasta el límite solicitado.
+        hasMore true requiere nextCursor; hasMore false omite nextCursor. La continuación
+        excluye la frontera anterior, sin repetir avisos por su marcado como leídos.
+        No hay snapshot inmutable entre peticiones; refrescar primera página para nuevas llegadas.
+      properties:
+        content:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/NotificationItem"
+        hasMore:
+          type: boolean
+        nextCursor:
+          $ref: "#/components/schemas/NotificationCursor"
+
+    NotificationUnreadCount:
+      type: object
+      additionalProperties: false
+      required: [unreadCount]
+      properties:
+        unreadCount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: No leídas del destinatario y ámbito actuales, no del tenant completo.
+
+    NotificationReadResult:
+      type: object
+      additionalProperties: false
+      required: [id, readAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        readAt:
+          type: string
+          format: date-time
+          description: Primera lectura confirmada por el servidor, preservada al repetir.
+
+    NotificationMarkAllReadResult:
+      type: object
+      additionalProperties: false
+      required: [updatedCount]
+      properties:
+        updatedCount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Filas propias autorizadas modificadas por esta ejecución; cero sin nuevas elegibles.
+
     PaymentCountry:
       type: object
       additionalProperties: false
@@ -6438,6 +6953,74 @@ components:
           minLength: 1
           maxLength: 500
 
+    PlatformSetting:
+      type: object
+      additionalProperties: false
+      required: [key, value, defaultValue, overridden, min, max]
+      properties:
+        key: { type: string }
+        value: { type: integer }
+        defaultValue: { type: integer, description: Valor que rige sin cambios guardados }
+        overridden: { type: boolean }
+        min: { type: integer }
+        max: { type: integer }
+    PlatformSettingChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedValue, reason]
+      properties:
+        value:
+          type: [integer, "null"]
+          description: Nulo restaura el valor del despliegue.
+        expectedValue: { type: integer, description: Valor efectivo que se tenía en pantalla }
+        reason: { type: string, minLength: 10, maxLength: 200 }
+    PlatformSettingChange:
+      type: object
+      additionalProperties: false
+      required: [key, previousValue, newValue, reason, actorName, occurredAt]
+      properties:
+        key: { type: string }
+        previousValue: { type: string }
+        newValue: { type: string }
+        reason: { type: string }
+        actorName: { type: string }
+        occurredAt: { type: string, format: date-time }
+    PlatformSettingsOverview:
+      type: object
+      additionalProperties: false
+      required: [environment, services, settings, readOnly, flags]
+      properties:
+        environment: { type: string }
+        services:
+          type: object
+          additionalProperties: false
+          required: [databaseAvailable, flagProvider]
+          properties:
+            databaseAvailable: { type: boolean }
+            flagProvider: { type: string, enum: [AVAILABLE, UNAVAILABLE, DISABLED] }
+        settings:
+          type: array
+          items: { $ref: "#/components/schemas/PlatformSetting" }
+        readOnly:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, value]
+            properties:
+              key: { type: string }
+              value: { type: string }
+        flags:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, type, enabled, defaultValue]
+            properties:
+              key: { type: string }
+              type: { type: string, enum: [RELEASE, KILL_SWITCH, EXPERIMENT, PERMISSION] }
+              enabled: { type: boolean, description: "Evaluación global, sin contexto de tenant" }
+              defaultValue: { type: boolean }
     GuardedCount:
       type: object
       description: Conteo publicable. Suprimido cuando está entre 1 y 4 o permitiría deducirlo.
@@ -7537,10 +8120,76 @@ components:
           examples: ["BAR"]
 
   responses:
+    NotificationBadRequest:
+      description: Límite, UUID o cursor inválido/caducado/fuera de ámbito, cuerpo o parámetros no admitidos. Sin devolver cursor, identidad ni datos del aviso.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
     ProfileFieldsUnavailable:
       description: |
         Dependencia de persistencia no disponible (type https://mapit.local/problems/profile-unavailable). Ningún campo se
         guarda parcialmente; no sustituir almacenamiento por memoria o valores simulados.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotificationUnauthorized:
+      description: Falta autenticación válida/vigente; no se consulta la bandeja.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotificationForbidden:
+      description: Identidad autenticada sin autorización vigente para usar la funcionalidad.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotificationNotFound:
+      description: Recurso no disponible; respuesta indistinguible para aviso inexistente/ajeno/no visible y para feature gate OFF o no confiable tras autenticar/autorizar.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotificationServiceUnavailable:
+      description: Dependencia necesaria no disponible; sin página vacía ni contador cero ficticios. No representa un endpoint provisional implementado.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotificationServerError:
+      description: Error interno con Problem seguro, sin secretos, cursores o identificadores de otras identidades.
       headers:
         X-Request-ID:
           $ref: "#/components/headers/RequestId"

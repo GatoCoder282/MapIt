@@ -10,7 +10,7 @@
 
 ## MAP-309 — Consultas seguras
 
-- [x] Contrato, migración V44 y DBML.
+- [x] Contrato, migración V47 y DBML.
 - [x] Supresión, proyecciones, caso de uso, controlador y regla SUPER_ADMIN.
 
 ## MAP-310 y MAP-311 — Dashboard y detalle
@@ -31,8 +31,6 @@
   restando; el límite de comparar ventanas de 7 y 30 días queda declarado en `spec.md`.
 - Las métricas de API salen de `http.server.requests` del propio proceso: se reinician al
   desplegar y no distinguen instancias.
-- **Migración:** V44 supone que el PR #84 (V43) entra antes. Si no, o si #75 entra primero,
-  renombrar antes de mergear (skill `new-migration`, regla 5).
-- **Conflictos esperados con #84** en rutas, menú, textos, seguridad, flags y contrato: el que
-  entre segundo se rebasa sobre `main`.
+- **Migración V47:** `main` llega a V45 con el #75 y la configuración de HU-7.07 pasa a V46 (en
+  `main` había quedado repetida como V43 y Flyway no arrancaba; esta rama incluye ese arreglo).
 - Retiro previsto de la flag según `flags.json`; sembrarla en cada Unleash al desplegar.

@@ -99,6 +99,9 @@ public class SecurityConfig {
                         .hasRole(UserRole.SUPER_ADMIN.name())
                         .requestMatchers(HttpMethod.POST, ApiPaths.AUTH_GLOBAL_LOGIN)
                         .permitAll()
+                        // HU-7.07: configuración global, solo SUPER_ADMIN.
+                        .requestMatchers("/api/v1/platform/settings", "/api/v1/platform/settings/**")
+                        .hasRole(UserRole.SUPER_ADMIN.name())
                         // HU-7.08: agregados de la plataforma, solo SUPER_ADMIN.
                         .requestMatchers("/api/v1/platform/observability", "/api/v1/platform/observability/**")
                         .hasRole(UserRole.SUPER_ADMIN.name())

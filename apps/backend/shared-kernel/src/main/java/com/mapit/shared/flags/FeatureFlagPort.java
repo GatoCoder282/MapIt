@@ -36,4 +36,9 @@ public interface FeatureFlagPort {
   default boolean isEnabledFor(FeatureFlag flag, TenantId tenantId) {
     return isEnabled(flag);
   }
+
+  /** Contexto staff explícito; sin adaptador compatible falla cerrado, sin heredar un ON global. */
+  default boolean isEnabledFor(FeatureFlag flag, FeatureFlagContext context) {
+    return false;
+  }
 }

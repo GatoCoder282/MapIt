@@ -12,7 +12,7 @@ import io.getunleash.event.UnleashSubscriber;
 final class MyAccountFlagAvailability implements UnleashSubscriber {
   static final long MAX_AGE_NANOS = Duration.ofSeconds(30).toNanos();
   private final LongSupplier nanoTime;
-  private final UnleashLoggingSubscriber logging = new UnleashLoggingSubscriber();
+  private final UnleashLoggingSubscriber logging;
   private volatile Snapshot snapshot = new Snapshot(false, false, false, 0);
 
   MyAccountFlagAvailability() {
@@ -20,7 +20,12 @@ final class MyAccountFlagAvailability implements UnleashSubscriber {
   }
 
   MyAccountFlagAvailability(LongSupplier nanoTime) {
+    this(nanoTime, new UnleashLoggingSubscriber());
+  }
+
+  MyAccountFlagAvailability(LongSupplier nanoTime, UnleashLoggingSubscriber logging) {
     this.nanoTime = nanoTime;
+    this.logging = logging;
   }
 
   boolean isFresh() {

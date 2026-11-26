@@ -45,6 +45,7 @@ public class CreateReservation {
   private final TenantContext tenantContext;
   private final ActorContext actorContext;
   private final Clock clock;
+  private final com.mapit.shared.notification.ReservationNotificationEvents notifications;
 
   public CreateReservation(
       PersonRepository people,
@@ -55,7 +56,7 @@ public class CreateReservation {
       AuditEventRecorder auditEvents,
       TenantContext tenantContext,
       ActorContext actorContext,
-      Clock clock) {
+      Clock clock, com.mapit.shared.notification.ReservationNotificationEvents notifications) {
     this.people = people;
     this.resources = resources;
     this.concurrencyGuard = concurrencyGuard;
@@ -65,6 +66,7 @@ public class CreateReservation {
     this.tenantContext = tenantContext;
     this.actorContext = actorContext;
     this.clock = clock;
+    this.notifications = notifications;
   }
 
   @Transactional
@@ -129,6 +131,8 @@ public class CreateReservation {
                   "status", persisted.status().name(),
                   "establishmentId", persisted.establishmentId().toString())));
     }
+    notifications.record(UUID.nameUUIDFromBytes(("reservation.created:" + persisted.id().value()).getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+        tenantId, "RESERVATION_CREATED", persisted.createdAt(), persisted.establishmentId(), persisted.id().value());
     return persisted;
   }
 

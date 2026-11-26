@@ -35,6 +35,7 @@ import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 
 class CreatePublicReservationTest {
+  private final java.util.List<UUID> notificationReservations = new java.util.ArrayList<>();
 
   private static final TenantId TENANT = TenantId.of("tenant-a");
   private static final UUID ACTOR = UUID.fromString("10000000-0000-0000-0000-000000000001");
@@ -72,7 +73,7 @@ class CreatePublicReservationTest {
             auditEvents,
             tenantContext,
             actorContext,
-            clock);
+            clock, (eventId, tenant, type, at, establishment, reservation) -> notificationReservations.add(reservation));
     useCase =
         new CreatePublicReservation(
             establishments,
@@ -104,6 +105,7 @@ class CreatePublicReservationTest {
     assertThat(reservation.timeRange().startsAt())
         .isEqualTo(Instant.parse("2026-10-25T23:00:00Z"));
     assertThat(reservation.timeRange().endsAt()).isEqualTo(Instant.parse("2026-10-26T01:00:00Z"));
+    assertThat(notificationReservations).containsExactly(reservation.id().value());
     assertThat(reservation.createdBy()).isNull();
     assertThat(people.created.fullName()).isEqualTo("Ana Pérez");
     assertThat(people.created.email()).isEqualTo("ana@example.com");

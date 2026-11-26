@@ -27,7 +27,7 @@ class MyAccountFlagAdapterTest {
   private final Unleash unleash = mock(Unleash.class);
   private final AtomicLong nanos = new AtomicLong(1);
   private final MyAccountFlagAvailability availability = new MyAccountFlagAvailability(nanos::get);
-  private final UnleashFeatureFlagAdapter adapter = new UnleashFeatureFlagAdapter(unleash, availability);
+  private final UnleashFeatureFlagAdapter adapter = new UnleashFeatureFlagAdapter(unleash, new UnleashLoggingSubscriber(), availability);
 
   @Test
   void refusesMissingProviderTenantOrWarmCacheWithoutLiveConfirmation() {

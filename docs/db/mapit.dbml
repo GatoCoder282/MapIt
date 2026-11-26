@@ -11,7 +11,8 @@
 //  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
 //  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5),
 //  `realtime_event_outbox` (V11, MAP-103/HUT-01), `audit_log` (V20, MAP-222),
-//  `business_application` (V41, MAP-261), `platform_access_log` (V44, MAP-309)
+//  `business_application` (V41, MAP-261), `platform_setting` (V46, MAP-303),
+//  `platform_access_log` (V47, MAP-309)
 //  y el rol de runtime `mapit_app`
 //  (V9, MAP-175: NOSUPERUSER + NOBYPASSRLS;
 //  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
@@ -353,9 +354,9 @@ Table audit_log {
   tenant_id     text        [not null, ref: > tenant.id]
   actor_id      uuid        [not null, note: 'FK compuesta (tenant_id, actor_id) > app_user(tenant_id, id)']
   occurred_at   timestamptz [not null]
-  resource_type text        [not null, note: 'RESERVATION | SPACE_ELEMENT | USER_INVITATION | USER | BUSINESS_APPLICATION']
+  resource_type text        [not null, note: 'RESERVATION | SPACE_ELEMENT | USER_INVITATION | USER | BUSINESS_APPLICATION | PLATFORM_SETTING']
   resource_id   uuid        [not null, note: 'Referencia polimórfica al recurso auditado']
-  event_type    text        [not null, note: 'RESERVATION_CREATED | RESERVATION_STATUS_CHANGED | SPACE_ELEMENT_STATE_CHANGED | USER_INVITATION_ISSUED | USER_INVITATION_ACCEPTED | USER_ROLE_CHANGED | USER_DEACTIVATED | USER_RECOVERED | BUSINESS_APPLICATION_APPROVED | BUSINESS_APPLICATION_REJECTED']
+  event_type    text        [not null, note: 'RESERVATION_CREATED | RESERVATION_STATUS_CHANGED | SPACE_ELEMENT_STATE_CHANGED | USER_INVITATION_ISSUED | USER_INVITATION_ACCEPTED | USER_ROLE_CHANGED | USER_DEACTIVATED | USER_RECOVERED | BUSINESS_APPLICATION_APPROVED | BUSINESS_APPLICATION_REJECTED | PLATFORM_SETTING_CHANGED']
   details       jsonb       [not null, default: `{}`]
 
   Indexes {
@@ -372,6 +373,17 @@ Table audit_log {
   '''
 }
 
+Table platform_setting {
+  setting_key text        [pk, note: 'Allowlist: vigencia de enlace y de sesión del historial']
+  int_value   int         [not null, note: 'Rango restringido por CHECK según la clave']
+  updated_at  timestamptz [not null]
+  updated_by  uuid        [not null, note: 'SUPER_ADMIN del tenant platform']
+  Note: '''
+    HU-7.07 (V46). Global, como `tenant`: sin tenant_id ni RLS porque no guarda datos de negocio
+    y se lee dentro de transacciones de cualquier tenant. Los cambios se auditan en `audit_log`.
+  '''
+}
+
 Table platform_access_log {
   id                uuid        [note: 'default gen_random_uuid()']
   tenant_id         text        [not null, ref: > tenant.id, note: 'siempre platform']
@@ -384,7 +396,7 @@ Table platform_access_log {
     (tenant_id, id)          [pk]
     (tenant_id, occurred_at) [name: 'platform_access_log_history_idx']
   }
-  Note: 'HU-7.08 (V44). RLS; mapit_app solo puede insertar y consultar.'
+  Note: 'HU-7.08 (V47). RLS; mapit_app solo puede insertar y consultar.'
 }
 
 Table realtime_event_outbox {
@@ -757,3 +769,100 @@ Table customer_history_access {
   }
   Note: 'HU-6.04. FK compuesta a person, RLS forzada; canje único y revocación invalidan los secretos.'
 }
+
+// MAP-292: V43. V40 es de MAP-285; V41/V42 son de HU-1.05 en main.
+Table notification_delivery_key {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ recipient_user_id uuid [not null]
+ source_event_id uuid [not null]
+ event_type text [not null]
+ event_fingerprint varchar(64) [not null, note: 'SHA-256 canónico; sin payload']
+ notification_id uuid [not null, unique]
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null, note: 'touch_updated_at']
+ Indexes {
+  (tenant_id,id) [unique]
+  (tenant_id,recipient_user_id,source_event_id,event_type) [unique]
+ }
+ Note: 'RLS forzada. Clave mínima durable tras purga para no recrear avisos.'
+}
+Ref: notification_delivery_key.(tenant_id,recipient_user_id) > app_user.(tenant_id,id)
+Table notification {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ delivery_key_id uuid [not null]
+ recipient_user_id uuid [not null]
+ source_event_id uuid [not null]
+ event_type text [not null]
+ category text [not null, note: 'RESERVATION_CREATED -> RESERVATIONS; RESERVATION_CHECKED_IN -> OPERATIONS']
+ establishment_id uuid [not null]
+ reservation_id uuid [not null]
+ occurred_at timestamptz [not null]
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null, note: 'touch_updated_at']
+ read_at timestamptz [note: 'NULL no leída; primer marcado inmutable']
+ expires_at timestamptz [not null]
+ signal_version bigint [not null, default: 1]
+ delivered_version bigint [not null, default: 0]
+ Indexes {
+  (tenant_id,id) [unique]
+  (tenant_id,delivery_key_id) [unique]
+  (tenant_id,recipient_user_id,source_event_id,event_type) [unique]
+  (tenant_id,recipient_user_id,created_at,id) [name: 'notification_inbox_idx', note: 'created_at DESC,id DESC']
+  (tenant_id,recipient_user_id,created_at,id) [name: 'notification_unread_idx', note: 'Parcial read_at IS NULL; fecha/ID DESC']
+  (tenant_id,expires_at,id) [name: 'notification_expiry_idx']
+ }
+ Note: 'RLS más destinatario y permisos SQL. Caducidad configurable; purga física opt-in, independiente del flag.'
+}
+Ref: notification.(tenant_id,delivery_key_id) > notification_delivery_key.(tenant_id,id)
+Ref: notification.(tenant_id,recipient_user_id) > app_user.(tenant_id,id)
+Ref: notification.(tenant_id,establishment_id) > establishment.(tenant_id,id)
+Ref: notification.(tenant_id,reservation_id,establishment_id) > reservation.(tenant_id,id,establishment_id)
+
+// V44: hechos durables, candidatos originales y señal por versión confirmada.
+Table notification_event_outbox {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ event_type text [not null]
+ establishment_id uuid [not null]
+ reservation_id uuid [not null]
+ occurred_at timestamptz [not null]
+ processed_at timestamptz
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null]
+ Indexes { (tenant_id,id) [unique] }
+ Note: 'RLS; índice parcial pendientes por tenant/fecha/id. Sin published_at compartido.'
+}
+Ref: notification_event_outbox.(tenant_id,reservation_id,establishment_id) > reservation.(tenant_id,id,establishment_id)
+Table notification_event_candidate {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ event_id uuid [not null]
+ user_id uuid [not null]
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null]
+ Indexes {
+  (tenant_id,id) [unique]
+  (tenant_id,event_id,user_id) [unique]
+ }
+ Note: 'RLS; snapshot de candidatos en transacción original. Revalidar permisos al consumir.'
+}
+Ref: notification_event_candidate.(tenant_id,event_id) > notification_event_outbox.(tenant_id,id)
+Ref: notification_event_candidate.(tenant_id,user_id) > app_user.(tenant_id,id)
+// V45: solo categorías optativas, sin preferencias de seguridad crítica.
+Table notification_preference {
+ id uuid [pk]
+ tenant_id text [not null, ref: > tenant.id]
+ user_id uuid [not null]
+ category text [not null, note: 'RESERVATIONS/OPERATIONS exclusivamente']
+ enabled boolean [not null]
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null]
+ Indexes {
+  (tenant_id,id) [unique]
+  (tenant_id,user_id,category) [unique]
+ }
+ Note: 'RLS y filtro propio por usuario. Ausencia de fila equivale a ON.'
+}
+Ref: notification_preference.(tenant_id,user_id) > app_user.(tenant_id,id)

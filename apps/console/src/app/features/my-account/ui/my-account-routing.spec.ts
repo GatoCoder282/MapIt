@@ -1,8 +1,11 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, type Routes } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthSession, type SessionUser } from '@mapit/auth';
+import { provideFeatureFlags } from '@mapit/feature-flags';
 import { of } from 'rxjs';
 import { routes } from '../../../app.routes';
 import { MyAccountApi } from '../data/my-account-api';
@@ -64,6 +67,9 @@ describe('rutas reales de Mi cuenta', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter(testRoutes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideFeatureFlags({ proxyUrl: '' }),
         {
           provide: AuthSession,
           useValue: {

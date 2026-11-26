@@ -139,6 +139,14 @@ async function prepare(
       });
     }
 
+    // HU-7.07: /admin/settings consulta la configuración global. Apagada responde 404, que es
+    // el estado por defecto y no pide ningún dato de establecimiento.
+    if (
+      request.method() === 'GET' &&
+      /^\/api\/v1\/platform\/settings(\/changes)?$/.test(pathname)
+    ) {
+      return route.fulfill({ status: 404, json: { status: 404 } });
+    }
     unexpectedRequests.push(`${request.method()} ${pathname}`);
     return route.fulfill({
       status: 501,
@@ -517,13 +525,22 @@ test('superadmin navega a /admin sin pedir ni restaurar establecimiento', async 
   page,
 }, testInfo) => {
   const unexpected = await prepare(page, testInfo.project.use.baseURL, { role: 'SUPER_ADMIN' });
+  await page.route('**/api/v1/tenants?*', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return route.fulfill({
+      json: { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 },
+    });
+  });
   const requests: string[] = [];
   page.on('request', (request) => {
     if (request.url().includes('/api/v1/')) requests.push(new URL(request.url()).pathname);
   });
-  await page.goto('/admin/settings');
-  await expect(page).toHaveURL(/\/admin\/settings$/);
-  await expect(page.getByRole('heading').first()).toBeVisible();
+  const tenantsResponse = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === '/api/v1/tenants',
+  );
+  await Promise.all([tenantsResponse, page.goto('/admin/tenants')]);
+  await expect(page).toHaveURL(/\/admin\/tenants$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Tenants', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(requests).not.toContain('/api/v1/establishments/accessible');
   expect(unexpected).toEqual([]);
