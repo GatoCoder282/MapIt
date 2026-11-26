@@ -260,6 +260,27 @@ export class SpaceMonitorStore {
       }),
     ),
   );
+  private readonly reservedElementIds = computed(
+    () => {
+      const now = this.data.now();
+      return new Set(
+        this.data
+          .reservations()
+          .filter(
+            (reservation) =>
+              isBlockingReservation(reservation) &&
+              Date.parse(reservation.startsAt) <= now &&
+              now < Date.parse(reservation.endsAt),
+          )
+          .flatMap((reservation) => [...reservation.spaceElementIds]),
+      );
+    },
+    {
+      equal: (previous, current) =>
+        previous.size === current.size && [...previous].every((id) => current.has(id)),
+    },
+  );
+
   readonly layout = computed(() => {
     const view = this.snapshot();
     const scope = this.selectionScope();
@@ -274,6 +295,7 @@ export class SpaceMonitorStore {
       return LAYOUT_VACIO;
     }
     const appearance = normalizeLayoutStyle(sector.appearance);
+    const reservedIds = this.reservedElementIds();
     return {
       ...LAYOUT_VACIO,
       floorId: scope.floor ?? '',
@@ -281,7 +303,14 @@ export class SpaceMonitorStore {
       size: { width: sector.width, height: sector.height },
       ...(appearance.room ? { appearance: appearance.room } : {}),
       elements: view.items.map((item) =>
-        withElementFinish(mapApiElementToLayoutElement(item), appearance.elements[item.id]),
+        withElementFinish(
+          mapApiElementToLayoutElement(
+            item.state === 'AVAILABLE' && reservedIds.has(item.id)
+              ? { ...item, state: 'RESERVED' }
+              : item,
+          ),
+          appearance.elements[item.id],
+        ),
       ),
     };
   });
@@ -474,7 +503,9 @@ export class SpaceMonitorStore {
     const selected = this.selected();
     const sectorId = this.sector()?.id;
     if (!sectorId || !selected?.reservable) return;
-    this.updateState(sectorId, selected.id, selected.state, state);
+    const physicalState = this.snapshot()?.items.find((item) => item.id === selected.id)?.state;
+    if (!physicalState) return;
+    this.updateState(sectorId, selected.id, physicalState, state);
   }
 
   updateIncidentState(incident: OperationalIncident): void {

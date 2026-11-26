@@ -33,6 +33,8 @@ describe('SpaceMonitorStore', () => {
   const active = signal({ id: 'est-a', name: 'A' });
   const role = signal('ADMIN');
   const connection = signal<RealtimeConnectionState>('disconnected');
+  const now = signal(Date.parse('2026-11-26T20:00:00Z'));
+  const reservations = signal<ReturnType<OperationalMapData['reservations']>>([]);
   let events: Subject<RealtimeEventEnvelope>;
   let store: SpaceMonitorStore;
   const getElements = vi.fn(() => of([element('table-1')]));
@@ -64,6 +66,9 @@ describe('SpaceMonitorStore', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    now.set(Date.parse('2026-11-26T20:00:00Z'));
+    reservations.set([]);
+    changeState.mockClear();
     getElements.mockReset().mockReturnValue(of([element('table-1')]));
     getFloorLayout.mockReset().mockReturnValue(
       of({
@@ -81,10 +86,10 @@ describe('SpaceMonitorStore', () => {
         {
           provide: OperationalMapData,
           useValue: {
-            now: () => Date.now(),
+            now,
             status: () => 'ready',
             incidents: () => [],
-            reservations: () => [],
+            reservations,
             refresh: vi.fn(),
           },
         },
@@ -115,6 +120,59 @@ describe('SpaceMonitorStore', () => {
   });
 
   afterEach(() => vi.useRealTimers());
+
+  function reserve() {
+    reservations.set([
+      {
+        id: 'booking',
+        status: 'CONFIRMED',
+        startsAt: '2026-11-26T20:00:00Z',
+        endsAt: '2026-11-26T21:00:00Z',
+        spaceElementIds: ['table-1'],
+        customerName: 'Cliente',
+        partySize: 2,
+      },
+    ]);
+  }
+
+  it('projects a current reservation into the map, selection and counts without changing the physical snapshot', () => {
+    reserve();
+    store.selectedId.set('table-1');
+    expect(store.selected()?.state).toBe('RESERVED');
+    expect(store.counts()).toMatchObject({ AVAILABLE: 0, RESERVED: 1 });
+    expect(changeState).not.toHaveBeenCalled();
+    store.updateSelectedState('OCCUPIED');
+    expect(changeState).toHaveBeenLastCalledWith({
+      sectorId: 'sector-a',
+      elementId: 'table-1',
+      spaceElementStateUpdateRequest: { state: 'OCCUPIED', expectedState: 'AVAILABLE' },
+    });
+  });
+
+  it('updates at the start and end boundaries and when a reservation is cancelled', () => {
+    reserve();
+    now.set(Date.parse('2026-11-26T19:59:59Z'));
+    expect(store.counts().AVAILABLE).toBe(1);
+    now.set(Date.parse('2026-11-26T20:00:00Z'));
+    expect(store.counts().RESERVED).toBe(1);
+    now.set(Date.parse('2026-11-26T21:00:00Z'));
+    expect(store.counts().AVAILABLE).toBe(1);
+    now.set(Date.parse('2026-11-26T20:30:00Z'));
+    reservations.update((items) => items.map((item) => ({ ...item, status: 'CANCELLED' })));
+    expect(store.counts().AVAILABLE).toBe(1);
+  });
+
+  it.each(['OCCUPIED', 'CLEANING', 'OUT_OF_SERVICE', 'RESERVED'] as const)(
+    'preserves physical state %s despite an ongoing reservation',
+    (state) => {
+      reserve();
+      getElements.mockReturnValue(of([element('table-1', state)]));
+      connection.set('connected');
+      TestBed.tick();
+      expect(store.layout().elements[0]?.state).toBe(state);
+      expect(store.counts()[state]).toBe(1);
+    },
+  );
 
   it('refreshes counts once for duplicate events and again on reconnection', () => {
     expect(store.counts().AVAILABLE).toBe(1);
