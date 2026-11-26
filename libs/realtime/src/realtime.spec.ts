@@ -11,6 +11,7 @@ import {
   type StompClientLike,
 } from './realtime';
 import type { IMessage, StompHeaders, StompSubscription } from '@stomp/stompjs';
+import { FeatureFlagService, provideFeatureFlags } from '../../feature-flags/src';
 
 class FakeStompClient implements StompClientLike {
   active = false;
@@ -114,6 +115,50 @@ describe('RealtimeClient', () => {
     expect(factory).not.toHaveBeenCalled();
   });
 
+  it('un ON/OFF/ON del proxy desconecta y restaura transporte y suscripciones', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ toggles: [{ name: 'realtime.websocket', enabled: true }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    TestBed.configureTestingModule({
+      providers: [provideFeatureFlags({ intervaloRefrescoMs: 100 })],
+    });
+    const flags = TestBed.inject(FeatureFlagService);
+    enabled.mockImplementation(() => flags.isEnabledNow('realtime.websocket'));
+    const client = TestBed.inject(RealtimeClient);
+    const subscription = client.subscribeEstablishment('est-1').subscribe();
+    try {
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(0);
+      client.connect();
+      expect(client.connectionState()).toBe('connected');
+      fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ toggles: [] }) });
+      await vi.advanceTimersByTimeAsync(100);
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(client.connectionState()).toBe('disabled');
+      expect(clients[0]?.active).toBe(false);
+      expect(clients[0]?.subscriptions.size).toBe(0);
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ toggles: [{ name: 'realtime.websocket', enabled: true }] }),
+      });
+      await vi.advanceTimersByTimeAsync(100);
+      TestBed.tick();
+      expect(client.connectionState()).toBe('connected');
+      expect(clients).toHaveLength(2);
+      expect(clients[1]?.subscriptions.has('/topic/establishments/est-1')).toBe(true);
+    } finally {
+      subscription.unsubscribe();
+      await client.disconnect();
+      TestBed.resetTestingModule();
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
   it('envía el JWT en CONNECT, enruta eventos y re-suscribe tras reconectar', async () => {
     vi.useFakeTimers();
     const client = TestBed.inject(RealtimeClient);
@@ -160,9 +205,11 @@ describe('RealtimeClient', () => {
     const errors = vi.fn();
     const payments = vi.fn();
     const spaces = vi.fn();
+    const reservations = vi.fn();
     client.errors.subscribe(errors);
     const operational = client.subscribeEstablishment('est-1').subscribe(spaces);
     const payment = client.subscribeEstablishmentPayments('est-1').subscribe(payments);
+    const reservation = client.subscribeEstablishmentReservations('est-1').subscribe(reservations);
     client.connect();
     const update = {
       eventId: 'event-1',
@@ -179,11 +226,22 @@ describe('RealtimeClient', () => {
     const cancelled = { ...update, eventId: 'event-cancelled', status: 'CANCELLED' };
     clients[0]?.emit('/topic/establishments/est-1', JSON.stringify(cancelled));
     expect(payments).toHaveBeenCalledWith(cancelled);
+    const created = {
+      eventId: 'event-created',
+      eventType: 'reservation.created.v1',
+      schemaVersion: 1,
+      establishmentId: 'est-1',
+    };
+    clients[0]?.emit('/topic/establishments/est-1', JSON.stringify(created));
+    expect(reservations).toHaveBeenCalledExactlyOnceWith(created);
+    expect(payments).toHaveBeenCalledTimes(2);
     expect(spaces).not.toHaveBeenCalled();
     expect(errors).not.toHaveBeenCalled();
     payment.unsubscribe();
     expect(clients[0]?.subscriptions.has('/topic/establishments/est-1')).toBe(true);
     operational.unsubscribe();
+    expect(clients[0]?.subscriptions.has('/topic/establishments/est-1')).toBe(true);
+    reservation.unsubscribe();
     expect(clients[0]?.subscriptions.has('/topic/establishments/est-1')).toBe(false);
   });
 });

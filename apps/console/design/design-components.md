@@ -81,10 +81,9 @@
 
 ### Botón primario del editor (Aplicar plantilla / Guardar / Aplicar tamaño)
 
-- Relleno `#3D4EF2` (accent de la marca — el índigo de `libs/ui-kit`), texto blanco, radio 8px.
-- **Atención:** el acento del EDITOR es `#2563EB` (selección/interacción del plano) y el
-  accent de la MARCA es `#3D4EF2` (CTAs). No mezclarlos: los CTAs de cabecera llevan el
-  índigo de marca; la interacción del lienzo lleva el azul de editor.
+- Relleno `#2563EB` (token canónico `--mapit-color-primary`), texto blanco, radio 8px.
+- El acento de interacción del editor y de los CTA usa el mismo token canónico. La selección,
+  foco y CTA no introducen un segundo azul.
 
 ### Botón secundario del editor (Guardar como plantilla)
 
@@ -125,3 +124,105 @@
 ## Recepción y métodos de cobro
 
 Especificación de las pantallas operativas QR: [check-in.md](check-in.md).
+
+---
+
+# Reserva rápida — Monitor operativo
+
+> Refinamiento funcional:
+> [HU-5.01 / Reserva rápida](../../specs/HU-5.01-creacion-reserva-interna/refinamiento-reserva-rapida/spec.md).
+> Componente local de la feature `operations`; no se crea una abstracción UI-kit de un solo uso.
+
+## Containment
+
+### Panel contextual del monitor
+
+- Columna derecha del monitor en escritorio; ancho entre 336px y 577px. En compacto pasa debajo
+  del mapa, a ancho completo, sin overlay.
+- Superficie visible `#FFFFFF`, borde `1px solid #DBEAFE`, radio 24px y `--mapit-shadow`.
+- Altura limitada por la fila del mapa y 731px máximos; el contenido interior desplaza.
+- Cabecera de 60–64px: texto "Panel del mapa" y botón de cierre square de 44 × 44px, sin
+  borde y con icono X de 18px. Sin logo, pin, marca ni nombre de producto.
+
+### Ficha del elemento seleccionado
+
+- Fondo `#DBEAFE`, radio 16px, padding 14px, altura mínima 84px.
+- Tile de icono blanco de 48 × 48px, radio 12px, con `LucideArmchair` de 24px en azul.
+- Nombre Manrope 16/24/700; ubicación Inter 12/16 con piso y sector reales.
+- Pill de estado a la derecha con el color semántico real y texto explícito.
+- Una onda decorativa CSS estática en la esquina inferior derecha; no es imagen, no anima y no
+  interfiere con el contenido.
+
+### Contenedor del formulario
+
+- Título Manrope 20/28/600 "Crear reserva rápida".
+- Rejilla vertical de 12px; grupos de campos con 8–12px de separación.
+- Sin tarjeta blanca adicional: el panel ya es la superficie.
+
+## Navigation
+
+### Pestañas segmentadas
+
+- Pista `#DBEAFE`, radio 12px, padding 4px y separación 4px.
+- Botones de 44px mínimo: icono de 18px + etiqueta Inter 14/20/600.
+- La pestaña activa usa fondo `#2563EB` y texto blanco; las inactivas usan texto `#334155`.
+- Conserva el patrón ARIA y la navegación existente por flechas, Home y End.
+- Bajo 27rem de ancho del panel se ocultan solo los iconos; las etiquetas permanecen.
+
+## Input
+
+### Campo de texto
+
+- Input nativo, alto mínimo 44px, padding 10px 12px, radio 4px, borde `#CBD5E1`.
+- Foco: borde `#2563EB` y halo `rgb(37 99 235 / 0.2)`.
+- Nombre: `autocomplete="name"`, obligatorio.
+- Email: `type="email"`, `autocomplete="email"`, marcado visiblemente como opcional.
+
+### Campo de teléfono y prefijo
+
+- Prefijo: select nativo de 80px, ancho máximo; valor enviado con `+`.
+- Teléfono: `type="tel"`, `autocomplete="tel"`, obligatorio; se compone con el prefijo al enviar.
+- En pantallas estrechas, prefijo y teléfono permanecen juntos y el email ocupa la fila completa.
+
+### Fecha, hora y personas
+
+- Fecha: `input type="date"`, locale del navegador, requerida.
+- Hora: select nativo en formato 24h, intervalos de 30 minutos; requerida.
+- Personas: select nativo con enteros de 1 a la capacidad real del elemento; por defecto 2,
+  limitado por la capacidad.
+
+### Nota de alcance
+
+No se renderizan campos de hora de fin, duración, preparación ni notas. El intervalo de
+90 minutos es una regla interna y las notas no pueden persistirse con el contrato aprobado.
+
+## Feedback
+
+### Banner de disponibilidad
+
+- Región `role="status"`, `aria-live="polite"`, mínimo 48px, padding 12px, radio 12px.
+- Estados: inactivo, comprobando, disponible, no disponible y error de datos.
+- Favorable: fondo verde muy claro y `LucideCheck`; no disponible: superficie semántica de
+  advertencia; error: superficie de error y acción de reintento.
+- Nunca se muestra el estado favorable sin una evaluación real del snapshot operativo.
+
+### Error de envío
+
+- Conserva el borrador y anuncia el error con `role="alert"`.
+- `409`: explica que otra reserva ocupa el intervalo y refresca el snapshot.
+- Durante la escritura, "Crear reserva" queda deshabilitado y no admite un segundo envío.
+
+## Actions
+
+### Cancelar
+
+- Botón secundario a la izquierda: fondo blanco, borde `#CBD5E1`, texto `#334155`, radio 12px.
+- Alto 48px. Descarta el borrador sin crear persona ni reserva y devuelve el foco a un contexto
+  legible.
+
+### Crear reserva
+
+- Botón primario a la derecha: fondo `#2563EB`, texto blanco, radio 12px, alto 48px.
+- Hover `#1D4ED8`; foco visible con el halo canónico.
+- Solo una acción primaria en el formulario. Durante el envío permanece deshabilitado y muestra
+  un estado de carga textual.

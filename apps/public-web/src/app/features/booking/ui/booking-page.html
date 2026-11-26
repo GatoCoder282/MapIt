@@ -59,7 +59,9 @@
         </p>
       }
       @if (!store.intervalValid()) {
-        <p class="notice" role="status">{{ strings.booking.intervalRequired }}</p>
+        <p class="notice" role="status">
+          {{ store.arrivalOnly() ? strings.availability.arrivalRequired : strings.booking.intervalRequired }}
+        </p>
         <a class="secondary" [routerLink]="['/disponibilidad', tenantSlug(), establishmentSlug()]">{{
           strings.booking.back
         }}</a>
@@ -203,32 +205,41 @@
                   <dd class="summary-date">{{ formatDate(store.date()) }}</dd>
                 </div>
                 <div>
-                  <dt>{{ strings.booking.schedule }}</dt>
+                  <dt>{{ store.arrivalOnly() ? strings.availability.arrivalTime : strings.booking.schedule }}</dt>
                   <dd>
-                    {{ store.startTime() }} – {{ store.endTime() }}
+                    {{ store.startTime() }}
+                    @if (!store.arrivalOnly()) {
+                      – {{ store.endTime() }}
+                    }
                     <a
                       class="edit-link"
                       [routerLink]="
                         store.status() === 'submitting' ? null : ['/disponibilidad', tenantSlug(), establishmentSlug()]
                       "
-                      [queryParams]="{ date: store.date(), startTime: store.startTime(), endTime: store.endTime() }"
+                      [queryParams]="{
+                        date: store.date(),
+                        startTime: store.startTime(),
+                        endTime: store.arrivalOnly() ? null : store.endTime(),
+                      }"
                       [attr.aria-disabled]="store.status() === 'submitting' ? 'true' : null"
                       [class.link-disabled]="store.status() === 'submitting'"
                       ><svg lucidePencil aria-hidden="true"></svg>{{ strings.booking.editTime }}</a
                     >
                   </dd>
                 </div>
-                <div>
-                  <dt>{{ strings.booking.duration }}</dt>
-                  <dd>{{ store.duration() }}</dd>
-                </div>
+                @if (!store.arrivalOnly()) {
+                  <div>
+                    <dt>{{ strings.booking.duration }}</dt>
+                    <dd>{{ store.duration() }}</dd>
+                  </div>
+                }
               </dl>
               @if (store.descriptor(); as space) {
                 <dl class="summary-section space-summary">
                   <div>
                     <dt>{{ strings.booking.selectedSpace }}</dt>
                     <dd>
-                      {{ space.name }}
+                      {{ spaceName(space) }}
                       <a
                         class="edit-link"
                         [routerLink]="
@@ -239,7 +250,7 @@
                         [queryParams]="{
                           date: store.date(),
                           startTime: store.startTime(),
-                          endTime: store.endTime(),
+                          endTime: store.arrivalOnly() ? null : store.endTime(),
                           elementId: elementId(),
                         }"
                         [attr.aria-disabled]="store.status() === 'submitting' ? 'true' : null"

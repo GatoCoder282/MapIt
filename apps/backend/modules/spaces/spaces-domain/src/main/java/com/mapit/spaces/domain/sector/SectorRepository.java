@@ -21,6 +21,10 @@ public interface SectorRepository {
   /** Busca un sector vivo por id. Vacío si no existe, está dado de baja o es de otro tenant. */
   Optional<Sector> findAliveById(TenantId tenantId, SectorId id);
 
+  default Optional<Sector> findAliveByIdForUpdate(TenantId tenantId, SectorId id) {
+    return findAliveById(tenantId, id);
+  }
+
   /** Busca un sector vivo por su slug para detectar conflictos. */
   Optional<Sector> findAliveBySlug(TenantId tenantId, UUID floorId, Slug slug);
 

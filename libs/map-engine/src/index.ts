@@ -6,6 +6,7 @@ export {
   type MapLayout,
   type MapLayoutKind,
   type Point,
+  type RoomAppearance,
   type SectorPlacement,
   type Size,
   type SpaceAvailability,
@@ -13,3 +14,4 @@ export {
   type SpaceElementId,
   type SpaceElementType,
 } from './lib/map-layout.model';
+export { constrainPlacement, placementFits } from './lib/map-geometry';

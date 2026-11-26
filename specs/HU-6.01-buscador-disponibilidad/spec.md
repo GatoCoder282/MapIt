@@ -16,6 +16,7 @@ Esta historia implementa el primer paso público del flujo de reservas. La consu
 - Pantalla pública que permite indicar esos datos, enviar la búsqueda y presentar resultados, estado vacío y errores.
 - Un elemento es elegible cuando está activo, es reservable, tiene estado operativo `AVAILABLE` y no tiene una reserva vigente que se solape con el día consultado.
 - La fecha representa el día calendario en la zona horaria del establecimiento y se evalúa como intervalo semiabierto `[inicioDelDía, inicioDelDíaSiguiente)`.
+- En la consulta por intervalo de un restaurante, el cliente elige solo la hora de llegada. El servidor calcula 90 minutos desde la llegada en la zona del establecimiento y valida que termine dentro del mismo día local.
 
 Fuera de alcance: crear reservas, mostrar datos personales o estados internos, y pagos.
 

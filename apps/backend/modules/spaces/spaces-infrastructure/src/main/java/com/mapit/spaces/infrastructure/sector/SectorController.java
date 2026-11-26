@@ -23,6 +23,7 @@ import com.mapit.spaces.application.sector.CreateSectorUseCase;
 import com.mapit.spaces.application.sector.DeleteSectorUseCase;
 import com.mapit.spaces.application.sector.GetSectorByIdUseCase;
 import com.mapit.spaces.application.sector.GetSectorsByFloorUseCase;
+import com.mapit.spaces.application.sector.SectorHasActiveElementsException;
 import com.mapit.spaces.application.sector.SectorNotFoundException;
 import com.mapit.spaces.application.sector.SectorResponse;
 import com.mapit.spaces.application.sector.SectorSlugAlreadyExistsException;
@@ -129,8 +130,8 @@ public class SectorController {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
-  @ExceptionHandler(SectorSlugAlreadyExistsException.class)
-  ResponseEntity<ProblemDetail> handleConflict(SectorSlugAlreadyExistsException ex) {
+  @ExceptionHandler({SectorSlugAlreadyExistsException.class, SectorHasActiveElementsException.class})
+  ResponseEntity<ProblemDetail> handleConflict(RuntimeException ex) {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     problem.setTitle("Conflicto en sector");

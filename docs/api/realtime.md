@@ -71,6 +71,15 @@ un consumidor guarda el último `eventId` procesado y descarta duplicados o vers
 El servidor publica un evento de sector tanto en la sala del establecimiento como en la sala del
 sector; el cliente debe deduplicar cuando escucha ambas.
 
+Al crear una reserva, el outbox publica `reservation.created.v1` en la sala de su
+establecimiento. El JSON solo incluye `eventId`, `eventType`, `schemaVersion: 1` y
+`establishmentId`. La consola actualiza la consulta de reservas sin recibir datos
+personales por WebSocket. El reloj de la vista operativa recalcula los umbrales de
+incidencias y comparte el resultado con la campana aun cuando no llegan eventos.
+La configuración en tiempo de ejecución de la consola acepta
+`mapIncidentThresholds` con `critical`, `urgent` y `preventive` en minutos
+(5, 20 y 45 por defecto, respectivamente).
+
 ## Semántica de entrega
 
 1. El caso de uso cambia el estado y escribe el evento en `realtime_event_outbox` dentro de la

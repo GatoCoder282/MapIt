@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mapit.operations.domain.state.InvalidSpaceElementStateTransitionException;
 import com.mapit.operations.domain.state.OperationalSpaceElement;
 import com.mapit.operations.domain.state.SpaceElementStateChangeRepository;
 import com.mapit.operations.domain.state.SpaceElementStateRepository;
@@ -18,6 +19,7 @@ import com.mapit.shared.audit.AuditResourceType;
 import com.mapit.shared.realtime.RealtimeEvent;
 import com.mapit.shared.realtime.RealtimeEventPublisher;
 import com.mapit.shared.security.ActorContext;
+import com.mapit.shared.security.EstablishmentAuthorizationPort;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 
@@ -31,6 +33,7 @@ public class UpdateSpaceElementState {
   private final RealtimeEventPublisher realtime;
   private final TenantContext tenantContext;
   private final ActorContext actorContext;
+  private final EstablishmentAuthorizationPort authorization;
   private final Clock clock;
 
   public UpdateSpaceElementState(
@@ -40,6 +43,7 @@ public class UpdateSpaceElementState {
       RealtimeEventPublisher realtime,
       TenantContext tenantContext,
       ActorContext actorContext,
+      EstablishmentAuthorizationPort authorization,
       Clock clock) {
     this.repository = repository;
     this.changes = changes;
@@ -47,6 +51,7 @@ public class UpdateSpaceElementState {
     this.realtime = realtime;
     this.tenantContext = tenantContext;
     this.actorContext = actorContext;
+    this.authorization = authorization;
     this.clock = clock;
   }
 
@@ -57,6 +62,13 @@ public class UpdateSpaceElementState {
         repository
             .lockAliveById(tenantId, command.sectorId(), command.elementId())
             .orElseThrow(() -> new OperationalSpaceElementNotFoundException(command.elementId()));
+    UUID actorId = actorContext.requireUserId();
+    if (!authorization.canReadOperations(tenantId, actorId, current.establishmentId())) {
+      throw new OperationalSpaceElementNotFoundException(command.elementId());
+    }
+    if (command.expectedState() != null && current.state() != command.expectedState()) {
+      throw new InvalidSpaceElementStateTransitionException(current.state(), command.state());
+    }
 
     OperationalSpaceElement changed = current.changeState(command.state(), clock.instant());
     if (changed == current) {
@@ -64,7 +76,6 @@ public class UpdateSpaceElementState {
     }
 
     OperationalSpaceElement persisted = repository.save(changed);
-    UUID actorId = actorContext.requireUserId();
     auditEvents.record(
         new AuditEvent(
             UUID.randomUUID(),

@@ -8,13 +8,16 @@ export class LocalizedDatePipe implements PipeTransform {
     value: Date | string | number | null | undefined,
     locale: string,
     preset: LocalizedDatePreset = 'medium',
+    timeZone?: string,
   ): string | null {
     if (value === null || value === undefined || value === '') return null;
     const date = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(date.getTime())) return null;
 
     const options: Intl.DateTimeFormatOptions =
-      preset === 'mediumDate' ? { dateStyle: 'medium' } : { dateStyle: preset, timeStyle: preset };
+      preset === 'mediumDate'
+        ? { dateStyle: 'medium', timeZone }
+        : { dateStyle: preset, timeStyle: preset, timeZone };
 
     return new Intl.DateTimeFormat(locale, options).format(date);
   }

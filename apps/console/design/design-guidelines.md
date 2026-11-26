@@ -88,3 +88,90 @@
 
 - **Don't** animar la aparición del marco ni la pill (latencia mínima en herramienta técnica).
 - **Don't** animar la "entrada" del panel (ya está en su sitio desde el primer render).
+
+## Reserva rápida — Monitor operativo
+
+> Tokens: [design.md](design.md). Specs de componente: [design-components.md](design-components.md).
+
+### Accessibility
+
+#### Contrast
+
+| Requirement             | Ratio | Medido sobre                                  |
+| ----------------------- | ----- | --------------------------------------------- |
+| Texto normal            | 4.5:1 | `#0F172A` sobre `#FFFFFF` ≈ 15:1 ✓            |
+| Texto secundario        | 4.5:1 | `#334155` sobre `#FFFFFF` ≈ 10.3:1 ✓          |
+| Texto muted y ubicación | 4.5:1 | `#64748B` sobre `#FFFFFF` ≈ 4.8:1 ✓           |
+| Iconos, bordes y foco   | 3:1   | `#2563EB` sobre `#FFFFFF` / `#DBEAFE` ≥ 3:1 ✓ |
+| Pill de estado          | 4.5:1 | Texto blanco sobre `#2563EB` ≈ 5.4:1 ✓        |
+
+El azul y el verde nunca son el único indicador: la pestaña activa conserva `aria-selected`,
+el estado incluye texto y el banner de disponibilidad se anuncia.
+
+#### Touch targets
+
+- Inputs, selects, textarea y botones: mínimo 44px de alto.
+- Botón de cierre: área de 44 × 44px; el icono visible puede ser de 18px.
+- Separación mínima entre controles interactivos: 8px.
+
+#### Keyboard navigation
+
+| Tecla           | Acción en Reserva rápida                                      |
+| --------------- | ------------------------------------------------------------- |
+| Tab / Shift+Tab | Recorre controles en el orden visual                          |
+| Enter           | Envía el formulario o activa el control enfocado              |
+| Flechas         | Mueven el foco dentro de las pestañas                         |
+| Home / End      | Seleccionan la primera o última pestaña                       |
+| Escape          | No interrumpe la escritura ni crea datos fuera del formulario |
+
+#### Assistive technology
+
+- Cada control tiene una etiqueta visible y programática; los opcionales se identifican también
+  con texto.
+- Los errores de campo usan `aria-invalid="true"` y `aria-describedby`; el mensaje general usa
+  `role="alert"`.
+- El banner de disponibilidad usa `role="status"` y `aria-live="polite"`.
+- La lista de pestañas conserva `tablist`, `tab`, `tabpanel`, `aria-selected`, `aria-controls`,
+  `aria-labelledby` y un único elemento con `tabindex="0"`.
+- Iconos decorativos: `aria-hidden="true"`. Botones solo-icono: nombre accesible conservado.
+- Tras crear o cancelar, el foco permanece en un contexto legible y nunca se pierde en el
+  cuerpo del panel.
+
+### Content design
+
+- "Crear reserva rápida" describe la acción; no usar "Reserva" como encabezado ambiguo.
+- Las etiquetas son nominales: "Nombre completo", "Celular", "Correo electrónico (opcional)",
+  "Fecha", "Hora de inicio" y "Personas".
+- Los mensajes de error explican qué ocurrió y conservan el borrador; no empiezan por
+  exclamaciones ni usan jerga técnica.
+- No mostrar "Duración" ni "Preparación": son reglas internas de 90 minutos y preparación.
+
+### Do's and Don'ts
+
+#### Color
+
+- **Do** usar `#DBEAFE` para la ficha del elemento y la pista de pestañas.
+- **Do** mostrar verde únicamente después de una comprobación operativa favorable.
+- **Don't** pintar la mesa de ocupada al crear una reserva futura.
+
+#### Shape
+
+- **Do** usar radio de 4px en inputs y 12px en tarjetas/botones.
+- **Don't** usar sombras pesadas para separar campos o feedback.
+
+#### Interaction
+
+- **Do** deshabilitar "Crear reserva" mientras hay una escritura en curso.
+- **Do** tratar el `409` del backend como conflicto autoritativo y refrescar el snapshot.
+- **Don't** simular disponibilidad positiva ni permitir un doble envío.
+
+#### Layout
+
+- **Do** conservar la división 60/40 en escritorio y el apilado sin overlay en compacto.
+- **Do** reorganizar el formulario por ancho de panel, no por ancho de ventana.
+- **Don't** crear un overlay, modal o ruta nueva para la reserva rápida.
+
+#### Motion
+
+- **Do** limitar el movimiento a hover/focus con las duraciones globales.
+- **Don't** animar la onda decorativa de la ficha ni añadir waves al formulario.

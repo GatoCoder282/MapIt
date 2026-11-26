@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.EntityManager;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -19,11 +21,13 @@ public class SectorPersistenceAdapter implements SectorRepository {
 
   private final SectorSpringDataRepository repository;
   private final JdbcTemplate jdbcTemplate;
+  private final EntityManager entityManager;
 
   public SectorPersistenceAdapter(
-      SectorSpringDataRepository repository, JdbcTemplate jdbcTemplate) {
+      SectorSpringDataRepository repository, JdbcTemplate jdbcTemplate, EntityManager entityManager) {
     this.repository = repository;
     this.jdbcTemplate = jdbcTemplate;
+    this.entityManager = entityManager;
   }
 
   @Override
@@ -45,6 +49,13 @@ public class SectorPersistenceAdapter implements SectorRepository {
   }
 
   @Override
+  public Optional<Sector> findAliveByIdForUpdate(TenantId tenantId, SectorId id) {
+    setDatabaseTenant(tenantId);
+    return repository.findOneByIdAndTenantIdAndDeletedAtIsNull(id.value(), tenantId.value())
+        .map(SectorJpaEntity::toDomain);
+  }
+
+  @Override
   public Optional<Sector> findAliveBySlug(TenantId tenantId, UUID floorId, Slug slug) {
     setDatabaseTenant(tenantId);
     return repository
@@ -55,9 +66,9 @@ public class SectorPersistenceAdapter implements SectorRepository {
   @Override
   public Sector save(Sector sector) {
     setDatabaseTenant(sector.tenantId());
-    return repository
-        .save(SectorJpaEntity.fromDomain(sector))
-        .toDomain();
+    var saved = repository.saveAndFlush(SectorJpaEntity.fromDomain(sector));
+    entityManager.refresh(saved);
+    return saved.toDomain();
   }
 
   private void setDatabaseTenant(TenantId tenantId) {

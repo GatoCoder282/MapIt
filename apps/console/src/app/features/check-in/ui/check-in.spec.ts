@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { AccessibleEstablishment } from '@mapit/api-client';
+import { FeatureFlagService } from '@mapit/feature-flags';
 import { EstablishmentContext } from '../../../core/establishment-context';
 import { CheckInApi } from '../data/check-in-api';
 import { CheckInStore } from '../model/check-in-store';
@@ -18,6 +19,15 @@ const ACTIVE: AccessibleEstablishment = {
 };
 
 describe('CheckIn: contexto operativo', () => {
+  const cameraEnabled = signal(true);
+
+  beforeEach(() => {
+    cameraEnabled.set(true);
+    TestBed.overrideProvider(FeatureFlagService, {
+      useValue: { isEnabled: () => cameraEnabled },
+    });
+  });
+
   it('muestra el activo y cambia de escaneo a entrada manual sin pedir otra selección de local', async () => {
     const active = signal(ACTIVE);
     await TestBed.configureTestingModule({
@@ -75,8 +85,25 @@ describe('CheckIn: contexto operativo', () => {
     expect(store.input()).toBe('');
     expect(scanTab.getAttribute('aria-selected')).toBe('true');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Norte');
+
+    store.setInput('manual-code');
+    stop.mockClear();
+    cameraEnabled.set(false);
+    fixture.detectChanges();
+    expect(stop).toHaveBeenCalledOnce();
+    expect(page.querySelector('[data-testid="scanner-video"]')).toBeNull();
+    expect(page.querySelector('[role="tablist"]')).toBeNull();
+    expect(page.querySelector('#manual-panel')?.hasAttribute('hidden')).toBe(false);
+    expect(page.querySelector<HTMLInputElement>('[data-testid="check-in-code"]')?.value).toBe(
+      'manual-code',
+    );
+
+    cameraEnabled.set(true);
+    fixture.detectChanges();
+    expect(page.querySelector('#manual-tab')?.getAttribute('aria-selected')).toBe('true');
+    expect(page.querySelector('[data-testid="scanner-video"]')).toBeNull();
     fixture.destroy();
-  });
+  }, 15000);
 
   it('bloquea la salida durante llegada y confirma cuando hay borrador', async () => {
     await TestBed.configureTestingModule({

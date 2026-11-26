@@ -71,6 +71,8 @@
 
 ### Verificación
 
+- El flujo de llegada de restaurantes se validó con 71 pruebas de frontend y 14 pruebas de integración HTTP. Se comprobó la consulta con datos locales de Pollos choco Av. América.
+
 - Tests backend: `pnpm be:test` en verde; integración pública en verde, incluyendo reserva anónima, reutilización de persona, solapamiento, estado no disponible, establecimiento/tenant inválido, payload inválido y concurrencia (un `201`, un `409`, una sola reserva y una sola persona).
 - Frontend: `booking-store.spec.ts` cubre envío, validación, `400`, `404`, `409`, error de red y limpieza de errores.
 - E2E: `booking.spec.ts` y `availability.spec.ts` en verde para `public-web` y `public-web-mobile` (8 pruebas) contra el dev server local y API mockeada por Playwright.

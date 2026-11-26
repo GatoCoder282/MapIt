@@ -34,6 +34,10 @@
 - Solo dos parámetros son editables porque son los únicos que rigen sin reiniciar y sin tocar
   política de seguridad. Añadir otro exige entrada en `PlatformSetting`, CHECK nuevo y textos.
 - El filtro JWT exige que el usuario exista: los IT dan de alta un usuario por rol.
+- Integración de main en HU-2.04 (26/11/2026): HU-7.06 ocupa V43 a V45; la migración de
+  plataforma pasa a V46 conservando exactamente su SQL. Las migraciones de HU-2.04 pasan
+  de V40-V43 a V47-V50. No se modifica el historial de la base local existente; la verificación
+  utiliza una base independiente con la cadena completa.
 - **Colisión resuelta (26/11/2026):** tras integrar #75 y #84, main contenía dos V43 y Flyway
   bloqueaba el arranque. La migración de plataforma se renumeró a V46 sin cambiar su SQL;
   V43–V45 de notificaciones se conservan. No redefinen restricciones de `audit_log`.
@@ -45,6 +49,12 @@
   revalidó aparte tras normalizar una caché local ignorada (`.impeccable/hook.cache.json`).
   Un entorno que ya aplicó la V43 de plataforma desde una rama necesita revisar su historial
   antes de desplegar; esta corrección no ejecuta repair ni modifica bases desplegadas.
+- Actualización de HU-2.04 con main `2ed9767a` (26/11/2026): la migración V46 coincide
+  con la ya integrada en esta rama. Se conservan ambas notas de ejecución y se incorpora
+  la prueba de unicidad de versiones; el único conflicto de texto era este archivo.
+- Verificación de esta actualización: `pnpm check` completo (930 pruebas frontend y backend
+  con ArchUnit) y los 29 tests de scripts en verde. No se repiten E2E porque no cambian
+  el código de la aplicación ni el SQL respecto a la ejecución anterior aprobada.
 - Verificación (25/11/2026): `pnpm check` en verde; `pnpm be:it` 250 tests, 0 fallos;
   `pnpm be:test` 613 unitarios, 0 fallos y 1 omitido preexistente (`SmtpAdminRecoveryMailTest`);
   `ng test console` 494; E2E `platform-settings` (flag ON y OFF), `tenants-admin` y `smoke` en verde.

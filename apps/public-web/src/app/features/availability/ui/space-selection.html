@@ -10,7 +10,7 @@
       </header>
       <ul class="interval-strip" [attr.aria-label]="strings.availability.resultDatePrefix">
         <li><svg lucideCalendarDays aria-hidden="true"></svg>{{ dateLabel() }}</li>
-        <li><svg lucideClock3 aria-hidden="true"></svg>{{ data.startTime }}–{{ data.endTime }}</li>
+        <li><svg lucideClock3 aria-hidden="true"></svg>{{ store.schedule() }}</li>
         <li><svg lucideMapPin aria-hidden="true"></svg>{{ data.establishmentName }}</li>
       </ul>
       <div class="spaces-panel">
@@ -20,7 +20,7 @@
             <h3>{{ strings.availability.resultsTitle }}</h3>
             <p>
               {{
-                strings.availability.chooseFor
+                (store.arrivalOnly() ? strings.availability.arrivalFor : strings.availability.chooseFor)
                   .replace('{date}', dateLabel())
                   .replace('{start}', data.startTime ?? '')
                   .replace('{end}', data.endTime ?? '')
@@ -67,7 +67,7 @@
               >
                 <svg lucideArmchair aria-hidden="true"></svg>
                 <span class="space-copy"
-                  ><strong>{{ space.name }}</strong
+                  ><strong>{{ spaceName(space) }}</strong
                   ><small>{{ space.floor }} · {{ space.sector }}</small></span
                 >
                 <span class="status-pill">{{ strings.availability.states.AVAILABLE }}</span>
@@ -113,20 +113,20 @@
         <span class="success-icon"><svg lucideCheckCircle2 aria-hidden="true"></svg></span>
         <div>
           <p>{{ strings.availability.selected }}</p>
-          <h2 id="selected-space-title">{{ space.name }}</h2>
+          <h2 id="selected-space-title">{{ spaceName(space) }}</h2>
         </div>
       </div>
       <div class="selected-when">
         <strong><svg lucideMapPin aria-hidden="true"></svg>{{ data.establishmentName }}</strong
         ><span
           ><svg lucideCalendarDays aria-hidden="true"></svg>{{ dateLabel() }} <svg lucideClock3 aria-hidden="true"></svg
-          >{{ data.startTime }}–{{ data.endTime }}</span
+          >{{ store.schedule() }}</span
         >
       </div>
       <div class="selected-description">
         <svg lucideArmchair aria-hidden="true"></svg
         ><span
-          ><strong>{{ space.name }}</strong
+          ><strong>{{ spaceName(space) }}</strong
           ><small>{{ typeLabels[space.type ?? ''] }}</small
           ><small>{{ space.floor }} · {{ space.sector }}</small></span
         >
@@ -142,7 +142,11 @@
           class="continue"
           data-testid="availability-continue"
           [routerLink]="['/reservar', tenantSlug(), establishmentSlug(), space.id]"
-          [queryParams]="{ date: store.date(), startTime: store.startTime(), endTime: store.endTime() }"
+          [queryParams]="{
+            date: store.date(),
+            startTime: store.startTime(),
+            endTime: store.requestedEndTime() || null,
+          }"
           >{{ strings.availability.continue }} <svg lucideArrowRight aria-hidden="true"></svg
         ></a>
       }

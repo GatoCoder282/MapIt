@@ -2,6 +2,7 @@ package com.mapit.reservations.application.reservation;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -29,6 +30,7 @@ import com.mapit.shared.audit.AuditEventRecorder;
 import com.mapit.shared.audit.AuditEventType;
 import com.mapit.shared.audit.AuditResourceType;
 import com.mapit.shared.security.ActorContext;
+import com.mapit.shared.security.EstablishmentAuthorizationPort;
 import com.mapit.shared.tenant.TenantContext;
 import com.mapit.shared.tenant.TenantId;
 
@@ -44,6 +46,7 @@ public class CreateReservation {
   private final AuditEventRecorder auditEvents;
   private final TenantContext tenantContext;
   private final ActorContext actorContext;
+  private final EstablishmentAuthorizationPort authorization;
   private final Clock clock;
   private final com.mapit.shared.notification.ReservationNotificationEvents notifications;
 
@@ -56,6 +59,7 @@ public class CreateReservation {
       AuditEventRecorder auditEvents,
       TenantContext tenantContext,
       ActorContext actorContext,
+      EstablishmentAuthorizationPort authorization,
       Clock clock, com.mapit.shared.notification.ReservationNotificationEvents notifications) {
     this.people = people;
     this.resources = resources;
@@ -65,6 +69,7 @@ public class CreateReservation {
     this.auditEvents = auditEvents;
     this.tenantContext = tenantContext;
     this.actorContext = actorContext;
+    this.authorization = authorization;
     this.clock = clock;
     this.notifications = notifications;
   }
@@ -72,15 +77,24 @@ public class CreateReservation {
   @Transactional
   public Reservation execute(Command command) {
     Objects.requireNonNull(command, "command no puede ser null");
+    TenantId tenant = tenantContext.require();
+    UUID actor = actorContext.requireUserId();
+    if (command.partySize() != null
+        && !authorization.canReadOperations(tenant, actor, command.establishmentId())) {
+      throw new ReservationReferenceNotFoundException(
+          ReservationReferenceNotFoundException.Reference.ESTABLISHMENT, command.establishmentId());
+    }
     return create(
-        tenantContext.require(),
-        actorContext.requireUserId(),
+        tenant,
+        actor,
         command.establishmentId(),
         PersonId.of(command.personId()),
         command.spaceElementIds(),
         command.startsAt(),
         command.endsAt(),
-        false);
+        false,
+        command.partySize(),
+        command.notes());
   }
 
   /**
@@ -97,7 +111,25 @@ public class CreateReservation {
       Instant startsAt,
       Instant endsAt,
       boolean requireAvailableState) {
+    return create(tenantId, createdBy, establishmentId, personId, spaceElementIds,
+        startsAt, endsAt, requireAvailableState, null, null);
+  }
+
+  private Reservation create(
+      TenantId tenantId,
+      @Nullable UUID createdBy,
+      UUID establishmentId,
+      PersonId personId,
+      Collection<UUID> spaceElementIds,
+      Instant startsAt,
+      Instant endsAt,
+      boolean requireAvailableState,
+      @Nullable Integer partySize, @Nullable String notes) {
     Objects.requireNonNull(tenantId, "tenantId no puede ser null");
+    Instant now = clock.instant();
+    if (partySize != null && (spaceElementIds.size() != 1 || !startsAt.isAfter(now))) {
+      throw new IllegalArgumentException("La reserva rápida requiere una mesa y un horario futuro");
+    }
 
     Reservation reservation =
         Reservation.create(
@@ -107,13 +139,19 @@ public class CreateReservation {
             personId,
             spaceElementIds,
             ReservationTimeRange.of(startsAt, endsAt),
-            clock.instant(),
-            createdBy);
+            now,
+            createdBy,
+            partySize).withNotes(notes);
 
     requirePerson(tenantId, reservation.personId());
     requireEstablishment(tenantId, reservation.establishmentId());
     concurrencyGuard.lockResources(tenantId, reservation.spaceElementIds());
-    requireValidResources(tenantId, reservation, requireAvailableState);
+    requireValidResources(
+        tenantId,
+        reservation,
+        requireAvailableState
+            || (partySize != null && !startsAt.isAfter(
+                now.plus(ReservationAvailabilityRepository.QUICK_PREPARATION_MINUTES, ChronoUnit.MINUTES))));
     requireAvailability(tenantId, reservation);
 
     Reservation persisted = reservations.save(reservation);
@@ -167,6 +205,16 @@ public class CreateReservation {
       if (!resource.isReservable()) {
         throw InvalidReservationResourceException.notReservable(resource.id());
       }
+      resource.validateBookingRange(reservation.timeRange());
+      Integer partySize = reservation.partySize();
+      if (partySize != null
+          && (resource.kind() != ReservationResource.Kind.TABLE
+              || resource.capacity() == null
+              || resource.capacity() < partySize
+              || !resource.isActive())) {
+        unavailable.add(resource.id());
+        continue;
+      }
       if (requireAvailableState
           && resource.operationalState() != ReservationResource.OperationalState.AVAILABLE) {
         unavailable.add(resource.id());
@@ -192,7 +240,8 @@ public class CreateReservation {
   private void requireAvailability(TenantId tenantId, Reservation reservation) {
     Set<UUID> conflicts =
         availability.findConflictingElementIds(
-            tenantId, reservation.spaceElementIds(), reservation.timeRange());
+            tenantId, reservation.spaceElementIds(), reservation.timeRange(),
+            reservation.partySize() == null ? 0 : ReservationAvailabilityRepository.QUICK_PREPARATION_MINUTES);
     if (!conflicts.isEmpty()) {
       throw new ReservationOverlapException(conflicts);
     }
@@ -203,7 +252,18 @@ public class CreateReservation {
       UUID personId,
       List<UUID> spaceElementIds,
       Instant startsAt,
-      Instant endsAt) {
+      Instant endsAt,
+      @Nullable Integer partySize, @Nullable String notes) {
+
+    public Command(UUID establishmentId, UUID personId, List<UUID> spaceElementIds,
+        Instant startsAt, Instant endsAt) {
+      this(establishmentId, personId, spaceElementIds, startsAt, endsAt, null);
+    }
+
+    public Command(UUID establishmentId, UUID personId, List<UUID> spaceElementIds,
+        Instant startsAt, Instant endsAt, @Nullable Integer partySize) {
+      this(establishmentId, personId, spaceElementIds, startsAt, endsAt, partySize, null);
+    }
 
     public Command {
       Objects.requireNonNull(establishmentId, "establishmentId no puede ser null");

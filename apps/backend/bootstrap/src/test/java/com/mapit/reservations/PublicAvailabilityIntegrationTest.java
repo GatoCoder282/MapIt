@@ -194,7 +194,7 @@ class PublicAvailabilityIntegrationTest {
         .jsonPath("$.floors[0].sectors[0].elements[?(@.id=='"+OVERLAPS_DAY_START+"')].availability").isEqualTo("AVAILABLE")
         .jsonPath("$.floors[0].sectors[0].elements[0].state").doesNotExist()
         .jsonPath("$.floors[0].sectors[0].elements[0].attributes").doesNotExist();
-    for(String query : List.of("&startTime=10:00","&endTime=11:00","&startTime=11:00&endTime=10:00","&startTime=25:00&endTime=26:00")) {
+    for(String query : List.of("&endTime=11:00","&startTime=11:00&endTime=10:00","&startTime=25:00&endTime=26:00")) {
       client().get().uri(map+query).exchange().expectStatus().isBadRequest();
     }
     client().get().uri(path(TENANT,"foreign-only")+"/map?date=2030-10-25").exchange().expectStatus().isNotFound();
@@ -209,6 +209,28 @@ class PublicAvailabilityIntegrationTest {
         .returnResult().getResponseBody();
     assertThat(ambiguous.startsAt()).isEqualTo(Instant.parse("2030-10-27T00:30:00Z"));
     assertThat(ambiguous.startTime()).isEqualTo("02:30");
+  }
+
+  @Test
+  void restaurantArrivalChecksOverlapAndRespectsTheVerticalWindow() {
+    jdbc.update("update reservation set starts_at=starts_at+interval '4 years', ends_at=ends_at+interval '4 years' where tenant_id=?", TENANT);
+    String map = path(TENANT, ESTABLISHMENT_SLUG) + "/map?date=2030-10-25";
+    String url = map + "&startTime=00:00";
+    var response = client().get().uri(url).exchange().expectStatus().isOk()
+        .expectBody(com.mapit.reservations.domain.availability.PublicAvailabilityMap.class)
+        .returnResult().getResponseBody();
+    assertThat(response).isNotNull();
+    assertThat(response.startTime()).isEqualTo("00:00");
+    assertThat(response.endTime()).isEqualTo("01:30");
+    assertThat(response.endsAt()).isEqualTo(Instant.parse("2030-10-25T05:30:00Z"));
+    assertThat(response.floors().getFirst().sectors().getFirst().elements())
+        .filteredOn(element -> element.id().equals(OVERLAPS_DAY_START))
+        .extracting(element -> element.availability())
+        .containsExactly("RESERVED");
+
+    client().get().uri(map + "&startTime=23:30").exchange().expectStatus().isBadRequest();
+    jdbc.update("update establishment set type='HOTEL' where tenant_id=? and id=?", TENANT, ESTABLISHMENT);
+    client().get().uri(url).exchange().expectStatus().isBadRequest();
   }
 
   @Test

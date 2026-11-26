@@ -31,15 +31,15 @@ public class JdbcPublicAvailabilityMapRepository implements PublicAvailabilityMa
     if (tenants.isEmpty()) return Optional.empty();
     String tenant = tenants.getFirst();
     jdbc.queryForObject(TenantScope.SET_LOCAL_SQL, String.class, tenant);
-    var venues = jdbc.query("select id,name,timezone from establishment where tenant_id=? and slug=? and deleted_at is null",
-        (r,n) -> new Venue(r.getObject("id", UUID.class), r.getString("name"), r.getString("timezone")), tenant, establishmentSlug);
+    var venues = jdbc.query("select id,name,timezone,type from establishment where tenant_id=? and slug=? and deleted_at is null",
+        (r,n) -> new Venue(r.getObject("id", UUID.class), r.getString("name"), r.getString("timezone"), r.getString("type")), tenant, establishmentSlug);
     if (venues.isEmpty()) return Optional.empty();
     var venue = venues.getFirst();
     ZoneId zone = ZoneId.of(venue.timezone());
     var from = date.atStartOfDay(zone).toInstant();
     var to = date.plusDays(1).atStartOfDay(zone).toInstant();
-    if (start != null && end != null) {
-      var range = PublicReservationTimeRange.resolve(date, start, end, zone);
+    if (start != null) {
+      var range = PublicReservationTimeRange.resolve(date, start, end, zone, venue.type());
       from = range.startsAt(); to = range.endsAt();
       if (!from.isAfter(clock.instant())) throw new IllegalArgumentException("El inicio debe ser futuro");
     }
@@ -73,7 +73,8 @@ public class JdbcPublicAvailabilityMapRepository implements PublicAvailabilityMa
         }, tenant, venue.id());
     // ponytail: 1+floors+sectors consultas; usar agregación SQL si el tamaño real del plano lo exige.
     return Optional.of(new PublicAvailabilityMap(venue.id(),venue.name(),tenantSlug,establishmentSlug,venue.timezone(),date,
-        start == null ? null : start.toString(),end == null ? null : end.toString(),startsAt,endsAt,start == null ? "DAY" : "INTERVAL",floors));
+        start == null ? null : start.toString(),start == null ? null : LocalTime.ofInstant(endsAt, zone).toString(),
+        startsAt,endsAt,start == null ? "DAY" : "INTERVAL",floors));
   }
-  private record Venue(UUID id, String name, String timezone) {}
+  private record Venue(UUID id, String name, String timezone, String type) {}
 }

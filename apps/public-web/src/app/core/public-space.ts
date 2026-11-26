@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import type { CheckoutSpace, PublicAvailabilityMap, PublicMapElement } from '@mapit/api-client';
-import { STRINGS } from './strings';
+import { localizeSpaceName, STRINGS } from './strings';
 
 export type PublicSpaceDescriptor = Pick<
   CheckoutSpace,
@@ -11,7 +11,12 @@ export type PublicSpaceDescriptor = Pick<
   readonly availability?: PublicMapElement.AvailabilityEnum;
 };
 
-export function validPublicInterval(date: string, start: string, end: string): boolean {
+export function validPublicInterval(
+  date: string,
+  start: string,
+  end: string,
+  arrivalOnly = false,
+): boolean {
   const time = /^([01]\d|2[0-3]):[0-5]\d$/;
   const day = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date + 'T12:00:00Z') : null;
   return (
@@ -19,8 +24,7 @@ export function validPublicInterval(date: string, start: string, end: string): b
     Number.isFinite(day.getTime()) &&
     day.toISOString().slice(0, 10) === date &&
     time.test(start) &&
-    time.test(end) &&
-    start < end
+    (arrivalOnly || (time.test(end) && start < end))
   );
 }
 
@@ -38,7 +42,9 @@ export function matchesPublicMap(
     data.mode === 'INTERVAL' &&
     data.date === date &&
     (data.startTime === start || data.startTime === start + ':00') &&
-    (data.endTime === end || data.endTime === end + ':00')
+    (end
+      ? data.endTime === end || data.endTime === end + ':00'
+      : !!data.endTime && Date.parse(data.endsAt) > Date.parse(data.startsAt))
   );
 }
 
@@ -77,7 +83,7 @@ export function findPublicSpace(
   selector: 'mp-public-space',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <strong>{{ space().name }}</strong>
+    <strong>{{ name() }}</strong>
     @if (typeLabel()) {
       <span>{{ typeLabel() }}</span>
     }
@@ -110,6 +116,7 @@ export class PublicSpaceSummary {
   readonly space = input.required<PublicSpaceDescriptor>();
   readonly peers = input<readonly PublicSpaceDescriptor[]>([]);
   protected readonly strings = STRINGS.publicSpace;
+  protected readonly name = computed(() => localizeSpaceName(this.space()));
   protected readonly typeLabel = computed(() => {
     const labels: Readonly<Record<string, string>> = STRINGS.availability.types;
     return labels[this.space().type ?? ''] ?? '';

@@ -37,7 +37,9 @@ pnpm new:flag payments.qr release     # crea la flag en los 3 sitios coherenteme
 ```
 
 Los tres sitios son: el enum Java, el catálogo TypeScript y `unleash/flags.json`.
-Luego hay que crearla también en la UI (<http://localhost:4242>, `admin`/`unleash4all`).
+En local, `pnpm db:seed:flags` crea las flags que faltan. Las existentes conservan
+sus estados y estrategias. Para cambiar una existente, usa la UI de Unleash
+(<http://localhost:4242>).
 
 Convención de nombres: `<dominio>.<feature>`.
 Tipos: `release` (temporal, con fecha de retiro) · `kill-switch` (permanente) ·

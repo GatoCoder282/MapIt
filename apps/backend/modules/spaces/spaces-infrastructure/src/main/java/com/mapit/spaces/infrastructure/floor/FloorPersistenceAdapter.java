@@ -38,11 +38,35 @@ public class FloorPersistenceAdapter implements FloorRepository {
   public List<Floor> findAliveByEstablishmentId(TenantId tenantId, UUID establishmentId) {
     setDatabaseTenant(tenantId); // Ensure RLS is set
     return repository
-        .findAllByTenantIdAndEstablishmentIdAndDeletedAtIsNullOrderByLevelAsc(
-            tenantId.value(), establishmentId)
+        .findAliveByEstablishment(tenantId.value(), establishmentId)
         .stream()
         .map(FloorJpaEntity::toDomain)
         .toList();
+  }
+
+  @Override
+  public boolean reorder(
+      TenantId tenantId, UUID establishmentId, List<UUID> previousIds, List<UUID> floorIds) {
+    setDatabaseTenant(tenantId);
+    jdbcTemplate.queryForList("""
+        select id from floor
+        where tenant_id = ? and establishment_id = ? and deleted_at is null
+        order by id for update
+        """, UUID.class, tenantId.value(), establishmentId);
+    var currentIds = repository.findAliveByEstablishment(tenantId.value(), establishmentId)
+        .stream().map(FloorJpaEntity::getId).toList();
+    if (!currentIds.equals(previousIds)) return false;
+
+    jdbcTemplate.batchUpdate("""
+        update floor set display_order = ?
+        where tenant_id = ? and establishment_id = ? and id = ? and deleted_at is null
+        """, floorIds, floorIds.size(), (statement, id) -> {
+          statement.setInt(1, floorIds.indexOf(id));
+          statement.setString(2, tenantId.value());
+          statement.setObject(3, establishmentId);
+          statement.setObject(4, id);
+        });
+    return true;
   }
 
   @Override
@@ -50,6 +74,13 @@ public class FloorPersistenceAdapter implements FloorRepository {
     setDatabaseTenant(tenantId); // Ensure RLS is set
     return repository
         .findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId.value())
+        .map(FloorJpaEntity::toDomain);
+  }
+
+  @Override
+  public Optional<Floor> findAliveByIdForUpdate(TenantId tenantId, UUID id) {
+    setDatabaseTenant(tenantId);
+    return repository.findOneByIdAndTenantIdAndDeletedAtIsNull(id, tenantId.value())
         .map(FloorJpaEntity::toDomain);
   }
 

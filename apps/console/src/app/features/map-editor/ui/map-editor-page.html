@@ -1,0 +1,513 @@
+<div class="editor-page">
+  <header class="editor-header">
+    <div>
+      <nav class="breadcrumbs" [attr.aria-label]="strings.workspace.structure">
+        @if (monitorEnabled()) {
+          <a routerLink="/map" [queryParams]="{ floorId: store.selectedFloorId(), sectorId: store.sectorId() }">{{
+            strings.workspace.map
+          }}</a>
+          <span aria-hidden="true">›</span>
+        }
+        @if (floorName(); as floor) {
+          @if (store.canEditMetadata()) {
+            <span>{{ floor }}</span>
+            <span aria-hidden="true">›</span>
+          }
+        }
+        <strong aria-current="page">{{ strings.workspace.editorTitle }}</strong>
+      </nav>
+      <h1>{{ strings.workspace.editorTitle }}</h1>
+      <p class="context">
+        {{ establishment()?.name }}
+        @if (floorName(); as floor) {
+          · {{ floor }}
+        }
+        @if (zoneView(); as zone) {
+          · {{ zone.name }}
+        }
+      </p>
+    </div>
+    <div class="header-actions">
+      @if (store.canEditMetadata() && !preview()) {
+        <button
+          type="button"
+          class="button"
+          data-testid="map-undo"
+          [disabled]="!editable() || !store.canUndo()"
+          (click)="store.undo()"
+        >
+          <svg lucideUndo2 aria-hidden="true"></svg>{{ strings.workspace.undo }}
+        </button>
+        <button
+          type="button"
+          class="button"
+          data-testid="map-redo"
+          [disabled]="!editable() || !store.canRedo()"
+          (click)="store.redo()"
+        >
+          <svg lucideRedo2 aria-hidden="true"></svg>{{ strings.workspace.redo }}
+        </button>
+      }
+
+      @if (monitorEnabled()) {
+        <a
+          class="button"
+          data-testid="map-go-monitor"
+          routerLink="/map"
+          [queryParams]="{ floorId: store.selectedFloorId(), sectorId: store.sectorId() }"
+        >
+          {{ strings.workspace.goMonitor }}
+        </a>
+      }
+      @if (store.canEditMetadata()) {
+        <span
+          class="save-status"
+          aria-live="polite"
+          [class.pending]="dirty() && !locked() && !store.error() && !store.conflict()"
+          [class.saved]="!locked() && !!store.sectorId() && !dirty() && !store.error()"
+        >
+          @if (store.busy()) {
+            {{ strings.workspace.saving }}
+          } @else if (store.conflict()) {
+            {{ strings.workspace.conflict }}
+          } @else if (store.error()) {
+            {{ strings.workspace.error }}
+          } @else if (dirty()) {
+            {{ strings.workspace.pending }}
+          } @else if (!locked() && store.sectorId()) {
+            <svg lucideCheck aria-hidden="true"></svg>{{ strings.workspace.saved }}
+          } @else {
+            {{ strings.workspace.unchanged }}
+          }
+        </span>
+        <button
+          type="button"
+          class="button"
+          (click)="togglePreview()"
+          [disabled]="locked()"
+          [attr.aria-pressed]="preview()"
+        >
+          <svg lucideEye aria-hidden="true"></svg>
+          {{ preview() ? strings.workspace.exitPreview : strings.workspace.preview }}
+        </button>
+        @if (dirty()) {
+          <button
+            type="button"
+            class="button primary"
+            data-testid="map-save"
+            (click)="save()"
+            [disabled]="locked() || store.conflict()"
+          >
+            <svg lucideSave aria-hidden="true"></svg>{{ strings.workspace.save }}
+          </button>
+        }
+      }
+    </div>
+  </header>
+  @if (store.error(); as error) {
+    <div class="error" role="alert">
+      {{ localizeString(error) }}
+      @if (store.conflict()) {
+        <button type="button" class="button" (click)="reload()">{{ strings.workspace.reload }}</button>
+      }
+    </div>
+  }
+  <div class="editor-main" [class.preview]="preview()" [class.style-open]="propertiesTab() === 'style' && !preview()">
+    @if (!preview()) {
+      <div class="structure" [class.library-open]="panel() === 'elements'">
+        @if (panel() === 'structure') {
+          <mapit-establishment-structure
+            [embedded]="true"
+            [selectedFloor]="store.selectedFloorId()"
+            [zonesByFloor]="floorZones()"
+            [selectedZone]="zoneId()"
+            [editorLocked]="locked() || dirty()"
+            (selected)="selectStructure($event)"
+            (zoneSelected)="openZone($event)"
+            (floorExpanded)="store.loadFloorZones($event)"
+            (changed)="refreshStructure()"
+          />
+        } @else {
+          @if (store.canEdit()) {
+            <div class="library-panel" id="map-library" #libraryPanel tabindex="-1" [attr.inert]="locked() ? '' : null">
+              <mapit-element-library (dragStarted)="panning.set(false)" (inserted)="propertiesTab.set('details')" />
+            </div>
+          }
+          <details class="placed-elements" open>
+            <summary data-testid="map-placed-elements">
+              {{ strings.workspace.objects }} ({{ store.elements().length }})
+            </summary>
+            <ul class="tree">
+              @for (element of store.elements(); track element.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="tree-row"
+                    data-testid="map-element-row"
+                    [class.active]="element.id === store.selectedId()"
+                    [attr.aria-pressed]="element.id === store.selectedId()"
+                    [disabled]="locked()"
+                    (click)="selectElement(element.id)"
+                  >
+                    <mapit-element-type-icon [type]="element.type" [size]="24" />
+                    <span
+                      >{{ element.label }}<small>{{ typeLabels[element.type] }}</small></span
+                    >
+                  </button>
+                </li>
+              } @empty {
+                <li class="muted">{{ strings.noElements }}</li>
+              }
+            </ul>
+          </details>
+        }
+      </div>
+    }
+    <section class="map-area" [class.without-floor]="!selectedFloor()" [attr.aria-label]="strings.workspace.plan">
+      <div class="toolbar" role="group" [attr.aria-label]="strings.workspace.tools">
+        <div class="switcher">
+          <button
+            type="button"
+            [class.active]="panel() === 'structure'"
+            [attr.aria-pressed]="panel() === 'structure'"
+            (click)="panel.set('structure')"
+          >
+            <svg lucideLayers aria-hidden="true"></svg>{{ strings.workspace.structureTab }}
+          </button>
+          <button
+            type="button"
+            data-testid="map-elements-tab"
+            [disabled]="locked() || !!zoneId()"
+            [class.active]="panel() === 'elements'"
+            [attr.aria-pressed]="panel() === 'elements'"
+            (click)="focusLibrary()"
+          >
+            <svg lucidePlus aria-hidden="true"></svg>{{ strings.workspace.add }}
+          </button>
+        </div>
+
+        @if (store.canEdit() && !preview()) {
+          <div class="tool-group">
+            <button
+              type="button"
+              class="tool"
+              data-testid="map-copy"
+              [disabled]="!editable() || !store.selectedElement()"
+              [attr.aria-label]="strings.library.copy"
+              [attr.title]="strings.library.copy"
+              (click)="copy()"
+            >
+              <svg lucideCopy aria-hidden="true"></svg>
+            </button>
+            <button
+              type="button"
+              class="tool"
+              data-testid="map-paste"
+              [disabled]="!editable() || !store.canPaste()"
+              [attr.aria-label]="strings.library.paste"
+              [attr.title]="strings.library.paste"
+              (click)="paste()"
+            >
+              <svg lucideClipboardPaste aria-hidden="true"></svg>
+            </button>
+          </div>
+        }
+        <div class="tool-group">
+          <button
+            type="button"
+            class="tool"
+            [class.active]="!panning()"
+            [attr.aria-pressed]="!panning()"
+            [attr.title]="strings.selectElement"
+            [attr.aria-label]="strings.selectElement"
+            (click)="panning.set(false)"
+          >
+            <svg lucideMousePointer2 aria-hidden="true"></svg>
+          </button>
+          <button
+            type="button"
+            class="tool"
+            [class.active]="panning()"
+            [attr.aria-pressed]="panning()"
+            [attr.title]="strings.workspace.pan"
+            [attr.aria-label]="strings.workspace.pan"
+            (click)="panning.set(true)"
+          >
+            <svg lucideHand aria-hidden="true"></svg>
+          </button>
+        </div>
+        <div class="tool-group">
+          <button
+            type="button"
+            class="tool"
+            [attr.aria-label]="strings.workspace.zoomOut"
+            (click)="port.zoomBy?.(1 / 1.2)"
+          >
+            <svg lucideMinus aria-hidden="true"></svg>
+          </button>
+          <output>{{ zoomPercent() }} %</output>
+          <button type="button" class="tool" [attr.aria-label]="strings.workspace.zoomIn" (click)="port.zoomBy?.(1.2)">
+            <svg lucidePlus aria-hidden="true"></svg>
+          </button>
+        </div>
+        <button
+          type="button"
+          class="tool fit"
+          [attr.title]="strings.workspace.fit"
+          [attr.aria-label]="strings.workspace.fit"
+          (click)="port.fitToViewport?.()"
+        >
+          <svg lucideMaximize aria-hidden="true"></svg>
+        </button>
+        @if (!preview()) {
+          <label class="grid-toggle"
+            ><svg lucideGrid2x2 aria-hidden="true"></svg>{{ strings.workspace.grid
+            }}<input type="checkbox" [checked]="grid()" (change)="grid.set(!grid())"
+          /></label>
+        }
+      </div>
+      <div class="canvas-container" [attr.aria-busy]="store.loading()">
+        <div #canvasHost data-testid="map-canvas" class="canvas-host" aria-hidden="true"></div>
+        @if (store.loading()) {
+          <p class="canvas-message" role="status">{{ strings.workspace.loading }}</p>
+        } @else if (!selectedFloor() && !store.error()) {
+          <mapit-floor-setup-guide />
+        } @else if (!preview() && !zoneId() && !store.elements().length && !store.error() && panel() !== 'elements') {
+          <div class="canvas-message canvas-empty">
+            <p>{{ strings.workspace.emptyPlan }}</p>
+            <button type="button" class="button" (click)="focusLibrary()">{{ strings.workspace.add }}</button>
+          </div>
+        }
+      </div>
+    </section>
+    @if (!preview() && selectedFloor()) {
+      <details
+        class="panel properties"
+        [class.style-panel]="propertiesTab() === 'style'"
+        [class.plan-properties]="!store.selectedElement() && propertiesTab() === 'details'"
+        open
+      >
+        <summary [attr.aria-label]="propertiesTab() === 'style' ? strings.style.styleProperties : null">
+          @if (propertiesTab() === 'style' && store.selectedElement(); as selected) {
+            <span class="style-selection">
+              @if (styleAvatar(); as image) {
+                <!-- eslint-disable-next-line @angular-eslint/template/prefer-ngsrc -- vista previa del lienzo como Data URL -->
+                <img [src]="image" alt="" />
+              } @else {
+                <mapit-element-type-icon [type]="selected.type" [size]="36" />
+              }
+              <span class="style-selection-name"
+                ><strong>{{ selected.label }}</strong> <small>{{ typeLabels[selected.type] }}</small></span
+              >
+              @if (selected.reservable) {
+                <span class="style-state" [attr.data-state]="selected.state">{{
+                  strings.monitor.states[selected.state]
+                }}</span>
+              }
+            </span>
+          } @else {
+            <span class="properties-icon">
+              <svg lucideSlidersHorizontal aria-hidden="true"></svg>
+            </span>
+            {{ propertiesTab() === 'style' ? strings.style.styleProperties : strings.properties }}
+          }
+        </summary>
+        @if (propertiesTab() === 'advanced' && store.selectedElement(); as selected) {
+          <div class="style-selection">
+            <mapit-element-type-icon [type]="selected.type" [size]="36" />
+            <div>
+              <strong>{{ selected.label }}</strong
+              ><small>{{ typeLabels[selected.type] }}</small>
+            </div>
+          </div>
+        }
+        @if (store.sectorId() && (store.selectedElement() || propertiesTab() !== 'details')) {
+          <div class="switcher properties-tabs">
+            <button
+              type="button"
+              [attr.aria-pressed]="propertiesTab() === 'details'"
+              data-testid="map-properties-tab"
+              [class.active]="propertiesTab() === 'details'"
+              (click)="propertiesTab.set('details')"
+            >
+              <svg lucideSettings aria-hidden="true"></svg>
+              {{ strings.style.general }}
+            </button>
+            <button
+              type="button"
+              [attr.aria-pressed]="propertiesTab() === 'style'"
+              data-testid="map-style-tab"
+              [class.active]="propertiesTab() === 'style'"
+              (click)="openStyle('style')"
+            >
+              <svg lucideDroplet aria-hidden="true"></svg>
+              {{ strings.style.title }}
+            </button>
+            <button
+              type="button"
+              data-testid="map-advanced-tab"
+              [attr.aria-pressed]="propertiesTab() === 'advanced'"
+              [class.active]="propertiesTab() === 'advanced'"
+              (click)="openStyle('advanced')"
+            >
+              <svg lucideSlidersHorizontal aria-hidden="true"></svg>
+              {{ strings.style.advanced }}
+            </button>
+          </div>
+        }
+        @if (propertiesTab() !== 'details' && store.sectorId()) {
+          <mapit-layout-style
+            [appearance]="appearance()"
+            [element]="store.selectedElement()"
+            [elements]="store.elements()"
+            [advanced]="propertiesTab() === 'advanced'"
+            (styleChange)="updateAppearance($event)"
+          />
+        } @else if (store.selectedElement(); as element) {
+          <mapit-element-card [element]="element" />
+          @if (store.canEdit()) {
+            <div class="element-actions">
+              <button type="button" class="button" [disabled]="!editable()" (click)="copy()">
+                {{ strings.library.copy }}
+              </button>
+              @if (copied()) {
+                <span role="status" class="muted">{{ strings.library.copied }}</span>
+              }
+
+              <button type="button" class="button" [disabled]="!editable()" (click)="duplicate()">
+                {{ strings.workspace.duplicate }}
+              </button>
+              <button type="button" class="button" [disabled]="!editable()" (click)="openSaveTemplateDialog()">
+                {{ strings.saveAsTemplate }}
+              </button>
+            </div>
+          }
+        } @else {
+          <div class="properties-empty">
+            <svg viewBox="0 0 80 80" fill="none" aria-hidden="true">
+              <path
+                d="M16 23h42v41H16z"
+                fill="currentColor"
+                fill-opacity=".13"
+                stroke="currentColor"
+                stroke-opacity=".45"
+              />
+              <g fill="white" stroke="currentColor" stroke-width="2">
+                <circle cx="16" cy="23" r="4.5" />
+                <circle cx="58" cy="23" r="4.5" />
+                <circle cx="16" cy="64" r="4.5" />
+                <circle cx="58" cy="64" r="4.5" />
+              </g>
+              <path d="M68 6v6m11 0-5 5m7 5h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <path
+                d="m49 52 22 9-9 3-3 9z"
+                fill="white"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <p>
+              <strong>{{ strings.emptyProperties.select }}</strong
+              ><span>{{ strings.emptyProperties.hint }}</span>
+            </p>
+          </div>
+          @if (!zoneId() && selectedFloor(); as floor) {
+            <section class="plan-dimensions" aria-labelledby="plan-dimensions-title" data-testid="map-plan-dimensions">
+              <h3 id="plan-dimensions-title">
+                <svg lucideGrid2x2 aria-hidden="true"></svg>{{ strings.emptyProperties.dimensions }}
+              </h3>
+              <p class="muted">{{ strings.emptyProperties.floorSize.replace('{floor}', floor.name) }}</p>
+              <form (submit)="applyFloorDimensions($event)">
+                <dl>
+                  <div>
+                    <dt>
+                      <label for="plan-floor-width">{{ strings.sectorWidth }}</label>
+                    </dt>
+                    <dd>
+                      <input
+                        id="plan-floor-width"
+                        #floorWidth
+                        type="number"
+                        min="20"
+                        step="any"
+                        required
+                        [value]="floorDimensions().width"
+                        [readOnly]="!store.canEditMetadata() || locked()"
+                        (input)="setFloorDimension('width', floorWidth.valueAsNumber)"
+                      />
+                      <span>px</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      <label for="plan-floor-height">{{ strings.sectorHeight }}</label>
+                    </dt>
+                    <dd>
+                      <input
+                        id="plan-floor-height"
+                        #floorHeight
+                        type="number"
+                        min="20"
+                        step="any"
+                        required
+                        [value]="floorDimensions().height"
+                        [readOnly]="!store.canEditMetadata() || locked()"
+                        (input)="setFloorDimension('height', floorHeight.valueAsNumber)"
+                      />
+                      <span>px</span>
+                    </dd>
+                  </div>
+                </dl>
+                @if (store.canEditMetadata()) {
+                  <button type="submit" class="button" [disabled]="!canApplyFloorDimensions()">
+                    <svg lucideCheck aria-hidden="true"></svg>
+                    {{ strings.emptyProperties.apply }}
+                  </button>
+                }
+              </form>
+            </section>
+          }
+        }
+      </details>
+    }
+  </div>
+</div>
+<dialog
+  #exitDialog
+  class="editor-dialog"
+  aria-labelledby="layout-exit-title"
+  aria-describedby="layout-exit-help"
+  (cancel)="cancelExit($event)"
+>
+  <h2 id="layout-exit-title">{{ strings.workspace.exitTitle }}</h2>
+  <p id="layout-exit-help">{{ strings.workspace.exitHelp }}</p>
+  @if (exitError()) {
+    <p class="error" role="alert">{{ exitFailure() }}</p>
+  }
+  <div class="dialog-actions">
+    <button type="button" class="button" [disabled]="exitSaving()" (click)="finishExit(false)">
+      {{ strings.workspace.cancel }}
+    </button>
+    <button type="button" class="button" [disabled]="exitSaving()" (click)="discardAndExit()">
+      {{ strings.workspace.discardContinue }}
+    </button>
+    <button type="button" class="button primary" [disabled]="exitSaving() || store.conflict()" (click)="saveAndExit()">
+      {{ exitSaving() ? strings.workspace.saving : strings.workspace.saveContinue }}
+    </button>
+  </div>
+</dialog>
+<dialog #guideDialog class="editor-dialog" aria-labelledby="layout-guide-title" aria-describedby="layout-guide-help">
+  @if (guideText(); as text) {
+    <h2 id="layout-guide-title">{{ text.title }}</h2>
+    <p id="layout-guide-help">{{ text.help }}</p>
+    <div class="dialog-actions">
+      <button type="button" class="button" (click)="guideDialog.close()">{{ strings.workspace.close }}</button>
+      @if (guide() === 'floor') {
+        <a class="button primary" [routerLink]="structureLink()" (click)="guideDialog.close()">
+          {{ strings.workspace.structure }}
+        </a>
+      }
+    </div>
+  }
+</dialog>

@@ -17,6 +17,7 @@ const enabled = () =>
   response([
     { name: FLAG, enabled: true },
     { name: 'payments.qr', enabled: true },
+    { name: 'realtime.websocket', enabled: true },
   ]);
 const settle = () => vi.advanceTimersByTimeAsync(0);
 const fetchMock = vi.fn<typeof fetch>();

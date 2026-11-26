@@ -8,6 +8,7 @@ import java.util.UUID;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -53,7 +54,8 @@ public class SpaceElementStateController {
     this.summarizeStates = summarizeStates;
   }
 
-  public record StateRequest(@NotNull SpaceElementState state) {}
+  public record StateRequest(
+      @NotNull SpaceElementState state, @Nullable SpaceElementState expectedState) {}
 
   public record SpaceElementStateSummaryResponse(
       int total, Map<SpaceElementState, Integer> byState) {
@@ -70,7 +72,8 @@ public class SpaceElementStateController {
       @Valid @RequestBody StateRequest request) {
     return ResponseEntity.ok(
         updateState.execute(
-            new UpdateSpaceElementStateCommand(sectorId, elementId, request.state())));
+            new UpdateSpaceElementStateCommand(
+                sectorId, elementId, request.state(), request.expectedState())));
   }
 
   @GetMapping("/sectors/{sectorId}/elements/{elementId}/state-history")

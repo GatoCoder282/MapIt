@@ -160,7 +160,7 @@ class PublicReservationAccessServiceTest {
 
   private PublicReservationAccessService serviceAt(Instant now) {
     PublicReservationRepository establishments = (tenant,venue) -> tenant.equals("tenant-a") && venue.equals("venue")
-        ? Optional.of(new PublicEstablishment(TENANT,VENUE,"UTC")) : Optional.empty();
+        ? Optional.of(new PublicEstablishment(TENANT,VENUE,"UTC","RESTAURANT")) : Optional.empty();
     ReservationConcurrencyGuard guard = (tenant,elements) -> lockedElements=Set.copyOf(elements);
     return new PublicReservationAccessService(repository,establishments,guard,resources,Clock.fixed(now,ZoneOffset.UTC));
   }

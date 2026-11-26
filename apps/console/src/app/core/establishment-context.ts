@@ -29,14 +29,15 @@ export class EstablishmentContext {
   constructor() {
     effect(() => {
       const user = this.session.user();
-      const next = user
-        ? {
-            tenantId: user.tenantId,
-            userId: user.id,
-            role: user.role,
-            revision: this.session.revision(),
-          }
-        : null;
+      const next =
+        user && user.role !== 'SUPER_ADMIN'
+          ? {
+              tenantId: user.tenantId,
+              userId: user.id,
+              role: user.role,
+              revision: this.session.revision(),
+            }
+          : null;
       if (next ? this.identity && this.isCurrent(this.identity) : !this.identity) return;
 
       this.generation++;
@@ -51,7 +52,7 @@ export class EstablishmentContext {
 
   load(): Promise<void> {
     const user = this.session.user();
-    if (!user) return Promise.resolve();
+    if (!user || user.role === 'SUPER_ADMIN') return Promise.resolve();
     const identity = this.identity;
     if (!identity || !this.isCurrent(identity)) {
       return Promise.resolve();

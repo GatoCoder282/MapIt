@@ -1,5 +1,10 @@
 import { InjectionToken, type EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 
+export interface FeatureFlagContext {
+  readonly userId?: string;
+  readonly properties?: Readonly<Record<string, string>>;
+}
+
 export interface FeatureFlagConfig {
   /**
    * URL del unleash-proxy (local) o de la Frontend API `/api/frontend` (desplegado).
@@ -10,6 +15,8 @@ export interface FeatureFlagConfig {
   readonly clientKey: string;
   /** Cada cuánto se vuelven a pedir las flags, en milisegundos. */
   readonly intervaloRefrescoMs: number;
+  /** Lee Signals de la app; un cambio invalida la evaluación del contexto anterior. */
+  readonly context?: () => FeatureFlagContext;
 }
 
 export const FEATURE_FLAG_CONFIG = new InjectionToken<FeatureFlagConfig>('mapit.feature-flags');

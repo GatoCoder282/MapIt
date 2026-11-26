@@ -58,118 +58,120 @@
         </p>
         <div class="workspace">
           <div class="lookup-column">
-            <div class="lookup-tabs" role="tablist" [attr.aria-label]="strings.lookupMode">
-              <button
-                #scanTab
-                type="button"
-                role="tab"
-                id="scan-tab"
-                aria-controls="scan-panel"
-                data-testid="check-in-scan-mode"
-                [attr.aria-selected]="mode() === 'scan'"
-                [tabIndex]="mode() === 'scan' ? 0 : -1"
-                (click)="selectMode('scan')"
-                (keydown)="navigateTabs($event, scanTab, manualTab)"
-              >
-                <svg lucideQrCode aria-hidden="true"></svg>{{ strings.scanMode }}
-              </button>
-              <button
-                #manualTab
-                type="button"
-                role="tab"
-                id="manual-tab"
-                aria-controls="manual-panel"
-                data-testid="check-in-manual-mode"
-                [attr.aria-selected]="mode() === 'manual'"
-                [tabIndex]="mode() === 'manual' ? 0 : -1"
-                (click)="selectMode('manual')"
-                (keydown)="navigateTabs($event, scanTab, manualTab)"
-              >
-                <svg lucideCode aria-hidden="true"></svg>{{ strings.manualMode }}
-              </button>
-            </div>
+            @if (cameraEnabled()) {
+              <div class="lookup-tabs" role="tablist" [attr.aria-label]="strings.lookupMode">
+                <button
+                  #scanTab
+                  type="button"
+                  role="tab"
+                  id="scan-tab"
+                  aria-controls="scan-panel"
+                  data-testid="check-in-scan-mode"
+                  [attr.aria-selected]="mode() === 'scan'"
+                  [tabIndex]="mode() === 'scan' ? 0 : -1"
+                  (click)="selectMode('scan')"
+                  (keydown)="navigateTabs($event, scanTab, manualTab)"
+                >
+                  <svg lucideQrCode aria-hidden="true"></svg>{{ strings.scanMode }}
+                </button>
+                <button
+                  #manualTab
+                  type="button"
+                  role="tab"
+                  id="manual-tab"
+                  aria-controls="manual-panel"
+                  data-testid="check-in-manual-mode"
+                  [attr.aria-selected]="mode() === 'manual'"
+                  [tabIndex]="mode() === 'manual' ? 0 : -1"
+                  (click)="selectMode('manual')"
+                  (keydown)="navigateTabs($event, scanTab, manualTab)"
+                >
+                  <svg lucideCode aria-hidden="true"></svg>{{ strings.manualMode }}
+                </button>
+              </div>
 
-            <section
-              class="tab-panel"
-              role="tabpanel"
-              id="scan-panel"
-              aria-labelledby="scan-tab"
-              [hidden]="mode() !== 'scan'"
-            >
-              @if (mode() === 'scan') {
-                <div class="camera-frame">
-                  <video
-                    #scannerVideo
-                    data-testid="scanner-video"
-                    muted
-                    playsinline
-                    [attr.aria-label]="strings.cameraLabel"
-                  ></video>
-                </div>
-                <p class="camera-status" role="status">
-                  @switch (scanner.state()) {
-                    @case ('starting') {
-                      {{ strings.cameraStarting }}
+              <section
+                class="tab-panel"
+                role="tabpanel"
+                id="scan-panel"
+                aria-labelledby="scan-tab"
+                [hidden]="mode() !== 'scan'"
+              >
+                @if (mode() === 'scan') {
+                  <div class="camera-frame">
+                    <video
+                      #scannerVideo
+                      data-testid="scanner-video"
+                      muted
+                      playsinline
+                      [attr.aria-label]="strings.cameraLabel"
+                    ></video>
+                  </div>
+                  <p class="camera-status" role="status">
+                    @switch (scanner.state()) {
+                      @case ('starting') {
+                        {{ strings.cameraStarting }}
+                      }
+                      @case ('active') {
+                        {{ strings.cameraReady }}
+                      }
+                      @case ('idle') {
+                        {{ strings.cameraStopped }}
+                      }
                     }
-                    @case ('active') {
-                      {{ strings.cameraReady }}
-                    }
-                    @case ('idle') {
-                      {{ strings.cameraStopped }}
-                    }
+                  </p>
+                  @if (scanner.state() === 'error' && scanner.error(); as cameraError) {
+                    <p class="message error" role="alert">{{ cameraError }}</p>
                   }
-                </p>
-                @if (scanner.state() === 'error' && scanner.error(); as cameraError) {
-                  <p class="message error" role="alert">{{ cameraError }}</p>
-                }
-                <div class="camera-controls">
-                  @if (scanner.devices().length > 1) {
-                    <label class="field">
-                      <span>{{ strings.camera }}</span>
-                      <select
-                        data-testid="check-in-camera"
-                        [value]="scanner.selectedDevice()"
-                        [disabled]="store.busy() || scanner.state() === 'starting'"
-                        (change)="scanner.selectDevice($any($event.target).value)"
-                      >
-                        <option value="">{{ strings.defaultCamera }}</option>
-                        @for (device of scanner.devices(); track device.deviceId; let index = $index) {
-                          <option [value]="device.deviceId">
-                            {{ device.label || strings.unnamedCamera.replace('{number}', '' + (index + 1)) }}
-                          </option>
-                        }
-                      </select>
-                    </label>
-                  } @else {
-                    <p class="camera-choice" aria-live="polite">
+                  <div class="camera-controls">
+                    @if (scanner.devices().length > 1) {
+                      <label class="field">
+                        <span>{{ strings.camera }}</span>
+                        <select
+                          data-testid="check-in-camera"
+                          [value]="scanner.selectedDevice()"
+                          [disabled]="store.busy() || scanner.state() === 'starting'"
+                          (change)="scanner.selectDevice($any($event.target).value)"
+                        >
+                          <option value="">{{ strings.defaultCamera }}</option>
+                          @for (device of scanner.devices(); track device.deviceId; let index = $index) {
+                            <option [value]="device.deviceId">
+                              {{ device.label || strings.unnamedCamera.replace('{number}', '' + (index + 1)) }}
+                            </option>
+                          }
+                        </select>
+                      </label>
+                    } @else {
+                      <p class="camera-choice" aria-live="polite">
+                        <svg lucideCamera aria-hidden="true"></svg>
+                        <span class="camera-choice-copy"
+                          ><strong>{{ strings.camera }}</strong
+                          ><small>{{ strings.defaultCamera }}</small></span
+                        >
+                      </p>
+                    }
+                    <button
+                      class="button primary"
+                      [attr.data-testid]="scanning() ? 'scanner-stop' : 'scanner-start'"
+                      type="button"
+                      [disabled]="!scanning() && (store.busy() || store.querying())"
+                      (click)="toggleCamera(scannerVideo)"
+                    >
                       <svg lucideCamera aria-hidden="true"></svg>
-                      <span class="camera-choice-copy"
-                        ><strong>{{ strings.camera }}</strong
-                        ><small>{{ strings.defaultCamera }}</small></span
-                      >
-                    </p>
-                  }
-                  <button
-                    class="button primary"
-                    [attr.data-testid]="scanning() ? 'scanner-stop' : 'scanner-start'"
-                    type="button"
-                    [disabled]="!scanning() && (store.busy() || store.querying())"
-                    (click)="toggleCamera(scannerVideo)"
-                  >
-                    <svg lucideCamera aria-hidden="true"></svg>
-                    {{ scanning() ? strings.stopCamera : strings.startCamera }}
-                  </button>
-                </div>
-                <p class="camera-help">
-                  <svg lucideInfo aria-hidden="true"></svg><span>{{ strings.cameraHint }}</span>
-                </p>
-              }
-            </section>
+                      {{ scanning() ? strings.stopCamera : strings.startCamera }}
+                    </button>
+                  </div>
+                  <p class="camera-help">
+                    <svg lucideInfo aria-hidden="true"></svg><span>{{ strings.cameraHint }}</span>
+                  </p>
+                }
+              </section>
+            }
             <section
               class="tab-panel"
-              role="tabpanel"
+              [attr.role]="cameraEnabled() ? 'tabpanel' : null"
               id="manual-panel"
-              aria-labelledby="manual-tab"
+              [attr.aria-labelledby]="cameraEnabled() ? 'manual-tab' : null"
               [hidden]="mode() !== 'manual'"
             >
               <form class="manual-entry" (submit)="$event.preventDefault(); scanner.stop(); store.query()">

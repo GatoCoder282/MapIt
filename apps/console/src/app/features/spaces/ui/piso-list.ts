@@ -2,7 +2,7 @@ import { CdkDrag, type CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/
 import { localizeString } from '../../../core/strings';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FeatureFlagService } from '@mapit/feature-flags';
-import { SpacesStore } from '../model/spaces-store';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
 import { SectorListComponent } from './sector-list';
 
 /** Lista de pisos como árbol visual con sectores (CU-05 · MAP-69/70). */

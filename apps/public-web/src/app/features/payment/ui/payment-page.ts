@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   input,
@@ -29,7 +30,7 @@ import {
 } from '@lucide/angular';
 import { ReservationAccess } from '../../../core/reservation-access';
 
-import { STRINGS } from '../../../core/strings';
+import { localizeString, STRINGS } from '../../../core/strings';
 import { PublicSpaceSummary } from '../../../core/public-space';
 import { PaymentStore } from '../model/payment-store';
 import { PaymentQrImage } from './payment-qr';
@@ -72,10 +73,16 @@ export class PaymentPage {
   private readonly fragment = toSignal(inject(ActivatedRoute).fragment, { initialValue: null });
   protected readonly shareOpen = signal(false);
   protected readonly copyStatus = signal<'idle' | 'copied' | 'error'>('idle');
-  protected readonly scenarios = Object.entries(this.strings.scenarios).map(([value, label]) => ({
-    value,
-    label,
-  }));
+  protected readonly scenarios = computed(() =>
+    Object.entries(this.strings.scenarios).map(([value, label]) => ({ value, label })),
+  );
+  protected readonly localizeString = localizeString;
+
+  protected methodName(method: { provider: string; displayName: string }): string {
+    return method.provider === 'MOCK_GATEWAY' && method.displayName === 'QR de prueba'
+      ? this.strings.testQr
+      : method.displayName;
+  }
 
   constructor() {
     effect(() => {

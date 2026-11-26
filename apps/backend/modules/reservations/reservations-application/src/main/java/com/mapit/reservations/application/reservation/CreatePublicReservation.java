@@ -18,6 +18,7 @@ import com.mapit.reservations.domain.booking.PublicReservationRepository;
 import com.mapit.reservations.domain.person.Person;
 import com.mapit.reservations.domain.person.PersonId;
 import com.mapit.reservations.domain.person.PersonRepository;
+import com.mapit.reservations.domain.reservation.PublicReservationTimeRange;
 import com.mapit.reservations.domain.reservation.Reservation;
 
 /** Crea una reserva anónima desde el portal público resolviendo tenant y establecimiento por slug. */
@@ -53,7 +54,8 @@ public class CreatePublicReservation {
             .orElseThrow(PublicEstablishmentNotFoundException::new);
 
     ZoneId zone = ZoneId.of(establishment.timezone());
-    var range = com.mapit.reservations.domain.reservation.PublicReservationTimeRange.resolve(command.date(), command.startTime(), command.endTime(), zone);
+    var range = PublicReservationTimeRange.resolve(
+        command.date(), command.startTime(), command.endTime(), zone, establishment.type());
     Instant startsAt = range.startsAt();
     Instant endsAt = range.endsAt();
     if (!startsAt.isAfter(clock.instant())) {
@@ -87,7 +89,7 @@ public class CreatePublicReservation {
         establishment,
         command.date(),
         command.startTime(),
-        command.endTime(),
+        LocalTime.ofInstant(endsAt, zone),
         access.issue(reservation));
   }
 
@@ -96,7 +98,7 @@ public class CreatePublicReservation {
       String establishmentSlug,
       LocalDate date,
       LocalTime startTime,
-      LocalTime endTime,
+      @Nullable LocalTime endTime,
       List<UUID> spaceElementIds,
       Customer customer) {
 
@@ -105,7 +107,6 @@ public class CreatePublicReservation {
       Objects.requireNonNull(establishmentSlug, "establishmentSlug no puede ser null");
       Objects.requireNonNull(date, "date no puede ser null");
       Objects.requireNonNull(startTime, "startTime no puede ser null");
-      Objects.requireNonNull(endTime, "endTime no puede ser null");
       Objects.requireNonNull(spaceElementIds, "spaceElementIds no puede ser null");
       Objects.requireNonNull(customer, "customer no puede ser null");
       spaceElementIds = List.copyOf(spaceElementIds);

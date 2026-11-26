@@ -22,4 +22,11 @@ describe('localized formatters', () => {
     expect(pipe.transform(Number.POSITIVE_INFINITY, 'en-US')).toBeNull();
     expect(pipe.transform(undefined, 'es-BO')).toBeNull();
   });
+
+  it('shows the date in the establishment timezone when it differs from the UTC date', () => {
+    const pipe = new LocalizedDatePipe();
+    expect(pipe.transform('2026-10-27T02:30:00Z', 'en-GB', 'mediumDate', 'America/La_Paz')).toBe(
+      '26 Oct 2026',
+    );
+  });
 });

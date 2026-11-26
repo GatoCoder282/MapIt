@@ -16,7 +16,9 @@ function setup(proxyUrl = 'http://localhost:3063/proxy') {
       { provide: Logger, useValue: { log: vi.fn() } },
     ],
   });
-  return TestBed.inject(FeatureFlagService);
+  const flags = TestBed.inject(FeatureFlagService);
+  TestBed.tick();
+  return flags;
 }
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {

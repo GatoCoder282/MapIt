@@ -29,7 +29,7 @@ Para migraciones, flags o tickets Jira: skills `new-migration`, `new-feature-fla
 - `setup` crea `.env` desde `.env.example` con un JWT secret propio; si ya existe, solo añade claves faltantes. Añade nuevas variables a `.env.example`, nunca versiones `.env`.
 - **Lee las advertencias de setup:** puede terminar con éxito aunque fallen migraciones, flags o codegen. Si ya hay `node_modules`, no reinstala dependencias.
 - `pnpm dev:front` levanta infra + ambas apps, **no el backend**; `pnpm dev:back` levanta infra + backend. `pnpm fe:console` / `pnpm fe:public` arrancan solo Angular, sin Docker (`:4200` / `:4300`).
-- `pnpm dev` / `dev:back` usan el perfil Spring `dev` si no defines `SPRING_PROFILES_ACTIVE`; `pnpm be:run` no lo activa. Importa para la simulación local de pagos mock.
+- `pnpm dev` / `dev:back` inyectan el perfil Spring `dev` si `SPRING_PROFILES_ACTIVE` no está definido. `pnpm be:run` carga `.env` (donde `dev` es el valor por defecto) y respeta variables ya definidas. El perfil `dev` habilita los pagos mock.
 - Reutiliza una sesión existente si los puertos están ocupados. Ctrl+C detiene los procesos de dev pero deja contenedores; `pnpm stop` baja contenedores, **no** Angular/Java del host.
 - PostgreSQL en el host: **5433**, no 5432 (dentro de Docker: 5432). `pnpm infra:reset` **borra volúmenes y datos**.
 - Conserva `allowBuilds` y `publicHoistPattern` de `pnpm-workspace.yaml`: sin ellos pueden fallar esbuild o la resolución de imports del dev server.
@@ -38,7 +38,7 @@ Para migraciones, flags o tickets Jira: skills `new-migration`, `new-feature-fla
 
 - **Contrato primero:** `packages/api-contract/openapi.yaml` → `pnpm api:lint` → `pnpm api:gen` → implementar. No edites ni versiones salidas `generated/`; el cliente TS vive en `libs/api-client/src/lib/generated/`.
 - Regenera antes de typecheck/tests/build frontend en un checkout limpio. `pnpm api:check` solo compara el hash guardado del contrato; **sin cliente generado avisa pero sale con éxito**. No sustituye lint ni codegen. `pnpm api:mock` sirve el contrato en `:4010`.
-- `api:gen` genera solo TypeScript (no interfaces Java, aunque lo diga la guía del contrato) y no corre con `pnpm install`. Usa Java del PATH o Docker; **no carga `.env` ni aplica su `JAVA_HOME`**, a diferencia del wrapper Gradle. Puede salir con éxito sin generar: comprueba la salida, no solo el código de retorno.
+- `pnpm api:gen` genera **solo TypeScript** (`tools/scripts/gen-api.mjs` invoca `typescript-angular`); no genera interfaces Java, aunque `packages/api-contract/AGENTS.md` afirme lo contrario. Usa Java del PATH o Docker; **no carga `.env` ni aplica su `JAVA_HOME`**, a diferencia del wrapper Gradle. Puede salir con éxito sin generar: comprueba la salida, no solo el código de retorno.
 - Staff: tenant del claim JWT `tenant`, nunca de header/query. Las rutas públicas resuelven el tenant desde la URL validada por backend; no confíes en un tenant arbitrario del cliente.
 - Tablas de negocio: `tenant_id NOT NULL`, índice `(tenant_id, id)` y RLS (`enable_tenant_isolation`). Sin `app.tenant_id`, RLS devuelve 0 filas a propósito.
 - El datasource usa `mapit_app` (sin bypass de RLS); Flyway usa el owner `mapit`. No sustituyas el usuario de runtime por el owner para resolver consultas vacías (`apps/backend/bootstrap/src/main/resources/application.yml`).

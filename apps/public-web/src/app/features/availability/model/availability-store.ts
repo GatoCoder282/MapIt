@@ -1,7 +1,8 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom, Subject, takeUntil } from 'rxjs';
-import type { PublicAvailabilityMap } from '@mapit/api-client';
+import type { PublicAvailabilityMap, PublicEstablishmentSummary } from '@mapit/api-client';
 import { currentLocaleTag } from '@mapit/i18n';
 import { AvailabilityApi } from '../data/availability-api';
 import { findPublicSpace, matchesPublicMap, validPublicInterval } from '../../../core/public-space';
@@ -16,6 +17,7 @@ export class AvailabilityStore {
   private readonly cancel = new Subject<void>();
   private version = 0;
   private scope = { tenantSlug: '', establishmentSlug: '' };
+  private venueRequest: Promise<void> | null = null;
   private routeKey = '';
   readonly status = signal<AvailabilityStatus>('idle');
   readonly failure = signal('');
@@ -23,7 +25,16 @@ export class AvailabilityStore {
   readonly people = signal<number | null>(null);
   readonly startTime = signal('');
   readonly endTime = signal('');
+  readonly venue = signal<PublicEstablishmentSummary | null>(null);
+  readonly venueStatus = signal<'loading' | 'ready' | 'error'>('loading');
+  readonly arrivalOnly = computed(() => this.venue()?.type === 'RESTAURANT');
+  readonly requestedEndTime = computed(() => (this.arrivalOnly() ? '' : this.endTime()));
   readonly response = signal<PublicAvailabilityMap | null>(null);
+  readonly schedule = computed(() => {
+    const data = this.response();
+    if (!data?.startTime) return '';
+    return this.arrivalOnly() ? data.startTime : `${data.startTime}–${data.endTime}`;
+  });
   readonly floorId = signal('');
   readonly sectorId = signal('');
   readonly selectedElementId = signal<string | null>(null);
@@ -133,20 +144,52 @@ export class AvailabilityStore {
     const key = JSON.stringify([tenantSlug, establishmentSlug, date, startTime, endTime]);
     if (key === this.routeKey) return;
     this.routeKey = key;
+    const sameVenue =
+      tenantSlug === this.scope.tenantSlug && establishmentSlug === this.scope.establishmentSlug;
+    const requestedEnd = sameVenue && this.arrivalOnly() ? '' : endTime;
     if (
-      tenantSlug === this.scope.tenantSlug &&
-      establishmentSlug === this.scope.establishmentSlug &&
+      sameVenue &&
       date === this.date() &&
       startTime === this.startTime() &&
-      endTime === this.endTime()
+      requestedEnd === this.requestedEndTime()
     )
       return;
-    this.scope = { tenantSlug, establishmentSlug };
+    if (!sameVenue) {
+      this.scope = { tenantSlug, establishmentSlug };
+      this.venueRequest = null;
+      this.venue.set(null);
+      void this.loadVenue();
+    }
     this.invalidate();
     this.date.set(date);
     this.showDateMonth(date);
     this.startTime.set(startTime);
-    this.endTime.set(endTime);
+    this.endTime.set(requestedEnd);
+  }
+  loadVenue(): Promise<void> {
+    if (this.venueRequest && this.venueStatus() !== 'error') return this.venueRequest;
+    const scope = this.scope;
+    this.venueStatus.set('loading');
+    this.venueRequest = firstValueFrom(
+      this.api
+        .establishment(scope.tenantSlug, scope.establishmentSlug)
+        .pipe(takeUntilDestroyed(this.destroyRef)),
+    )
+      .then((venue) => {
+        if (scope !== this.scope) return;
+        if (
+          venue.tenantSlug !== scope.tenantSlug ||
+          venue.establishmentSlug !== scope.establishmentSlug
+        )
+          throw new Error('venue-scope-mismatch');
+        this.venue.set(venue);
+        if (this.arrivalOnly()) this.endTime.set('');
+        this.venueStatus.set('ready');
+      })
+      .catch(() => {
+        if (scope === this.scope) this.venueStatus.set('error');
+      });
+    return this.venueRequest;
   }
   setDate(value: string): void {
     this.invalidate();
@@ -192,15 +235,30 @@ export class AvailabilityStore {
   }
   async search(selectedId: string | null = null): Promise<void> {
     this.invalidate();
-    if (!validPublicInterval(this.date(), this.startTime(), this.endTime())) {
-      this.failure.set(STRINGS.availability.intervalRequired);
+    const version = this.version;
+    if (!this.venue()) {
+      this.status.set('loading');
+      await this.loadVenue();
+      if (version !== this.version) return;
+      if (!this.venue()) {
+        this.status.set('error');
+        this.failure.set(STRINGS.venueIdentity.error);
+        return;
+      }
+      this.status.set('idle');
+    }
+    const end = this.requestedEndTime();
+    if (!validPublicInterval(this.date(), this.startTime(), end, this.arrivalOnly())) {
+      this.failure.set(
+        this.arrivalOnly()
+          ? STRINGS.availability.arrivalRequired
+          : STRINGS.availability.intervalRequired,
+      );
       return;
     }
-    const version = this.version;
     const { tenantSlug, establishmentSlug } = this.scope;
     const date = this.date(),
-      start = this.startTime(),
-      end = this.endTime();
+      start = this.startTime();
     this.status.set('loading');
     try {
       const data = await firstValueFrom(
@@ -216,10 +274,14 @@ export class AvailabilityStore {
       this.sectorId.set(data.floors[0]?.sectors[0]?.id ?? '');
       this.status.set('loaded');
       if (selectedId) this.restoreSelection(selectedId);
-    } catch {
+    } catch (error) {
       if (version !== this.version) return;
       this.status.set('error');
-      this.failure.set(STRINGS.availability.error);
+      this.failure.set(
+        this.arrivalOnly() && error instanceof HttpErrorResponse && error.status === 400
+          ? STRINGS.availability.arrivalInvalid
+          : STRINGS.availability.error,
+      );
     }
   }
   restoreSelection(id: string | null): void {

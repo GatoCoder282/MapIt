@@ -13,7 +13,7 @@ import { type FeatureFlagKey } from './feature-flag.catalog';
  *       loadComponent: () => import('./payment/payment').then((m) => m.Payment),
  *     }
  *
- * Con la flag apagada, la ruta ni siquiera carga su bundle.
+ * Comprueba el estado actual al navegar. Es UX, no autorización de operaciones.
  */
 export function featureFlagGuard(flag: FeatureFlagKey, redirigirA = '/'): CanActivateFn {
   return () => {

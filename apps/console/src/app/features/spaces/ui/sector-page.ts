@@ -10,7 +10,7 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { SpacesStore } from '../model/spaces-store';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
 import { SectorListComponent } from './sector-list';
 import { confirmOperationalExit } from '../../../core/operational-exit-guard';
 

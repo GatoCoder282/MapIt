@@ -16,5 +16,10 @@ public record SaveFloorLayoutCommand(
     List<SectorPlacement> sectors) {
 
   /** Colocación deseada de un sector dentro del lienzo. */
-  public record SectorPlacement(UUID id, double x, double y, double rotation, Instant updatedAt) {}
+  public record SectorPlacement(
+      UUID id, double x, double y, double rotation, Instant updatedAt, Double width, Double height) {
+    public SectorPlacement(UUID id, double x, double y, double rotation, Instant updatedAt) {
+      this(id, x, y, rotation, updatedAt, null, null);
+    }
+  }
 }

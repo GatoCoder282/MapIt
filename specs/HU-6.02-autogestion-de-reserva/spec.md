@@ -48,7 +48,7 @@ Fuera de alcance: pagos/QR (CU-17), historial del cliente (CU-18), cancelación 
 - `fullName` y `email` son obligatorios; `phone` es opcional.
 - Si el email ya existe entre las personas vivas del tenant, se reutiliza esa persona.
 - La reserva pública usa una fecha y un horario local del establecimiento; el backend convierte a instantes con la zona IANA configurada.
-- El intervalo debe iniciar y terminar el mismo día y cumplir `inicio < fin`.
+- En un restaurante, dado solamente el inicio, el servidor calcula el mismo intervalo de 90 minutos que en la consulta de disponibilidad y valida que termine el mismo día local. El portal muestra únicamente la hora de llegada. Cuando se envía explícitamente inicio y fin, el intervalo debe iniciar y terminar el mismo día y cumplir `inicio < fin`.
 - HU-6.01 filtra por día completo; un elemento con otra reserva ese día no aparece, aunque el horario elegido esté libre. El backend igualmente valida el intervalo exacto.
 
 ## Impacto multi-tenant

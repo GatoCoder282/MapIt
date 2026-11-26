@@ -12,7 +12,7 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { currentLocaleTag } from '@mapit/i18n';
 import { SiteFooter } from '@mapit/ui-kit';
-import { localizeString, STRINGS } from '../../../core/strings';
+import { localizeSpaceName, localizeString, STRINGS } from '../../../core/strings';
 import { PublicEstablishmentIdentity } from '../../../core/public-establishment-identity';
 import { PublicSpaceSummary } from '../../../core/public-space';
 import { BookingStore } from '../model/booking-store';
@@ -52,6 +52,7 @@ export class BookingPage {
   readonly endTime = input('');
   readonly reservationId = input('');
   protected readonly store = inject(BookingStore);
+  protected readonly spaceName = localizeSpaceName;
   protected readonly strings = STRINGS;
   protected readonly localizeString = localizeString;
   private readonly router = inject(Router);
@@ -106,7 +107,7 @@ export class BookingPage {
       queryParams: {
         date: this.store.date(),
         startTime: this.store.startTime(),
-        endTime: this.store.endTime(),
+        endTime: this.store.arrivalOnly() ? null : this.store.endTime(),
         elementId: this.elementId(),
       },
     });

@@ -12,7 +12,7 @@ import {
   LucideUsers,
   LucideArrowRight,
 } from '@lucide/angular';
-import { STRINGS } from '../../../core/strings';
+import { localizeSpaceName, STRINGS } from '../../../core/strings';
 import { AvailabilityStore } from '../model/availability-store';
 import { PublicMap } from './public-map';
 
@@ -42,6 +42,7 @@ export class SpaceSelection {
   readonly dateLabel = input.required<string>();
   readonly selected = output<string | null>();
   protected readonly store = inject(AvailabilityStore);
+  protected readonly spaceName = localizeSpaceName;
   protected readonly strings = STRINGS;
   protected readonly states = ['AVAILABLE', 'RESERVED', 'UNAVAILABLE'] as const;
   protected readonly typeLabels: Readonly<Record<string, string>> = STRINGS.availability.types;

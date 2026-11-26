@@ -33,6 +33,13 @@ public class JdbcReservationAvailabilityRepository
     @Override
     public Set<UUID> findConflictingElementIds(
             TenantId tenantId, Set<UUID> elementIds, ReservationTimeRange timeRange) {
+        return findConflictingElementIds(tenantId, elementIds, timeRange, 0);
+    }
+
+    @Override
+    public Set<UUID> findConflictingElementIds(
+            TenantId tenantId, Set<UUID> elementIds, ReservationTimeRange timeRange,
+            int preparationMinutes) {
         if (elementIds.isEmpty()) {
             return Set.of();
         }
@@ -46,15 +53,21 @@ public class JdbcReservationAvailabilityRepository
                 where r.tenant_id = ?
                   and rse.space_element_id in (%s)
                   and r.status in ('CREATED', 'CONFIRMED', 'ACTIVE')
-                  and r.starts_at < ?
-                  and ? < r.ends_at
+                  and r.starts_at < ?::timestamptz + make_interval(mins =>
+                    greatest(?, case when r.party_size is null then 0 else ? end))
+                  and ?::timestamptz - make_interval(mins =>
+                    greatest(?, case when r.party_size is null then 0 else ? end)) < r.ends_at
                 """
                 .formatted(placeholders);
         List<Object> arguments = new ArrayList<>();
         arguments.add(tenantId.value());
         arguments.addAll(elementIds);
         arguments.add(Timestamp.from(timeRange.endsAt()));
+        arguments.add(preparationMinutes);
+        arguments.add(QUICK_PREPARATION_MINUTES);
         arguments.add(Timestamp.from(timeRange.startsAt()));
+        arguments.add(preparationMinutes);
+        arguments.add(QUICK_PREPARATION_MINUTES);
         return new LinkedHashSet<>(
                 jdbc.query(
                         sql,

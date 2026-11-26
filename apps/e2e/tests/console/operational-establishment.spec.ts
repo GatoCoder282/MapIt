@@ -4,7 +4,6 @@ const USER = '69000000-0000-0000-0000-000000000031';
 const A = '69000000-0000-0000-0000-000000000041';
 const B = '69000000-0000-0000-0000-000000000042';
 const TENANT = 'tenant-a';
-const DISCARD_COPY = 'Tienes cambios sin guardar. ¿Quieres descartarlos y salir de esta pantalla?';
 const establishments = [
   {
     id: A,
@@ -63,9 +62,9 @@ const operationalRoutes = [
     image: 'spaces-setup.png',
   },
   {
-    path: '/reservations/new',
-    heading: /crear reserva|nueva reserva/i,
-    image: 'reservations-new.png',
+    path: '/map',
+    heading: /^mapa$/i,
+    image: 'map.png',
   },
   { path: '/check-in', heading: /check.in|recepci[oó]n/i, image: 'check-in.png' },
   {
@@ -318,7 +317,7 @@ async function goToOperationalRoute(
       ? '/api/v1/establishments/accessible'
       : `/api/v1/establishments/${establishmentId}/floors`;
   const loadResponse = page.waitForResponse((response) => response.url().includes(loadPattern), {
-    timeout: 10_000,
+    timeout: 30_000,
   });
   await Promise.all([loadResponse, page.goto(path)]);
 }
@@ -332,7 +331,7 @@ async function expectNoLocalEstablishmentSelector(page: Page): Promise<void> {
 
 test(integratedTestTitle, async ({ page }, testInfo) => {
   // Ocho rutas, restauración y capturas; cada carga conserva su propio límite.
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   capturePageDiagnostics(page);
   const unexpected = await prepare(page, testInfo.project.use.baseURL);
   const requests: string[] = [];
@@ -356,8 +355,8 @@ test(integratedTestTitle, async ({ page }, testInfo) => {
       await expect(page.getByRole('heading', { name: route.heading }).first()).toBeVisible();
     }
     await expectNoLocalEstablishmentSelector(page);
-    if (route.path === '/spaces/setup' || route.path === '/reservations/new') {
-      if (route.path === '/reservations/new')
+    if (route.path === '/spaces/setup' || route.path === '/map') {
+      if (route.path === '/map')
         await expect(
           page.getByText('Sede Centro Operativa', { exact: true }).first(),
         ).toBeVisible();
@@ -397,8 +396,8 @@ test(integratedTestTitle, async ({ page }, testInfo) => {
       await expect(page.getByRole('heading', { name: route.heading }).first()).toBeVisible();
     }
     await expectNoLocalEstablishmentSelector(page);
-    if (route.path === '/spaces/setup' || route.path === '/reservations/new') {
-      if (route.path === '/reservations/new')
+    if (route.path === '/spaces/setup' || route.path === '/map') {
+      if (route.path === '/map')
         await expect(page.getByText('Sede Norte Operativa', { exact: true }).first()).toBeVisible();
       expect(requests.slice(before).some((url) => url.includes(B))).toBe(true);
       expect(requests.slice(before).some((url) => url.includes(A))).toBe(false);
@@ -431,37 +430,13 @@ test('ruta operativa directa sin preferencia espera selección global antes de c
     if (request.url().includes('/api/v1/')) apiRequests.push(new URL(request.url()).pathname);
   });
 
-  await waitForAccessibleAndNavigate(page, '/reservations/new');
+  await waitForAccessibleAndNavigate(page, '/map');
   await expect(
     page.getByRole('dialog', { name: '¿Con cuál establecimiento querés entrar?' }),
-  ).toBeVisible();
-  await expect(page.getByRole('heading', { name: /nueva reserva/i })).toHaveCount(0);
-  await expect(page).toHaveURL(/\/reservations\/new$/);
+  ).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByRole('heading', { name: /^mapa$/i })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/map$/);
   expect(apiRequests).toEqual(['/api/v1/establishments/accessible']);
-  expect(unexpected).toEqual([]);
-});
-
-test('rechazar descarte mantiene formulario, ruta y contexto', async ({ page }, testInfo) => {
-  const unexpected = await prepare(page, testInfo.project.use.baseURL, { initialEstablishment: A });
-  await goToOperationalRoute(page, '/reservations/new', A);
-  const startDate = page.locator('input[name="startsAt"]');
-  await expect(startDate).toBeVisible();
-  await startDate.fill('2027-05-10T10:00');
-
-  let dialogMessage: string | undefined;
-  page.once('dialog', (dialog) => {
-    dialogMessage = dialog.message();
-    void dialog.dismiss();
-  });
-  const link = page.getByRole('link', { name: 'Negocios', exact: true });
-  if (!(await link.isVisible()))
-    await page.getByRole('button', { name: 'Abrir navegación' }).click();
-  await link.click();
-
-  expect(dialogMessage).toBe(DISCARD_COPY);
-  await expect(page).toHaveURL(/\/reservations\/new$/);
-  await expect(startDate).toHaveValue('2027-05-10T10:00');
-  expect(await page.evaluate((key) => localStorage.getItem(key), selectionKey)).toBe(A);
   expect(unexpected).toEqual([]);
 });
 

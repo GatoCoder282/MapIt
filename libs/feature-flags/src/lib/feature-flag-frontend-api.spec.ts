@@ -41,9 +41,14 @@ it('consume la Frontend API de Unleash: URL tal cual, token crudo y toggles con 
   TestBed.tick();
   await vi.advanceTimersByTimeAsync(0);
 
-  expect(fetchMock).toHaveBeenCalledWith('https://mapit-unleash.onrender.com/api/frontend', {
-    headers: { Authorization: 'default:development.0123abcd' },
-  });
+  expect(fetchMock).toHaveBeenCalledWith(
+    'https://mapit-unleash.onrender.com/api/frontend',
+    expect.objectContaining({
+      headers: { Authorization: 'default:development.0123abcd' },
+      credentials: 'omit',
+      cache: 'no-store',
+    }),
+  );
   expect(flags.listo()).toBe(true);
   expect(flags.isEnabledNow('payments.qr')).toBe(true);
 });

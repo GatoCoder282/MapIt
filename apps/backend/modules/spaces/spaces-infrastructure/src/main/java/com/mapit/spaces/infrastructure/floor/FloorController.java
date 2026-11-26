@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -31,6 +32,7 @@ import com.mapit.spaces.application.floor.FloorLevelAlreadyExistsException;
 import com.mapit.spaces.application.floor.FloorNotFoundException;
 import com.mapit.spaces.application.floor.FloorService;
 import com.mapit.spaces.application.floor.FloorSlugAlreadyExistsException;
+import com.mapit.spaces.application.layout.LayoutConflictException;
 import com.mapit.spaces.domain.floor.Floor;
 import com.mapit.spaces.infrastructure.SpacesProblemTypes;
 /**
@@ -86,6 +88,13 @@ public class FloorController {
     return FloorResponse.fromDomain(service.update(id, request.name(), request.slug()));
   }
 
+  @PutMapping("/establishments/{establishmentId}/floors/order")
+  public List<FloorResponse> reorder(
+      @PathVariable UUID establishmentId, @Valid @RequestBody FloorOrderRequest request) {
+    return service.reorder(establishmentId, request.previousIds(), request.floorIds())
+        .stream().map(FloorResponse::fromDomain).toList();
+  }
+
   @DeleteMapping("/floors/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void delete(@PathVariable UUID id) {
@@ -105,7 +114,8 @@ public class FloorController {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
   }
 
-  @ExceptionHandler({FloorSlugAlreadyExistsException.class, FloorLevelAlreadyExistsException.class})
+  @ExceptionHandler({FloorSlugAlreadyExistsException.class, FloorLevelAlreadyExistsException.class,
+      LayoutConflictException.class})
   ResponseEntity<ProblemDetail> handleConflict(RuntimeException exception) {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
@@ -153,6 +163,10 @@ public class FloorController {
   public record FloorUpdateRequest(
       @Size(max = 100) String name,
       @Pattern(regexp = SLUG_REGEX) @Size(min = 2, max = 64) String slug) {}
+
+  public record FloorOrderRequest(
+      @NotNull @Size(min = 1, max = 1000) List<@NotNull UUID> previousIds,
+      @NotNull @Size(min = 1, max = 1000) List<@NotNull UUID> floorIds) {}
 
   /** Payload de salida. No expone deletedAt ni tenantId. */
   public record FloorResponse(

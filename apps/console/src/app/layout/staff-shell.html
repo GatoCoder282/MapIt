@@ -1,9 +1,18 @@
-<div class="staff-shell">
+<div
+  class="staff-shell"
+  [class.map-workspace]="compactMapNavigation()"
+  [class.sidebar-collapsed]="sidebarCollapsed()"
+  [class.sidebar-motion]="sidebarMotion()"
+>
   <mapit-sidebar
     [nav]="visibleNavItems()"
     [navLabel]="strings.staffShell.brandArea"
     [navAriaLabel]="strings.staffShell.navLandmarkLabel"
     [drawerOpen]="menuOpen()"
+    [compact]="sidebarCollapsed()"
+    [collapsible]="true"
+    [animateCollapse]="sidebarMotion()"
+    (collapseToggled)="toggleSidebar($event)"
     [closeLabel]="strings.shell.closeMenu"
     (drawerClose)="closeMenu()"
   />
@@ -52,7 +61,7 @@
     <main class="content">
       @if (
         withoutEstablishment() ||
-        canOpenFirstEstablishmentSetup() ||
+        canOpenEstablishmentManagement() ||
         (establishmentContext.active() && !selectorRequested())
       ) {
         <router-outlet />
@@ -68,12 +77,15 @@
 @if (
   !withoutEstablishment() &&
   !needsFirstEstablishment() &&
+  !canOpenEstablishmentManagement() &&
   (selectorRequested() || (initialEstablishmentsLoaded() && !establishmentContext.active()))
 ) {
   <mapit-establishment-selector
     [establishments]="establishmentContext.establishments()"
     [status]="establishmentContext.status()"
     [canDismiss]="canDismissSelector()"
+    [canCreate]="session.user()?.role === 'ADMIN'"
+    (createRequested)="createEstablishment()"
     (confirmed)="confirmEstablishment($event)"
     (dismissed)="dismissSelector()"
     (retry)="retryEstablishments()"

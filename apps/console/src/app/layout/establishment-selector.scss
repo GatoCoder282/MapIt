@@ -276,12 +276,16 @@
   gap: 4px;
 }
 
-.venue-name {
+.venue-name,
+.venue-address {
   overflow: hidden;
-  color: var(--mapit-color-text);
-  font: 700 18px / 1.3 var(--mapit-font-sans);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.venue-name {
+  color: var(--mapit-color-text);
+  font: 700 18px / 1.3 var(--mapit-font-sans);
 }
 
 .venue-kind {
@@ -290,11 +294,8 @@
 }
 
 .venue-address {
-  overflow: hidden;
   color: var(--mapit-color-text-muted);
   font: 400 14px / 1.4 var(--mapit-font-sans);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .radio-indicator {
@@ -378,6 +379,7 @@
   padding-top: 26px;
 }
 
+.create-button,
 .continue-button {
   display: inline-flex;
   align-items: center;
@@ -392,6 +394,7 @@
   color: var(--mapit-color-on-primary);
   font: var(--mapit-text-body-bold);
   cursor: pointer;
+  transition: background var(--mapit-duration-fast) var(--mapit-ease-out);
 
   svg {
     width: 18px;
@@ -410,6 +413,13 @@
   &:disabled {
     background: var(--mapit-color-text-muted);
     cursor: not-allowed;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .create-button,
+  .continue-button {
+    transition: none;
   }
 }
 

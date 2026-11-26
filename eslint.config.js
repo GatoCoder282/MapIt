@@ -20,6 +20,12 @@ import tseslint from 'typescript-eslint';
  *    acabaría aplicándose a archivos .ts. Cada config ya trae su propio alcance.
  */
 export default tseslint.config(
+  {
+    ignores: [
+      'apps/backend/**/.validation-build/**',
+      'apps/backend/**/.validation-domain-tests/**',
+    ],
+  },
   ...base,
   ...angular,
   ...boundaries,

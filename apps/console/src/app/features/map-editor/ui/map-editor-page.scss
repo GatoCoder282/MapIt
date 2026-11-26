@@ -1,0 +1,779 @@
+$border: var(--mapit-color-border);
+$surface: var(--mapit-color-surface);
+$blue: var(--mapit-editor-selection);
+$ink: var(--mapit-color-text);
+$muted: var(--mapit-color-text-variant);
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.editor-page {
+  display: grid;
+  gap: 1rem;
+  padding-block: 0.75rem 1rem;
+  color: $ink;
+}
+
+.editor-header,
+.header-actions,
+.breadcrumbs,
+.switcher,
+.toolbar,
+.tool-group,
+.grid-toggle,
+.element-actions,
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editor-header {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-block: 0.25rem 0.5rem;
+}
+
+.header-actions,
+.element-actions,
+.dialog-actions {
+  flex-wrap: wrap;
+}
+
+.breadcrumbs,
+.context,
+.muted,
+.save-status {
+  color: $muted;
+  font-size: 0.8125rem;
+}
+
+.breadcrumbs {
+  flex-wrap: wrap;
+}
+
+.breadcrumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+.context,
+h1 {
+  margin: 0.375rem 0 0;
+}
+
+h1 {
+  font: 800 clamp(1.5rem, 2.4vw, 2.25rem) / 1.15 var(--mapit-font-display);
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-weight: 650;
+}
+
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 99px;
+  background: var(--mapit-editor-selection-soft);
+  color: var(--mapit-color-primary-hover);
+  font-weight: 650;
+}
+
+.save-status.saved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.save-status.pending {
+  background: #fef3c7;
+  color: #854d0e;
+}
+
+.editor-main {
+  --editor-height: clamp(33rem, calc(100dvh - 12rem), 53rem);
+  display: grid;
+  grid-template-columns: minmax(20rem, 1.15fr) minmax(0, 2.3fr) minmax(16rem, 1fr);
+  align-items: start;
+  gap: 0.875rem;
+}
+
+.editor-main.preview {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 75rem) {
+  .editor-main.style-open {
+    grid-template-columns: minmax(20rem, 1.15fr) minmax(0, 2.2fr) clamp(22.5rem, 27vw, 26.25rem);
+  }
+}
+
+.properties-tabs {
+  margin-block-end: 0.85rem;
+  border: 0;
+  background: color-mix(in srgb, var(--mapit-editor-selection-soft) 58%, $surface);
+}
+
+.properties-tabs > button {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-page .properties-tabs > button.active {
+  background: linear-gradient(110deg, #0868ee, #004bdc);
+  color: var(--mapit-color-on-primary);
+}
+
+.properties.style-panel {
+  background: linear-gradient(145deg, #f5f8ff, var(--mapit-color-surface));
+  box-shadow: 0 8px 22px rgb(26 67 133 / 10%);
+}
+
+.properties > summary .style-selection {
+  margin: 0;
+}
+
+.style-selection > img {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--mapit-editor-selection-soft);
+}
+
+.style-selection-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.style-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 42%;
+  margin-inline-start: auto;
+  padding: 0.3rem 0.55rem;
+  border-radius: 1rem;
+  background: #e2e8f0;
+  color: #334155;
+  font: 700 0.7rem / 1.15 var(--mapit-font-sans);
+}
+
+.style-state::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.style-state[data-state='AVAILABLE'] {
+  background: #dcfce7;
+  color: #166534;
+}
+.style-state[data-state='OCCUPIED'] {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.style-state[data-state='RESERVED'] {
+  background: #fef3c7;
+  color: #854d0e;
+}
+.style-state[data-state='CLEANING'] {
+  background: var(--mapit-editor-selection-soft);
+  color: #1e40af;
+}
+
+.style-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-block-end: 0.65rem;
+}
+
+.style-selection mapit-element-type-icon {
+  flex: none;
+  padding: 0.2rem;
+  border-radius: 50%;
+  background: var(--mapit-editor-selection-soft);
+}
+
+.style-selection small {
+  display: block;
+  color: $muted;
+}
+
+.panel,
+.map-area {
+  box-sizing: border-box;
+  min-width: 0;
+  height: var(--editor-height);
+  border-radius: 1rem;
+  background: color-mix(in srgb, $blue 3%, $surface);
+  box-shadow: 0 5px 14px rgb(34 68 133 / 0.08);
+}
+
+.panel {
+  padding: 0.875rem;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mapit-color-border-input) transparent;
+}
+
+.structure {
+  min-width: 0;
+  align-self: start;
+}
+.structure.library-open {
+  max-height: var(--editor-height);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mapit-color-border-input) transparent;
+  padding: 0.875rem;
+  border-radius: 1rem;
+  background: $surface;
+}
+
+summary {
+  padding: 0.375rem 0;
+  font-weight: 750;
+  cursor: pointer;
+  color: $ink;
+}
+
+.structure > summary,
+.properties > summary {
+  font: 750 1rem / 1.4 var(--mapit-font-display);
+}
+
+.properties > summary {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.75rem;
+  margin: -0.875rem -0.875rem 0.875rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--mapit-radius-lg) var(--mapit-radius-lg) 0 0;
+  background: linear-gradient(110deg, $surface, var(--mapit-editor-selection-soft));
+  list-style: none;
+}
+
+.properties > summary::-webkit-details-marker {
+  display: none;
+}
+
+.properties > summary::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 55%;
+  height: 85%;
+  inset-inline-end: -12%;
+  inset-block-end: -40%;
+  border-radius: 70% 0 0 0;
+  transform: rotate(-18deg);
+  background: color-mix(in srgb, var(--mapit-color-primary-container) 70%, transparent);
+  pointer-events: none;
+}
+
+.properties-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--mapit-radius);
+  background: var(--mapit-color-primary-container);
+  color: var(--mapit-color-primary);
+}
+
+.properties-icon svg {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.switcher {
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid $border;
+  border-radius: 0.625rem;
+  background: $surface;
+}
+
+.switcher button {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+}
+
+.editor-page button,
+.button {
+  color: inherit;
+  font: 600 0.8125rem / 1.25 var(--mapit-font-sans);
+  cursor: pointer;
+}
+
+.editor-page button:disabled {
+  opacity: 0.52;
+  cursor: default;
+}
+
+.button,
+.tool,
+.switcher button,
+.tree-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2.5rem;
+  padding: 0.375rem 0.625rem;
+}
+
+.button {
+  border: 1px solid var(--mapit-color-border-input);
+  border-radius: 0.625rem;
+  background: $surface;
+  text-align: center;
+  text-decoration: none;
+}
+
+.button:hover:not(:disabled) {
+  border-color: $blue;
+  background: var(--mapit-editor-selection-soft);
+}
+
+.button.primary {
+  border-color: $blue;
+  background: $blue;
+  color: var(--mapit-color-on-primary);
+}
+
+.button.primary:hover:not(:disabled) {
+  background: var(--mapit-color-primary-hover);
+}
+
+.tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree-row {
+  justify-content: start;
+  width: 100%;
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.tree-row > span {
+  min-width: 0;
+}
+
+.tree-row small {
+  display: block;
+  margin-top: 0.125rem;
+  color: $muted;
+  font-weight: 400;
+}
+
+.editor-page button.active,
+.tree-row:hover,
+.switcher button:hover {
+  color: var(--mapit-color-primary-hover);
+  background: var(--mapit-editor-selection-soft);
+}
+
+.tree-row.active {
+  font-weight: 750;
+}
+
+.placed-elements {
+  border-top: 1px solid $border;
+  padding-block-start: 0.375rem;
+}
+
+.placed-elements > summary {
+  font-size: 0.8125rem;
+}
+
+.library-panel {
+  min-width: 0;
+}
+
+.map-area {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.625rem;
+  padding: 0.5rem;
+}
+
+.toolbar {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.125rem;
+}
+
+.map-area.without-floor {
+  grid-column: 2 / -1;
+  grid-template-rows: minmax(0, 1fr);
+  height: auto;
+  background: none;
+  box-shadow: none;
+
+  .toolbar {
+    display: none;
+  }
+
+  .canvas-container,
+  .canvas-message {
+    background: none;
+  }
+
+  .canvas-container {
+    overflow: visible;
+  }
+
+  .canvas-host {
+    display: none;
+  }
+}
+
+@media (max-width: 48rem) {
+  .map-area.without-floor {
+    grid-column: 1 / -1;
+  }
+}
+
+.tool-group {
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border: 1px solid $border;
+  border-radius: 0.5rem;
+  background: $surface;
+}
+
+.tool {
+  width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.375rem;
+  background: $surface;
+}
+
+.editor-page .tool.active {
+  background: $blue;
+  color: var(--mapit-color-on-primary);
+}
+
+.tool.fit {
+  border: 1px solid $border;
+}
+
+.tool:hover:not(:disabled) {
+  background: var(--mapit-editor-selection-soft);
+}
+
+svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+output {
+  min-width: 3rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.grid-toggle {
+  padding: 0.375rem;
+  border: 1px solid $border;
+  border-radius: 0.5rem;
+  background: $surface;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.grid-toggle input {
+  accent-color: $blue;
+  width: 1rem;
+  height: 1rem;
+}
+
+.canvas-container {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 0.625rem;
+  background: var(--mapit-editor-canvas);
+}
+
+.canvas-host {
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-message {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  background: var(--mapit-color-canvas);
+}
+
+.canvas-empty {
+  background: none;
+  pointer-events: none;
+
+  p {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    background: $surface;
+    color: $ink;
+  }
+
+  button {
+    pointer-events: auto;
+  }
+}
+
+.properties-empty {
+  display: grid;
+  place-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0.5rem 1.5rem;
+  text-align: center;
+}
+
+.properties-empty svg {
+  width: 5rem;
+  height: 5rem;
+  color: $blue;
+}
+
+.properties-empty p,
+.plan-dimensions dl,
+.plan-dimensions dd {
+  margin: 0;
+}
+
+.properties-empty p > span {
+  display: block;
+  margin-top: 0.3rem;
+  color: $muted;
+  font-size: 0.8125rem;
+}
+
+.plan-properties {
+  border: 1px solid $border;
+  background: $surface;
+}
+
+.plan-dimensions {
+  padding-block: 0.875rem;
+  border-block: 1px solid $border;
+}
+
+.plan-dimensions h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.plan-dimensions dl {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.plan-dimensions dl > div {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(3rem, 1fr) minmax(0, 2fr);
+  gap: 0.5rem;
+}
+
+.plan-dimensions dd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-inline-start: 0.625rem;
+  border: 1px solid var(--mapit-color-border-input);
+  border-radius: 0.375rem;
+  background: $surface;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-dimensions dd span {
+  padding: 0.35rem 0.5rem;
+  background: var(--mapit-editor-selection-soft);
+  color: $muted;
+}
+
+.plan-dimensions dd input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 0.35rem 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.plan-dimensions form > .button {
+  width: 100%;
+  min-height: 2.75rem;
+  justify-content: center;
+  margin-block-start: 1rem;
+  border-color: currentColor;
+  color: var(--mapit-color-primary);
+}
+
+.element-actions {
+  gap: 0.5rem;
+  padding-block-start: 0.875rem;
+  margin-block-start: 0.875rem;
+  border-top: 1px solid $border;
+}
+
+.element-actions .button {
+  flex: 1 1 auto;
+}
+
+.error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.625rem;
+  background: var(--mapit-color-error-container);
+  color: #991b1b;
+}
+
+.editor-page :is(button, a, summary, input, .library-panel):focus-visible {
+  outline: 2px solid $blue;
+  outline-offset: 2px;
+}
+
+.editor-page :is(button, .grid-toggle) {
+  touch-action: manipulation;
+}
+
+.editor-dialog {
+  box-sizing: border-box;
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 1.5rem;
+  border: 1px solid $border;
+  border-radius: 1rem;
+  background: $surface;
+  color: $ink;
+  box-shadow: 0 20px 60px rgb(15 23 42 / 0.22);
+}
+
+.editor-dialog::backdrop {
+  background: rgb(11 19 43 / 0.5);
+}
+
+.editor-dialog h2 {
+  margin: 0 0 0.75rem;
+  font: 750 1.25rem / 1.3 var(--mapit-font-display);
+}
+
+.editor-dialog p {
+  color: $muted;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  justify-content: end;
+  margin-block-start: 1.5rem;
+}
+
+@media (max-width: 74rem) {
+  .editor-main {
+    grid-template-columns: minmax(18rem, 1fr) minmax(0, 1.7fr);
+    gap: 0.625rem;
+  }
+
+  .panel {
+    padding: 0.625rem;
+  }
+
+  .properties {
+    grid-column: 1 / -1;
+    height: auto;
+    max-height: 32rem;
+  }
+}
+
+@media (max-width: 60rem) {
+  .properties.style-panel {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 48rem) {
+  .editor-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .structure,
+  .properties {
+    height: auto;
+    max-height: 29rem;
+  }
+
+  .map-area {
+    height: clamp(24rem, 60dvh, 36rem);
+  }
+
+  .editor-main.preview .map-area {
+    height: calc(100dvh - 15rem);
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions .button {
+    flex: 1;
+  }
+}

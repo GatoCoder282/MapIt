@@ -29,7 +29,21 @@ public record Reservation(
     ReservationTimeRange timeRange,
     ReservationStatus status,
     Instant createdAt,
-    @Nullable UUID createdBy) {
+    @Nullable UUID createdBy,
+    @Nullable Integer partySize, @Nullable String notes) {
+
+  public Reservation(ReservationId id, TenantId tenantId, UUID establishmentId, PersonId personId,
+      Set<UUID> spaceElementIds, ReservationTimeRange timeRange, ReservationStatus status,
+      Instant createdAt, @Nullable UUID createdBy) {
+    this(id, tenantId, establishmentId, personId, spaceElementIds, timeRange, status, createdAt, createdBy, null);
+  }
+
+  public Reservation(ReservationId id, TenantId tenantId, UUID establishmentId, PersonId personId,
+      Set<UUID> spaceElementIds, ReservationTimeRange timeRange, ReservationStatus status,
+      Instant createdAt, @Nullable UUID createdBy, @Nullable Integer partySize) {
+    this(id, tenantId, establishmentId, personId, spaceElementIds, timeRange, status, createdAt,
+        createdBy, partySize, null);
+  }
 
   public Reservation {
     Objects.requireNonNull(id, "id no puede ser null");
@@ -47,6 +61,13 @@ public record Reservation(
     if (spaceElementIds.stream().anyMatch(Objects::isNull)) {
       throw new IllegalArgumentException("Los elementos de la reserva no pueden ser null");
     }
+    if (partySize != null && partySize <= 0) {
+      throw new IllegalArgumentException("El número de personas debe ser positivo");
+    }
+    if (notes != null) {
+      if (notes.length() > 1000) throw new IllegalArgumentException("Las notas no pueden superar 1000 caracteres");
+      notes = notes.isBlank() ? null : notes.trim();
+    }
     spaceElementIds = Set.copyOf(spaceElementIds);
   }
 
@@ -60,6 +81,19 @@ public record Reservation(
       ReservationTimeRange timeRange,
       Instant createdAt,
       @Nullable UUID createdBy) {
+    return create(id, tenantId, establishmentId, personId, spaceElementIds, timeRange, createdAt, createdBy, null);
+  }
+
+  public static Reservation create(
+      ReservationId id,
+      TenantId tenantId,
+      UUID establishmentId,
+      PersonId personId,
+      Collection<UUID> spaceElementIds,
+      ReservationTimeRange timeRange,
+      Instant createdAt,
+      @Nullable UUID createdBy,
+      @Nullable Integer partySize) {
     Objects.requireNonNull(spaceElementIds, "spaceElementIds no puede ser null");
 
     Set<UUID> uniqueElements = new LinkedHashSet<>();
@@ -81,7 +115,13 @@ public record Reservation(
         timeRange,
         ReservationStatus.CREATED,
         createdAt,
-        createdBy);
+        createdBy,
+        partySize);
+  }
+
+  public Reservation withNotes(@Nullable String notes) {
+    return new Reservation(id, tenantId, establishmentId, personId, spaceElementIds, timeRange,
+        status, createdAt, createdBy, partySize, notes);
   }
 
   public boolean includesElement(UUID elementId) {

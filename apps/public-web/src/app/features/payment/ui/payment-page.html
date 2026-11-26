@@ -16,7 +16,7 @@
           [value]="store.scenario()"
           (change)="changeScenario($event)"
         >
-          @for (scenario of scenarios; track scenario.value) {
+          @for (scenario of scenarios(); track scenario.value) {
             <option [value]="scenario.value" [selected]="scenario.value === store.scenario()">
               {{ scenario.label }}
             </option>
@@ -98,7 +98,7 @@
                 <p class="muted" role="status">{{ message }}</p>
               }
               @if (store.actionError(); as actionError) {
-                <p role="alert">{{ actionError }}</p>
+                <p role="alert">{{ localizeString(actionError) }}</p>
               }
               <h2 id="method-heading">{{ strings.paymentMethod }}</h2>
               <p class="muted section-intro">{{ strings.methodHelp }}</p>
@@ -120,7 +120,7 @@
                     />
                     <svg lucideQrCode aria-hidden="true"></svg>
                     <span
-                      >{{ method.displayName
+                      >{{ methodName(method)
                       }}<small [class.sr-only]="store.qrPending()">{{
                         method.provider === 'MOCK_GATEWAY'
                           ? strings.simulationMethod
@@ -138,7 +138,7 @@
               }
               @if (!store.qrPending() && store.historicalAttempt(); as attemptMethod) {
                 <p class="muted" data-testid="historical-method">
-                  {{ strings.historicalMethodLabel }}: {{ attemptMethod.displayName }}
+                  {{ strings.historicalMethodLabel }}: {{ methodName(attemptMethod) }}
                 </p>
               }
               <section

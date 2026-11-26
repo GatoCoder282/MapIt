@@ -44,7 +44,7 @@ describe('Sidebar jerárquico', () => {
     toggle.click();
     fixture.detectChanges();
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(rail.querySelector('a')).toBeNull();
+    expect(rail.querySelector('a')?.closest('.group-reveal[inert]')).not.toBeNull();
     toggle.click();
     fixture.detectChanges();
     expect(rail.querySelector('a')).not.toBeNull();

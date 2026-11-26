@@ -92,6 +92,16 @@
       }
 
       <div class="selection-actions">
+        @if (canCreate()) {
+          <button
+            class="create-button"
+            type="button"
+            [disabled]="status() !== 'ready'"
+            (click)="createRequested.emit()"
+          >
+            <svg lucidePlus aria-hidden="true"></svg>{{ strings.newEstablishment }}
+          </button>
+        }
         <button
           class="continue-button"
           type="button"

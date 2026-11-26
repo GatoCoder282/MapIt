@@ -1,13 +1,14 @@
-# MapIt Console — Editor de mapas (HU-4.01) · Token Reference
+# MapIt Console — Editor y monitor operativo · Token Reference
 
-> Referencia extraída de la imagen objetivo del rediseño del editor de sector (v2).
+> Referencia extraída de las imágenes objetivo del rediseño del editor de sector (v2) y de la
+> reserva rápida del monitor operativo.
 > Leer primero este archivo. Especs de componente: [design-components.md](design-components.md).
 > Accesibilidad y do's/don'ts: [design-guidelines.md](design-guidelines.md).
 >
 > **Relación con el sistema global:** los tokens de MapIt viven en
 > `libs/ui-kit/styles/_tokens.scss` y `libs/ui-kit/DESIGN.md` (fuente única). Este documento
-> solo AÑADE los tokens del editor de mapas; todo lo que ya exista (índigo de marca, Inter/
-> Manrope, rejilla 4px, radios 4/8/12px) se reutiliza, no se redefine.
+> solo AÑADE las decisiones del editor de mapas y del monitor operativo; todo lo que ya exista
+> (índigo de marca, Inter/Manrope, rejilla 4px, radios 4/8/12px) se reutiliza, no se redefine.
 
 Diseño del editor: "plano técnico claro" — lienzo blanco con grilla sutil, mobiliario en
 outlines neutros (en reposo), y un único acento azul (`primary` del wizard/setup) para
@@ -101,3 +102,76 @@ técnica: latencia cero es prioritaria sobre suavidad).
 `@lucide/angular` (stroke 1.5-2px sobre grid 24px) — armchair/chair para "mesa" en el
 pill y el avatar del panel, `refresh-cw` para el botón de rotación. Nada de familias
 nuevas.
+
+## Reserva rápida — Monitor operativo
+
+> Refinamiento de [HU-5.01](../../specs/HU-5.01-creacion-reserva-interna/refinamiento-reserva-rapida/spec.md).
+> Esta sección define únicamente el panel de reserva rápida; no cambia los tokens globales.
+
+### Colors — Superficie y estado
+
+| Role                      | Token / valor                                       | Uso                                                      |
+| ------------------------- | --------------------------------------------------- | -------------------------------------------------------- |
+| monitor-panel             | `--mapit-color-surface` / `#FFFFFF`                 | Panel visible, ficha de cliente y banner de error        |
+| monitor-rim               | `--mapit-color-primary-container` / `#DBEAFE`       | Borde del panel, pista de pestañas y ficha del elemento  |
+| monitor-field             | `color-mix(primary 7%, surface)`                    | Fondo exterior azul muy claro del encuadre del monitor   |
+| monitor-selected          | `--mapit-color-primary` / `#2563EB`                 | Pestaña activa, acción principal y foco                  |
+| monitor-selected-hover    | `--mapit-color-primary-hover` / `#1D4ED8`           | Hover de la acción principal                             |
+| monitor-text              | `--mapit-color-text` / `#0F172A`                    | Títulos y datos                                          |
+| monitor-text-secondary    | `--mapit-color-text-variant` / `#334155`            | Etiquetas secundarias                                    |
+| monitor-text-muted        | `--mapit-color-text-muted` / `#64748B`              | Ubicación y metadatos                                    |
+| monitor-input-border      | `--mapit-color-border-input` / `#CBD5E1`            | Controles nativos                                        |
+| monitor-available         | `--mapit-state-available` / `#22C55E`               | Estado favorable real; nunca se usa como estado simulado |
+| monitor-available-surface | `color-mix(available 12%, surface)`                 | Banner de disponibilidad favorable                       |
+| monitor-focus             | `--mapit-color-focus-ring` / `rgb(37 99 235 / 0.2)` | Halo de foco de los controles                            |
+
+El verde solo aparece cuando el snapshot operativo confirma disponibilidad. El estado del
+elemento visible conserva su token semántico y siempre incluye texto.
+
+### Typography
+
+| Style                 | Uso en Reserva rápida             |
+| --------------------- | --------------------------------- |
+| Manrope 20/28 · 600   | Título "Crear reserva rápida"     |
+| Manrope 16/24 · 700   | Nombre del elemento seleccionado  |
+| Inter 14/20 · 600     | Etiquetas de campo y pestañas     |
+| Inter 14/20 · 400/500 | Valores de entrada y botones      |
+| Inter 12/16 · 400/700 | Ubicación, estado y copy opcional |
+
+### Shape
+
+| Token                  | Radius | Componentes                                     |
+| ---------------------- | ------ | ----------------------------------------------- |
+| `--mapit-radius-input` | 4px    | Inputs, selects y textarea                      |
+| `--mapit-radius`       | 8px    | Pestañas, botón de cierre y tarjeta de contexto |
+| `--mapit-radius-lg`    | 12px   | Ficha del elemento, banner y botones            |
+| `--mapit-radius-xl`    | 24px   | Panel contextual                                |
+| `9999px` (literal)     | 9999px | Pill de estado del elemento                     |
+
+### Elevation
+
+- Panel contextual: `--mapit-shadow`; no se suma una segunda sombra pesada.
+- Ficha del elemento y banner: sin sombra propia; se separan por fondo y borde.
+- Botones y pestañas: sin sombra en reposo; el hover conserva jerarquía por color y borde.
+
+### Layout
+
+- En escritorio, el monitor conserva la división 60/40: mapa a la izquierda y panel a la
+  derecha. El panel usa el ancho disponible, con máximo de 577px y mínimo de 336px.
+- La altura sigue al mapa, con máximo de 731px; el cuerpo del panel desplaza verticalmente.
+- Bajo 49rem, mapa y panel se apilan sin superposición y el panel ocupa el ancho completo.
+- El formulario usa: nombre a ancho completo; prefijo, teléfono y email en una fila; fecha,
+  hora y personas en otra. Por debajo de 34rem cada grupo se reorganiza sin controles
+  menores de 44px.
+
+### Motion
+
+No hay animaciones nuevas. Se reutilizan `--mapit-duration-fast` y `--mapit-ease-out` para
+hover/focus. La ficha del elemento usa una onda CSS estática, sin animación, y respeta el
+override global de movimiento reducido.
+
+### Icons
+
+`@lucide/angular` sobre grid de 24px: `armchair` para el elemento, `zap` y
+`calendar-check` para las pestañas, `x` para cerrar y `check` para disponibilidad. Todos los
+iconos decorativos llevan `aria-hidden="true"`.

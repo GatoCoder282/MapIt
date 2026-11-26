@@ -31,8 +31,8 @@ describe('EstablishmentContext', () => {
   const revision = signal(1);
   const list = vi.fn(() => of([A, B]));
 
-  function createContext(): void {
-    user = signal<SessionUser | null>(USER);
+  function createContext(initialUser: SessionUser = USER): void {
+    user = signal<SessionUser | null>(initialUser);
     TestBed.configureTestingModule({
       providers: [
         EstablishmentContext,
@@ -52,6 +52,33 @@ describe('EstablishmentContext', () => {
   });
 
   afterEach(() => vi.restoreAllMocks());
+
+  it('no consulta ni restaura establecimientos para SUPER_ADMIN', async () => {
+    TestBed.resetTestingModule();
+    list.mockClear();
+    const admin = { ...USER, tenantId: 'platform', role: 'SUPER_ADMIN' as const };
+    localStorage.setItem('mapit.establishment.platform.user-a', A.id);
+    createContext(admin);
+    await context.load();
+    expect(list).not.toHaveBeenCalled();
+    expect(context.active()).toBeNull();
+    expect(context.establishments()).toEqual([]);
+    expect(context.status()).toBe('idle');
+    expect(context.confirm(A.id)).toBe(false);
+  });
+
+  it('invalida la selección de staff al cambiar a SUPER_ADMIN sin recargar', async () => {
+    await context.load();
+    expect(context.confirm(A.id)).toBe(true);
+    list.mockClear();
+    user.set({ ...USER, tenantId: 'platform', role: 'SUPER_ADMIN' });
+    expect(context.active()).toBeNull();
+    TestBed.tick();
+    await context.load();
+    expect(list).not.toHaveBeenCalled();
+    expect(context.establishments()).toEqual([]);
+    expect(context.status()).toBe('idle');
+  });
 
   it('carga por identidad al entrar y queda lista sin autoelegir', async () => {
     await vi.waitFor(() => expect(context.status()).toBe('ready'));

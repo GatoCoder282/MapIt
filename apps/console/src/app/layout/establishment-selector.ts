@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import type { AccessibleEstablishment } from '@mapit/api-client';
-import { LucideArrowRight, LucideCheck, LucideStore } from '@lucide/angular';
+import { LucideArrowRight, LucideCheck, LucidePlus, LucideStore } from '@lucide/angular';
 
 import { STRINGS } from '../core/strings';
 
@@ -20,7 +20,7 @@ type EstablishmentStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 @Component({
   selector: 'mapit-establishment-selector',
-  imports: [LucideArrowRight, LucideCheck, LucideStore, NgOptimizedImage],
+  imports: [LucideArrowRight, LucideCheck, LucidePlus, LucideStore, NgOptimizedImage],
   templateUrl: './establishment-selector.html',
   styleUrl: './establishment-selector.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,6 +29,8 @@ export class EstablishmentSelector implements AfterViewInit, OnDestroy {
   readonly establishments = input.required<readonly AccessibleEstablishment[]>();
   readonly status = input.required<EstablishmentStatus>();
   readonly canDismiss = input(false);
+  readonly canCreate = input(false);
+  readonly createRequested = output<void>();
   readonly confirmed = output<string>();
   readonly dismissed = output<void>();
   readonly retry = output<void>();

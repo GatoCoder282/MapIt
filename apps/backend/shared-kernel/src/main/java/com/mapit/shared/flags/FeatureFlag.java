@@ -25,6 +25,12 @@ public enum FeatureFlag {
   /** Agrupar elementos en el editor de mapas (CU-06). */
   SPACES_EDITOR_GROUPING("spaces.editor-grouping", Tipo.RELEASE, false),
 
+  /** Monitor espacial de la consola. */
+  OPERATIONS_SPACE_MONITOR("operations.space-monitor", Tipo.KILL_SWITCH, true),
+
+  /** Escaneo con cámara en check-in. */
+  CHECK_IN_CAMERA("check-in.camera", Tipo.KILL_SWITCH, true),
+
   /**
    * Vertical Hotel: reservas por rango de fechas (CU-22).
    *

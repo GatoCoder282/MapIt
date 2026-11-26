@@ -41,7 +41,7 @@
                 <dd>
                   @for (space of data.reservation.spaces; track space.id) {
                     <span class="space-row"
-                      >{{ space.name }}<small>{{ space.floor }} · {{ space.sector }}</small></span
+                      >{{ spaceName(space) }}<small>{{ space.floor }} · {{ space.sector }}</small></span
                     >
                   }
                 </dd>

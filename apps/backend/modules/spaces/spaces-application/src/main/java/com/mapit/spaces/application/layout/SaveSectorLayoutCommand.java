@@ -2,7 +2,10 @@ package com.mapit.spaces.application.layout;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * Comando de guardado por lotes de la distribución interna de un sector
@@ -13,10 +16,34 @@ public record SaveSectorLayoutCommand(
     double width,
     double height,
     Instant sectorUpdatedAt,
-    List<ElementGeometry> elements) {
+    List<ElementGeometry> elements,
+    List<ElementCreate> createdElements,
+    List<ElementDelete> deletedElements,
+    List<MetadataUpdate> metadataUpdates,
+    @Nullable Map<String, Object> appearance) {
+
+  public SaveSectorLayoutCommand(
+      double width, double height, Instant sectorUpdatedAt, List<ElementGeometry> elements,
+      List<ElementCreate> createdElements, List<ElementDelete> deletedElements,
+      List<MetadataUpdate> metadataUpdates) {
+    this(width, height, sectorUpdatedAt, elements, createdElements, deletedElements, metadataUpdates, null);
+  }
+
+  public SaveSectorLayoutCommand(
+      double width, double height, Instant sectorUpdatedAt, List<ElementGeometry> elements) {
+    this(width, height, sectorUpdatedAt, elements, List.of(), List.of(), List.of());
+  }
 
   /** Geometría deseada de un elemento dentro del sector. */
   public record ElementGeometry(
       UUID id, double x, double y, double width, double height, double rotation,
       Instant updatedAt) {}
+
+  public record ElementCreate(UUID id, String type, double x, double y, double width,
+      double height, double rotation, @Nullable String label, @Nullable Integer capacity) {}
+
+  public record ElementDelete(UUID id, Instant updatedAt) {}
+
+  public record MetadataUpdate(
+      UUID id, @Nullable String label, @Nullable Integer capacity, Instant updatedAt) {}
 }

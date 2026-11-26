@@ -1,9 +1,15 @@
 package com.mapit.config;
 
+import java.util.Set;
+import java.util.UUID;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.mapit.reservations.domain.reservation.ReservationAvailabilityRepository;
+import com.mapit.reservations.domain.reservation.ReservationConcurrencyGuard;
+import com.mapit.shared.tenant.TenantId;
+import com.mapit.spaces.domain.spaceelement.SpaceElementId;
 import com.mapit.spaces.domain.spaceelement.SpaceElementReservationLookup;
 
 /**
@@ -16,8 +22,17 @@ public class SpacesWiring {
 
   @Bean
   SpaceElementReservationLookup spaceElementReservationLookup(
-      ReservationAvailabilityRepository availability) {
-    return (tenantId, elementId) ->
-        availability.existsActiveForSpaceElement(tenantId, elementId.value());
+      ReservationAvailabilityRepository availability, ReservationConcurrencyGuard reservations) {
+    return new SpaceElementReservationLookup() {
+      @Override
+      public void lockResources(TenantId tenantId, Set<UUID> elementIds) {
+        reservations.lockResources(tenantId, elementIds);
+      }
+
+      @Override
+      public boolean hasActiveReservations(TenantId tenantId, SpaceElementId elementId) {
+        return availability.existsActiveForSpaceElement(tenantId, elementId.value());
+      }
+    };
   }
 }

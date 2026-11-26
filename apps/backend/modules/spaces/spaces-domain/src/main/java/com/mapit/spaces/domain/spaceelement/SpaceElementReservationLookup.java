@@ -1,5 +1,8 @@
 package com.mapit.spaces.domain.spaceelement;
 
+import java.util.Set;
+import java.util.UUID;
+
 import com.mapit.shared.tenant.TenantId;
 
 /**
@@ -11,6 +14,9 @@ import com.mapit.shared.tenant.TenantId;
  * adaptador cableado por {@code bootstrap}.
  */
 public interface SpaceElementReservationLookup {
+
+  /** Coordina la baja del plano con las reservas que toman esos mismos recursos. */
+  default void lockResources(TenantId tenantId, Set<UUID> elementIds) {}
 
   /** True si el elemento tiene al menos una reserva en estado activo. */
   boolean hasActiveReservations(TenantId tenantId, SpaceElementId elementId);

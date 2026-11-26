@@ -172,6 +172,11 @@ h2 {
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
+@media (min-width: 961px) {
+  .interval-fields.arrival-only {
+    grid-template-columns: 1.25fr 1fr 0.7fr auto;
+  }
+}
 label {
   display: grid;
   gap: 0.35rem;

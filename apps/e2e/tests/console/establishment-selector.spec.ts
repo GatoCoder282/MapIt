@@ -128,6 +128,114 @@ async function openManualSelector(page: Page): Promise<void> {
 }
 
 test.describe('Consola — selección obligatoria de establecimiento', () => {
+  test('contrae el sidebar, conserva su estado al navegar y respeta el menú móvil', async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await prepare(page, testInfo.project.use.baseURL);
+    await rememberSelection(page, ESTABLISHMENT_A);
+    await goToConsole(page, '/reports');
+    const home = page.getByRole('link', { name: 'Inicio', exact: true });
+    const expandedWidth = (await home.boundingBox())!.width;
+    const collapse = page.getByRole('button', { name: 'Contraer menú', exact: true });
+    const logo = page.getByRole('img', { name: 'MapIt', exact: true });
+    const logoBounds = await logo.boundingBox();
+    const toggleBounds = await collapse.boundingBox();
+    const sidebarBounds = await page
+      .getByRole('complementary', { name: 'Consola', exact: true })
+      .boundingBox();
+    expect(
+      Math.abs(
+        logoBounds!.x + logoBounds!.width / 2 - (sidebarBounds!.x + sidebarBounds!.width / 2),
+      ),
+    ).toBeLessThan(2);
+    expect(toggleBounds!.x).toBeGreaterThan(logoBounds!.x + logoBounds!.width);
+    expect(Math.abs(toggleBounds!.y - logoBounds!.y)).toBeLessThan(12);
+    const settings = page.getByRole('button', { name: 'Configuración', exact: true });
+    const templates = page.getByRole('link', { name: 'Plantillas de elementos', exact: true });
+    await settings.click();
+    await expect(templates).toBeHidden();
+    await settings.click();
+    await expect(templates).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath('sidebar-expandido.png'),
+      animations: 'disabled',
+    });
+    const decor = page.getByTestId('sidebar-decor');
+    await expect(decor).toHaveCSS('opacity', '1');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const [transitionedProperty] = await Promise.all([
+      decor.evaluate(
+        (element) =>
+          new Promise<string>((resolve) => {
+            const onTransition = (event: Event) => {
+              const transition = event as TransitionEvent;
+              if (transition.propertyName !== 'height') return;
+              element.removeEventListener('transitionrun', onTransition);
+              resolve(transition.propertyName);
+            };
+            element.addEventListener('transitionrun', onTransition);
+          }),
+      ),
+      collapse.click(),
+    ]);
+    expect(transitionedProperty).toBe('height');
+    const expand = page.getByRole('button', { name: 'Expandir menú', exact: true });
+    await expect(expand).toHaveAttribute('aria-expanded', 'false');
+    await expect
+      .poll(async () => (await home.boundingBox())!.width)
+      .toBeLessThan(expandedWidth / 2);
+    await expect(home).toHaveAttribute('title', 'Inicio');
+    const compactLogo = await logo.boundingBox();
+    const compactToggle = await expand.boundingBox();
+    expect(compactToggle!.y).toBeGreaterThanOrEqual(compactLogo!.y + compactLogo!.height);
+    await expect(decor).toHaveCSS('height', '0px');
+    await expect(decor).toHaveCSS('opacity', '0');
+    await page.screenshot({
+      path: testInfo.outputPath('sidebar-contraido.png'),
+      animations: 'disabled',
+    });
+    await page.getByRole('link', { name: 'Usuarios', exact: true }).click();
+    await expect(expand).toBeVisible();
+    await expand.focus();
+    await expand.press('Enter');
+    await expect(page.getByRole('button', { name: 'Contraer menú', exact: true })).toBeFocused();
+    expect((await home.boundingBox())!.width).toBe(expandedWidth);
+    await expect(decor).toHaveCSS('opacity', '1');
+    expect((await decor.boundingBox())!.height).toBeGreaterThan(0);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.getByRole('button', { name: 'Contraer menú', exact: true }).click();
+    await expect(home).toHaveCSS('transition-duration', '0s');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(expand).toBeHidden();
+    await page.getByRole('button', { name: 'Abrir navegación', exact: true }).click();
+    await expect(home).toBeVisible();
+    await expect(home.getByText('Inicio', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      390,
+    );
+  });
+
+  test('Negocios abre directamente el formulario de nuevo establecimiento de la empresa', async ({
+    page,
+  }, testInfo) => {
+    await prepare(page, testInfo.project.use.baseURL);
+    await goToConsole(page, '/home?selectEstablishment=1');
+    const modal = dialog(page);
+    await modal.getByRole('button', { name: 'Nuevo establecimiento', exact: true }).click();
+    await expect(page).toHaveURL(/\/spaces\/setup\?manage=1&create=1$/);
+    await expect(modal).toHaveCount(0);
+    await expect(page.locator('input[name="name"]')).toBeVisible();
+    expect(
+      await page.evaluate(() => {
+        const session = JSON.parse(sessionStorage.getItem('mapit.auth.session')!) as {
+          user: { tenantId: string };
+        };
+        return session.user.tenantId;
+      }),
+    ).toBe(TENANT_A);
+  });
+
   test('sin preferencia exige seleccionar y confirmar, luego persiste solo el ID', async ({
     page,
   }, testInfo) => {

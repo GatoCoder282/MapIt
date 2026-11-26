@@ -8,9 +8,9 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { PisoFormComponent } from './piso-form';
+import { PisoFormComponent } from '../../../core/establishment-structure/piso-form';
 import { PisoListComponent } from './piso-list';
-import { SpacesStore } from '../model/spaces-store';
+import { SpacesStore } from '../../../core/establishment-structure/spaces-store';
 import { EstablishmentContext } from '../../../core/establishment-context';
 import { confirmOperationalExit } from '../../../core/operational-exit-guard';
 

@@ -121,6 +121,9 @@ jobs:
         run: |
           cp .env.example .env
           docker compose --env-file .env \
+            -f infra/docker/compose.yml up -d --wait unleash
+          pnpm db:seed:flags
+          docker compose --env-file .env \
             -f infra/docker/compose.yml \
             -f infra/docker/compose.full.yml up -d --build --wait
       - name: Cargar flags de prueba en Unleash

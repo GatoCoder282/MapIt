@@ -60,8 +60,12 @@ class FloorLayoutApiIntegrationTest {
   @Autowired private AccessTokenIssuer tokens;
 
   private RestTestClient client() {
+    return client(TENANT, ADMIN_ID);
+  }
+
+  private RestTestClient client(String tenant, UUID actor) {
     String token = tokens.issue(new AuthenticatedUser(
-        ADMIN_ID, TenantId.of(TENANT), "layout@example.test", "Layout tester", UserRole.ADMIN)).value();
+        actor, TenantId.of(tenant), "layout@example.test", "Layout tester", UserRole.ADMIN)).value();
     return RestTestClient.bindToServer().baseUrl("http://localhost:" + port)
         .defaultHeader("Authorization", "Bearer " + token).build();
   }
@@ -119,7 +123,7 @@ class FloorLayoutApiIntegrationTest {
 
   private record ElementoJson(UUID id, UUID sectorId, String type, double x, double y,
       double width, double height, double rotation, String state,
-      Instant createdAt, Instant updatedAt) {}
+      Instant createdAt, Instant updatedAt, String label, String name, Integer capacity) {}
 
   private record SectorLayoutJson(SectorJson sector, List<ElementoJson> elements) {}
 
@@ -133,7 +137,7 @@ class FloorLayoutApiIntegrationTest {
         .uri("/api/v1/sectors/{s}/elements", SECTOR_ID)
         .contentType(MediaType.APPLICATION_JSON)
         .body("{\"type\":\"TABLE\",\"x\":" + x + ",\"y\":" + y
-            + ",\"width\":80,\"height\":80,\"rotation\":0}")
+            + ",\"width\":80,\"height\":80,\"rotation\":0,\"label\":\"Mesa Ventana\",\"capacity\":4}")
         .exchange()
         .expectStatus()
         .isCreated()
@@ -170,7 +174,58 @@ class FloorLayoutApiIntegrationTest {
     assertThat(sector.id()).isEqualTo(SECTOR_ID);
     assertThat(sector.width()).isEqualTo(800); // default de V18
     assertThat(sector.x()).isZero(); // colocación por defecto del backfill
-    assertThat(sector.elements()).extracting(ElementoJson::id).contains(elementoId);
+    assertThat(sector.elements())
+        .filteredOn(element -> element.id().equals(elementoId))
+        .singleElement()
+        .satisfies(element -> {
+          assertThat(element.label()).isEqualTo("Mesa Ventana");
+          assertThat(element.name()).isEqualTo("Mesa Ventana");
+          assertThat(element.capacity()).isEqualTo(4);
+        });
+  }
+
+  @Test
+  void apariencia_se_persiste_se_comparte_y_se_limpia_al_borrar_elementos() {
+    UUID element = crearElemento(30, 40);
+    var initial = leerLayout().sectors().getFirst();
+    client().put().uri("/api/v1/sectors/{id}/layout", SECTOR_ID)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body("""
+            {"sector":{"width":800,"height":600,"updatedAt":"%s"},"elements":[],
+             "appearance":{"room":{"floorColor":"#c0ffee","wallColor":"#123456","floorPattern":"wood"},
+             "elements":{"%s":{"boardMaterial":"wood","showName":true,"chairArms":false}}}}
+            """.formatted(initial.updatedAt(), element))
+        .exchange().expectStatus().isOk()
+        .expectBody()
+        .jsonPath("$.sector.appearance.room.floorColor").isEqualTo("#c0ffee");
+
+    client().get().uri("/api/v1/floors/{id}/sectors", FLOOR_ID)
+        .exchange().expectStatus().isOk()
+        .expectBody().jsonPath("$[0].appearance.room.floorColor").isEqualTo("#c0ffee");
+    client().get().uri("/api/v1/floors/{id}/layout", FLOOR_ID)
+        .exchange().expectStatus().isOk()
+        .expectBody().jsonPath("$.sectors[0].appearance.room.floorColor").isEqualTo("#c0ffee");
+
+    var saved = leerLayout().sectors().getFirst();
+    client().put().uri("/api/v1/sectors/{id}/layout", SECTOR_ID)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body("""
+            {"sector":{"width":800,"height":600,"updatedAt":"%s"},"elements":[],
+             "appearance":{"elements":{"%s":{"color":"#ffffff"}}}}
+            """.formatted(saved.updatedAt(), UUID.randomUUID()))
+        .exchange().expectStatus().isBadRequest();
+
+    var version = saved.elements().getFirst().updatedAt();
+    client().put().uri("/api/v1/sectors/{id}/layout", SECTOR_ID)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body("""
+            {"sector":{"width":800,"height":600,"updatedAt":"%s"},"elements":[],
+             "deletedElements":[{"id":"%s","updatedAt":"%s"}]}
+            """.formatted(saved.updatedAt(), element, version))
+        .exchange().expectStatus().isOk()
+        .expectBody()
+        .jsonPath("$.sector.appearance.room.floorColor").isEqualTo("#c0ffee")
+        .jsonPath("$.sector.appearance.elements").isEmpty();
   }
 
   @Test
@@ -185,7 +240,7 @@ class FloorLayoutApiIntegrationTest {
         .contentType(MediaType.APPLICATION_JSON)
         .body("""
           {"floor": {"canvasWidth": 1600, "canvasHeight": 900, "updatedAt": "%s"},
-           "sectors": [{"id": "%s", "x": 120, "y": 80, "rotation": 0, "updatedAt": "%s"}]}
+           "sectors": [{"id": "%s", "x": 120, "y": 80, "rotation": 0, "width": 500, "height": 350, "updatedAt": "%s"}]}
           """.formatted(antes.floor().updatedAt(), SECTOR_ID, sector.updatedAt()))
         .exchange()
         .expectStatus()
@@ -195,6 +250,8 @@ class FloorLayoutApiIntegrationTest {
     SectorDto movido = despues.sectors().get(0);
     assertThat(movido.x()).isEqualTo(120);
     assertThat(movido.rotation()).isZero();
+    assertThat(movido.width()).isEqualTo(500);
+    assertThat(movido.height()).isEqualTo(350);
     assertThat(despues.floor().canvasWidth()).isEqualTo(1600);
     // RN-2: el elemento no se movió (coordenadas relativas al sector)
     ElementoJson el = despues.sectors().get(0).elements().stream()
@@ -229,7 +286,7 @@ class FloorLayoutApiIntegrationTest {
         .post()
         .uri("/api/v1/floors/{f}/sectors:duplicate", FLOOR_ID)
         .contentType(MediaType.APPLICATION_JSON)
-        .body("{\"sourceSectorId\": \"%s\"}".formatted(SECTOR_ID))
+        .body("{\"sourceSectorId\": \"%s\", \"x\": 80, \"y\": 60}".formatted(SECTOR_ID))
         .exchange()
         .expectStatus()
         .isCreated()
@@ -240,10 +297,59 @@ class FloorLayoutApiIntegrationTest {
     assertThat(copia).isNotNull();
     assertThat(copia.sector().id()).isNotEqualTo(SECTOR_ID);
     assertThat(copia.sector().name()).isEqualTo("Salón (copia)");
+    assertThat(leerLayout().sectors()).anySatisfy(sector -> {
+      assertThat(sector.id()).isEqualTo(copia.sector().id());
+      assertThat(sector.x()).isEqualTo(80);
+      assertThat(sector.y()).isEqualTo(60);
+    });
     assertThat(copia.elements()).hasSize(1);
     assertThat(copia.elements().get(0).id()).isNotEqualTo(original);
     assertThat(copia.elements().get(0).x()).isEqualTo(50);
     assertThat(copia.elements().get(0).state()).isEqualTo("AVAILABLE");
+  }
+
+  @Test
+  void guarda_orden_visual_sin_cambiar_nivel_y_rechaza_orden_obsoleto() {
+    var second = UUID.randomUUID();
+    jdbcTemplate.update(
+        "insert into floor (id, tenant_id, establishment_id, name, level, slug) values (?, ?, ?, 'PA', 2, 'pa-layout')",
+        second, TENANT, ESTABLISHMENT_ID);
+    String path = "/api/v1/establishments/" + ESTABLISHMENT_ID + "/floors";
+    String request = """
+        {"previousIds":["%s","%s"],"floorIds":["%s","%s"]}
+        """.formatted(FLOOR_ID, second, second, FLOOR_ID);
+    client().put().uri(path + "/order").contentType(MediaType.APPLICATION_JSON).body(request)
+        .exchange().expectStatus().isOk().expectBody().jsonPath("$[0].id").isEqualTo(second.toString());
+    client().get().uri(path).exchange().expectStatus().isOk().expectBody()
+        .jsonPath("$[0].id").isEqualTo(second.toString())
+        .jsonPath("$[0].level").isEqualTo(2)
+        .jsonPath("$[1].level").isEqualTo(1);
+    client().put().uri(path + "/order").contentType(MediaType.APPLICATION_JSON).body(request)
+        .exchange().expectStatus().isEqualTo(409);
+  }
+
+  @Test
+  void la_baja_de_estructura_respeta_dependencias_y_tenant() {
+    String sector = "/api/v1/sectors/" + SECTOR_ID;
+    String floor = "/api/v1/floors/" + FLOOR_ID;
+    UUID element = crearElemento(50, 50);
+
+    RestTestClient.bindToServer().baseUrl("http://localhost:" + port).build()
+        .delete().uri(sector).exchange().expectStatus().isUnauthorized();
+    var otherActor = UUID.randomUUID();
+    jdbcTemplate.update(
+        "insert into tenant (id, name, slug, status, vertical) values ('otro-tenant', 'Otro', 'otro-tenant', 'ACTIVE', 'RESTAURANT') on conflict do nothing");
+    jdbcTemplate.update(
+        "insert into app_user (id, tenant_id, email, password_hash, full_name, role) values (?, 'otro-tenant', 'layout-otro@example.test', 'unused', 'Layout tester', 'ADMIN')",
+        otherActor);
+    client("otro-tenant", otherActor).delete().uri(sector).exchange().expectStatus().isNotFound();
+    client().delete().uri(floor).exchange().expectStatus().isEqualTo(409);
+    client().delete().uri(sector).exchange().expectStatus().isEqualTo(409);
+    assertThat(leerLayout().sectors().getFirst().elements().getFirst().id()).isEqualTo(element);
+
+    client().delete().uri(sector + "/elements/" + element).exchange().expectStatus().isNoContent();
+    client().delete().uri(sector).exchange().expectStatus().isNoContent();
+    client().delete().uri(floor).exchange().expectStatus().isNoContent();
   }
 
   @Test
