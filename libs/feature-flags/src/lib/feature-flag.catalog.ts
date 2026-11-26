@@ -45,6 +45,8 @@ export const FLAGS_POR_DEFECTO = {
 
   /** Configuración de plataforma para Super Admin (HU-7.07). */
   'mapit.s6.platform-settings': false,
+  /** Observabilidad agregada de empresas para Super Admin (HU-7.08). */
+  'mapit.s6.tenant-observability': false,
 } as const satisfies Record<string, boolean>;
 
 export type FeatureFlagKey = keyof typeof FLAGS_POR_DEFECTO;

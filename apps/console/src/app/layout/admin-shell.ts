@@ -55,6 +55,7 @@ export class AdminShell {
       route: '/admin/business-applications',
       icon: 'tenants',
     },
+    { label: STRINGS.observability.nav, route: '/admin/observability', icon: 'dashboard' },
     { label: STRINGS.shell.nav.settings, route: '/admin/settings', icon: 'settings' },
     ...(this.myAccountAccess.enabled()
       ? [{ label: STRINGS.myAccount.title, route: '/admin/profile', icon: 'profile' }]

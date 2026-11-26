@@ -16,7 +16,7 @@ no se importan entre sí.
 | Optimistic locking  | `expectedValue` en el cambio               | Evita que un Super Admin pise el cambio de otro sin verlo        | Bloqueo pesimista: no hay edición larga que justifique retener filas                    |
 | Adapter             | `FlagProviderStatus` sobre Unleash         | El estado del proveedor se informa sin que el dominio lo conozca | API admin de Unleash: exigiría un token administrativo                                  |
 
-## Datos (migración V43)
+## Datos (migración V46)
 
 - `platform_setting(setting_key PK, int_value, updated_at, updated_by)`. Es **global**, como
   `tenant`: no hay dato de negocio ni de empresa, y `reservations` la lee dentro de la transacción

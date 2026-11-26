@@ -1,0 +1,115 @@
+@use 'ui-kit/styles/tokens';
+
+.observability {
+  display: grid;
+  gap: var(--mapit-space-6);
+  max-width: 64rem;
+}
+h1,
+h2,
+p {
+  margin: 0 0 0.5rem;
+}
+.hint,
+small {
+  display: block;
+  color: var(--mapit-color-text-muted);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+.cards > div {
+  padding: 1rem;
+  border: 1px solid var(--mapit-color-border);
+  border-radius: 0.75rem;
+}
+.cards dd {
+  font-size: 1.5rem;
+}
+dl {
+  margin: 0;
+}
+dl:not(.cards) > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--mapit-color-border);
+}
+dd {
+  margin: 0;
+  font-weight: 700;
+}
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rows li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--mapit-color-border);
+  overflow-wrap: anywhere;
+}
+.rows li > div {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.alert {
+  color: var(--mapit-color-error, #ba1a1a);
+  font-weight: 600;
+}
+.filters,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+label {
+  display: grid;
+  gap: 0.35rem;
+}
+input,
+select,
+button {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--mapit-color-border);
+  border-radius: 0.5rem;
+  font: inherit;
+}
+button {
+  border-color: var(--mapit-color-primary);
+  background: transparent;
+  color: var(--mapit-color-primary);
+  cursor: pointer;
+}
+button[aria-pressed='true'] {
+  background: var(--mapit-color-primary);
+  color: var(--mapit-color-surface);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+a {
+  color: var(--mapit-color-primary);
+}
+:is(a, button, input, select, summary):focus-visible {
+  outline: 3px solid var(--mapit-color-focus-ring);
+  outline-offset: 2px;
+}
+.notice {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--mapit-color-primary);
+}
+.notice--error {
+  border-color: var(--mapit-color-error, #ba1a1a);
+}

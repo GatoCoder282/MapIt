@@ -73,6 +73,10 @@ tags:
   - name: customer-history
     description: Acceso temporal y consulta del historial propio en el portal público (HU-6.04)
   - { name: platform-settings, description: Configuración global del Super Admin (HU-7.07) }
+  - {
+      name: platform-observability,
+      description: Salud y uso agregado para el Super Admin (HU-7.08),
+    }
   - name: business-applications
     description: Solicitudes públicas de incorporación de negocios (HU-1.05)
 
@@ -507,6 +511,80 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+
+  /platform/observability:
+    get:
+      tags: [platform-observability]
+      summary: Salud y uso agregado de la plataforma
+      description: |
+        Requiere SUPER_ADMIN y `mapit.s6.tenant-observability`; apagada responde 404. Solo conteos:
+        los valores entre 1 y 4 llegan suprimidos. Cada consulta queda registrada.
+      operationId: getPlatformObservability
+      parameters:
+        - { name: days, in: query, schema: { type: integer, enum: [7, 30], default: 7 } }
+      responses:
+        "200":
+          description: Resumen agregado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformObservability" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /platform/observability/tenants:
+    get:
+      tags: [platform-observability]
+      summary: Empresas con sus agregados y alertas operativas
+      operationId: listTenantHealth
+      parameters:
+        - { name: days, in: query, schema: { type: integer, enum: [7, 30], default: 7 } }
+        - { name: search, in: query, schema: { type: string, maxLength: 120 } }
+        - { name: status, in: query, schema: { type: string, enum: [ACTIVE, SUSPENDED] } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: Página de empresas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantHealthPage" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /platform/observability/tenants/{slug}:
+    get:
+      tags: [platform-observability]
+      summary: Detalle agregado de una empresa
+      operationId: getTenantHealth
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+        - { name: days, in: query, schema: { type: integer, enum: [7, 30], default: 7 } }
+      responses:
+        "200":
+          description: Agregados de la empresa
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantHealthDetail" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /business-applications:
     get:
@@ -6943,6 +7021,111 @@ components:
               type: { type: string, enum: [RELEASE, KILL_SWITCH, EXPERIMENT, PERMISSION] }
               enabled: { type: boolean, description: "Evaluación global, sin contexto de tenant" }
               defaultValue: { type: boolean }
+    GuardedCount:
+      type: object
+      description: Conteo publicable. Suprimido cuando está entre 1 y 4 o permitiría deducirlo.
+      required: [suppressed]
+      properties:
+        value: { type: [integer, "null"], format: int64 }
+        suppressed: { type: boolean }
+    PlatformObservability:
+      type: object
+      required:
+        [
+          generatedAt,
+          windowDays,
+          suppressionThreshold,
+          databaseAvailable,
+          activeTenants,
+          suspendedTenants,
+          establishments,
+          unreadableTenants,
+          reservations,
+          reservationsByStatus,
+          reservationsByDay,
+        ]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        windowDays: { type: integer }
+        suppressionThreshold: { type: integer }
+        databaseAvailable: { type: boolean }
+        api:
+          type: object
+          description: Desde el arranque del proceso; ausente si no hay métricas.
+          required: [requests, serverErrors, meanLatencyMillis]
+          properties:
+            requests: { type: integer, format: int64 }
+            serverErrors: { type: integer, format: int64 }
+            meanLatencyMillis: { type: number }
+        activeTenants: { type: integer, format: int64 }
+        suspendedTenants: { type: integer, format: int64 }
+        establishments: { type: integer, format: int64 }
+        unreadableTenants:
+          { type: integer, format: int64, description: Empresas sin datos en esta consulta }
+        reservations: { $ref: "#/components/schemas/GuardedCount" }
+        reservationsByStatus:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/GuardedCount" }
+        reservationsByDay:
+          type: object
+          description: Clave YYYY-MM-DD en UTC.
+          additionalProperties: { $ref: "#/components/schemas/GuardedCount" }
+    TenantHealth:
+      type: object
+      required: [tenant, dataAvailable, establishments, alerts]
+      properties:
+        tenant:
+          type: object
+          required: [id, slug, name, status]
+          properties:
+            id: { type: string }
+            slug: { type: string }
+            name: { type: string }
+            status: { type: string, enum: [ACTIVE, SUSPENDED] }
+        dataAvailable: { type: boolean }
+        establishments: { type: integer, format: int64 }
+        reservations: { $ref: "#/components/schemas/GuardedCount" }
+        lastActivity: { type: [string, "null"], format: date }
+        alerts:
+          type: array
+          items: { type: string, enum: [DELIVERY_FAILURES, NO_ESTABLISHMENTS] }
+    TenantHealthPage:
+      type: object
+      required: [content, page, size, totalElements]
+      properties:
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/TenantHealth" }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+    TenantHealthDetail:
+      type: object
+      required:
+        [
+          generatedAt,
+          windowDays,
+          summary,
+          establishmentsByVertical,
+          reservationsByStatus,
+          pendingDeliveries,
+          failingDeliveries,
+          paymentMethodEnabled,
+        ]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        windowDays: { type: integer }
+        summary: { $ref: "#/components/schemas/TenantHealth" }
+        establishmentsByVertical:
+          type: object
+          additionalProperties: { type: integer, format: int64 }
+        reservations: { $ref: "#/components/schemas/GuardedCount" }
+        reservationsByStatus:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/GuardedCount" }
+        pendingDeliveries: { type: integer, format: int64 }
+        failingDeliveries: { type: integer, format: int64 }
+        paymentMethodEnabled: { type: boolean }
     BusinessApplicationDetail:
       type: object
       required:

@@ -45,7 +45,9 @@ public enum FeatureFlag {
   BUSINESS_APPLICATIONS("mapit.s6.business-applications", Tipo.PERMISSION, false),
 
   /** Configuración de plataforma para Super Admin (HU-7.07). OFF: rigen los del despliegue. */
-  MAPIT_S6_PLATFORM_SETTINGS("mapit.s6.platform-settings", Tipo.RELEASE, false);
+  MAPIT_S6_PLATFORM_SETTINGS("mapit.s6.platform-settings", Tipo.RELEASE, false),
+  /** Observabilidad agregada de empresas para Super Admin (HU-7.08). */
+  MAPIT_S6_TENANT_OBSERVABILITY("mapit.s6.tenant-observability", Tipo.RELEASE, false);
 
   /**
    * Tipos canónicos de toggle. El tipo determina cuánto debe vivir la flag:

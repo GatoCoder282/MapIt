@@ -78,6 +78,13 @@
       "type": "release",
       "enabled": false,
       "expiresAt": "2027-02-26"
+    },
+    {
+      "name": "mapit.s6.tenant-observability",
+      "description": "HU-7.08 (MAP-301): observabilidad agregada de empresas para Super Admin. OFF por defecto. No concede permisos.",
+      "type": "release",
+      "enabled": false,
+      "expiresAt": "2027-02-26"
     }
   ]
 }
