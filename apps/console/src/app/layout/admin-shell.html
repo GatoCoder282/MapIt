@@ -24,12 +24,7 @@
 
       @if (session.user(); as user) {
         <div class="user-block">
-          <!-- Campana decorativa: no hay endpoint de notificaciones. El punto
-               azul es `aria-hidden` y el botón lleva su nombre accesible. -->
-          <button class="notification" type="button" [attr.aria-label]="strings.shell.notifications">
-            <svg lucideBell aria-hidden="true"></svg>
-            <span class="notification-dot" aria-hidden="true"></span>
-          </button>
+          <mapit-notification-center />
           <span class="avatar" aria-hidden="true">{{ initials() }}</span>
           <span class="user-meta">
             <span class="user-name">{{ user.fullName }}</span>

@@ -47,6 +47,11 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
   private @Nullable PublicReservationAccessService reservations;
   private final ConcurrentHashMap<String, PublicReservationPrincipal> publicSessions = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, AuthenticatedPrincipal> staffSessions = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String,String> notificationSessionKeys = new ConcurrentHashMap<>();
+  private @Nullable NotificationStompAccess notificationAccess;
+  @Autowired
+  void notificationAccess(NotificationStompAccess access) { this.notificationAccess=access; }
+
 
   @Autowired
   void publicReservationAccess(PublicReservationAccessService reservations) {
@@ -101,6 +106,9 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
     if (!flags.isEnabled(FeatureFlag.REALTIME_WEBSOCKET, true)) {
       throw new MessagingException("El tiempo real está temporalmente desactivado");
     }
+    if (accessor.getSessionId()!=null && (staffSessions.containsKey(accessor.getSessionId()) || publicSessions.containsKey(accessor.getSessionId()))) {
+      throw new MessagingException("La sesión STOMP ya tiene identidad");
+    }
     String authorization = accessor.getFirstNativeHeader("Authorization");
     if (authorization == null && accessor.getFirstNativeHeader("X-Reservation-Access") != null) {
       return connectReservation(message, accessor);
@@ -117,9 +125,15 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
         new UsernamePasswordAuthenticationToken(
             principal,
             null,
-            List.of(new SimpleGrantedAuthority("ROLE_" + principal.role().name())));
+            List.of(new SimpleGrantedAuthority("ROLE_" + principal.role().name()))) {
+          @Override public String getName() {
+            var staff=(AuthenticatedPrincipal)getPrincipal();
+            return "staff:"+staff.tenantId().value()+":"+staff.id();
+          }
+        };
     accessor.setUser(authentication);
-    if (accessor.getSessionId() != null) staffSessions.put(accessor.getSessionId(), principal);
+    if (accessor.getSessionId() != null) { staffSessions.put(accessor.getSessionId(), principal);
+      notificationSessionKeys.put(accessor.getSessionId(),NotificationStompAccess.sessionKey(authorization)); }
     accessor.setLeaveMutable(true);
     return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
   }
@@ -132,6 +146,7 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
     if (command == StompCommand.DISCONNECT && accessor.getSessionId() != null) {
       publicSessions.remove(accessor.getSessionId());
       staffSessions.remove(accessor.getSessionId());
+      notificationSessionKeys.remove(accessor.getSessionId());
     }
     if (command == StompCommand.SEND) {
       throw new MessagingException("Los clientes no pueden publicar eventos STOMP");
@@ -156,7 +171,11 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
         || !(authentication.getPrincipal() instanceof AuthenticatedPrincipal principal)) {
       throw new MessagingException("La suscripción STOMP no está autenticada");
     }
-    currentStaff(principal);
+    principal=currentStaff(principal);
+    if ("/user/topic/notifications".equals(accessor.getDestination())) {
+      if(!privateAllowed(principal,accessor.getSessionId())) throw new MessagingException("Centro de notificaciones no disponible");
+      return;
+    }
     RealtimeDestination destination =
         RealtimeDestination.parse(accessor.getDestination())
             .orElseThrow(() -> new MessagingException("Destino de sala STOMP no permitido"));
@@ -212,7 +231,12 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
        // Una sesión desconocida o desconectada nunca recibe eventos privados.
        if (staff == null) return null;
       if (!flags.isEnabled(FeatureFlag.REALTIME_WEBSOCKET, true)) return null;
-      var destination = RealtimeDestination.parse(SimpMessageHeaderAccessor.getDestination(message.getHeaders()));
+      String outgoing=SimpMessageHeaderAccessor.getDestination(message.getHeaders());
+      if (sessionId!=null && ("/topic/notifications-user"+sessionId).equals(outgoing)) {
+        try { return privateAllowed(currentStaff(staff),sessionId) ? message : null; }
+        catch(RuntimeException denied) { return null; }
+      }
+      var destination = RealtimeDestination.parse(outgoing);
       if (destination.isEmpty()) return null;
        var room = destination.orElseThrow();
        try {
@@ -230,6 +254,13 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
     }
   }
 
+  private boolean privateAllowed(AuthenticatedPrincipal staff,@Nullable String sessionId) {
+    String key=sessionId==null ? null : notificationSessionKeys.get(sessionId);
+    var bound=sessionId==null ? null : staffSessions.get(sessionId);
+    return bound!=null && bound.id().equals(staff.id()) && bound.tenantId().equals(staff.tenantId())
+        && notificationAccess!=null && key!=null && notificationAccess.allowed(staff,key);
+  }
+
   private AuthenticatedPrincipal currentStaff(AuthenticatedPrincipal signed) {
     try {
       return identities.resolve(signed)
@@ -240,7 +271,7 @@ public final class RealtimeStompInterceptor implements ChannelInterceptor {
   }
 
   @EventListener
-  public void sessionDisconnected(SessionDisconnectEvent event) { publicSessions.remove(event.getSessionId()); staffSessions.remove(event.getSessionId()); }
+  public void sessionDisconnected(SessionDisconnectEvent event) { publicSessions.remove(event.getSessionId()); staffSessions.remove(event.getSessionId()); notificationSessionKeys.remove(event.getSessionId()); }
 
   private record PublicReservationPrincipal(String tenantSlug, String establishmentSlug,
       UUID reservationId, String token) implements java.security.Principal {

@@ -104,6 +104,14 @@ describe('operational exit protection', () => {
     }
     const platform = routes.find((entry) => entry.path === 'admin');
     expect(platform?.canDeactivate).toBeUndefined();
-    expect(platform?.children?.every((entry) => !entry.canDeactivate)).toBe(true);
+    expect(
+      platform?.children
+        ?.filter((entry) => entry.path !== 'profile')
+        .every((entry) => !entry.canDeactivate),
+    ).toBe(true);
+    // El formulario personal protege borradores/escrituras sin exigir un establecimiento.
+    expect(platform?.children?.find((entry) => entry.path === 'profile')?.canDeactivate).toContain(
+      operationalExitGuard,
+    );
   });
 });

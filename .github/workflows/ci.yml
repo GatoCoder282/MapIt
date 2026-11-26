@@ -126,6 +126,8 @@ jobs:
           docker compose --env-file .env \
             -f infra/docker/compose.yml \
             -f infra/docker/compose.full.yml up -d --build --wait
+      - name: Cargar flags de prueba en Unleash
+        run: pnpm db:seed:flags
       - run: pnpm e2e
       - name: Verificar logging real y privacidad (MAP-189)
         run: pnpm logging:smoke
@@ -133,7 +135,7 @@ jobs:
         if: always()
         with:
           name: playwright-report
-          path: playwright-report/
+          path: apps/e2e/playwright-report/
           retention-days: 7
 
   # ── Análisis de calidad ──────────────────────────────────────

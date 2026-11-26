@@ -60,25 +60,37 @@ describe('FeatureFlagService con el contrato GET /proxy', () => {
     vi.useRealTimers();
   });
 
-  it.each(Object.keys(FLAGS_POR_DEFECTO) as FeatureFlagKey[])(
-    '%s cambia ON → ausente/OFF → ON sin reemplazar el Signal',
-    async (key) => {
-      fetchMock.mockResolvedValue(response({ toggles: [{ name: key, enabled: true }] }));
-      const flags = start();
-      const enabled = flags.isEnabled(key);
-      await settle();
-      expect(enabled()).toBe(true);
-      expect(flags.listo()).toBe(true);
-      fetchMock.mockResolvedValue(response({ toggles: [] }));
-      await vi.advanceTimersByTimeAsync(100);
-      expect(enabled()).toBe(false);
-      expect(flags.isEnabledNow(key)).toBe(false);
-      fetchMock.mockResolvedValue(response({ toggles: [{ name: key, enabled: true }] }));
-      await vi.advanceTimersByTimeAsync(100);
-      expect(flags.isEnabled(key)).toBe(enabled);
-      expect(enabled()).toBe(true);
-    },
-  );
+  it.each(
+    (Object.keys(FLAGS_POR_DEFECTO) as FeatureFlagKey[]).filter(
+      (key) => key !== 'mapit.s6.notification-center',
+    ),
+  )('%s cambia ON → ausente/OFF → ON sin reemplazar el Signal', async (key) => {
+    fetchMock.mockResolvedValue(response({ toggles: [{ name: key, enabled: true }] }));
+    const flags = start();
+    const enabled = flags.isEnabled(key);
+    await settle();
+    expect(enabled()).toBe(true);
+    expect(flags.listo()).toBe(true);
+    fetchMock.mockResolvedValue(response({ toggles: [] }));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(enabled()).toBe(false);
+    expect(flags.isEnabledNow(key)).toBe(false);
+    fetchMock.mockResolvedValue(response({ toggles: [{ name: key, enabled: true }] }));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(flags.isEnabled(key)).toBe(enabled);
+    expect(enabled()).toBe(true);
+  });
+
+  it('no habilita notificaciones desde una evaluación global sin sesión', async () => {
+    const key = 'mapit.s6.notification-center';
+    fetchMock.mockResolvedValue(response({ toggles: [{ name: key, enabled: true }] }));
+    const flags = start();
+    const enabled = flags.isEnabled(key);
+    await settle();
+    expect(flags.listo()).toBe(true);
+    expect(enabled()).toBe(false);
+    expect(flags.isEnabledNow(key)).toBe(false);
+  });
 
   it.each([
     null,

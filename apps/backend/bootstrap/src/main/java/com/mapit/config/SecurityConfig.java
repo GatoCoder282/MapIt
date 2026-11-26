@@ -115,6 +115,9 @@ public class SecurityConfig {
                             "/api/v1/floors/*", "/api/v1/floors/*/sectors",
                             "/api/v1/floors/*/layout", "/api/v1/sectors/*")
                         .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name(), UserRole.STAFF.name())
+                        // HU-7.07: configuración global, solo SUPER_ADMIN.
+                        .requestMatchers("/api/v1/platform/settings", "/api/v1/platform/settings/**")
+                        .hasRole(UserRole.SUPER_ADMIN.name())
                         .requestMatchers("/api/v1/sectors/*/elements", "/api/v1/sectors/*/elements/*",
                             "/v1/sectors/*/elements", "/v1/sectors/*/elements/*")
                         .hasAnyRole(UserRole.ADMIN.name(), UserRole.MANAGER.name())
@@ -177,6 +180,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/establishments/*/payment-policy", "/api/v1/establishments/*/payment-policy/**", "/api/v1/establishments/*/payment-readiness")
                         .hasRole(UserRole.ADMIN.name())
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
+                        .requestMatchers("/api/v1/business-applications", "/api/v1/business-applications/**")
+                        .hasRole(UserRole.SUPER_ADMIN.name())
                         // Administración de tenants (CU-01/CU-03): operación exclusiva
                         // del SUPER_ADMIN de plataforma. Cualquier otro rol autenticado
                         // recibe 403; sin JWT recibe 401 por el entry point.

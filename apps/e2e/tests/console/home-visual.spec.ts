@@ -49,8 +49,9 @@ test.describe('Home Dashboard Visual', () => {
       await page.locator('.scrim').click();
     }
 
-    // Verificar topbar (el buscador se retiró del shell; queda el aviso)
-    await expect(page.locator('.notification-btn')).toBeVisible();
+    // MAP-286 sustituye el aviso ficticio: con el flag OFF no hay campana operativa.
+    await expect(page.getByRole('combobox', { name: 'Idioma', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Notificaciones(?::|$)/ })).toHaveCount(0);
 
     // Verificar KPIs
     await expect(page.locator('text=TOTAL DE NEGOCIOS')).toBeVisible();

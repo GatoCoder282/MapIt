@@ -1,0 +1,113 @@
+@if (vm.access.enabled()) {
+  <button
+    #bell
+    class="bell"
+    type="button"
+    [attr.aria-label]="label()"
+    [attr.aria-expanded]="open()"
+    aria-haspopup="dialog"
+    aria-controls="notification-panel"
+    (click)="toggle()"
+  >
+    <svg lucideBell aria-hidden="true"></svg>
+    @if (vm.unreadCount(); as count) {
+      <span class="badge" aria-hidden="true">{{ count | localNumber: locale() }}</span>
+    }
+  </button>
+  @if (open()) {
+    <section id="notification-panel" class="panel" role="dialog" aria-labelledby="notification-title">
+      <header>
+        <h2 #heading id="notification-title" tabindex="-1">{{ strings.title }}</h2>
+        <button type="button" (click)="close()">{{ strings.close }}</button>
+      </header>
+      <div class="toolbar">
+        <button
+          type="button"
+          (click)="vm.refresh()"
+          [disabled]="vm.busy() || vm.status() === 'loading' || vm.loadingMore()"
+        >
+          {{ strings.refresh }}
+        </button>
+        <button
+          type="button"
+          (click)="vm.markAllRead()"
+          [disabled]="
+            vm.busy() ||
+            vm.loadingMore() ||
+            vm.status() !== 'ready' ||
+            vm.countStatus() !== 'ready' ||
+            !vm.unreadCount()
+          "
+        >
+          {{ strings.markAll }}
+        </button>
+      </div>
+      <div class="messages" aria-live="polite" role="status">
+        @if (vm.countStatus() === 'loading') {
+          <p>{{ strings.countLoading }}</p>
+        }
+        @if (vm.countStatus() === 'error') {
+          <p>{{ strings.countUnavailable }}</p>
+        }
+        @if (vm.feedback() === 'read') {
+          <p>{{ strings.readSuccess }}</p>
+        }
+        @if (vm.feedback() === 'all') {
+          <p>{{ strings.allSuccess }}</p>
+        }
+      </div>
+      @if (vm.actionError()) {
+        <p class="error" role="alert">{{ strings.actionError }}</p>
+      }
+      <div class="results" [attr.aria-busy]="vm.status() === 'loading' || vm.loadingMore()">
+        <mapit-notification-preferences />
+        @if (vm.status() === 'loading') {
+          <p class="state" role="status">{{ strings.loading }}</p>
+        }
+        @if (vm.status() === 'error') {
+          <div class="state error" role="alert">
+            <p>{{ strings.error }}</p>
+            <button type="button" (click)="vm.refresh()">{{ strings.retry }}</button>
+          </div>
+        }
+        @if (vm.status() === 'ready' && vm.entries().length === 0) {
+          <p class="state">{{ strings.empty }}</p>
+        }
+        @if (vm.entries().length > 0) {
+          <ul>
+            @for (item of vm.entries(); track item.id) {
+              <li [class.unread]="item.readAt === null">
+                <h3>{{ strings.types[item.type] }}</h3>
+                <time [attr.datetime]="item.occurredAt">{{ item.occurredAt | localDate: locale() : 'medium' }}</time>
+                <span class="read-state">{{ item.readAt === null ? strings.unread : strings.read }}</span>
+                <details>
+                  <summary>{{ strings.details }}</summary>
+                  <dl>
+                    <dt>{{ strings.reservation }}</dt>
+                    <dd>{{ item.reservationId }}</dd>
+                    <dt>{{ strings.establishment }}</dt>
+                    <dd>{{ item.establishmentId }}</dd>
+                  </dl>
+                </details>
+                @if (item.readAt === null) {
+                  <button
+                    type="button"
+                    (click)="vm.markRead(item.id)"
+                    [disabled]="vm.busy() || vm.loadingMore() || vm.status() !== 'ready'"
+                  >
+                    {{ strings.markRead }}
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        }
+        @if (vm.hasMore() && vm.status() === 'ready') {
+          <button class="more" type="button" (click)="vm.loadMore()" [disabled]="vm.busy() || vm.loadingMore()">
+            {{ vm.loadingMore() ? strings.loading : strings.loadMore }}
+          </button>
+        }
+      </div>
+    </section>
+  }
+}

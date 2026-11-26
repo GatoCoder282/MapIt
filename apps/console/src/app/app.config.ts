@@ -20,6 +20,7 @@ import { provideEchartsCore } from 'ngx-echarts';
 // eslint-disable-next-line no-restricted-imports
 import { provideKonvaMapEngine } from '@mapit/map-engine/adapters/konva/konva-map-engine';
 import { routes } from './app.routes';
+import { NotificationSessionContext } from './core/notification-session-context';
 
 /**
  * Configuración de arranque de la consola.
@@ -90,9 +91,11 @@ export const appConfig: ApplicationConfig = {
       const runtime = inject(RuntimeConfigStore);
       const flags = inject(FeatureFlagService);
       const session = inject(AuthSession);
+      const notifications = inject(NotificationSessionContext);
       return {
         brokerUrl: () => runtime.config().wsUrl,
         accessToken: () => session.token(),
+        notificationSession: () => notifications.context(),
         enabled: () => flags.isEnabledNow('realtime.websocket'),
       };
     }),

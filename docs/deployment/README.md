@@ -3,6 +3,7 @@
 Runbook de los entornos desplegados de MapIt. Las decisiones están en
 [ADR-0012](../architecture/adr/ADR-0012-entornos-desplegados-y-slot-qa.md) (entornos y slot QA) y
 [ADR-0013](../architecture/adr/ADR-0013-unleash-frontend-api-en-despliegues.md) (Unleash en el navegador).
+El diagrama C4 de la infraestructura está en [infraestructura-c4.md](infraestructura-c4.md).
 
 ## Entornos
 
@@ -52,27 +53,30 @@ Notas del slot:
 
 ### Render · MapIt-production
 
-| Variable                                                                  | Valor                                                                                   |
-| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `APP_ENV`                                                                 | `production`                                                                            |
-| `PORT`                                                                    | lo inyecta Render (`10000`)                                                             |
-| `DB_URL`                                                                  | `jdbc:postgresql://<endpoint directo>/neondb?sslmode=require`, sin `user=`/`password=`  |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` 🔒                                  | owner de Neon (Flyway)                                                                  |
-| `MAPIT_APP_DB_USER` / `MAPIT_APP_DB_PASSWORD` 🔒                          | `mapit_app` / contraseña de runtime                                                     |
-| `JWT_SECRET` 🔒, `JWT_ISSUER`, `JWT_ACCESS_TTL_MIN`                       | secreto propio, `mapit`, `15`                                                           |
-| `CORS_ALLOWED_ORIGINS`                                                    | `https://map-it-n7y1.vercel.app,https://map-it-wuy2.vercel.app` (exactos, sin patrones) |
-| `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_FULL_NAME` / `SUPER_ADMIN_PASSWORD` 🔒 | cuenta de plataforma                                                                    |
-| `PUBLIC_WEB_URL`                                                          | `https://map-it-wuy2.vercel.app` (enlaces de los correos)                               |
-| `MAIL_HOST` / `MAIL_PORT`                                                 | `smtp-relay.brevo.com` / `2525`                                                         |
-| `MAIL_USERNAME` 🔒 / `MAIL_PASSWORD` 🔒                                   | login SMTP de Brevo / **SMTP key** (no la API key)                                      |
-| `MAIL_SMTP_AUTH` / `MAIL_SMTP_STARTTLS`                                   | `true` / `true`                                                                         |
-| `MAIL_FROM`                                                               | remitente verificado en Brevo                                                           |
-| `UNLEASH_ENABLED` / `UNLEASH_URL`                                         | `true` / `https://mapit-unleash.onrender.com/api`                                       |
-| `UNLEASH_API_TOKEN` 🔒 / `UNLEASH_ENVIRONMENT`                            | token **backend** de `production` / `production`                                        |
-| `SERVER_FORWARDHEADERSSTRATEGY`                                           | `native` (IP real del cliente para los límites de login/historial)                      |
+| Variable                                                                  | Valor                                                                                                                          |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `APP_ENV`                                                                 | `production`                                                                                                                   |
+| `PORT`                                                                    | lo inyecta Render (`10000`)                                                                                                    |
+| `DB_URL`                                                                  | `jdbc:postgresql://<endpoint directo>/neondb?sslmode=require`, sin `user=`/`password=`                                         |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` 🔒                                  | owner de Neon (Flyway)                                                                                                         |
+| `MAPIT_APP_DB_USER` / `MAPIT_APP_DB_PASSWORD` 🔒                          | `mapit_app` / contraseña de runtime                                                                                            |
+| `JWT_SECRET` 🔒, `JWT_ISSUER`, `JWT_ACCESS_TTL_MIN`                       | secreto propio, `mapit`, `15`                                                                                                  |
+| `CORS_ALLOWED_ORIGINS`                                                    | `https://map-it-n7y1.vercel.app,https://map-it-wuy2.vercel.app` (exactos, sin patrones)                                        |
+| `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_FULL_NAME` / `SUPER_ADMIN_PASSWORD` 🔒 | cuenta de plataforma. Solo se leen en el **primer** arranque: cambiarlas después no cambia la cuenta                           |
+| `PUBLIC_WEB_URL`                                                          | `https://map-it-wuy2.vercel.app` (enlaces de los correos)                                                                      |
+| `MAIL_HOST` / `MAIL_PORT`                                                 | `smtp-relay.brevo.com` / `2525`                                                                                                |
+| `MAIL_USERNAME` 🔒 / `MAIL_PASSWORD` 🔒                                   | login SMTP de Brevo / **SMTP key** (no la API key)                                                                             |
+| `MAIL_SMTP_AUTH` / `MAIL_SMTP_STARTTLS`                                   | `true` / `true`                                                                                                                |
+| `MAIL_FROM`                                                               | remitente verificado en Brevo                                                                                                  |
+| `UNLEASH_ENABLED` / `UNLEASH_URL`                                         | `true` / `https://mapit-unleash.onrender.com/api`                                                                              |
+| `UNLEASH_API_TOKEN` 🔒 / `UNLEASH_ENVIRONMENT`                            | token **backend** de `production` / `production`                                                                               |
+| `SERVER_FORWARDHEADERSSTRATEGY`                                           | `native` (IP real del cliente para los límites de login/historial)                                                             |
+| `SERVER_TOMCAT_REMOTEIP_REMOTEIPHEADER`                                   | `CF-Connecting-IP`: Render está detrás de Cloudflare; sin esto la "IP" es la del borde de Cloudflare y cambia en cada petición |
 
 Ajustes: Health Check Path `/actuator/health/readiness`; PR Previews **Off**; Auto-Deploy
-"After CI checks pass".
+"After CI checks pass"; Build Filters → Included Paths `apps/backend/**`,
+`infra/docker/backend.Dockerfile` y `.dockerignore` (un merge de solo docs o frontend no redespliega
+el backend).
 
 ### Render · MapIt-QA
 
@@ -142,11 +146,14 @@ Build Command: `pnpm api:gen && pnpm exec ng build <app> --configuration product
 
 ## Solución de problemas
 
-| Síntoma                                                                                        | Causa y arreglo                                                                                                                           |
-| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| El backend no arranca: `Validate failed: Migration checksum mismatch` o `description mismatch` | La BD tiene una migración con otro contenido o nombre. Nunca edites una migración aplicada; en QA, rebasea y relanza con `reset_db=true`. |
-| El alta de empresa responde 503                                                                | No hay SMTP: revisa `MAIL_*`. Render free bloquea 25/465/587: usa 2525 con auth y STARTTLS.                                               |
-| El navegador falla por CORS desde un preview                                                   | Añade el patrón del proyecto en `CORS_ALLOWED_ORIGINS` de MapIt-QA. Producción solo orígenes exactos; `*` está prohibido.                 |
-| Un alias abre el login de Vercel                                                               | Desactiva Vercel Authentication en Deployment Protection del proyecto.                                                                    |
-| `config.json` apunta a producción en un preview                                                | `API_BASE_URL` está con scope "Production and Preview": sepáralo y redeploya.                                                             |
-| Los flags no cambian en el navegador                                                           | Revisa `UNLEASH_FRONTEND_*` del entorno y los CORS origins del servidor Unleash.                                                          |
+| Síntoma                                                                                                                      | Causa y arreglo                                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| El backend no arranca: `Validate failed: Migration checksum mismatch` o `description mismatch`                               | La BD tiene una migración con otro contenido o nombre. Nunca edites una migración aplicada; en QA, rebasea y relanza con `reset_db=true`.                                                                                                                                   |
+| El alta de empresa responde 503                                                                                              | No hay SMTP: revisa `MAIL_*`. Render free bloquea 25/465/587: usa 2525 con auth y STARTTLS.                                                                                                                                                                                 |
+| El navegador falla por CORS desde un preview                                                                                 | Añade el patrón del proyecto en `CORS_ALLOWED_ORIGINS` de MapIt-QA. Producción solo orígenes exactos; `*` está prohibido.                                                                                                                                                   |
+| Un alias abre el login de Vercel                                                                                             | Desactiva Vercel Authentication en Deployment Protection del proyecto.                                                                                                                                                                                                      |
+| `config.json` apunta a producción en un preview                                                                              | `API_BASE_URL` está con scope "Production and Preview": sepáralo y redeploya.                                                                                                                                                                                               |
+| Los flags no cambian en el navegador                                                                                         | Revisa `UNLEASH_FRONTEND_*` del entorno y los CORS origins del servidor Unleash.                                                                                                                                                                                            |
+| Deploy de Render cancelado por timeout del health check; el log se corta tras `WebApplicationContextInitializer`, sin Flyway | Render free durmió el servicio (15 min sin tráfico) a mitad del deploy y congeló la instancia nueva. La BD no cambia. Abre la app para despertarla y, mientras responde, haz **Manual Deploy → Deploy latest commit**. El workflow QA deploy ya hace estas peticiones solo. |
+| Los límites por IP (login, historial, solicitudes) no cortan: decenas de intentos seguidos dan 202                           | Faltan `SERVER_FORWARDHEADERSSTRATEGY=native` y `SERVER_TOMCAT_REMOTEIP_REMOTEIPHEADER=CF-Connecting-IP`. Cloudflare rechaza (403) un `CF-Connecting-IP` enviado por el cliente, así que no se puede falsificar.                                                            |
+| El Super Admin da "credenciales inválidas" con los valores de `SUPER_ADMIN_*`                                                | La cuenta se creó en el primer arranque y conserva aquella contraseña; el backend no vuelve a leer esas variables.                                                                                                                                                          |

@@ -1,7 +1,23 @@
 import { Logger } from '@mapit/logging';
-import { effect, inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
+import {
+  effect,
+  inject,
+  Injectable,
+  InjectionToken,
+  signal,
+  untracked,
+  type Signal,
+} from '@angular/core';
 import { Client, type IMessage, type StompConfig, type StompSubscription } from '@stomp/stompjs';
 import { Observable, Subject, filter } from 'rxjs';
+import {
+  NOTIFICATION_USER_DESTINATION,
+  parseNotificationInvalidation,
+  sameNotificationSession,
+  validNotificationSession,
+  type NotificationInvalidation,
+  type NotificationRealtimeSession,
+} from './notification-invalidation';
 
 export type RealtimeConnectionState =
   'idle' | 'connecting' | 'connected' | 'disconnected' | 'disabled' | 'error';
@@ -45,6 +61,9 @@ export interface ReservationPaymentEvent {
 }
 
 export interface RealtimeConfig {
+  /** Binding opcional para superficies staff; la consola aporta sesión vigente y nonce por login.
+   * No autoriza solicitudes ni se envía como identidad al servidor. */
+  readonly notificationSession?: () => NotificationRealtimeSession | null;
   /** Lee el valor runtime en cada intento de conexión. */
   readonly brokerUrl: () => string;
   /** Lee el JWT actual; solo se envía en STOMP CONNECT. */
@@ -125,11 +144,17 @@ export class RealtimeClient {
   private readonly eventos = new Subject<RealtimeEventEnvelope>();
   private readonly paymentEventos = new Subject<ReservationPaymentEvent>();
   private readonly reservationChanges = new Subject<ReservationCreatedEvent>();
+  private readonly notificationEvents = new Subject<{
+    session: NotificationRealtimeSession;
+    event: NotificationInvalidation;
+  }>();
+  private boundNotificationSession: NotificationRealtimeSession | null = null;
   private readonly topics = new Map<string, TopicState>();
   private client: StompClientLike | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private retryAttempt = 0;
   private requested = false;
+  private identityRevision = 0;
   private stopping = false;
 
   readonly connectionState: Signal<RealtimeConnectionState> = this.estado.asReadonly();
@@ -138,6 +163,11 @@ export class RealtimeClient {
   readonly paymentEvents = this.paymentEventos.asObservable();
 
   constructor() {
+    effect(() => {
+      if (!this.config.notificationSession) return;
+      this.config.notificationSession();
+      untracked(() => this.syncIdentity());
+    });
     effect(() => {
       if (!this.config.enabled()) {
         void this.stopForKillSwitch();
@@ -150,6 +180,7 @@ export class RealtimeClient {
   /** Solicita una conexión. Sin flag o JWT no abre el socket. */
   connect(): void {
     this.requested = true;
+    if (this.syncIdentity()) return;
     if (!this.config.enabled()) {
       this.estado.set('disabled');
       return;
@@ -159,11 +190,14 @@ export class RealtimeClient {
 
   /** Cierra el socket y, por defecto, olvida las salas solicitadas. */
   async disconnect(clearSubscriptions = true): Promise<void> {
+    const closing = this.client;
+    const revision = ++this.identityRevision;
     this.requested = false;
     this.stopping = true;
     this.clearRetryTimer();
     if (clearSubscriptions) this.clearTopics();
     await this.deactivateClient();
+    if (this.client !== closing || revision !== this.identityRevision) return;
     this.client = null;
     this.stopping = false;
     this.estado.set('idle');
@@ -213,6 +247,67 @@ export class RealtimeClient {
     );
   }
 
+  /** Disponibilidad local del conector preparado; jamás sustituye autorización backend. */
+  canSubscribeNotifications(session: NotificationRealtimeSession): boolean {
+    return (
+      this.config.enabled() &&
+      validNotificationSession(session) &&
+      sameNotificationSession(session, this.config.notificationSession?.())
+    );
+  }
+
+  /** Reutiliza el socket y destino fijo. Ausente por defecto en la configuración de producción. */
+  subscribeNotificationInvalidations(
+    session: NotificationRealtimeSession,
+  ): Observable<NotificationInvalidation> {
+    const expected = { ...session };
+    return new Observable((subscriber) => {
+      if (!this.canSubscribeNotifications(expected)) {
+        subscriber.error(new Error('Canal privado de notificaciones no disponible'));
+        return;
+      }
+      this.connect();
+      const release = this.retainTopic(NOTIFICATION_USER_DESTINATION);
+      const events = this.notificationEvents
+        .pipe(
+          filter(
+            ({ session: bound }) =>
+              sameNotificationSession(bound, expected) && this.canSubscribeNotifications(expected),
+          ),
+        )
+        .subscribe({ next: ({ event }) => subscriber.next(event) });
+      return () => {
+        events.unsubscribe();
+        release();
+      };
+    });
+  }
+
+  /** Cierra primero la identidad anterior y nunca recicla sus salas ni callbacks. */
+  private syncIdentity(): boolean {
+    if (!this.config.notificationSession) return false;
+    const next = this.config.notificationSession() ?? null;
+    if (
+      (!next && !this.boundNotificationSession) ||
+      sameNotificationSession(next, this.boundNotificationSession)
+    )
+      return false;
+    this.boundNotificationSession = next ? { ...next } : null;
+    const previous = this.client;
+    if (!previous) return false;
+    const revision = ++this.identityRevision;
+    this.client = null;
+    this.clearRetryTimer();
+    this.clearTopics();
+    this.estado.set('idle');
+    if (!next) this.requested = false;
+    void previous.deactivate().finally(() => {
+      if (revision === this.identityRevision && this.requested && this.config.enabled())
+        this.startTransport();
+    });
+    return true;
+  }
+
   private startTransport(): void {
     if (this.client?.active || this.estado() === 'connecting') return;
     const brokerUrl = this.config.brokerUrl();
@@ -225,6 +320,11 @@ export class RealtimeClient {
     this.stopping = false;
     this.clearRetryTimer();
     this.estado.set('connecting');
+    const notificationSession = this.config.notificationSession?.();
+    this.boundNotificationSession =
+      notificationSession && validNotificationSession(notificationSession)
+        ? { ...notificationSession }
+        : null;
     const client = this.factory({
       brokerURL: brokerUrl,
       connectHeaders: { Authorization: `Bearer ${token}` },
@@ -233,12 +333,14 @@ export class RealtimeClient {
     this.client = client;
     client.reconnectDelay = 0;
     client.beforeConnect = () => {
+      if (client !== this.client) throw new Error('Sesión de tiempo real anterior');
       if (!this.config.enabled()) throw new Error('realtime.websocket está desactivado');
       const currentToken = this.config.accessToken();
       if (!currentToken) throw new Error('No hay JWT para abrir WebSocket');
       client.connectHeaders = { Authorization: `Bearer ${currentToken}` };
     };
     client.onConnect = () => {
+      if (client !== this.client) return;
       this.logger.log('INFO', 'realtime.connected');
       this.lastFailureLog = -Infinity;
       this.retryAttempt = 0;
@@ -246,18 +348,25 @@ export class RealtimeClient {
       for (const topic of this.topics.keys()) this.ensureTopicSubscription(topic);
     };
     client.onStompError = (frame) => {
+      if (client !== this.client) return;
       this.logTransportFailure();
       this.errores.next(frame);
       this.estado.set('error');
     };
     client.onWebSocketError = (error) => {
+      if (client !== this.client) return;
       this.logTransportFailure();
       this.errores.next(error);
       this.estado.set('error');
     };
     client.onWebSocketClose = () => {
+      if (client !== this.client) return;
       this.disposeTopicSubscriptions();
       if (this.stopping) return;
+      // STOMP sigue active tras un cierre de red aunque reconnectDelay sea 0.
+      // Soltar ese cliente permite que nuestro backoff cree el siguiente socket.
+      this.client = null;
+      void client.deactivate().catch(() => this.logTransportFailure());
       if (!this.config.enabled()) {
         this.estado.set('disabled');
         return;
@@ -293,33 +402,57 @@ export class RealtimeClient {
     matches: (event: RealtimeEventEnvelope) => boolean,
   ): Observable<RealtimeEventEnvelope> {
     return new Observable<RealtimeEventEnvelope>((subscriber) => {
-      const reference = Symbol(topic);
-      const state: TopicState = this.topics.get(topic) ?? {
-        references: new Set<symbol>(),
-        subscription: undefined,
-      };
-      state.references.add(reference);
-      this.topics.set(topic, state);
-      this.ensureTopicSubscription(topic);
+      const release = this.retainTopic(topic);
       const events = this.eventos.pipe(filter(matches)).subscribe(subscriber);
       return () => {
         events.unsubscribe();
-        const current = this.topics.get(topic);
-        if (!current) return;
-        current.references.delete(reference);
-        if (current.references.size === 0) {
-          current.subscription?.unsubscribe();
-          this.topics.delete(topic);
-        }
+        release();
       };
     });
+  }
+
+  private retainTopic(topic: string): () => void {
+    const reference = Symbol(topic);
+    const state = this.topics.get(topic) ?? {
+      references: new Set<symbol>(),
+      subscription: undefined,
+    };
+    state.references.add(reference);
+    this.topics.set(topic, state);
+    this.ensureTopicSubscription(topic);
+    return () => {
+      if (this.topics.get(topic) !== state) return;
+      state.references.delete(reference);
+      if (!state.references.size) {
+        state.subscription?.unsubscribe();
+        this.topics.delete(topic);
+      }
+    };
   }
 
   private ensureTopicSubscription(topic: string): void {
     const client = this.client;
     const state = this.topics.get(topic);
     if (!client || !state || state.subscription || this.estado() !== 'connected') return;
-    state.subscription = client.subscribe(topic, (message) => this.acceptMessage(message));
+    if (topic === NOTIFICATION_USER_DESTINATION) {
+      const bound = this.boundNotificationSession;
+      if (!bound || !this.canSubscribeNotifications(bound)) return;
+      state.subscription = client.subscribe(topic, (message) => {
+        if (
+          client !== this.client ||
+          this.topics.get(topic) !== state ||
+          this.estado() !== 'connected' ||
+          !this.canSubscribeNotifications(bound)
+        )
+          return;
+        const event = parseNotificationInvalidation(message.body);
+        if (event) this.notificationEvents.next({ session: bound, event });
+        else {
+          this.logInvalidMessage();
+          this.errores.next(new Error('Aviso de notificación inválido'));
+        }
+      });
+    } else state.subscription = client.subscribe(topic, (message) => this.acceptMessage(message));
   }
 
   private acceptMessage(message: IMessage): void {
@@ -366,11 +499,14 @@ export class RealtimeClient {
   }
 
   private async stopForKillSwitch(): Promise<void> {
+    const closing = this.client;
+    const revision = ++this.identityRevision;
     if (!this.client && this.estado() === 'disabled') return;
     this.stopping = true;
     this.clearRetryTimer();
     this.disposeTopicSubscriptions();
     await this.deactivateClient();
+    if (this.client !== closing || revision !== this.identityRevision) return;
     this.client = null;
     this.stopping = false;
     this.estado.set('disabled');

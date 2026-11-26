@@ -33,15 +33,25 @@ dependencies {
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.springdoc.openapi)
     implementation(libs.bundles.jwt)
+    implementation(libs.flyway.core)
+    implementation(libs.spring.boot.flyway)
 
     testImplementation(libs.spring.boot.starter.test)
-    testImplementation(libs.flyway.core)
     testImplementation(libs.spring.security.test)
     testImplementation(libs.archunit.junit5)
     testImplementation(libs.bundles.testcontainers)
     testImplementation(libs.spring.boot.testcontainers)
-    // Ya existe en runtime; el test de actualización V21 → V22 usa su API directamente.
-    testImplementation(libs.flyway.core)
+}
+
+// MAP-286 no puede aplicar V43 antes de integrar la migración V40 de MAP-285.
+// Protege también el CLI de Gradle, que no utiliza el wiring Spring de arranque.
+tasks.named("flywayMigrate") {
+    doFirst {
+        check(file("src/main/resources/db/migration/V40__agregar_contacto_e_idioma_al_perfil_personal.sql").isFile &&
+            fileTree("src/main/resources/db/migration") { include("V40__*.sql") }.files.size == 1) {
+            "MAP-286 requiere integrar V40 de MAP-285 antes de migrar V43-V45."
+        }
+    }
 }
 
 // Flyway se configura desde el .env de la raíz del monorepo.

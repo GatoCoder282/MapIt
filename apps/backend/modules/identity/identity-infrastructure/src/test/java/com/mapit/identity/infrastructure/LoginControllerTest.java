@@ -141,13 +141,33 @@ class LoginControllerTest {
             repository,
             (rawPassword, passwordHash) ->
                 passwordHash.isPresent() && "correcta".equals(rawPassword));
-    var issue =
-        new IssueAccessToken(user -> new IssuedAccessToken("jwt.firmado.valor", EXPIRES_AT));
+    var issue = new IssueAccessToken(new com.mapit.identity.domain.AccessTokenIssuer() {
+      @Override public IssuedAccessToken issue(AuthenticatedUser user) { return new IssuedAccessToken("jwt.firmado.valor", EXPIRES_AT); }
+      @Override public IssuedAccessToken issue(AuthenticatedUser user, Instant at) { return issue(user); }
+    });
     return MockMvcBuilders.standaloneSetup(
-        new LoginController(authenticate, issue, mock(AuthAttemptLimiter.class))).build();
+        new LoginController(new com.mapit.identity.application.OpenStaffSession(authenticate, issue), mock(AuthAttemptLimiter.class))).build();
+  }
+
+  @Test
+  void barrera_de_iat_o_fallo_de_commit_no_devuelven_un_jwt() throws Exception {
+    var sessions = mock(com.mapit.identity.application.OpenStaffSession.class);
+    var mvc = MockMvcBuilders.standaloneSetup(new LoginController(sessions, mock(AuthAttemptLimiter.class))).build();
+    for (RuntimeException failure : new RuntimeException[] {
+        new com.mapit.identity.domain.TokenIssuanceNotReady(),
+        new org.springframework.transaction.TransactionSystemException("private-canary")}) {
+      org.mockito.Mockito.doThrow(failure).when(sessions).execute(org.mockito.ArgumentMatchers.any());
+      mvc.perform(post("/api/v1/auth/global-login").contentType(MediaType.APPLICATION_JSON)
+          .content("{\"email\":\"staff@example.test\",\"password\":\"private-test-password\"}"))
+          .andExpect(status().isServiceUnavailable()).andExpect(header().string("Retry-After", "1"))
+          .andExpect(header().string("Cache-Control", "no-store"))
+          .andExpect(jsonPath("$.accessToken").doesNotExist())
+          .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("private-canary"))))
+          .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("private-test-password"))));
+    }
   }
 
   private static Optional<UserCredentials> credentials(boolean active) {
-    return Optional.of(new UserCredentials(USER, "hash-privado", active, true));
+    return Optional.of(new UserCredentials(USER, "hash-privado", active, true, null, EXPIRES_AT.minusSeconds(900)));
   }
 }

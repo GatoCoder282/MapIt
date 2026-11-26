@@ -6,6 +6,7 @@ import { convertToParamMap, Router, type Routes } from '@angular/router';
 import { STRINGS } from './core/strings';
 import { operationalExitGuard } from './core/operational-exit-guard';
 import { StructureEditorContext } from './core/structure-editor-context';
+import { myAccountGuard } from './core/my-account-access';
 
 /**
  * Rutas de la consola de staff.
@@ -50,6 +51,20 @@ export const routes: Routes = [
           import('./features/administration/tenants/ui/tenant-list').then((m) => m.TenantList),
       },
       {
+        path: 'business-applications',
+        loadComponent: () =>
+          import('./features/administration/business-applications/ui/business-application-list').then(
+            (m) => m.BusinessApplicationList,
+          ),
+      },
+      {
+        path: 'business-applications/:id',
+        loadComponent: () =>
+          import('./features/administration/business-applications/ui/business-application-detail').then(
+            (m) => m.BusinessApplicationDetailPage,
+          ),
+      },
+      {
         path: 'tenants/new',
         loadComponent: () =>
           import('./features/administration/tenant-registration/ui/tenant-registration').then(
@@ -63,13 +78,16 @@ export const routes: Routes = [
       },
       {
         path: 'settings',
-        data: { title: STRINGS.shell.nav.settings },
-        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+        loadComponent: () =>
+          import('./features/administration/platform-settings/ui/platform-settings').then(
+            (m) => m.PlatformSettings,
+          ),
       },
       {
         path: 'profile',
-        data: { title: STRINGS.shell.nav.profile },
-        loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),
+        canActivate: [authGuard, myAccountGuard],
+        canDeactivate: [operationalExitGuard],
+        loadComponent: () => import('./features/my-account/ui/my-account').then((m) => m.MyAccount),
       },
     ],
   },
@@ -80,6 +98,13 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./layout/staff-shell').then((m) => m.StaffShell),
     children: [
+      {
+        path: 'my-account',
+        data: { requiresEstablishment: false },
+        canActivate: [authGuard, myAccountGuard],
+        canDeactivate: [operationalExitGuard],
+        loadComponent: () => import('./features/my-account/ui/my-account').then((m) => m.MyAccount),
+      },
       {
         path: 'home',
         loadComponent: () => import('./features/home/ui/home').then((m) => m.Home),

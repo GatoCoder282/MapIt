@@ -14,7 +14,14 @@ public enum AuditEventType {
   USER_INVITATION_ACCEPTED(AuditResourceType.USER, Set.of("invitationId", "role")),
   USER_ROLE_CHANGED(AuditResourceType.USER, Set.of("previousRole", "newRole")),
   USER_DEACTIVATED(AuditResourceType.USER, Set.of("previousActive", "newActive")),
-  USER_RECOVERED(AuditResourceType.USER, Set.of("targetTenantId", "ticket", "reason"));
+  USER_RECOVERED(AuditResourceType.USER, Set.of("targetTenantId", "ticket", "reason")),
+  BUSINESS_APPLICATION_APPROVED(
+      AuditResourceType.BUSINESS_APPLICATION, Set.of("approvedTenantId")),
+  BUSINESS_APPLICATION_REJECTED(
+      AuditResourceType.BUSINESS_APPLICATION, Set.of("status")),
+  PLATFORM_SETTING_CHANGED(
+      AuditResourceType.PLATFORM_SETTING,
+      Set.of("setting", "previousValue", "newValue", "reason"));
 
   private final AuditResourceType resourceType;
   private final Set<String> allowedDetailKeys;

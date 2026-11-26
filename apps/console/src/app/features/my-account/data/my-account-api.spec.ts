@@ -1,0 +1,84 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { BASE_PATH } from '@mapit/api-client';
+import { MyAccountApi } from './my-account-api';
+
+describe('MyAccountApi', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: BASE_PATH, useValue: '/api/v1' },
+      ],
+    }),
+  );
+  afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+  it('envía la contraseña solo en el body de POST /me/password y no usa transfer cache', () => {
+    const command = {
+      currentPassword: 'OldSecret1!',
+      newPassword: 'NewSecret2!',
+      newPasswordConfirm: 'NewSecret2!',
+    };
+    const received = vi.fn();
+    TestBed.inject(MyAccountApi).changePassword(command).subscribe(received);
+    const request = TestBed.inject(HttpTestingController).expectOne('/api/v1/me/password');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(command);
+    expect(request.request.params.keys()).toEqual([]);
+    expect(request.request.transferCache).toBe(false);
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    expect(received).toHaveBeenCalledWith(null);
+  });
+
+  it('consulta el perfil propio con el cliente generado, sin selector de identidad', () => {
+    const received = vi.fn();
+    TestBed.inject(MyAccountApi).read().subscribe(received);
+    const request = TestBed.inject(HttpTestingController).expectOne('/api/v1/me');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.transferCache).toBe(false);
+    request.flush({
+      fullName: 'Nombre real',
+      email: 'real@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
+    expect(received).toHaveBeenCalledWith({
+      fullName: 'Nombre real',
+      email: 'real@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
+  });
+
+  it('envía únicamente fullName a PATCH /me', () => {
+    TestBed.inject(MyAccountApi).update({ fullName: 'Nuevo nombre' }).subscribe();
+    const request = TestBed.inject(HttpTestingController).expectOne('/api/v1/me');
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body).toEqual({ fullName: 'Nuevo nombre' });
+    expect(request.request.params.keys()).toEqual([]);
+    request.flush({
+      fullName: 'Nuevo nombre',
+      email: 'real@example.com',
+      contactPhone: null,
+      preferredLanguage: null,
+    });
+  });
+
+  it('preserva la presencia y null de opcionales sin enviar identidad ni valores ausentes', () => {
+    TestBed.inject(MyAccountApi)
+      .update({ contactPhone: null, preferredLanguage: 'en' })
+      .subscribe();
+    const request = TestBed.inject(HttpTestingController).expectOne('/api/v1/me');
+    expect(request.request.body).toEqual({ contactPhone: null, preferredLanguage: 'en' });
+    expect(request.request.params.keys()).toEqual([]);
+    request.flush({
+      fullName: 'Nombre',
+      email: 'real@example.com',
+      contactPhone: null,
+      preferredLanguage: 'en',
+    });
+  });
+});

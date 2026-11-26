@@ -117,3 +117,44 @@ orden de dependencias.
 - No se implementa la actualización de estado de MAP-104/HU-3.01.
 - No se implementa la vista completa de MAP-145/HU-3.02.
 - No se agregan mensajes de cliente, drag & drop, reservas ni estado de negocio dentro del broker.
+
+## MAP-295 — Invalidación privada de la bandeja
+
+Destino lógico de SUBSCRIBE: `/user/topic/notifications`. Principal del servidor
+`staff:{tenant}:{userUuid}`, derivado únicamente del JWT validado y revalidado mediante
+CurrentStaffIdentity de MAP-238. No hay nuevo socket ni credenciales de identidad del cliente.
+Se rechazan SEND, destinos físicos, otros usuarios, comodines y un segundo CONNECT sobre la
+misma sesión. El routing físico de Spring termina en `-user{sessionId}`; outbound exige esa
+coincidencia exacta con la sesión autenticada, identidad vigente y gate contextual ON.
+
+Envelope mínimo, sin datos de aviso/tenant/usuario/PII:
+
+```json
+{
+  "eventId": "00000000-0000-0000-0000-000000000001",
+  "eventType": "notification.inbox.invalidated.v1",
+  "schemaVersion": 1,
+  "occurredAt": "2026-11-22T12:00:00Z"
+}
+```
+
+V42 captura hechos/candidatos en la transacción original; fanout y señales usan fases separadas.
+La primera persiste avisos/processed_at atómicamente. La segunda reclama versiones ya confirmadas,
+revalida permisos y envía por SimpMessagingTemplate. Creación y primer marcado de lectura generan
+versiones distintas; el ID de señal es estable por aviso/versión y se conserva al reintentar.
+`delivered_version` marca aceptación por el broker, **no recepción ni lectura del cliente**.
+Un rollback permite reenvío; broker sin suscriptores u OFF puede descartar señales. Los hechos,
+la bandeja y las preferencias persisten independientemente del flag; HTTP es la fuente de verdad.
+
+La consola conecta el binding real de AuthSession al transporte compartido. Cambio de identidad
+cierra el socket anterior, olvida sus salas y descarta sus callbacks antes de conectar el nuevo;
+la superficie pública sin ese binding conserva su configuración. OFF del centro solo elimina su
+suscripción/estado; no detiene salas operativas. OFF de realtime conserva HTTP manual y recarga
+una bandeja abierta. La UI agrupa señales 100 ms, deduplica 256 IDs y reconcilia lista/contador tras
+conexión/reconexión, incluso si llegó un aviso durante lectura/escritura. Nunca aplica deltas.
+
+QA local: PostgreSQL y STOMP reales con usuarios del mismo tenant y de otro tenant, token revocado,
+RLS y reintentos. Unitarios cubren suplantación/destinos físicos, permisos/contexto, proveedor
+fallido, callbacks tardíos y reconexión. Pendientes Unleash real, E2E/QA visual y CI antes de PR;
+flag `mapit.s6.notification-center` permanece OFF por defecto. Despliegue V40→V41→V42→V43:
+V40 no está en esta rama ni se copia desde MAP-285.

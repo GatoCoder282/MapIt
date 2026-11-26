@@ -51,6 +51,10 @@ Excepciones (tablas globales, sin `tenant_id`): `tenant`, `element_template`,
 5. `ddl-auto: validate` — Hibernate **verifica**, no crea. Si la app no arranca tras tu
    cambio, es que la entidad y el esquema no coinciden: eso es la red funcionando, no un
    estorbo. Jamás lo "arregles" poniendo `update`.
+6. **El número de versión se reserva al mergear.** Antes de mergear, rebasea sobre `main`.
+   Si tu `V<n>` ya existe ahí, renombra la tuya al siguiente libre con `git mv`. Si tu
+   migración redefine una restricción con lista de valores, parte de su última definición
+   en `main`. Detalle en la skill `new-migration`, regla 5.
 
 ## Antes de terminar
 

@@ -4,7 +4,7 @@ import { AuthSession, type SessionUser } from '@mapit/auth';
 import { firstValueFrom } from 'rxjs';
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
-type Identity = { tenantId: string; userId: string; sessionUser: SessionUser };
+type Identity = { tenantId: string; userId: string; role: SessionUser['role']; revision: number };
 
 @Injectable({ providedIn: 'root' })
 export class EstablishmentContext {
@@ -19,10 +19,9 @@ export class EstablishmentContext {
 
   readonly establishments = this.itemsState.asReadonly();
   readonly active = computed(() => {
-    const user = this.session.user();
     const active = this.activeState();
     const identity = this.identity;
-    return identity && user === identity.sessionUser ? active : null;
+    return identity && this.isCurrent(identity) ? active : null;
   });
   readonly status = this.statusState.asReadonly();
 
@@ -30,8 +29,16 @@ export class EstablishmentContext {
   constructor() {
     effect(() => {
       const user = this.session.user();
-      const next = user ? { tenantId: user.tenantId, userId: user.id, sessionUser: user } : null;
-      if (next?.sessionUser === this.identity?.sessionUser) return;
+      const next =
+        user && user.role !== 'SUPER_ADMIN'
+          ? {
+              tenantId: user.tenantId,
+              userId: user.id,
+              role: user.role,
+              revision: this.session.revision(),
+            }
+          : null;
+      if (next ? this.identity && this.isCurrent(this.identity) : !this.identity) return;
 
       this.generation++;
       this.identity = next;
@@ -45,9 +52,9 @@ export class EstablishmentContext {
 
   load(): Promise<void> {
     const user = this.session.user();
-    if (!user) return Promise.resolve();
-    const identity = { tenantId: user.tenantId, userId: user.id, sessionUser: user };
-    if (identity.sessionUser !== this.identity?.sessionUser) {
+    if (!user || user.role === 'SUPER_ADMIN') return Promise.resolve();
+    const identity = this.identity;
+    if (!identity || !this.isCurrent(identity)) {
       return Promise.resolve();
     }
     if (this.pending) return this.pending;
@@ -98,7 +105,13 @@ export class EstablishmentContext {
   }
 
   private isCurrent(identity: Identity): boolean {
-    return this.session.user() === identity.sessionUser;
+    const user = this.session.user();
+    return (
+      user?.id === identity.userId &&
+      user.tenantId === identity.tenantId &&
+      user.role === identity.role &&
+      this.session.revision() === identity.revision
+    );
   }
 
   private storageKey(identity: Identity): string {

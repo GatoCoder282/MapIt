@@ -11,9 +11,13 @@ import { RouterOutlet } from '@angular/router';
 import { AuthSession } from '@mapit/auth';
 import { LanguageSelector } from '@mapit/i18n';
 import { Sidebar } from './sidebar/sidebar';
-import { LucideBell, LucideLogOut } from '@lucide/angular';
+import { LucideLogOut } from '@lucide/angular';
+// El shell compone features; esta dependencia no cruza de una feature a otra.
+// eslint-disable-next-line no-restricted-imports
+import { NotificationCenter } from '../features/notifications/ui/notification-center';
 
 import { STRINGS } from '../core/strings';
+import { MyAccountAccess } from '../core/my-account-access';
 
 interface NavItem {
   label: string;
@@ -32,7 +36,7 @@ const ENFOCABLES_DRAWER = 'a[href], button:not([disabled]), [tabindex]:not([tabi
  */
 @Component({
   selector: 'mapit-admin-shell',
-  imports: [RouterOutlet, LucideLogOut, LucideBell, Sidebar, LanguageSelector],
+  imports: [RouterOutlet, LucideLogOut, Sidebar, LanguageSelector, NotificationCenter],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,13 +44,21 @@ const ENFOCABLES_DRAWER = 'a[href], button:not([disabled]), [tabindex]:not([tabi
 export class AdminShell {
   protected readonly strings = STRINGS;
   protected readonly session = inject(AuthSession);
+  private readonly myAccountAccess = inject(MyAccountAccess);
   protected readonly menuOpen = signal(false);
 
   protected readonly navItems = computed<readonly NavItem[]>(() => [
     { label: STRINGS.shell.nav.dashboard, route: '/admin/dashboard', icon: 'dashboard' },
     { label: STRINGS.shell.nav.tenants, route: '/admin/tenants', icon: 'tenants' },
+    {
+      label: STRINGS.shell.nav.businessApplications,
+      route: '/admin/business-applications',
+      icon: 'tenants',
+    },
     { label: STRINGS.shell.nav.settings, route: '/admin/settings', icon: 'settings' },
-    { label: STRINGS.shell.nav.profile, route: '/admin/profile', icon: 'profile' },
+    ...(this.myAccountAccess.enabled()
+      ? [{ label: STRINGS.myAccount.title, route: '/admin/profile', icon: 'profile' }]
+      : []),
   ]);
 
   protected readonly roleLabel = computed(() => {

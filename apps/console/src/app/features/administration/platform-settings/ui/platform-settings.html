@@ -1,0 +1,191 @@
+<section class="platform-settings" aria-labelledby="platform-settings-title">
+  <header>
+    <h1 id="platform-settings-title">{{ copy.title }}</h1>
+    <p>{{ copy.intro }}</p>
+  </header>
+
+  @if (store.notice(); as notice) {
+    <p class="notice" [class.notice--error]="notice !== 'saved'" role="status" data-testid="settings-notice">
+      {{ copy.notices[notice] }}
+    </p>
+  }
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status">{{ copy.loading }}</p>
+    }
+    @case ('disabled') {
+      <p class="notice" role="status" data-testid="settings-disabled">{{ copy.disabled }}</p>
+    }
+    @case ('error') {
+      <p class="notice notice--error" role="alert">
+        {{ copy.failed }}
+        <button type="button" (click)="store.load()">{{ copy.retry }}</button>
+      </p>
+    }
+    @case ('loaded') {
+      @if (store.overview(); as data) {
+        <section aria-labelledby="editable-title">
+          <h2 id="editable-title">{{ copy.editableTitle }}</h2>
+          <p class="hint">{{ copy.editableHint }}</p>
+          <ul class="rows">
+            @for (setting of data.settings; track setting.key) {
+              <li [attr.data-testid]="'setting-' + setting.key">
+                <div class="row">
+                  <div>
+                    <strong>{{ label(setting.key) }}</strong>
+                    <small>
+                      {{ copy.range }}: {{ setting.min }}–{{ setting.max }} · {{ copy.defaultValue }}:
+                      {{ setting.defaultValue }}
+                      @if (setting.overridden) {
+                        · {{ copy.overridden }}
+                      }
+                    </small>
+                  </div>
+                  <span class="value" data-testid="setting-value">{{ setting.value }}</span>
+                  <button type="button" data-testid="setting-edit" (click)="store.edit(setting)">
+                    {{ copy.edit }}
+                  </button>
+                </div>
+
+                @if (store.editingKey() === setting.key) {
+                  @if (store.pending(); as pending) {
+                    <div
+                      class="confirm"
+                      role="alertdialog"
+                      aria-labelledby="confirm-title"
+                      data-testid="setting-confirm"
+                    >
+                      <h3 id="confirm-title">{{ copy.confirmTitle }}</h3>
+                      <p>
+                        {{ label(pending.setting.key) }}: {{ pending.setting.value }} →
+                        {{ pending.value ?? pending.setting.defaultValue }}
+                      </p>
+                      <p>{{ copy.effect }}</p>
+                      <div class="actions">
+                        <button
+                          type="button"
+                          data-testid="setting-apply"
+                          [disabled]="store.saving()"
+                          (click)="store.confirm()"
+                        >
+                          {{ store.saving() ? copy.saving : copy.apply }}
+                        </button>
+                        <button type="button" class="secondary" [disabled]="store.saving()" (click)="store.back()">
+                          {{ copy.back }}
+                        </button>
+                      </div>
+                    </div>
+                  } @else {
+                    <form class="editor" (submit)="$event.preventDefault(); store.review()">
+                      <label>
+                        {{ copy.newValue }}
+                        <input
+                          type="number"
+                          name="value"
+                          [min]="setting.min"
+                          [max]="setting.max"
+                          [value]="store.draft()"
+                          [attr.aria-invalid]="store.draftValid() ? null : 'true'"
+                          (input)="store.draft.set(value($event))"
+                        />
+                      </label>
+                      <label>
+                        {{ copy.reason }}
+                        <input
+                          type="text"
+                          name="reason"
+                          maxlength="200"
+                          [value]="store.reason()"
+                          (input)="store.reason.set(value($event))"
+                        />
+                        <small>{{ copy.reasonHint }}</small>
+                      </label>
+                      <div class="actions">
+                        <button type="submit" data-testid="setting-review" [disabled]="!store.canReview()">
+                          {{ copy.review }}
+                        </button>
+                        @if (setting.overridden) {
+                          <button
+                            type="button"
+                            class="secondary"
+                            data-testid="setting-restore"
+                            [disabled]="!store.canRestore()"
+                            (click)="store.reviewRestore()"
+                          >
+                            {{ copy.restore }}
+                          </button>
+                        }
+                        <button type="button" class="secondary" (click)="store.cancel()">{{ copy.cancel }}</button>
+                      </div>
+                    </form>
+                  }
+                }
+              </li>
+            }
+          </ul>
+        </section>
+
+        <section aria-labelledby="readonly-title">
+          <h2 id="readonly-title">{{ copy.readOnlyTitle }}</h2>
+          <p class="hint">{{ copy.readOnlyHint }}</p>
+          <dl>
+            <div>
+              <dt>{{ copy.environment }}</dt>
+              <dd>{{ data.environment }}</dd>
+            </div>
+            <div>
+              <dt>{{ copy.database }}</dt>
+              <dd>{{ data.services.databaseAvailable ? copy.available : copy.unavailable }}</dd>
+            </div>
+            <div>
+              <dt>{{ copy.flagProvider }}</dt>
+              <dd>{{ copy.providers[data.services.flagProvider] }}</dd>
+            </div>
+            @for (item of data.readOnly; track item.key) {
+              <div>
+                <dt>{{ label(item.key) }}</dt>
+                <dd>{{ item.value }}</dd>
+              </div>
+            }
+          </dl>
+        </section>
+
+        <section aria-labelledby="flags-title">
+          <h2 id="flags-title">{{ copy.flagsTitle }}</h2>
+          <p class="hint">{{ copy.flagsHint }}</p>
+          <ul class="rows" data-testid="settings-flags">
+            @for (flag of data.flags; track flag.key) {
+              <li class="row">
+                <div>
+                  <code>{{ flag.key }}</code>
+                  <small>{{ flag.type }} · {{ copy.defaultValue }}: {{ flag.defaultValue ? copy.on : copy.off }}</small>
+                </div>
+                <span class="value">{{ flag.enabled ? copy.on : copy.off }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <section aria-labelledby="history-title">
+          <h2 id="history-title">{{ copy.historyTitle }}</h2>
+          <ul class="rows" data-testid="settings-history">
+            @for (change of store.changes(); track $index) {
+              <li class="row">
+                <div>
+                  <strong>{{ label(change.key) }}: {{ change.previousValue }} → {{ change.newValue }}</strong>
+                  <small>{{ change.reason }}</small>
+                  <small>
+                    {{ change.actorName }} · {{ change.occurredAt | localDate: i18n.locale() : 'medium' }}
+                  </small>
+                </div>
+              </li>
+            } @empty {
+              <li class="hint">{{ copy.historyEmpty }}</li>
+            }
+          </ul>
+        </section>
+      }
+    }
+  }
+</section>

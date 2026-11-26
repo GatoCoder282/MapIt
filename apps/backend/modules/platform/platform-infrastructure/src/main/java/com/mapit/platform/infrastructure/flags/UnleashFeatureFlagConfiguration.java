@@ -15,21 +15,33 @@ import io.getunleash.util.UnleashConfig;
     prefix = "mapit.unleash", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class UnleashFeatureFlagConfiguration {
 
+  @Bean
+  UnleashLoggingSubscriber unleashTransport() {
+    return new UnleashLoggingSubscriber();
+  }
+
+  @Bean
+  MyAccountFlagAvailability myAccountFlagAvailability(UnleashLoggingSubscriber transport) {
+    return new MyAccountFlagAvailability(System::nanoTime, transport);
+  }
+
   @Bean(destroyMethod = "shutdown")
   Unleash unleash(
       @Value("${mapit.unleash.url}") String url,
       @Value("${mapit.unleash.api-token}") String apiToken,
       @Value("${mapit.unleash.app-name}") String appName,
-      @Value("${mapit.unleash.environment}") String environment) {
+      @Value("${mapit.unleash.environment}") String environment,
+      MyAccountFlagAvailability availability) {
     UnleashConfig config =
         UnleashConfig.builder()
             .unleashAPI(url)
             .apiKey(apiToken)
             .appName(appName)
             .environment(environment)
-            .subscriber(new UnleashLoggingSubscriber())
+            .subscriber(availability)
             .synchronousFetchOnInitialisation(false)
             .build();
     return new DefaultUnleash(config);
   }
+
 }

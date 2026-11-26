@@ -10,6 +10,13 @@
 export const REALTIME_VERSION = '0.1.0';
 
 export {
+  NOTIFICATION_USER_DESTINATION,
+  parseNotificationInvalidation,
+  type NotificationInvalidation,
+  type NotificationRealtimeSession,
+} from './notification-invalidation';
+
+export {
   REALTIME_CONFIG,
   REALTIME_STOMP_CLIENT_FACTORY,
   RealtimeClient,

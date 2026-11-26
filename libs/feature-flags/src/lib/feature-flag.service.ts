@@ -1,9 +1,23 @@
 import { Logger } from '@mapit/logging';
-import { computed, effect, inject, Injectable, signal, type Signal } from '@angular/core';
+import {
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  Injectable,
+  signal,
+  type Signal,
+} from '@angular/core';
 
-import { FEATURE_FLAG_CONFIG, type FeatureFlagContext } from './feature-flag.config';
+import {
+  FEATURE_FLAG_CONFIG,
+  type FeatureFlagContext as FeatureFlagEvaluationContext,
+} from './feature-flag.config';
 import { FLAGS_POR_DEFECTO, type FeatureFlagKey } from './feature-flag.catalog';
 import { VERTICAL_FLAGS } from './vertical-flags';
+import { validFeatureFlagContext, type FeatureFlagContext } from './feature-flag.context';
+
+const NOTIFICATION_CENTER: FeatureFlagKey = 'mapit.s6.notification-center';
 
 interface RespuestaProxy {
   readonly toggles: readonly { readonly name: string; readonly enabled: boolean }[];
@@ -45,7 +59,13 @@ export class FeatureFlagService {
   // debe arrastrar el token de sesión hacia el proxy de flags.
   private readonly config = inject(FEATURE_FLAG_CONFIG);
   private readonly logger = inject(Logger);
+  private readonly destroyRef = inject(DestroyRef);
   private degraded = false;
+  private context: FeatureFlagContext | null = null;
+  private contextRevision = 0;
+  private requestRevision = 0;
+  private contextRequest: AbortController | null = null;
+  private readonly notificationCenter = signal(false);
 
   /** Estado actual. Arranca con los valores por defecto del catálogo. */
   private readonly estado = signal<Readonly<Record<string, boolean>>>({ ...FLAGS_POR_DEFECTO });
@@ -55,6 +75,7 @@ export class FeatureFlagService {
   readonly listo = this.sincronizado.asReadonly();
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.setContext(null));
     // Sin proxy configurado se conservan los valores del catálogo, sin sondeo.
     if (!this.config.proxyUrl) return;
     // Sondeo periódico: es así como una flag apagada en la UI de Unleash llega
@@ -73,7 +94,10 @@ export class FeatureFlagService {
         pending = false;
       };
       void refresh();
-      const id = setInterval(() => void refresh(), this.config.intervaloRefrescoMs);
+      const id = setInterval(() => {
+        void refresh();
+        void this.refreshContext();
+      }, this.config.intervaloRefrescoMs);
       onCleanup(() => {
         clearInterval(id);
         scope.abort();
@@ -97,7 +121,11 @@ export class FeatureFlagService {
   isEnabled(flag: FeatureFlagKey): Signal<boolean> {
     let sig = this.cache.get(flag);
     if (!sig) {
-      sig = computed(() => this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false);
+      sig = computed(() =>
+        flag === NOTIFICATION_CENTER
+          ? this.notificationCenter()
+          : (this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false),
+      );
       this.cache.set(flag, sig);
     }
     return sig;
@@ -114,11 +142,166 @@ export class FeatureFlagService {
 
   /** Lectura puntual, para lógica imperativa (guards, interceptores). */
   isEnabledNow(flag: FeatureFlagKey): boolean {
+    if (flag === NOTIFICATION_CENTER) return this.notificationCenter();
     return this.estado()[flag] ?? FLAGS_POR_DEFECTO[flag] ?? false;
   }
 
+  /** Lectura ligada a identidad: nunca muestra un ON de la sesión anterior mientras llega el efecto. */
+  isEnabledForContext(flag: FeatureFlagKey, context: FeatureFlagContext | null): boolean {
+    const enabled = this.notificationCenter();
+    return (
+      flag === NOTIFICATION_CENTER &&
+      enabled &&
+      context !== null &&
+      context.tenantId === this.context?.tenantId &&
+      context.userId === this.context?.userId &&
+      context.sessionId === this.context?.sessionId
+    );
+  }
+
+  /** La consola llama al iniciar/cambiar sesión y con null al salir; no persiste datos. */
+  setContext(candidate: FeatureFlagContext | null): void {
+    const context = candidate && validFeatureFlagContext(candidate) ? { ...candidate } : null;
+    if (
+      context?.tenantId === this.context?.tenantId &&
+      context?.userId === this.context?.userId &&
+      context?.sessionId === this.context?.sessionId
+    )
+      return;
+    this.context = context;
+    this.contextRevision++;
+    this.contextRequest?.abort();
+    this.contextRequest = null;
+    this.notificationCenter.set(false);
+    if (context) void this.refreshContext();
+  }
+
+  private async refreshContext(): Promise<void> {
+    const context = this.context;
+    if (!context || !this.config.proxyUrl) return;
+    const revision = this.contextRevision;
+    const request = ++this.requestRevision;
+    this.contextRequest?.abort();
+    const controller = new AbortController();
+    this.contextRequest = controller;
+    const current = () =>
+      revision === this.contextRevision &&
+      request === this.requestRevision &&
+      !controller.signal.aborted;
+    const timeout = setTimeout(() => {
+      if (current()) this.notificationCenter.set(false);
+      controller.abort();
+    }, 10_000);
+    try {
+      const url = new URL(this.config.proxyUrl, globalThis.location?.origin ?? 'http://localhost');
+      url.searchParams.set('userId', context.userId);
+      url.searchParams.set('sessionId', context.sessionId);
+      url.searchParams.set('properties[tenantId]', context.tenantId);
+      const response = await fetch(url.toString(), {
+        headers: { Authorization: this.config.clientKey },
+        credentials: 'omit',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error('Contextual flag unavailable');
+      const body: unknown = await response.json();
+      if (
+        !body ||
+        typeof body !== 'object' ||
+        !('toggles' in body) ||
+        !Array.isArray(body.toggles)
+      ) {
+        throw new Error('Invalid flag response');
+      }
+      const toggles: readonly unknown[] = body.toggles;
+      const matches = toggles.filter(
+        (toggle): toggle is { name: unknown; enabled?: unknown } =>
+          !!toggle &&
+          typeof toggle === 'object' &&
+          'name' in toggle &&
+          toggle.name === NOTIFICATION_CENTER,
+      );
+      const enabled = matches.length === 1 && matches[0]?.enabled === true;
+      if (current()) this.notificationCenter.set(enabled);
+    } catch {
+      if (current()) this.notificationCenter.set(false);
+    } finally {
+      clearTimeout(timeout);
+      if (this.contextRequest === controller) this.contextRequest = null;
+    }
+  }
+
+  /** Evaluación aislada por contexto. No hereda caché ni fallback de otras identidades. */
+  watchInContext(flag: FeatureFlagKey, properties: Readonly<Record<string, string>>) {
+    const enabled = signal(false);
+    const ready = signal(!this.config.proxyUrl);
+    let disposed = false;
+    let sequence = 0;
+    let controller: AbortController | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const settle = (request: number, value: boolean) => {
+      if (disposed || request !== sequence) return;
+      clearTimeout(timeout);
+      enabled.set(value);
+      ready.set(true);
+    };
+    const refresh = async () => {
+      controller?.abort();
+      clearTimeout(timeout);
+      const request = ++sequence;
+      controller = new AbortController();
+      timeout = setTimeout(
+        () => {
+          settle(request, false);
+          sequence++;
+          controller?.abort();
+        },
+        Math.min(5000, this.config.intervaloRefrescoMs),
+      );
+      try {
+        const url = new URL(this.config.proxyUrl, globalThis.location.origin);
+        for (const [key, value] of Object.entries(properties)) {
+          url.searchParams.set(`properties[${key}]`, value);
+        }
+        const response = await fetch(url.toString(), {
+          headers: { Authorization: this.config.clientKey },
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('flags.context.unavailable');
+        const body: unknown = await response.json();
+        const toggles = (body as Partial<RespuestaProxy> | null)?.toggles;
+        const toggle = Array.isArray(toggles)
+          ? (toggles as readonly { name?: unknown; enabled?: unknown }[]).find(
+              (item) => item?.name === flag,
+            )
+          : null;
+        settle(request, toggle?.enabled === true);
+      } catch {
+        settle(request, false);
+      }
+    };
+    const unregister = this.destroyRef.onDestroy(() => destroy());
+    const destroy = () => {
+      if (disposed) return;
+      disposed = true;
+      sequence++;
+      controller?.abort();
+      clearTimeout(timeout);
+      clearInterval(interval);
+      enabled.set(false);
+      ready.set(true);
+      unregister();
+    };
+    if (this.config.proxyUrl) {
+      void refresh();
+      interval = setInterval(() => void refresh(), this.config.intervaloRefrescoMs);
+    }
+    return { enabled: enabled.asReadonly(), ready: ready.asReadonly(), destroy };
+  }
+
   private async refrescar(
-    context: FeatureFlagContext | undefined,
+    context: FeatureFlagEvaluationContext | undefined,
     scope: AbortSignal,
   ): Promise<void> {
     const request = new AbortController();
@@ -152,6 +335,7 @@ export class FeatureFlagService {
         seen.add(toggle.name);
         if (Object.hasOwn(FLAGS_POR_DEFECTO, toggle.name)) mapa[toggle.name] = toggle.enabled;
       }
+      mapa[NOTIFICATION_CENTER] = false;
 
       this.estado.set(mapa);
       this.sincronizado.set(true);
@@ -160,6 +344,12 @@ export class FeatureFlagService {
     } catch {
       if (scope.aborted) return;
       // Conserva la última evaluación válida; antes de sincronizar, los defaults del catálogo.
+      // Las demás flags conservan su último valor para mantener la aplicación
+      // operativa durante una caída temporal del proxy. Ver plan §9.
+      // La incorporación de negocios exige falla cerrada incluso si el último
+      // valor recibido fue ON: una solicitud nueva no debe quedar habilitada
+      // por una respuesta antigua del proxy.
+      this.estado.update((current) => ({ ...current, 'mapit.s6.business-applications': false }));
       if (!this.degraded) this.logger.log('WARN', 'flags.degraded');
       this.degraded = true;
     } finally {

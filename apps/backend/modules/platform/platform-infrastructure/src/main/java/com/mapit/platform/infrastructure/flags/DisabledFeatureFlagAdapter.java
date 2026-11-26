@@ -18,6 +18,7 @@ public final class DisabledFeatureFlagAdapter implements FeatureFlagPort {
 
   @Override
   public boolean isEnabled(FeatureFlag flag, boolean valorPorDefecto) {
+    if (flag == FeatureFlag.MAPIT_S6_NOTIFICATION_CENTER || flag == FeatureFlag.MAPIT_S6_MY_ACCOUNT) return false;
     return valorPorDefecto;
   }
 }
