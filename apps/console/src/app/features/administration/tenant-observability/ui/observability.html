@@ -1,0 +1,171 @@
+<section class="observability" aria-labelledby="observability-title">
+  <header>
+    <h1 id="observability-title">{{ copy.title }}</h1>
+    <p>{{ copy.intro }}</p>
+    <div class="actions" role="group" [attr.aria-label]="copy.window">
+      <button type="button" [attr.aria-pressed]="store.days() === 7" (click)="store.setDays(7)">{{ copy.week }}</button>
+      <button type="button" [attr.aria-pressed]="store.days() === 30" (click)="store.setDays(30)">
+        {{ copy.month }}
+      </button>
+    </div>
+  </header>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status">{{ copy.loading }}</p>
+    }
+    @case ('disabled') {
+      <p class="notice" role="status" data-testid="observability-disabled">{{ copy.disabled }}</p>
+    }
+    @case ('loaded') {
+      @if (store.overview(); as data) {
+        <p class="hint">
+          {{ copy.generatedAt }} {{ data.generatedAt | localDate: i18n.locale() : 'medium' }} ·
+          {{ copy.suppressedHint }}
+        </p>
+        @if (data.unreadableTenants > 0) {
+          <p class="notice notice--error" role="alert">{{ copy.partial }} {{ data.unreadableTenants }}</p>
+        }
+        <dl class="cards" data-testid="observability-totals">
+          <div>
+            <dt>{{ copy.activeTenants }}</dt>
+            <dd>{{ data.activeTenants }}</dd>
+          </div>
+          <div>
+            <dt>{{ copy.suspendedTenants }}</dt>
+            <dd>{{ data.suspendedTenants }}</dd>
+          </div>
+          <div>
+            <dt>{{ copy.establishments }}</dt>
+            <dd>{{ data.establishments }}</dd>
+          </div>
+          <div>
+            <dt>{{ copy.reservations }}</dt>
+            <dd>{{ count(data.reservations) }}</dd>
+          </div>
+        </dl>
+
+        <section aria-labelledby="service-title">
+          <h2 id="service-title">{{ copy.serviceTitle }}</h2>
+          <dl>
+            <div>
+              <dt>{{ copy.database }}</dt>
+              <dd>{{ data.databaseAvailable ? copy.available : copy.unavailable }}</dd>
+            </div>
+            @if (data.api; as api) {
+              <div>
+                <dt>{{ copy.requests }}</dt>
+                <dd>{{ api.requests }}</dd>
+              </div>
+              <div>
+                <dt>{{ copy.serverErrors }}</dt>
+                <dd>{{ api.serverErrors }}</dd>
+              </div>
+              <div>
+                <dt>{{ copy.latency }}</dt>
+                <dd>{{ rounded(api.meanLatencyMillis) | localNumber: i18n.locale() }} ms</dd>
+              </div>
+            } @else {
+              <div>
+                <dt>{{ copy.requests }}</dt>
+                <dd>{{ copy.noData }}</dd>
+              </div>
+            }
+          </dl>
+          <p class="hint">{{ copy.serviceSource }}</p>
+        </section>
+
+        <section aria-labelledby="activity-title">
+          <h2 id="activity-title">{{ copy.activityTitle }}</h2>
+          <dl>
+            @for (entry of data.reservationsByStatus | keyvalue: keepOrder; track entry.key) {
+              <div>
+                <dt>{{ statusLabel(entry.key) }}</dt>
+                <dd>{{ count(entry.value) }}</dd>
+              </div>
+            }
+          </dl>
+          <details>
+            <summary>{{ copy.byDay }}</summary>
+            <dl>
+              @for (entry of data.reservationsByDay | keyvalue; track entry.key) {
+                <div>
+                  <dt>{{ entry.key }}</dt>
+                  <dd>{{ count(entry.value) }}</dd>
+                </div>
+              }
+            </dl>
+          </details>
+          <p class="hint">{{ copy.activitySource }}</p>
+        </section>
+      }
+    }
+    @default {
+      <p class="notice notice--error" role="alert">
+        {{ copy.failed }} <button type="button" (click)="store.load()">{{ copy.retry }}</button>
+      </p>
+    }
+  }
+
+  @if (store.status() !== 'disabled') {
+    <section aria-labelledby="tenants-title">
+      <h2 id="tenants-title">{{ copy.tenantsTitle }}</h2>
+      <form class="filters" (submit)="submit($event, search.value, status.value)">
+        <label>{{ copy.search }} <input #search type="search" maxlength="120" [value]="store.search()" /></label>
+        <label>
+          {{ copy.status }}
+          <select #status [value]="store.filter()">
+            <option value="">{{ copy.all }}</option>
+            <option value="ACTIVE">{{ copy.active }}</option>
+            <option value="SUSPENDED">{{ copy.suspended }}</option>
+          </select>
+        </label>
+        <button type="submit">{{ copy.apply }}</button>
+      </form>
+
+      @if (store.tenants(); as page) {
+        <ul class="rows" data-testid="observability-tenants">
+          @for (row of page.content; track row.tenant.id) {
+            <li>
+              <div>
+                <strong>{{ row.tenant.name }}</strong>
+                <small
+                  >{{ row.tenant.slug }} · {{ row.tenant.status === 'ACTIVE' ? copy.active : copy.suspended }}</small
+                >
+                @if (!row.dataAvailable) {
+                  <small class="alert">{{ copy.noData }}</small>
+                } @else {
+                  <small>
+                    {{ copy.establishments }}: {{ row.establishments }} · {{ copy.reservations }}:
+                    {{ count(row.reservations) }} · {{ copy.lastActivity }}:
+                    {{ row.lastActivity ?? copy.noActivity }}
+                  </small>
+                  @for (alert of row.alerts; track alert) {
+                    <small class="alert">{{ copy.alerts[alert] }}</small>
+                  }
+                }
+              </div>
+              <a [routerLink]="['/admin/observability', row.tenant.slug]">{{ copy.detail }}</a>
+            </li>
+          } @empty {
+            <li class="hint">{{ copy.empty }}</li>
+          }
+        </ul>
+        @if (page.totalElements > page.size) {
+          <nav class="actions" [attr.aria-label]="copy.pagination">
+            <button type="button" [disabled]="page.page === 0" (click)="store.changePage(page.page - 1)">
+              {{ copy.previous }}
+            </button>
+            <button
+              type="button"
+              [disabled]="(page.page + 1) * page.size >= page.totalElements"
+              (click)="store.changePage(page.page + 1)"
+            >
+              {{ copy.next }}
+            </button>
+          </nav>
+        }
+      }
+    </section>
+  }
+</section>

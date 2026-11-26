@@ -74,6 +74,20 @@ export const routes: Routes = [
           import('./features/administration/tenants/ui/tenant-detail').then((m) => m.TenantDetail),
       },
       {
+        path: 'observability',
+        loadComponent: () =>
+          import('./features/administration/tenant-observability/ui/observability').then(
+            (m) => m.Observability,
+          ),
+      },
+      {
+        path: 'observability/:slug',
+        loadComponent: () =>
+          import('./features/administration/tenant-observability/ui/tenant-health').then(
+            (m) => m.TenantHealthPage,
+          ),
+      },
+      {
         path: 'settings',
         data: { title: STRINGS.shell.nav.settings },
         loadComponent: () => import('./layout/admin-placeholder').then((m) => m.AdminPlaceholder),

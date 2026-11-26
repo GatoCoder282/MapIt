@@ -46,18 +46,18 @@ alerta. Si no se puede leer una fuente se muestra «sin datos», no cero.
 
 ## Criterios de aceptación
 
-- [ ] **CA-1:** sin JWT, 401; con ADMIN o STAFF, 403.
-- [ ] **CA-2:** con la flag apagada, 404 `tenant-observability-disabled`.
-- [ ] **CA-3:** el resumen muestra empresas, establecimientos, reservas por estado y por día,
+- [x] **CA-1:** sin JWT, 401; con ADMIN o STAFF, 403.
+- [x] **CA-2:** con la flag apagada, 404 `tenant-observability-disabled`.
+- [x] **CA-3:** el resumen muestra empresas, establecimientos, reservas por estado y por día,
       salud de base de datos y API, ventana y hora de generación.
-- [ ] **CA-4:** el listado de empresas se pagina y filtra por nombre y estado, con conteos,
+- [x] **CA-4:** el listado de empresas se pagina y filtra por nombre y estado, con conteos,
       última actividad por día y alertas operativas.
-- [ ] **CA-5:** el detalle muestra solo agregados de esa empresa; los de otra no se mezclan y un
+- [x] **CA-5:** el detalle muestra solo agregados de esa empresa; los de otra no se mezclan y un
       slug inexistente responde 404.
-- [ ] **CA-6:** ninguna respuesta contiene datos personales ni financieros sembrados en la base.
-- [ ] **CA-7:** los conteos pequeños se suprimen también contra la deducción por resta.
-- [ ] **CA-8:** cada consulta queda registrada y el registro no se puede alterar.
-- [ ] **CA-9:** la Console distingue cargando, error, sin datos, actividad baja, falla técnica y
+- [x] **CA-6:** ninguna respuesta contiene datos personales ni financieros sembrados en la base.
+- [x] **CA-7:** los conteos pequeños se suprimen también contra la deducción por resta.
+- [x] **CA-8:** cada consulta queda registrada y el registro no se puede alterar.
+- [x] **CA-9:** la Console distingue cargando, error, sin datos, actividad baja, falla técnica y
       sección no habilitada, en es, en y ja, y en pantallas angostas.
 
 ## Fuera de alcance

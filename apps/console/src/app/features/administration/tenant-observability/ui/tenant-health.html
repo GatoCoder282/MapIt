@@ -1,0 +1,79 @@
+<section class="observability" aria-labelledby="tenant-health-title">
+  <a routerLink="/admin/observability">{{ copy.back }}</a>
+  <header>
+    <h1 id="tenant-health-title">{{ store.detail()?.summary?.tenant?.name ?? copy.detailTitle }}</h1>
+    <div class="actions" role="group" [attr.aria-label]="copy.window">
+      <button type="button" [attr.aria-pressed]="store.days() === 7" (click)="store.setDays(7)">{{ copy.week }}</button>
+      <button type="button" [attr.aria-pressed]="store.days() === 30" (click)="store.setDays(30)">
+        {{ copy.month }}
+      </button>
+    </div>
+  </header>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status">{{ copy.loading }}</p>
+    }
+    @case ('disabled') {
+      <p class="notice" role="status" data-testid="observability-disabled">{{ copy.disabled }}</p>
+    }
+    @case ('missing') {
+      <p class="notice" role="status">{{ copy.missing }}</p>
+    }
+    @case ('loaded') {
+      @if (store.detail(); as data) {
+        @if (!data.summary.dataAvailable) {
+          <p class="notice notice--error" role="alert">{{ copy.noData }}</p>
+        } @else {
+          <dl data-testid="tenant-health">
+            <div>
+              <dt>{{ copy.status }}</dt>
+              <dd>{{ data.summary.tenant.status === 'ACTIVE' ? copy.active : copy.suspended }}</dd>
+            </div>
+            <div>
+              <dt>{{ copy.lastActivity }}</dt>
+              <dd>{{ data.summary.lastActivity ?? copy.noActivity }}</dd>
+            </div>
+            <div>
+              <dt>{{ copy.reservations }}</dt>
+              <dd>{{ count(data.reservations) }}</dd>
+            </div>
+            @for (entry of data.reservationsByStatus | keyvalue: keepOrder; track entry.key) {
+              <div>
+                <dt>{{ statusLabel(entry.key) }}</dt>
+                <dd>{{ count(entry.value) }}</dd>
+              </div>
+            }
+            @for (entry of data.establishmentsByVertical | keyvalue; track entry.key) {
+              <div>
+                <dt>{{ copy.establishments }}: {{ verticalLabel(entry.key) }}</dt>
+                <dd>{{ entry.value }}</dd>
+              </div>
+            }
+            <div>
+              <dt>{{ copy.pendingDeliveries }}</dt>
+              <dd>{{ data.pendingDeliveries }}</dd>
+            </div>
+            <div>
+              <dt>{{ copy.failingDeliveries }}</dt>
+              <dd>{{ data.failingDeliveries }}</dd>
+            </div>
+            <div>
+              <dt>{{ copy.paymentMethod }}</dt>
+              <dd>{{ data.paymentMethodEnabled ? copy.yes : copy.no }}</dd>
+            </div>
+          </dl>
+          @for (alert of data.summary.alerts; track alert) {
+            <p class="alert">{{ copy.alerts[alert] }}</p>
+          }
+          <p class="hint">{{ copy.suppressedHint }}</p>
+        }
+      }
+    }
+    @default {
+      <p class="notice notice--error" role="alert">
+        {{ copy.failed }} <button type="button" (click)="store.load()">{{ copy.retry }}</button>
+      </p>
+    }
+  }
+</section>
