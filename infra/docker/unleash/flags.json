@@ -65,6 +65,13 @@
       "description": "HU-1.05: habilita nuevas solicitudes públicas de incorporación con revisión humana; las ya creadas permanecen disponibles para la plataforma.",
       "type": "permission",
       "enabled": false
+    },
+    {
+      "name": "mapit.s6.tenant-observability",
+      "description": "HU-7.08 (MAP-301): observabilidad agregada de empresas para Super Admin. OFF por defecto. No concede permisos.",
+      "type": "release",
+      "enabled": false,
+      "expiresAt": "2027-02-26"
     }
   ]
 }

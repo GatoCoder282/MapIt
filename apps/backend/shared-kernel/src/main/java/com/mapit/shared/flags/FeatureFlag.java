@@ -39,7 +39,10 @@ public enum FeatureFlag {
   /** Mi cuenta (HU-1.06 / MAP-285): release OFF; nunca sustituye autorización. */
   MAPIT_S6_MY_ACCOUNT("mapit.s6.my-account", Tipo.RELEASE, false),
   /** Solicitudes públicas de incorporación (HU-1.05). Falla cerrada si Unleash no responde. */
-  BUSINESS_APPLICATIONS("mapit.s6.business-applications", Tipo.PERMISSION, false);
+  BUSINESS_APPLICATIONS("mapit.s6.business-applications", Tipo.PERMISSION, false),
+
+  /** Observabilidad agregada de empresas para Super Admin (HU-7.08). */
+  MAPIT_S6_TENANT_OBSERVABILITY("mapit.s6.tenant-observability", Tipo.RELEASE, false);
 
   /**
    * Tipos canónicos de toggle. El tipo determina cuánto debe vivir la flag:

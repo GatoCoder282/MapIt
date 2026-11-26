@@ -11,7 +11,7 @@
 //  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
 //  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5),
 //  `realtime_event_outbox` (V11, MAP-103/HUT-01), `audit_log` (V20, MAP-222),
-//  `business_application` (V41, MAP-261)
+//  `business_application` (V41, MAP-261), `platform_access_log` (V44, MAP-309)
 //  y el rol de runtime `mapit_app`
 //  (V9, MAP-175: NOSUPERUSER + NOBYPASSRLS;
 //  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
@@ -370,6 +370,21 @@ Table audit_log {
     se bloquean mediante trigger. V20 migra el histórico de HU-3.01 y V21
     retira su tabla específica después de una copia final idempotente.
   '''
+}
+
+Table platform_access_log {
+  id                uuid        [note: 'default gen_random_uuid()']
+  tenant_id         text        [not null, ref: > tenant.id, note: 'siempre platform']
+  actor_id          uuid        [not null, note: 'SUPER_ADMIN que consultó']
+  occurred_at       timestamptz [not null]
+  view              text        [not null, note: 'OVERVIEW | TENANT_LIST | TENANT_DETAIL']
+  subject_tenant_id text        [ref: > tenant.id, note: 'solo en TENANT_DETAIL']
+
+  Indexes {
+    (tenant_id, id)          [pk]
+    (tenant_id, occurred_at) [name: 'platform_access_log_history_idx']
+  }
+  Note: 'HU-7.08 (V44). RLS; mapit_app solo puede insertar y consultar.'
 }
 
 Table realtime_event_outbox {

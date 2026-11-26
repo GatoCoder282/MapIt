@@ -40,6 +40,9 @@ export const FLAGS_POR_DEFECTO = {
   'mapit.s6.my-account': false,
   /** Incorporación de negocios con revisión humana (HU-1.05). */
   'mapit.s6.business-applications': false,
+
+  /** Observabilidad agregada de empresas para Super Admin (HU-7.08). */
+  'mapit.s6.tenant-observability': false,
 } as const satisfies Record<string, boolean>;
 
 export type FeatureFlagKey = keyof typeof FLAGS_POR_DEFECTO;
