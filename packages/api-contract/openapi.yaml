@@ -70,6 +70,7 @@ tags:
     description: Reserva anónima desde el portal público (HU-6.02)
   - name: customer-history
     description: Acceso temporal y consulta del historial propio en el portal público (HU-6.04)
+  - { name: platform-settings, description: Configuración global del Super Admin (HU-7.07) }
   - name: business-applications
     description: Solicitudes públicas de incorporación de negocios (HU-1.05)
 
@@ -124,6 +125,76 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+
+  /platform/settings:
+    get:
+      tags: [platform-settings]
+      summary: Consultar la configuración de plataforma
+      description: |
+        Requiere rol SUPER_ADMIN y `mapit.s6.platform-settings`. Con la flag apagada responde 404
+        (`platform-settings-disabled`). Nunca expone secretos, tokens ni URLs internas.
+      operationId: getPlatformSettings
+      responses:
+        "200":
+          description: Parámetros editables, valores de solo lectura, servicios y flags
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettingsOverview" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /platform/settings/changes:
+    get:
+      tags: [platform-settings]
+      summary: Últimos cambios de configuración
+      operationId: listPlatformSettingChanges
+      responses:
+        "200":
+          description: Como máximo 50 cambios, del más reciente al más antiguo
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PlatformSettingChange" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /platform/settings/{key}:
+    put:
+      tags: [platform-settings]
+      summary: Cambiar o restaurar un parámetro global
+      operationId: changePlatformSetting
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformSettingChangeRequest" }
+      responses:
+        "200":
+          description: Valor efectivo tras el cambio
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSetting" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /business-applications:
     get:
@@ -6360,6 +6431,74 @@ components:
           minLength: 1
           maxLength: 500
 
+    PlatformSetting:
+      type: object
+      additionalProperties: false
+      required: [key, value, defaultValue, overridden, min, max]
+      properties:
+        key: { type: string }
+        value: { type: integer }
+        defaultValue: { type: integer, description: Valor que rige sin cambios guardados }
+        overridden: { type: boolean }
+        min: { type: integer }
+        max: { type: integer }
+    PlatformSettingChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedValue, reason]
+      properties:
+        value:
+          type: [integer, "null"]
+          description: Nulo restaura el valor del despliegue.
+        expectedValue: { type: integer, description: Valor efectivo que se tenía en pantalla }
+        reason: { type: string, minLength: 10, maxLength: 200 }
+    PlatformSettingChange:
+      type: object
+      additionalProperties: false
+      required: [key, previousValue, newValue, reason, actorName, occurredAt]
+      properties:
+        key: { type: string }
+        previousValue: { type: string }
+        newValue: { type: string }
+        reason: { type: string }
+        actorName: { type: string }
+        occurredAt: { type: string, format: date-time }
+    PlatformSettingsOverview:
+      type: object
+      additionalProperties: false
+      required: [environment, services, settings, readOnly, flags]
+      properties:
+        environment: { type: string }
+        services:
+          type: object
+          additionalProperties: false
+          required: [databaseAvailable, flagProvider]
+          properties:
+            databaseAvailable: { type: boolean }
+            flagProvider: { type: string, enum: [AVAILABLE, UNAVAILABLE, DISABLED] }
+        settings:
+          type: array
+          items: { $ref: "#/components/schemas/PlatformSetting" }
+        readOnly:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, value]
+            properties:
+              key: { type: string }
+              value: { type: string }
+        flags:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, type, enabled, defaultValue]
+            properties:
+              key: { type: string }
+              type: { type: string, enum: [RELEASE, KILL_SWITCH, EXPERIMENT, PERMISSION] }
+              enabled: { type: boolean, description: "Evaluación global, sin contexto de tenant" }
+              defaultValue: { type: boolean }
     BusinessApplicationDetail:
       type: object
       required:

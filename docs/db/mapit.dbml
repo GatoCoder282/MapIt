@@ -11,7 +11,7 @@
 //  ESTADO: implementadas `tenant` (V1; vertical en V4; tenant técnico
 //  `platform` en V6), `demo_item` (V2), `app_user` (V3), `establishment` (V5),
 //  `realtime_event_outbox` (V11, MAP-103/HUT-01), `audit_log` (V20, MAP-222),
-//  `business_application` (V41, MAP-261)
+//  `business_application` (V41, MAP-261), `platform_setting` (V43, MAP-303)
 //  y el rol de runtime `mapit_app`
 //  (V9, MAP-175: NOSUPERUSER + NOBYPASSRLS;
 //  Flyway migra como owner `mapit`, la app conecta solo con `mapit_app`).
@@ -353,9 +353,9 @@ Table audit_log {
   tenant_id     text        [not null, ref: > tenant.id]
   actor_id      uuid        [not null, note: 'FK compuesta (tenant_id, actor_id) > app_user(tenant_id, id)']
   occurred_at   timestamptz [not null]
-  resource_type text        [not null, note: 'RESERVATION | SPACE_ELEMENT | USER_INVITATION | USER | BUSINESS_APPLICATION']
+  resource_type text        [not null, note: 'RESERVATION | SPACE_ELEMENT | USER_INVITATION | USER | BUSINESS_APPLICATION | PLATFORM_SETTING']
   resource_id   uuid        [not null, note: 'Referencia polimórfica al recurso auditado']
-  event_type    text        [not null, note: 'RESERVATION_CREATED | RESERVATION_STATUS_CHANGED | SPACE_ELEMENT_STATE_CHANGED | USER_INVITATION_ISSUED | USER_INVITATION_ACCEPTED | USER_ROLE_CHANGED | USER_DEACTIVATED | USER_RECOVERED | BUSINESS_APPLICATION_APPROVED | BUSINESS_APPLICATION_REJECTED']
+  event_type    text        [not null, note: 'RESERVATION_CREATED | RESERVATION_STATUS_CHANGED | SPACE_ELEMENT_STATE_CHANGED | USER_INVITATION_ISSUED | USER_INVITATION_ACCEPTED | USER_ROLE_CHANGED | USER_DEACTIVATED | USER_RECOVERED | BUSINESS_APPLICATION_APPROVED | BUSINESS_APPLICATION_REJECTED | PLATFORM_SETTING_CHANGED']
   details       jsonb       [not null, default: `{}`]
 
   Indexes {
@@ -369,6 +369,17 @@ Table audit_log {
     El rol runtime solo puede insertar y consultar; UPDATE y DELETE también
     se bloquean mediante trigger. V20 migra el histórico de HU-3.01 y V21
     retira su tabla específica después de una copia final idempotente.
+  '''
+}
+
+Table platform_setting {
+  setting_key text        [pk, note: 'Allowlist: vigencia de enlace y de sesión del historial']
+  int_value   int         [not null, note: 'Rango restringido por CHECK según la clave']
+  updated_at  timestamptz [not null]
+  updated_by  uuid        [not null, note: 'SUPER_ADMIN del tenant platform']
+  Note: '''
+    HU-7.07 (V43). Global, como `tenant`: sin tenant_id ni RLS porque no guarda datos de negocio
+    y se lee dentro de transacciones de cualquier tenant. Los cambios se auditan en `audit_log`.
   '''
 }
 
